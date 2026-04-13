@@ -37,7 +37,7 @@ services:
   postgres:
     image: postgres:15
     environment:
-      POSTGRES_USER: mypet
-      POSTGRES_PASSWORD: mypet
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
     ports:
       - "5432:5432"
