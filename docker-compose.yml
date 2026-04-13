@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  auth-service:
+    build: ./auth-service
+    ports:
+      - "3001:3001"
+
+  user-service:
+    build: ./user-service
+    ports:
+      - "3002:3002"
+
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: mypet
+      POSTGRES_PASSWORD: mypet
+    ports:
+      - "5432:5432"
