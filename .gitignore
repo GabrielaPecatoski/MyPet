@@ -1,0 +1,23 @@
+# Dependências
+node_modules/
+**/node_modules/
+
+# Build
+dist/
+**/dist/
+
+# Variáveis de ambiente
+.env
+**/.env
+
+# Logs
+*.log
+npm-debug.log*
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+
+# Docker volumes locais
+postgres_data/
+rabbitmq_data/
