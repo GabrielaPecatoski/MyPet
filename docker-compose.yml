@@ -1,15 +1,38 @@
-version: '3.8'
-
 services:
   auth-service:
     build: ./auth-service
     ports:
       - "3001:3001"
 
-  user-service:
-    build: ./user-service
+  user-pet-service:
+    build: ./user-pet-service
     ports:
       - "3002:3002"
+
+  establishment-service:
+    build: ./establishment-service
+    ports:
+      - "3003:3003"
+
+  marketplace-service:
+    build: ./marketplace-service
+    ports:
+      - "3004:3004"
+
+  booking-service:
+    build: ./booking-service
+    ports:
+      - "3005:3005"
+
+  notification-service:
+    build: ./notification-service
+    ports:
+      - "3006:3006"
+
+  review-service:
+    build: ./review-service
+    ports:
+      - "3007:3007"
 
   postgres:
     image: postgres:15
