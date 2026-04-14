@@ -1,5 +1,6 @@
 // @ts-ignore
 import { Injectable } from '@nestjs/common';
+import { createHmac } from 'crypto';
 // @ts-ignore
 import { PasswordResetToken } from './password-reset-token.entity';
 // @ts-ignore
@@ -8,18 +9,85 @@ import { ForgotPasswordDto, ResetPasswordDto, VerifyResetTokenDto, PasswordReset
 @Injectable()
 export class PasswordRecoveryService {
   private resetTokens: PasswordResetToken[] = [];
-  private users: any[] = []; // Simulação de banco de dados de usuários
+  private users: any[] = [];
 
   constructor() {
-    // Inicializa com alguns usuários de teste
     this.users = [
       {
         id: 'user-123',
         email: 'user@example.com',
         name: 'João Silva',
+        role: 'PET_OWNER',
         password: 'hashedPassword123',
       },
     ];
+  }
+
+  async login(email: string, password: string): Promise<{ accessToken: string; expiresIn: number; user: { id: string; email: string; name: string; role: string } }> {
+    if (!email || !email.trim()) {
+      throw new Error('Email is required');
+    }
+
+    if (!password || !password.trim()) {
+      throw new Error('Password is required');
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = this.users.find((u) => u.email.toLowerCase() === normalizedEmail);
+
+    if (!user || user.password !== password.trim()) {
+      throw new Error('Invalid email or password');
+    }
+
+    const expiresIn = 60 * 60;
+    const accessToken = this.createJwtToken(
+      {
+        sub: user.id,
+        email: user.email,
+        role: user.role,
+      },
+      expiresIn,
+    );
+
+    return {
+      accessToken,
+      expiresIn,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+      },
+    };
+  }
+
+  private getJwtSecret(): string {
+    return process.env.JWT_SECRET ?? 'mypet_super_secret_change_in_production';
+  }
+
+  private base64UrlEncode(value: string | Buffer): string {
+    return Buffer.from(value).toString('base64url');
+  }
+
+  private createJwtToken(payload: Record<string, any>, expiresInSeconds: number): string {
+    const header = {
+      alg: 'HS256',
+      typ: 'JWT',
+    };
+    const now = Math.floor(Date.now() / 1000);
+    const body = {
+      ...payload,
+      iat: now,
+      exp: now + expiresInSeconds,
+    };
+
+    const encodedHeader = this.base64UrlEncode(JSON.stringify(header));
+    const encodedPayload = this.base64UrlEncode(JSON.stringify(body));
+    const signature = createHmac('sha256', this.getJwtSecret())
+      .update(`${encodedHeader}.${encodedPayload}`)
+      .digest('base64url');
+
+    return `${encodedHeader}.${encodedPayload}.${signature}`;
   }
 
   /**

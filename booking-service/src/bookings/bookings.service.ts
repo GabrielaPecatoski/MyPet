@@ -259,6 +259,34 @@ export class BookingsService {
     );
   }
 
+  async getUserHistory(userId: string, petId?: string, skip: number = 0, take: number = 10): Promise<Booking[]> {
+    if (!userId || !userId.trim()) {
+      throw new Error('UserId is required');
+    }
+    return this.findAll({ userId, petId }, skip, take);
+  }
+
+  async getUserPending(userId: string, skip: number = 0, take: number = 10): Promise<Booking[]> {
+    if (!userId || !userId.trim()) {
+      throw new Error('UserId is required');
+    }
+    return this.findAll({ userId, status: BookingStatus.PENDING }, skip, take);
+  }
+
+  async getUserOngoing(userId: string, skip: number = 0, take: number = 10): Promise<Booking[]> {
+    if (!userId || !userId.trim()) {
+      throw new Error('UserId is required');
+    }
+    return this.findAll({ userId, status: BookingStatus.IN_PROGRESS }, skip, take);
+  }
+
+  async getEstablishmentPending(establishmentId: string, skip: number = 0, take: number = 10): Promise<Booking[]> {
+    if (!establishmentId || !establishmentId.trim()) {
+      throw new Error('EstablishmentId is required');
+    }
+    return this.findAll({ establishmentId, status: BookingStatus.PENDING }, skip, take);
+  }
+
   /**
    * Updates booking information
    * @param bookingId Booking ID

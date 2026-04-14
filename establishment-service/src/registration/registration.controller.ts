@@ -9,23 +9,23 @@ import { UpdateRegistrationDto } from './dto/update-registration.dto';
 // @ts-ignore
 import { RegistrationStatus } from './entities/registration.entity';
 
-@Controller('registrations')
+@Controller('establishments')
 export class RegistrationController {
   constructor(private readonly registrationService: RegistrationService) {}
 
-  @Post()
+  @Post('register')
   @HttpCode(HttpStatus.CREATED)
   async create(@Body() createRegistrationDto: CreateRegistrationDto) {
     return this.registrationService.create(createRegistrationDto);
   }
 
-  @Get('stats')
+  @Get('registrations/stats')
   @HttpCode(HttpStatus.OK)
   async getStats() {
     return this.registrationService.getStats();
   }
 
-  @Get()
+  @Get('registrations')
   @HttpCode(HttpStatus.OK)
   async findAll(
     @Query('status') status?: RegistrationStatus,
@@ -38,13 +38,13 @@ export class RegistrationController {
     return this.registrationService.findAll(skip, take);
   }
 
-  @Get(':id')
+  @Get('registrations/:id')
   @HttpCode(HttpStatus.OK)
   async findOne(@Param('id') id: string) {
     return this.registrationService.findOne(id);
   }
 
-  @Put(':id')
+  @Put('registrations/:id')
   @HttpCode(HttpStatus.OK)
   async update(
     @Param('id') id: string,
@@ -53,7 +53,7 @@ export class RegistrationController {
     return this.registrationService.update(id, updateRegistrationDto);
   }
 
-  @Put(':id/status')
+  @Put('registrations/:id/status')
   @HttpCode(HttpStatus.OK)
   async updateStatus(
     @Param('id') id: string,
@@ -62,7 +62,7 @@ export class RegistrationController {
     return this.registrationService.updateStatus(id, status);
   }
 
-  @Delete(':id')
+  @Delete('registrations/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(@Param('id') id: string) {
     return this.registrationService.remove(id);

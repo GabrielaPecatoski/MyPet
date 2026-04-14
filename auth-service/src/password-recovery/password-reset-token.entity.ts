@@ -6,7 +6,7 @@ export class PasswordResetToken {
   userId: string;
   email: string;
   token: string;
-  expiresAt: Date; // Token expira em 1 hora
+  expiresAt: Date;
   isUsed: boolean;
   createdAt: Date;
   usedAt?: Date;
@@ -19,14 +19,10 @@ export class PasswordResetToken {
     this.isUsed = false;
     this.createdAt = new Date();
     
-    // Define expiração
     this.expiresAt = new Date();
     this.expiresAt.setMinutes(this.expiresAt.getMinutes() + expirationMinutes);
   }
 
-  /**
-   * Gera um token seguro aleatório
-   */
   private generateSecureToken(): string {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
     let token = '';

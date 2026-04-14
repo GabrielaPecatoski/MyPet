@@ -129,6 +129,8 @@ export class EstablishmentProfileService {
     if (updateProfileDto.name) profile.name = updateProfileDto.name.trim();
     if (updateProfileDto.phone) profile.phone = updateProfileDto.phone.replace(/\D/g, '');
     if (updateProfileDto.address) profile.address = updateProfileDto.address.trim();
+    if (updateProfileDto.latitude !== undefined) profile.latitude = updateProfileDto.latitude;
+    if (updateProfileDto.longitude !== undefined) profile.longitude = updateProfileDto.longitude;
     if (updateProfileDto.state) profile.state = updateProfileDto.state.toUpperCase().trim();
     if (updateProfileDto.bio !== undefined) profile.bio = updateProfileDto.bio;
     if (updateProfileDto.profileImage !== undefined) profile.profileImage = updateProfileDto.profileImage;

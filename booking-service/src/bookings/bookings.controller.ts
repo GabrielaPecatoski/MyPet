@@ -106,6 +106,92 @@ export class BookingsController {
     }
   }
 
+  @Get('user/:userId/upcoming')
+  @HttpCode(HttpStatus.OK)
+  async getUserUpcoming(
+    @Param('userId') userId: string,
+    @Query('skip') skip?: number,
+    @Query('take') take?: number,
+  ) {
+    try {
+      return await this.bookingsService.getUserAgenda(userId, skip, take);
+    } catch (error) {
+      throw new Error(`Failed to fetch upcoming bookings: ${error.message}`);
+    }
+  }
+
+  @Get('user/:userId/history')
+  @HttpCode(HttpStatus.OK)
+  async getUserHistory(
+    @Param('userId') userId: string,
+    @Query('petId') petId?: string,
+    @Query('skip') skip?: number,
+    @Query('take') take?: number,
+  ) {
+    try {
+      return await this.bookingsService.getUserHistory(userId, petId, skip, take);
+    } catch (error) {
+      throw new Error(`Failed to fetch booking history: ${error.message}`);
+    }
+  }
+
+  @Get('user/:userId/pet/:petId/history')
+  @HttpCode(HttpStatus.OK)
+  async getUserPetHistory(
+    @Param('userId') userId: string,
+    @Param('petId') petId: string,
+    @Query('skip') skip?: number,
+    @Query('take') take?: number,
+  ) {
+    try {
+      return await this.bookingsService.getUserHistory(userId, petId, skip, take);
+    } catch (error) {
+      throw new Error(`Failed to fetch pet booking history: ${error.message}`);
+    }
+  }
+
+  @Get('user/:userId/pending')
+  @HttpCode(HttpStatus.OK)
+  async getUserPending(
+    @Param('userId') userId: string,
+    @Query('skip') skip?: number,
+    @Query('take') take?: number,
+  ) {
+    try {
+      return await this.bookingsService.getUserPending(userId, skip, take);
+    } catch (error) {
+      throw new Error(`Failed to fetch pending bookings: ${error.message}`);
+    }
+  }
+
+  @Get('user/:userId/ongoing')
+  @HttpCode(HttpStatus.OK)
+  async getUserOngoing(
+    @Param('userId') userId: string,
+    @Query('skip') skip?: number,
+    @Query('take') take?: number,
+  ) {
+    try {
+      return await this.bookingsService.getUserOngoing(userId, skip, take);
+    } catch (error) {
+      throw new Error(`Failed to fetch ongoing bookings: ${error.message}`);
+    }
+  }
+
+  @Get('establishment/:establishmentId/pending')
+  @HttpCode(HttpStatus.OK)
+  async getEstablishmentPending(
+    @Param('establishmentId') establishmentId: string,
+    @Query('skip') skip?: number,
+    @Query('take') take?: number,
+  ) {
+    try {
+      return await this.bookingsService.getEstablishmentPending(establishmentId, skip, take);
+    } catch (error) {
+      throw new Error(`Failed to fetch establishment pending bookings: ${error.message}`);
+    }
+  }
+
   /**
    * Gets establishment's booking agenda/schedule
    * @returns Array of establishment bookings

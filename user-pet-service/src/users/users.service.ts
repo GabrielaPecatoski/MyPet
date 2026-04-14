@@ -11,9 +11,6 @@ import { User, UserRole } from './entities/user.entity';
 export class UsersService {
   private users: User[] = [];
 
-  /**
-   * Validações internas
-   */
   private validateEmail(email: string): boolean {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
@@ -29,43 +26,33 @@ export class UsersService {
     return cleanPhone.length >= 10;
   }
 
-  /**
-   * Cria nova conta de usuário
-   */
   async create(createUserDto: CreateUserDto): Promise<Omit<User, 'password'>> {
-    // Validar email
     if (!this.validateEmail(createUserDto.email)) {
       throw new BadRequestException('Formato de email inválido');
     }
 
-    // Validar email único
     const existingUser = this.users.find((u) => u.email === createUserDto.email.toLowerCase());
     if (existingUser) {
       throw new ConflictException('Email já registrado no sistema');
     }
 
-    // Validar CPF
     if (!this.validateCpf(createUserDto.cpf)) {
       throw new BadRequestException('CPF deve conter 11 dígitos');
     }
 
-    // Validar CPF único
     const existingByCpf = this.users.find((u) => u.cpf === createUserDto.cpf.replace(/\D/g, ''));
     if (existingByCpf) {
       throw new ConflictException('CPF já registrado no sistema');
     }
 
-    // Validar telefone
     if (!this.validatePhone(createUserDto.phone)) {
       throw new BadRequestException('Telefone deve conter no mínimo 10 dígitos');
     }
 
-    // Validar senha
     if (!createUserDto.password || createUserDto.password.length < 6) {
       throw new BadRequestException('Senha deve ter no mínimo 6 caracteres');
     }
 
-    // Validar nome
     if (!createUserDto.name || createUserDto.name.trim().length === 0) {
       throw new BadRequestException('Nome é obrigatório');
     }
@@ -120,9 +107,6 @@ export class UsersService {
     return user as any;
   }
 
-  /**
-   * Atualiza perfil do usuário
-   */
   async updateProfile(
     userId: string,
     updateProfileDto: UpdateProfileDto,
@@ -132,7 +116,6 @@ export class UsersService {
       throw new NotFoundException(`Usuário com ID "${userId}" não encontrado`);
     }
 
-    // Atualizar apenas campos permitidos
     if (updateProfileDto.name !== undefined && updateProfileDto.name.trim()) {
       user.name = updateProfileDto.name.trim();
     }

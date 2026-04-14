@@ -4,11 +4,11 @@ import { EstablishmentProfileService } from './profile.service';
 import { UpdateEstablishmentProfileDto } from './dto/update-establishment-profile.dto';
 import { EstablishmentType } from './entities/establishment-profile.entity';
 
-@Controller('establishment-profiles')
+@Controller('establishments')
 export class EstablishmentProfileController {
   constructor(private readonly profileService: EstablishmentProfileService) {}
 
-  @Post()
+  @Post('profile')
   @HttpCode(HttpStatus.CREATED)
   async createProfile(@Body() createProfileDto: any) {
     return this.profileService.createProfile(
@@ -63,9 +63,20 @@ export class EstablishmentProfileController {
     return this.profileService.listEstablishments(type, skip, take);
   }
 
+  @Get('search')
+  @HttpCode(HttpStatus.OK)
+  async search(
+    @Query('q') query: string,
+  ) {
+    if (!query || query.length < 2) {
+      return [];
+    }
+    return this.profileService.searchEstablishments(query);
+  }
+
   @Get('search/query')
   @HttpCode(HttpStatus.OK)
-  async search(@Query('q') query: string) {
+  async searchByQuery(@Query('q') query: string) {
     if (!query || query.length < 2) {
       return [];
     }
