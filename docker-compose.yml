@@ -1,0 +1,201 @@
+services:
+
+  postgres:
+    image: postgres:15
+    container_name: mypet-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: mypet
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  consul:
+    image: consul:1.15
+    container_name: mypet-consul
+    ports:
+      - '8500:8500'
+    command: agent -dev -ui -client=0.0.0.0
+    healthcheck:
+      test: ['CMD', 'consul', 'members']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: mypet-rabbitmq
+    ports:
+      - '5672:5672'
+      - '15672:15672'
+    environment:
+      RABBITMQ_DEFAULT_USER: mypet
+      RABBITMQ_DEFAULT_PASS: mypet123
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ['CMD', 'rabbitmq-diagnostics', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api-gateway:
+    build: ./api-gateway
+    container_name: mypet-gateway
+    ports:
+      - '3000:3000'
+    environment:
+      PORT: 3000
+      JWT_SECRET: mypet_super_secret_change_in_production
+      AUTH_SERVICE_URL: http://auth-service:3001
+      USER_PET_SERVICE_URL: http://user-pet-service:3002
+      ESTABLISHMENT_SERVICE_URL: http://establishment-service:3003
+      MARKETPLACE_SERVICE_URL: http://marketplace-service:3004
+      BOOKING_SERVICE_URL: http://booking-service:3005
+      NOTIFICATION_SERVICE_URL: http://notification-service:3006
+      REVIEW_SERVICE_URL: http://review-service:3007
+      THROTTLE_TTL: 60000
+      THROTTLE_LIMIT: 100
+    depends_on:
+      consul:
+        condition: service_healthy
+    restart: unless-stopped
+
+  auth-service:
+    build: ./auth-service
+    container_name: mypet-auth
+    ports:
+      - '3001:3001'
+    environment:
+      PORT: 3001
+      DATABASE_URL: postgresql://postgres:root@postgres:5432/mypet
+      JWT_SECRET: mypet_super_secret_change_in_production
+      CONSUL_HOST: consul
+      CONSUL_PORT: 8500
+    depends_on:
+      postgres:
+        condition: service_healthy
+      consul:
+        condition: service_healthy
+    restart: unless-stopped
+
+  user-pet-service:
+    build: ./user-pet-service
+    container_name: mypet-user-pet
+    ports:
+      - '3002:3002'
+    environment:
+      PORT: 3002
+      DATABASE_URL: postgresql://postgres:root@postgres:5432/mypet
+      JWT_SECRET: mypet_super_secret_change_in_production
+      CONSUL_HOST: consul
+      CONSUL_PORT: 8500
+    depends_on:
+      postgres:
+        condition: service_healthy
+      consul:
+        condition: service_healthy
+    restart: unless-stopped
+
+  establishment-service:
+    build: ./establishment-service
+    container_name: mypet-establishment
+    ports:
+      - '3003:3003'
+    environment:
+      PORT: 3003
+      DATABASE_URL: postgresql://postgres:root@postgres:5432/mypet
+      JWT_SECRET: mypet_super_secret_change_in_production
+      CONSUL_HOST: consul
+      CONSUL_PORT: 8500
+    depends_on:
+      postgres:
+        condition: service_healthy
+      consul:
+        condition: service_healthy
+    restart: unless-stopped
+
+  marketplace-service:
+    build: ./marketplace-service
+    container_name: mypet-marketplace
+    ports:
+      - '3004:3004'
+    environment:
+      PORT: 3004
+      DATABASE_URL: postgresql://postgres:root@postgres:5432/mypet
+      CONSUL_HOST: consul
+      CONSUL_PORT: 8500
+    depends_on:
+      postgres:
+        condition: service_healthy
+      consul:
+        condition: service_healthy
+    restart: unless-stopped
+
+  booking-service:
+    build: ./booking-service
+    container_name: mypet-booking
+    ports:
+      - '3005:3005'
+    environment:
+      PORT: 3005
+      DATABASE_URL: postgresql://postgres:root@postgres:5432/mypet
+      RABBITMQ_URL: amqp://mypet:mypet123@rabbitmq:5672
+      CONSUL_HOST: consul
+      CONSUL_PORT: 8500
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      consul:
+        condition: service_healthy
+    restart: unless-stopped
+
+  notification-service:
+    build: ./notification-service
+    container_name: mypet-notification
+    ports:
+      - '3006:3006'
+    environment:
+      PORT: 3006
+      RABBITMQ_URL: amqp://mypet:mypet123@rabbitmq:5672
+      CONSUL_HOST: consul
+      CONSUL_PORT: 8500
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      consul:
+        condition: service_healthy
+    restart: unless-stopped
+
+  review-service:
+    build: ./review-service
+    container_name: mypet-review
+    ports:
+      - '3007:3007'
+    environment:
+      PORT: 3007
+      DATABASE_URL: postgresql://postgres:root@postgres:5432/mypet
+      RABBITMQ_URL: amqp://mypet:mypet123@rabbitmq:5672
+      CONSUL_HOST: consul
+      CONSUL_PORT: 8500
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      consul:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  rabbitmq_data:
