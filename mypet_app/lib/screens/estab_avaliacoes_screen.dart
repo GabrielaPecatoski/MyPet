@@ -43,7 +43,6 @@ class _EstabAvaliacoesScreenState extends State<EstabAvaliacoesScreen>
       appBar: const MypetAppBar(showBack: false),
       body: Column(
         children: [
-          // Média geral
           Container(
             color: AppColors.primary,
             padding: const EdgeInsets.symmetric(vertical: 16),
@@ -86,11 +85,9 @@ class _EstabAvaliacoesScreenState extends State<EstabAvaliacoesScreen>
             child: TabBarView(
               controller: _tabCtrl,
               children: [
-                // ── Avaliações ─────────────────────────────────
                 ListView(
                   padding: const EdgeInsets.all(16),
                   children: [
-                    // Nota média
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
@@ -131,7 +128,6 @@ class _EstabAvaliacoesScreenState extends State<EstabAvaliacoesScreen>
                     ..._avaliacoes.map((av) => _AvalCard(av: av)),
                   ],
                 ),
-                // ── Reclamações ─────────────────────────────────
                 ListView(
                   padding: const EdgeInsets.all(16),
                   children: _reclamacoes.map((r) => _ReclamCard(r: r)).toList(),

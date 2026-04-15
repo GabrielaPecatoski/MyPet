@@ -37,7 +37,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // ── Card usuário ──────────────────────────────────
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -105,7 +104,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            // ── Menu ─────────────────────────────────────────
             Container(
               decoration: BoxDecoration(
                   color: Colors.white,

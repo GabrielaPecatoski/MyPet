@@ -1,0 +1,18 @@
+{
+  "name": "mypet-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "infra": "docker compose up -d postgres rabbitmq consul",
+    "infra:down": "docker compose stop",
+    "services": "concurrently --kill-others-on-fail --prefix-colors \"blue,green,yellow,magenta,cyan,red,white,gray\" --names \"gateway,auth,user-pet,establishment,marketplace,booking,notification,review\" \"npm run start:dev --prefix api-gateway\" \"npm run start:dev --prefix auth-service\" \"npm run start:dev --prefix user-pet-service\" \"npm run start:dev --prefix establishment-service\" \"npm run start:dev --prefix marketplace-service\" \"npm run start:dev --prefix booking-service\" \"npm run start:dev --prefix notification-service\" \"npm run start:dev --prefix review-service\"",
+    "flutter": "npm run start --prefix mypet_app",
+    "dev": "npm run infra && wait-on tcp:5432 tcp:5672 && concurrently --kill-others-on-fail --prefix-colors \"blue,green,yellow,magenta,cyan,red,white,gray,magenta\" --names \"gateway,auth,user-pet,establishment,marketplace,booking,notification,review,flutter\" \"npm run start:dev --prefix api-gateway\" \"npm run start:dev --prefix auth-service\" \"npm run start:dev --prefix user-pet-service\" \"npm run start:dev --prefix establishment-service\" \"npm run start:dev --prefix marketplace-service\" \"npm run start:dev --prefix booking-service\" \"npm run start:dev --prefix notification-service\" \"npm run start:dev --prefix review-service\" \"npm run start --prefix mypet_app\"",
+    "install:all": "npm install --prefix api-gateway && npm install --prefix auth-service && npm install --prefix user-pet-service && npm install --prefix establishment-service && npm install --prefix marketplace-service && npm install --prefix booking-service && npm install --prefix notification-service && npm install --prefix review-service",
+    "build:all": "npm run build --prefix api-gateway && npm run build --prefix auth-service && npm run build --prefix user-pet-service && npm run build --prefix establishment-service && npm run build --prefix marketplace-service && npm run build --prefix booking-service && npm run build --prefix notification-service && npm run build --prefix review-service"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "wait-on": "^9.0.5"
+  }
+}
