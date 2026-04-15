@@ -52,5 +52,18 @@ pids
 *.seed
 *.pid.lock
 
+.eslintcache
+.xml
+.properties
+.cache
+*.tgz
+.kts
+.kt
+.xml
+.swift
+.xcconfig
+.h
+.cpp
+
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
