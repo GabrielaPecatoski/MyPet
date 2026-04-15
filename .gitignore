@@ -15,12 +15,37 @@ npm-debug.log*
 .DS_Store
 Thumbs.db
 
+
+.vscode/
+.claude/
+*.zip
+
+
 .vscode/
 .claude/
 *.zip
 
 postgres_data/
 rabbitmq_data/
+
+
+mypet_app/android/
+mypet_app/ios/
+mypet_app/linux/
+mypet_app/macos/
+mypet_app/windows/
+mypet_app/web/
+
+mypet_app/build/
+mypet_app/.dart_tool/
+mypet_app/.flutter-plugins
+mypet_app/.flutter-plugins-dependencies
+
+
+mypet_app/pubspec.lock
+
+
+mypet_app/coverage/
 
 documentos/
 
