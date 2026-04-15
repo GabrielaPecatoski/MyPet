@@ -16,7 +16,6 @@ class _LoginScreenState extends State<LoginScreen> {
   final _senhaCtrl = TextEditingController();
   bool _obscureSenha = true;
 
-  // Credenciais de acesso rápido
   static const _credenciais = [
     {'role': 'Admin', 'email': 'admin@mypet.com', 'senha': 'admin123', 'icon': '👑'},
     {'role': 'Cliente', 'email': 'joao@mypet.com', 'senha': 'cliente123', 'icon': '🐾'},
@@ -69,8 +68,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   style: TextStyle(color: AppColors.grey, fontSize: 13),
                   textAlign: TextAlign.center),
               const SizedBox(height: 28),
-
-              // ── Acesso rápido ─────────────────────────────────
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
@@ -124,8 +121,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-
-              // ── Formulário ────────────────────────────────────
               Form(
                 key: _formKey,
                 child: Column(
@@ -169,8 +164,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               const SizedBox(height: 8),
-
-              // ── Botão Entrar ──────────────────────────────────
               SizedBox(
                 width: double.infinity,
                 height: 52,

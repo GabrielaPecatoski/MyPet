@@ -41,7 +41,6 @@ class _EstabProfileScreenState extends State<EstabProfileScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // Card info
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -104,7 +103,6 @@ class _EstabProfileScreenState extends State<EstabProfileScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            // Menu
             Container(
               decoration: BoxDecoration(
                   color: Colors.white, borderRadius: BorderRadius.circular(12)),

@@ -65,7 +65,6 @@ class _EstabAgendaScreenState extends State<EstabAgendaScreen> {
       ),
       body: Column(
         children: [
-          // ── Header roxo com stats ────────────────────────────
           Container(
             color: AppColors.primary,
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
@@ -79,13 +78,11 @@ class _EstabAgendaScreenState extends State<EstabAgendaScreen> {
               ],
             ),
           ),
-          // ── Calendário ──────────────────────────────────────
           Container(
             color: Colors.white,
             padding: const EdgeInsets.all(12),
             child: Column(
               children: [
-                // Cabeçalho do mês
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -108,7 +105,6 @@ class _EstabAgendaScreenState extends State<EstabAgendaScreen> {
                     ),
                   ],
                 ),
-                // Dias da semana
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb']
@@ -122,12 +118,10 @@ class _EstabAgendaScreenState extends State<EstabAgendaScreen> {
                       .toList(),
                 ),
                 const SizedBox(height: 4),
-                // Grade de dias
                 _buildCalendarGrid(),
               ],
             ),
           ),
-          // ── Agendamentos do dia ──────────────────────────────
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
             child: Row(
@@ -165,7 +159,7 @@ class _EstabAgendaScreenState extends State<EstabAgendaScreen> {
     final firstDay = DateTime(_currentMonth.year, _currentMonth.month, 1);
     final daysInMonth =
         DateTime(_currentMonth.year, _currentMonth.month + 1, 0).day;
-    final startWeekday = firstDay.weekday % 7; // domingo = 0
+    final startWeekday = firstDay.weekday % 7;
 
     final cells = <Widget>[];
     for (int i = 0; i < startWeekday; i++) {

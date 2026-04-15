@@ -12,6 +12,7 @@ const ROUTES = [
   { prefix: '/bookings',       target: process.env.BOOKING_SERVICE_URL       ?? 'http://localhost:3005' },
   { prefix: '/notifications',  target: process.env.NOTIFICATION_SERVICE_URL  ?? 'http://localhost:3006' },
   { prefix: '/reviews',        target: process.env.REVIEW_SERVICE_URL        ?? 'http://localhost:3007' },
+  { prefix: '/complaints',     target: process.env.REVIEW_SERVICE_URL        ?? 'http://localhost:3007' },
 ];
 
 @Injectable()

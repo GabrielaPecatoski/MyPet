@@ -17,7 +17,7 @@ class ServiceModel {
 class EstablishmentModel {
   final String id;
   final String name;
-  final String type; // PET_SHOP, VET_CLINIC
+  final String type;
   final String address;
   final String phone;
   final double rating;

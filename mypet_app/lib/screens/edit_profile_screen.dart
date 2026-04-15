@@ -65,7 +65,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // Foto
             Center(
               child: Stack(
                 children: [
@@ -90,7 +89,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ),
             ),
             const SizedBox(height: 24),
-            // Form
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(

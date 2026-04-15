@@ -44,7 +44,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
     if (!mounted) return;
     if (ok) {
-      Navigator.pushReplacementNamed(context, '/home');
+      final auth2 = context.read<AuthProvider>();
+      Navigator.pushReplacementNamed(context, auth2.homeRoute);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -67,7 +68,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
           child: Column(
             children: [
               const SizedBox(height: 24),
-              // Logo
               Image.asset('assets/images/logo.png', height: 80),
               const SizedBox(height: 8),
               const Text(
@@ -76,7 +76,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
-              // Foto de perfil
               Container(
                 width: 80,
                 height: 80,
@@ -87,7 +86,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 child: const Icon(Icons.download, size: 32, color: AppColors.dark),
               ),
               const SizedBox(height: 24),
-              // Formulário
               Form(
                 key: _formKey,
                 child: Column(
@@ -154,7 +152,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              // Botão
               SizedBox(
                 width: double.infinity,
                 height: 52,
