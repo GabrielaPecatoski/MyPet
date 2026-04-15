@@ -114,7 +114,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Selecionar pet
             _sectionTitle('Selecione o pet'),
             const SizedBox(height: 10),
             ...(_mockPets.map((pet) => _PetSelectCard(
@@ -122,10 +121,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                   selected: _selectedPet?.id == pet.id,
                   onTap: () => setState(() => _selectedPet = pet),
                 ))),
-
             const SizedBox(height: 20),
-
-            // Selecionar serviço
             _sectionTitle('Selecione o serviço'),
             const SizedBox(height: 10),
             if (establishment != null)
@@ -134,10 +130,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                     selected: _selectedService?.id == s.id,
                     onTap: () => setState(() => _selectedService = s),
                   )),
-
             const SizedBox(height: 20),
-
-            // Selecionar data
             _sectionTitle('Selecione a data'),
             const SizedBox(height: 10),
             GridView.count(
@@ -157,10 +150,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                       ))
                   .toList(),
             ),
-
             const SizedBox(height: 28),
-
-            // Botão confirmar
             SizedBox(
               width: double.infinity,
               height: 52,

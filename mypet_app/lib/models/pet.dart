@@ -1,7 +1,7 @@
 class PetModel {
   final String id;
   final String name;
-  final String type; // Cachorro, Gato, Outro
+  final String type;
   final String breed;
   final int age;
   final String? imageUrl;

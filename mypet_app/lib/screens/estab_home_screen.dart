@@ -12,7 +12,7 @@ class _Agendamento {
   final String servico;
   final String data;
   final String hora;
-  String status; // PENDENTE, CONFIRMADO, RECUSADO
+  String status;
   _Agendamento({
     required this.id,
     required this.petName,
@@ -113,7 +113,6 @@ class _EstabHomeScreenState extends State<EstabHomeScreen>
       body: SafeArea(
         child: Column(
           children: [
-            // ── Header roxo ──────────────────────────────────────
             Container(
               color: AppColors.primary,
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
@@ -152,7 +151,6 @@ class _EstabHomeScreenState extends State<EstabHomeScreen>
                 ],
               ),
             ),
-            // ── Tabs ─────────────────────────────────────────────
             Container(
               color: Colors.white,
               child: TabBar(
@@ -168,7 +166,6 @@ class _EstabHomeScreenState extends State<EstabHomeScreen>
               child: TabBarView(
                 controller: _tabCtrl,
                 children: [
-                  // ── Aba Agendamentos ──────────────────────────
                   ListView(
                     padding: const EdgeInsets.all(16),
                     children: [
@@ -188,7 +185,6 @@ class _EstabHomeScreenState extends State<EstabHomeScreen>
                       ],
                     ],
                   ),
-                  // ── Aba Serviços ──────────────────────────────
                   _ServicosTab(nomeEstab: user?.name ?? ''),
                 ],
               ),
@@ -234,7 +230,6 @@ class _EstabHomeScreenState extends State<EstabHomeScreen>
       );
 }
 
-// ── Card de agendamento ───────────────────────────────────────────
 class _AgendCard extends StatelessWidget {
   final _Agendamento ag;
   final bool showActions;
@@ -368,7 +363,6 @@ class _AgendCard extends StatelessWidget {
       );
 }
 
-// ── Aba Serviços do Estabelecimento ──────────────────────────────
 class _ServicosTab extends StatefulWidget {
   final String nomeEstab;
   const _ServicosTab({required this.nomeEstab});

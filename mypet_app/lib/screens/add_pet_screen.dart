@@ -102,7 +102,6 @@ class _AddPetScreenState extends State<AddPetScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ── Foto do pet ──────────────────────────────
                 Center(
                   child: GestureDetector(
                     onTap: _showImageOptions,
@@ -137,7 +136,6 @@ class _AddPetScreenState extends State<AddPetScreen> {
                   ),
                 ),
                 const SizedBox(height: 20),
-                // Nome
                 _label('Nome do Pet'),
                 TextFormField(
                   controller: _nomeCtrl,
@@ -146,7 +144,6 @@ class _AddPetScreenState extends State<AddPetScreen> {
                       v == null || v.isEmpty ? 'Informe o nome' : null,
                 ),
                 const SizedBox(height: 16),
-                // Tipo
                 _label('Tipo'),
                 for (final tipo in ['Cachorro', 'Gato', 'Outro'])
                   GestureDetector(
@@ -190,7 +187,6 @@ class _AddPetScreenState extends State<AddPetScreen> {
                     ),
                   ),
                 const SizedBox(height: 12),
-                // Raça
                 _label('Raça'),
                 TextFormField(
                   controller: _racaCtrl,
@@ -199,7 +195,6 @@ class _AddPetScreenState extends State<AddPetScreen> {
                       v == null || v.isEmpty ? 'Informe a raça' : null,
                 ),
                 const SizedBox(height: 16),
-                // Idade
                 _label('Idade (Anos)'),
                 TextFormField(
                   controller: _idadeCtrl,
@@ -212,7 +207,6 @@ class _AddPetScreenState extends State<AddPetScreen> {
                   },
                 ),
                 const SizedBox(height: 28),
-                // Botões
                 Row(
                   children: [
                     Expanded(

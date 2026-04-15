@@ -1,0 +1,10 @@
+{
+  "name": "mypet-app",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "flutter run -d chrome",
+    "start:android": "flutter run -d android",
+    "start:windows": "flutter run -d windows"
+  }
+}

@@ -20,7 +20,6 @@ class EstablishmentDetailScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Banner do estabelecimento
                 Container(
                   height: 180,
                   width: double.infinity,
@@ -40,7 +39,6 @@ class EstablishmentDetailScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Nome e tipo
                       Text(
                         establishment.name,
                         style: const TextStyle(
@@ -55,7 +53,6 @@ class EstablishmentDetailScreen extends StatelessWidget {
                             fontSize: 13, color: AppColors.grey),
                       ),
                       const SizedBox(height: 12),
-                      // Avaliação
                       Row(
                         children: [
                           const Icon(Icons.star,
@@ -74,7 +71,6 @@ class EstablishmentDetailScreen extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 12),
-                      // Endereço
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -104,7 +100,6 @@ class EstablishmentDetailScreen extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 20),
-                      // Serviços
                       const Text(
                         'Serviços Oferecidos',
                         style: TextStyle(

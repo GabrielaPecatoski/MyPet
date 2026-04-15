@@ -104,7 +104,6 @@ class HomeScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const SizedBox(height: 8),
-                    // Barra de busca
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 14),
                       decoration: BoxDecoration(
@@ -129,7 +128,6 @@ class HomeScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    // Categorias
                     Row(
                       children: [
                         _categoryChip('Todos', true),
@@ -142,7 +140,6 @@ class HomeScreen extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 20),
-                    // Mais bem avaliados
                     const Text(
                       'Mais Bem Avaliados',
                       style: TextStyle(
@@ -162,7 +159,6 @@ class HomeScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 24),
-                    // Todos estabelecimentos
                     const Text(
                       'Estabelecimentos Parceiros',
                       style: TextStyle(

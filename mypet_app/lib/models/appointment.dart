@@ -8,7 +8,7 @@ class AppointmentModel {
   final String establishmentAddress;
   final DateTime date;
   final String time;
-  final String status; // PENDING, CONFIRMED, REJECTED, CANCELLED, COMPLETED
+  final String status;
   final double price;
 
   AppointmentModel({

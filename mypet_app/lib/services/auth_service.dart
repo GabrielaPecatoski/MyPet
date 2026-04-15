@@ -4,7 +4,19 @@ import 'package:http/http.dart' as http;
 import '../core/constants.dart';
 import '../models/user.dart';
 
-/// Usuários mock locais — funcionam sem o backend rodando
+bool _isNetworkError(Object e) {
+  if (e is SocketException) return true;
+  if (e is http.ClientException) return true;
+  final s = e.toString();
+  return s.contains('TimeoutException') ||
+      s.contains('SocketException') ||
+      s.contains('XMLHttpRequest error') ||
+      s.contains('Connection refused') ||
+      s.contains('errno = 121') ||
+      s.contains('errno = 111') ||
+      s.contains('errno = 10061');
+}
+
 final _mockUsers = [
   UserModel(
     id: 'admin-001',
@@ -40,7 +52,6 @@ class AuthService {
     required String email,
     required String password,
   }) async {
-    // 1) Tenta o backend com timeout curto
     try {
       final response = await http
           .post(
@@ -55,18 +66,8 @@ class AuthService {
         return data;
       }
       throw Exception(data['message'] ?? 'Credenciais inválidas');
-    } on SocketException catch (_) {
-      // Backend offline → usa mock local
-      return _localLogin(email, password);
     } catch (e) {
-      if (e.toString().contains('TimeoutException') ||
-          e.toString().contains('SocketException') ||
-          e.toString().contains('Connection refused') ||
-          e.toString().contains('errno = 121') ||
-          e.toString().contains('errno = 111')) {
-        return _localLogin(email, password);
-      }
-      // Erro do próprio backend (ex: senha errada) → relança
+      if (_isNetworkError(e)) return _localLogin(email, password);
       rethrow;
     }
   }
@@ -115,15 +116,9 @@ class AuthService {
         return data;
       }
       throw Exception(data['message'] ?? 'Erro ao criar conta');
-    } on SocketException catch (_) {
-      return _localRegister(
-          name: name, email: email, phone: phone, cpf: cpf);
     } catch (e) {
-      if (e.toString().contains('TimeoutException') ||
-          e.toString().contains('errno = 121') ||
-          e.toString().contains('errno = 111')) {
-        return _localRegister(
-            name: name, email: email, phone: phone, cpf: cpf);
+      if (_isNetworkError(e)) {
+        return _localRegister(name: name, email: email, phone: phone, cpf: cpf);
       }
       rethrow;
     }

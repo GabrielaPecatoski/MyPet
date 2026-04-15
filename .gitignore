@@ -18,6 +18,34 @@ npm-debug.log*
 .DS_Store
 Thumbs.db
 
+# IDE / Ferramentas locais
+.vscode/
+.claude/
+*.zip
+
+
 # Docker volumes locais
 postgres_data/
 rabbitmq_data/
+
+# ── Flutter ──────────────────────────────────────────────────────────────────
+
+# Plataformas geradas (não commitadas — geradas pelo `flutter create`)
+mypet_app/android/
+mypet_app/ios/
+mypet_app/linux/
+mypet_app/macos/
+mypet_app/windows/
+mypet_app/web/
+
+# Artefatos de build Flutter
+mypet_app/build/
+mypet_app/.dart_tool/
+mypet_app/.flutter-plugins
+mypet_app/.flutter-plugins-dependencies
+
+# Lock de dependências Dart (opcional em apps; ignora para não poluir PRs)
+mypet_app/pubspec.lock
+
+# Cobertura de testes
+mypet_app/coverage/

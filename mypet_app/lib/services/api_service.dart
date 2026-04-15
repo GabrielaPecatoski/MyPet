@@ -63,5 +63,10 @@ class ApiService {
   }
 
   static bool isNetworkError(Object e) =>
-      e is SocketException || e.toString().contains('TimeoutException') || e.toString().contains('SocketException');
+      e is SocketException ||
+      e is http.ClientException ||
+      e.toString().contains('TimeoutException') ||
+      e.toString().contains('SocketException') ||
+      e.toString().contains('XMLHttpRequest error') ||
+      e.toString().contains('Connection refused');
 }

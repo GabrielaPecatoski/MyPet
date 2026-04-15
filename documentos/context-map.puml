@@ -1,0 +1,88 @@
+@startuml MyPet_ContextMap
+
+title MyPet — Context Map
+
+' ── Configurações Visuais ───────────────────────────────────
+skinparam defaultFontName "Segoe UI", Arial
+skinparam defaultFontSize 12
+skinparam backgroundColor #FDFDFD
+skinparam shadowing false
+skinparam RoundCorner 10
+
+' ── Estilos por tipo de domínio ──────────────────────────────
+skinparam rectangle<<core>> {
+    BackgroundColor #FFD700
+    BorderColor #B8860B
+}
+
+skinparam rectangle<<supporting>> {
+    BackgroundColor #E1F5FE
+    BorderColor #01579B
+}
+
+skinparam rectangle<<generic>> {
+    BackgroundColor #F5F5F5
+    BorderColor #757575
+}
+
+' ── Legenda ──────────────────────────────────────────────────
+legend top right
+  |= Cor |= Tipo de Domínio |
+  |<#FFD700> Core Domain (núcleo do negócio) |
+  |<#E1F5FE> Supporting Domain (suporte ao core) |
+  |<#F5F5F5> Generic Domain (infraestrutura/utilitário) |
+  ---
+  **→  síncrono** = chamada REST/gRPC direta
+  **..► assíncrono** = evento publicado via mensageria
+  **Serviço Aberto** = API pública bem definida (Open Host Service)
+  **Camada Anti-Corrupção** = tradução de modelos externos (ACL)
+  **Linguagem de Eventos** = contrato de eventos publicados (Published Language)
+endlegend
+
+' ── Bounded Contexts ─────────────────────────────────────────
+
+package "Identidade & Acesso" {
+    rectangle "**identity-service**\n(Contexto de Identidade)\n--\nDono do Pet, Credenciais" <<generic>> as identity
+}
+
+package "Núcleo do Negócio" {
+    rectangle "**scheduling-service**\n(Contexto de Agendamento)\n--\n★ CORE DOMAIN ★\n--\nConsulta, Horário Disponível" <<core>> as scheduling
+}
+
+package "Cadastros" {
+    rectangle "**pets-service**\n(Contexto de Pets)\n--\nPet, Raça, Histórico" <<supporting>> as pets
+    rectangle "**establishments-service**\n(Contexto de Estabelecimentos)\n--\nClínica, Veterinário, Serviços" <<supporting>> as establishments
+}
+
+package "Suporte & Engajamento" {
+    rectangle "**notifications-service**\n(Contexto de Notificações)\n--\nNotificação" <<generic>> as notifications
+    rectangle "**reviews-service**\n(Contexto de Avaliações)\n--\nAvaliação, Nota" <<supporting>> as reviews
+}
+
+' ── Relacionamentos Síncronos (REST/gRPC) ──────────────────
+' identity fornece autenticação para os demais contextos
+identity --[#gray]> establishments : "Serviço Aberto\n→ Camada Anti-Corrupção"
+identity --[#gray]> pets           : "Serviço Aberto\n→ Camada Anti-Corrupção"
+identity --[#gray]> scheduling     : "Serviço Aberto\n→ Camada Anti-Corrupção"
+
+' pets e estabelecimentos fornecem dados para agendamento
+pets          -[#blue]-> scheduling : "Serviço Aberto\n→ Camada Anti-Corrupção"
+establishments -[#blue]-> scheduling : "Serviço Aberto\n→ Camada Anti-Corrupção"
+
+' ── Relacionamentos Assíncronos (Eventos de Domínio) ──────────
+' agendamento publica eventos consumidos por notificações e avaliações
+scheduling ..[#DarkGreen]> notifications : "Linguagem de Eventos\n..► Camada Anti-Corrupção"
+scheduling ..[#DarkGreen]> reviews       : "Linguagem de Eventos\n..► Camada Anti-Corrupção"
+
+note bottom of scheduling
+  **Eventos Publicados:**
+  • AppointmentCreated
+  • AppointmentConfirmed
+  • AppointmentCompleted
+  ---
+  Histórico do pet atualizado via
+  evento AppointmentCompleted
+  (consumido pelo pets-service)
+end note
+
+@enduml

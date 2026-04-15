@@ -1,0 +1,347 @@
+/**
+ * MyPet — Context Map (DDD / Context Mapper DSL)
+ * Base: Levantamento de Requisitos v1.0 (09/03/2026)
+ */
+
+ContextMap MyPetContextMap {
+  contains SchedulingContext
+  contains IdentityContext
+  contains PetsContext
+  contains EstablishmentsContext
+  contains NotificationsContext
+  contains ReviewsContext
+
+  /* identity fornece dados do usuário autenticado para scheduling */
+  IdentityContext [U, OHS, PL] -> [D, ACL] SchedulingContext
+
+  /* identity fornece PetOwnerId para pets */
+  IdentityContext [U, OHS, PL] -> [D, ACL] PetsContext
+
+  /* identity fornece autenticação para establishments */
+  IdentityContext [U, OHS, PL] -> [D, ACL] EstablishmentsContext
+
+  /* pets fornece dados do Pet para scheduling */
+  PetsContext [U, OHS, PL] -> [D, ACL] SchedulingContext
+
+  /* establishments fornece slots e serviços para scheduling */
+  EstablishmentsContext [U, OHS, PL] -> [D, ACL] SchedulingContext
+
+  /* scheduling publica eventos que disparam notificações (async) */
+  SchedulingContext [U, PL] -> [D, ACL] NotificationsContext
+
+  /* scheduling publica AppointmentCompleted que libera avaliação (async) */
+  SchedulingContext [U, PL] -> [D, ACL] ReviewsContext
+
+  /* scheduling publica AppointmentCompleted que atualiza ServiceHistory (async) */
+  SchedulingContext [U, PL] -> [D, ACL] PetsContext
+}
+
+/* ─────────────────────────────────────────
+   GENERIC DOMAINS
+───────────────────────────────────────── */
+
+BoundedContext IdentityContext implements IdentityDomain {
+  type = GENERIC
+  domainVisionStatement = "Cadastro e autenticação de donos de pets. Emite JWT para os demais contextos."
+
+  Aggregate PetOwnerAggregate {
+    Entity PetOwner {
+      aggregateRoot
+
+      - PetOwnerId id
+      String name
+      String email
+      String phone
+    }
+
+    ValueObject PetOwnerId {
+      String value
+    }
+
+    ValueObject Credentials {
+      String email
+      String hashedPassword
+    }
+
+    ValueObject UserProfile {
+      String name
+      String phone
+    }
+  }
+}
+
+BoundedContext NotificationsContext implements NotificationsDomain {
+  type = GENERIC
+  domainVisionStatement = "Envio de confirmações e lembretes de agendamento ao usuário. Consome eventos do scheduling."
+
+  Aggregate NotificationAggregate {
+    Entity Notification {
+      aggregateRoot
+
+      - NotificationId id
+      String recipientId
+      - NotificationType type
+      String message
+      Date sentAt
+    }
+
+    ValueObject NotificationId {
+      String value
+    }
+
+    ValueObject NotificationType {
+      enum value {
+        APPOINTMENT_CONFIRMATION,
+        APPOINTMENT_REMINDER,
+        APPOINTMENT_REJECTION
+      }
+    }
+  }
+}
+
+/* ─────────────────────────────────────────
+   CORE DOMAIN
+───────────────────────────────────────── */
+
+BoundedContext SchedulingContext implements SchedulingDomain {
+  type = CORE_DOMAIN
+  domainVisionStatement = "Núcleo do MyPet. Gerencia o ciclo de vida completo do agendamento de serviços para pets."
+
+  Aggregate AppointmentAggregate {
+    Entity Appointment {
+      aggregateRoot
+
+      - AppointmentId id
+      String petOwnerId       // ref para IdentityContext
+      String petId            // ref para PetsContext
+      String establishmentId  // ref para EstablishmentsContext
+      String serviceId        // ref para EstablishmentsContext
+      - BookedSlot slot
+      - AppointmentStatus status
+      - RejectionReason rejectionReason
+
+      def void confirm()      // regra: só se PENDING
+      def void reject(@RejectionReason reason)  // regra: só se PENDING
+      def void cancel()       // regra: só se PENDING ou CONFIRMED
+      def void complete()     // regra: só se CONFIRMED
+    }
+
+    ValueObject AppointmentId {
+      String value
+    }
+
+    ValueObject AppointmentStatus {
+      enum value {
+        PENDING,
+        CONFIRMED,
+        REJECTED,
+        CANCELLED,
+        COMPLETED
+      }
+    }
+
+    ValueObject BookedSlot {
+      String slotId
+      Date date
+      String startTime
+    }
+
+    ValueObject RejectionReason {
+      String value  // não pode ser vazio
+    }
+
+    DomainEvent AppointmentCreated {
+      - AppointmentId appointmentId
+      String petOwnerId
+    }
+
+    DomainEvent AppointmentConfirmed {
+      - AppointmentId appointmentId
+      String petOwnerId
+    }
+
+    DomainEvent AppointmentRejected {
+      - AppointmentId appointmentId
+      String petOwnerId
+      - RejectionReason reason
+    }
+
+    DomainEvent AppointmentCompleted {
+      - AppointmentId appointmentId
+      String petOwnerId
+      String petId
+      String establishmentId
+    }
+  }
+}
+
+/* ─────────────────────────────────────────
+   SUPPORTING DOMAINS
+───────────────────────────────────────── */
+
+BoundedContext PetsContext implements PetsDomain {
+  type = FEATURE
+  domainVisionStatement = "Gerencia os dados dos pets e o histórico de serviços realizados."
+
+  Aggregate PetAggregate {
+    Entity Pet {
+      aggregateRoot
+
+      - PetId id
+      String ownerId   // ref para IdentityContext
+      String name
+      - Breed breed
+      int age
+    }
+
+    ValueObject PetId {
+      String value
+    }
+
+    ValueObject Breed {
+      String name
+    }
+
+    Entity ServiceHistory {
+      - ServiceHistoryId id
+      String petId
+      String appointmentId  // ref para SchedulingContext
+      Date completedAt
+      String serviceName
+    }
+
+    ValueObject ServiceHistoryId {
+      String value
+    }
+  }
+}
+
+BoundedContext EstablishmentsContext implements EstablishmentsDomain {
+  type = FEATURE
+  domainVisionStatement = "Gerencia pet shops e clínicas veterinárias, seus serviços, horários e veterinários."
+
+  Aggregate EstablishmentAggregate {
+    Entity Establishment {
+      aggregateRoot
+
+      - EstablishmentId id
+      String name
+      - EstablishmentType type
+      String address
+      String phone
+    }
+
+    ValueObject EstablishmentId {
+      String value
+    }
+
+    ValueObject EstablishmentType {
+      enum value {
+        PET_SHOP,
+        VET_CLINIC
+      }
+    }
+
+    Entity OfferedService {
+      - OfferedServiceId id
+      String name
+      - Price price
+      int durationMinutes
+    }
+
+    ValueObject OfferedServiceId {
+      String value
+    }
+
+    ValueObject Price {
+      double amount
+      String currency
+    }
+
+    Entity AvailableSlot {
+      - AvailableSlotId id
+      Date date
+      String startTime
+      String endTime
+      String serviceId
+      boolean reserved
+    }
+
+    ValueObject AvailableSlotId {
+      String value
+    }
+
+    Entity Veterinarian {
+      - VeterinarianId id
+      String name
+      String specialty
+      String crmv
+    }
+
+    ValueObject VeterinarianId {
+      String value
+    }
+  }
+}
+
+BoundedContext ReviewsContext implements ReviewsDomain {
+  type = FEATURE
+  domainVisionStatement = "Registra e exibe avaliações de estabelecimentos após agendamentos concluídos."
+
+  Aggregate ReviewAggregate {
+    Entity Review {
+      aggregateRoot
+
+      - ReviewId id
+      String petOwnerId       // ref para IdentityContext
+      String establishmentId  // ref para EstablishmentsContext
+      String appointmentId    // ref para SchedulingContext
+      - Rating rating
+      String comment
+    }
+
+    ValueObject ReviewId {
+      String value
+    }
+
+    ValueObject Rating {
+      int value  // 1 a 5
+    }
+  }
+}
+
+/* ─────────────────────────────────────────
+   DOMAIN DEFINITIONS
+───────────────────────────────────────── */
+
+Domain MyPetDomain {
+  Subdomain SchedulingDomain {
+    type = CORE_DOMAIN
+    domainVisionStatement = "Agendamento de serviços para pets — diferencial competitivo do MyPet."
+  }
+
+  Subdomain EstablishmentsDomain {
+    type = SUPPORTING_DOMAIN
+    domainVisionStatement = "Gerenciamento de estabelecimentos parceiros."
+  }
+
+  Subdomain PetsDomain {
+    type = SUPPORTING_DOMAIN
+    domainVisionStatement = "Gerenciamento dos animais dos usuários."
+  }
+
+  Subdomain ReviewsDomain {
+    type = SUPPORTING_DOMAIN
+    domainVisionStatement = "Avaliações de qualidade dos estabelecimentos."
+  }
+
+  Subdomain IdentityDomain {
+    type = GENERIC_SUBDOMAIN
+    domainVisionStatement = "Autenticação e cadastro de usuários."
+  }
+
+  Subdomain NotificationsDomain {
+    type = GENERIC_SUBDOMAIN
+    domainVisionStatement = "Envio de notificações e lembretes."
+  }
+}

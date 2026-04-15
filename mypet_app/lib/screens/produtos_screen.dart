@@ -15,7 +15,7 @@ class ProdutosScreen extends StatefulWidget {
 
 class _ProdutosScreenState extends State<ProdutosScreen> {
   List<dynamic> _products = [];
-  Map<String, int> _cart = {}; // productId -> quantity
+  Map<String, int> _cart = {};
   bool _loading = true;
   final _searchCtrl = TextEditingController();
 
@@ -43,7 +43,6 @@ class _ProdutosScreenState extends State<ProdutosScreen> {
         _loading = false;
       });
     } catch (_) {
-      // Fallback mock
       setState(() {
         _products = [
           {'id': 'prod-001', 'name': 'Areia Sanitária Gatos', 'brand': 'PetLove', 'price': 32.90, 'unit': '4kg'},
@@ -79,23 +78,13 @@ class _ProdutosScreenState extends State<ProdutosScreen> {
 
   int get _cartCount => _cart.values.fold(0, (a, b) => a + b);
 
-  double get _cartTotal {
-    double total = 0;
-    for (final entry in _cart.entries) {
-      final product = _products.firstWhere((p) => p['id'] == entry.key, orElse: () => null);
-      if (product != null) {
-        total += (product['price'] as num).toDouble() * entry.value;
-      }
-    }
-    return total;
-  }
-
   Future<void> _checkout(String userId) async {
+    final token = context.read<AuthProvider>().token;
     try {
-      await ApiService.post('${ApiConstants.ordersEndpoint}/$userId', {});
+      await ApiService.post('${ApiConstants.ordersEndpoint}/$userId', {}, token: token);
       setState(() => _cart.clear());
       if (mounted) {
-        Navigator.pop(context); // Close cart
+        Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Pedido realizado com sucesso!'),
@@ -104,7 +93,6 @@ class _ProdutosScreenState extends State<ProdutosScreen> {
         );
       }
     } catch (_) {
-      // Even offline, simulate success
       setState(() => _cart.clear());
       if (mounted) {
         Navigator.pop(context);
