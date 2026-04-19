@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import helmet from 'helmet';
 import { createProxyMiddleware } from 'http-proxy-middleware';
+import { Request, Response, NextFunction } from 'express';
 
 const ROUTES = [
   { prefix: '/auth',           target: process.env.AUTH_SERVICE_URL          ?? 'http://localhost:3001' },
@@ -14,6 +15,9 @@ const ROUTES = [
   { prefix: '/reviews',        target: process.env.REVIEW_SERVICE_URL        ?? 'http://localhost:3007' },
 ];
 
+// Rotas do /auth tratadas pelo gateway (não proxiadas)
+const GATEWAY_HANDLED = ['/auth/me', '/auth/refresh'];
+
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET,POST,PATCH,PUT,DELETE,OPTIONS',
@@ -25,36 +29,37 @@ async function bootstrap() {
 
   app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
 
-  // Apply proxies directly to the Express instance before NestJS routing
   const expressApp = app.getHttpAdapter().getInstance();
 
-  // Handle preflight OPTIONS for all routes
-  expressApp.options('*', (_req: any, res: any) => {
+  // Preflight CORS
+  expressApp.options('*', (_req: Request, res: Response) => {
     Object.entries(CORS_HEADERS).forEach(([k, v]) => res.setHeader(k, v));
     res.sendStatus(204);
   });
 
   for (const route of ROUTES) {
-    expressApp.use(
-      route.prefix,
-      createProxyMiddleware({
+    expressApp.use(route.prefix, (req: Request, res: Response, next: NextFunction) => {
+      // Deixa o NestJS tratar as rotas que o gateway cuida diretamente
+      const fullPath = `${route.prefix}${req.path}`;
+      if (GATEWAY_HANDLED.includes(fullPath)) return next();
+
+      // Proxia com o prefixo mantido
+      const proxy = createProxyMiddleware({
         target: route.target,
         changeOrigin: true,
-        pathRewrite: { '^/': `${route.prefix}/` },
+        pathRewrite: (path) => `${route.prefix}${path}`,
         on: {
           proxyRes: (_proxyRes: any, _req: any, res: any) => {
             Object.entries(CORS_HEADERS).forEach(([k, v]) => res.setHeader(k, v));
           },
           error: (_err: any, _req: any, res: any) => {
             Object.entries(CORS_HEADERS).forEach(([k, v]) => res.setHeader(k, v));
-            res.status(502).json({
-              statusCode: 502,
-              message: `Serviço indisponível: ${route.prefix}`,
-            });
+            res.status(502).json({ statusCode: 502, message: `Serviço indisponível: ${route.prefix}` });
           },
         },
-      }),
-    );
+      });
+      return proxy(req, res, next);
+    });
   }
 
   const port = process.env.PORT ?? 3000;
