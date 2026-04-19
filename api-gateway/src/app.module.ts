@@ -2,7 +2,6 @@ import { Module, MiddlewareConsumer, NestModule, RequestMethod } from '@nestjs/c
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { JwtModule } from '@nestjs/jwt';
-import { ProxyMiddleware } from './proxy/proxy.middleware';
 import { AuthGuardMiddleware } from './auth/auth-guard.middleware';
 import { HealthController } from './health/health.controller';
 
@@ -37,8 +36,5 @@ export class AppModule implements NestModule {
         { path: 'health',               method: RequestMethod.GET },
       )
       .forRoutes('*');
-
-    // Proxy: redireciona cada rota ao microserviço correto
-    consumer.apply(ProxyMiddleware).forRoutes('*');
   }
 }

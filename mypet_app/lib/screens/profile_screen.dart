@@ -115,8 +115,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   _item(Icons.person_outline, 'Editar Perfil',
                       () => Navigator.pushNamed(context, '/edit-profile')),
                   _div(),
-                  _item(Icons.favorite_outline, 'Meus Pets',
-                      () => Navigator.pushNamed(context, '/pets')),
+                  _item(Icons.favorite_outline, 'Meus Pets', () {
+                    Navigator.pushNamedAndRemoveUntil(
+                        context, '/home', (r) => false,
+                        arguments: 3);
+                  }),
                   _div(),
                   _item(Icons.history, 'Histórico',
                       () => Navigator.pushNamed(context, '/history')),

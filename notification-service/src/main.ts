@@ -5,6 +5,11 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  // HTTP server sobe primeiro (independente do RabbitMQ)
+  await app.listen(process.env.PORT ?? 3006);
+  console.log('Notification Service HTTP rodando na porta 3006');
+
+  // RabbitMQ é opcional — não derruba o serviço se indisponível
   app.connectMicroservice<MicroserviceOptions>({
     transport: Transport.RMQ,
     options: {
@@ -15,8 +20,8 @@ async function bootstrap() {
     },
   });
 
-  await app.startAllMicroservices();
-  await app.listen(process.env.PORT ?? 3006);
-  console.log('Notification Service rodando e ouvindo fila RabbitMQ');
+  app.startAllMicroservices().catch((err: Error) => {
+    console.warn('RabbitMQ indisponível — notificações desativadas:', err.message);
+  });
 }
 bootstrap();
