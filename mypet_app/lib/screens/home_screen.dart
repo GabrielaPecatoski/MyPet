@@ -1,3 +1,4 @@
+import 'dart:io' as dart_io;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/colors.dart';
@@ -88,10 +89,28 @@ class HomeScreen extends StatelessWidget {
                         ],
                       ),
                     ),
-                    CircleAvatar(
-                      radius: 20,
-                      backgroundColor: AppColors.primaryLight,
-                      child: const Icon(Icons.person, color: AppColors.primary),
+                    GestureDetector(
+                      onTap: () {
+                        if (user != null) {
+                          Navigator.pushNamed(context, '/home', arguments: 4);
+                        } else {
+                          Navigator.pushNamed(context, '/login');
+                        }
+                      },
+                      child: CircleAvatar(
+                        radius: 20,
+                        backgroundColor: AppColors.primaryLight,
+                        child: user?.photoPath != null
+                            ? ClipOval(
+                                child: Image.file(
+                                  dart_io.File(user!.photoPath!),
+                                  width: 40,
+                                  height: 40,
+                                  fit: BoxFit.cover,
+                                ),
+                              )
+                            : const Icon(Icons.person, color: AppColors.primary),
+                      ),
                     ),
                   ],
                 ),

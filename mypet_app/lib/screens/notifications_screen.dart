@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../core/colors.dart';
+import '../widgets/app_bottom_nav.dart';
 import '../widgets/mypet_app_bar.dart';
 
 class NotificationsScreen extends StatelessWidget {
@@ -34,6 +35,19 @@ class NotificationsScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: const MypetAppBar(showBack: true),
+      bottomNavigationBar: AppBottomNav(
+        currentIndex: 4,
+        items: clientNavItems,
+        onTap: (i) {
+          if (i == 4) {
+            Navigator.pop(context);
+          } else {
+            Navigator.pushNamedAndRemoveUntil(
+                context, '/home', (r) => false,
+                arguments: i);
+          }
+        },
+      ),
       body: _notifications.isEmpty
           ? const Center(
               child: Text('Nenhuma notificação',
