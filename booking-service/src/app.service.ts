@@ -1,6 +1,6 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
-import { RABBITMQ_CLIENT } from './app.module';
+import { RABBITMQ_CLIENT } from './constants';
 import { EVENTS } from './events/events.constants';
 import * as crypto from 'crypto';
 
