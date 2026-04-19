@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../core/colors.dart';
 import '../models/establishment.dart';
 import '../models/pet.dart';
+import '../widgets/app_bottom_nav.dart';
 import '../widgets/mypet_app_bar.dart';
 
 class ScheduleScreen extends StatefulWidget {
@@ -109,6 +110,13 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: const MypetAppBar(showBack: true),
+      bottomNavigationBar: AppBottomNav(
+        currentIndex: 0,
+        items: clientNavItems,
+        onTap: (i) => Navigator.pushNamedAndRemoveUntil(
+            context, '/home', (r) => false,
+            arguments: i),
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(

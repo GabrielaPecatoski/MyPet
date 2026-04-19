@@ -54,7 +54,10 @@ class MyPetApp extends StatelessWidget {
         '/login':         (_) => const LoginScreen(),
         '/register':      (_) => const RegisterScreen(),
         // ── Cliente ───────────────────────────────────────────
-        '/home':          (_) => const MainNavigation(),
+        '/home': (ctx) {
+          final idx = ModalRoute.of(ctx)?.settings.arguments as int?;
+          return MainNavigation(initialIndex: idx ?? 0);
+        },
         // ── Estabelecimento ───────────────────────────────────
         '/estab-home':    (_) => const EstabNavigation(),
         // ── Admin ─────────────────────────────────────────────

@@ -1,0 +1,13 @@
+{
+  "name": "mypet-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "concurrently --kill-others-on-fail --prefix \"[{name}]\" --names \"gateway,auth,users,estab,market,booking,notif,review\" --prefix-colors \"blue,magenta,cyan,green,yellow,red,white,gray\" \"npm run start:dev --prefix api-gateway\" \"npm run start:dev --prefix auth-service\" \"npm run start:dev --prefix user-pet-service\" \"npm run start:dev --prefix establishment-service\" \"npm run start:dev --prefix marketplace-service\" \"npm run start:dev --prefix booking-service\" \"npm run start:dev --prefix notification-service\" \"npm run start:dev --prefix review-service\"",
+    "install:all": "node install-all.js",
+    "setup": "node install-all.js && cd auth-service && npx prisma generate && npx prisma migrate dev --name init && npx ts-node prisma/seed.ts && cd .."
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
