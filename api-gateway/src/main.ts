@@ -15,7 +15,6 @@ const ROUTES = [
   { prefix: '/reviews',        target: process.env.REVIEW_SERVICE_URL        ?? 'http://localhost:3007' },
 ];
 
-// Rotas do /auth tratadas pelo gateway (não proxiadas)
 const GATEWAY_HANDLED = ['/auth/me', '/auth/refresh'];
 
 const CORS_HEADERS = {
@@ -31,7 +30,6 @@ async function bootstrap() {
 
   const expressApp = app.getHttpAdapter().getInstance();
 
-  // Preflight CORS
   expressApp.options('*', (_req: Request, res: Response) => {
     Object.entries(CORS_HEADERS).forEach(([k, v]) => res.setHeader(k, v));
     res.sendStatus(204);
@@ -39,11 +37,9 @@ async function bootstrap() {
 
   for (const route of ROUTES) {
     expressApp.use(route.prefix, (req: Request, res: Response, next: NextFunction) => {
-      // Deixa o NestJS tratar as rotas que o gateway cuida diretamente
       const fullPath = `${route.prefix}${req.path}`;
       if (GATEWAY_HANDLED.includes(fullPath)) return next();
 
-      // Proxia com o prefixo mantido
       const proxy = createProxyMiddleware({
         target: route.target,
         changeOrigin: true,
