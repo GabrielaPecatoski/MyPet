@@ -5,8 +5,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { HealthController } from './health/health.controller';
 import { ConsulService } from './consul/consul.service';
-
-export const RABBITMQ_CLIENT = 'RABBITMQ_CLIENT';
+import { RABBITMQ_CLIENT } from './constants';
 
 const SERVICE_NAME = 'booking-service';
 const SERVICE_PORT = 3005;

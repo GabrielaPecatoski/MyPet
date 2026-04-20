@@ -1,8 +1,11 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../core/colors.dart';
 import '../models/user.dart';
 import '../providers/auth_provider.dart';
+import '../widgets/app_bottom_nav.dart';
 import '../widgets/mypet_app_bar.dart';
 
 class EditProfileScreen extends StatefulWidget {
@@ -17,6 +20,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   late TextEditingController _nomeCtrl;
   late TextEditingController _emailCtrl;
   late TextEditingController _telefoneCtrl;
+  String? _newPhotoPath;
 
   @override
   void initState() {
@@ -35,6 +39,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     super.dispose();
   }
 
+  Future<void> _pickPhoto() async {
+    final picker = ImagePicker();
+    final picked =
+        await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+    if (picked != null && mounted) {
+      setState(() => _newPhotoPath = picked.path);
+    }
+  }
+
   void _salvar() {
     if (!_formKey.currentState!.validate()) return;
     final auth = context.read<AuthProvider>();
@@ -45,6 +58,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       email: _emailCtrl.text.trim(),
       phone: _telefoneCtrl.text.trim(),
       cpf: current.cpf,
+      role: current.role,
+      photoPath: _newPhotoPath ?? current.photoPath,
     );
     auth.updateUser(updated);
     ScaffoldMessenger.of(context).showSnackBar(
@@ -56,41 +71,69 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     Navigator.pop(context);
   }
 
+  void _onNavTap(int index) {
+    if (index == 4) {
+      Navigator.pop(context);
+    } else {
+      Navigator.pushNamedAndRemoveUntil(context, '/home', (r) => false,
+          arguments: index);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final user = context.watch<AuthProvider>().user;
+    final photoPath = _newPhotoPath ?? user?.photoPath;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: const MypetAppBar(showBack: true),
+      bottomNavigationBar: AppBottomNav(
+        currentIndex: 4,
+        items: clientNavItems,
+        onTap: _onNavTap,
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // Foto
+            // ── Foto de perfil ────────────────────────────────
             Center(
-              child: Stack(
-                children: [
-                  CircleAvatar(
-                    radius: 48,
-                    backgroundColor: AppColors.primaryLight,
-                    child: const Icon(Icons.person, size: 52, color: AppColors.primary),
-                  ),
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Icon(Icons.edit, color: Colors.white, size: 14),
+              child: GestureDetector(
+                onTap: _pickPhoto,
+                child: Stack(
+                  children: [
+                    CircleAvatar(
+                      radius: 52,
+                      backgroundColor: AppColors.primaryLight,
+                      backgroundImage: photoPath != null
+                          ? FileImage(File(photoPath))
+                          : null,
+                      child: photoPath == null
+                          ? const Icon(Icons.person,
+                              size: 52, color: AppColors.primary)
+                          : null,
                     ),
-                  ),
-                ],
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: Container(
+                        padding: const EdgeInsets.all(7),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Icon(Icons.camera_alt,
+                            color: Colors.white, size: 14),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 24),
-            // Form
+
+            // ── Formulário ────────────────────────────────────
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -103,21 +146,27 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _label('Nome Completo'),
-                    _field(_nomeCtrl, validator: (v) =>
-                        v == null || v.isEmpty ? 'Informe o nome' : null),
+                    _field(_nomeCtrl,
+                        validator: (v) => v == null || v.isEmpty
+                            ? 'Informe o nome'
+                            : null),
                     const SizedBox(height: 14),
                     _label('Email'),
-                    _field(_emailCtrl, keyboardType: TextInputType.emailAddress,
-                        validator: (v) =>
-                            v == null || !v.contains('@') ? 'E-mail inválido' : null),
+                    _field(_emailCtrl,
+                        keyboardType: TextInputType.emailAddress,
+                        validator: (v) => v == null || !v.contains('@')
+                            ? 'E-mail inválido'
+                            : null),
                     const SizedBox(height: 14),
                     _label('Telefone'),
-                    _field(_telefoneCtrl, keyboardType: TextInputType.phone),
+                    _field(_telefoneCtrl,
+                        keyboardType: TextInputType.phone),
                   ],
                 ),
               ),
             ),
             const SizedBox(height: 24),
+
             SizedBox(
               width: double.infinity,
               height: 52,
@@ -126,14 +175,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                      borderRadius: BorderRadius.circular(12)),
                 ),
-                child: const Text('Salvar Alterações',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600)),
+                child: const Text(
+                  'Salvar Alterações',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600),
+                ),
               ),
             ),
             const SizedBox(height: 12),
@@ -145,8 +195,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 style: OutlinedButton.styleFrom(
                   side: const BorderSide(color: AppColors.greyLight),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                      borderRadius: BorderRadius.circular(12)),
                 ),
                 child: const Text('Cancelar',
                     style: TextStyle(color: AppColors.dark, fontSize: 16)),
@@ -162,7 +211,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         padding: const EdgeInsets.only(bottom: 6),
         child: Text(text,
             style: const TextStyle(
-                fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.dark)),
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: AppColors.dark)),
       );
 
   Widget _field(
@@ -177,19 +228,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           hintStyle: const TextStyle(color: AppColors.grey),
           filled: true,
           fillColor: AppColors.background,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: AppColors.greyLight),
-          ),
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: AppColors.greyLight)),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: AppColors.greyLight),
-          ),
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: AppColors.greyLight)),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: AppColors.primary),
-          ),
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: AppColors.primary)),
         ),
         validator: validator,
       );

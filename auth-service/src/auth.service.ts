@@ -1,85 +1,104 @@
-import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  ConflictException,
+  InternalServerErrorException,
+} from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { User, Role } from '@prisma/client';
+import * as bcrypt from 'bcryptjs';
+import { PrismaService } from './prisma.service';
 import { LoginDto, RegisterDto } from './login.dto';
-import * as crypto from 'crypto';
-
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  password: string;
-  phone: string;
-  cpf: string;
-  role: 'ADMIN' | 'CLIENTE' | 'VENDEDOR';
-}
 
 @Injectable()
 export class AuthService {
-  private readonly users: User[] = [
-    // ── Usuários pré-criados para apresentação ──────────────────
-    {
-      id: 'admin-001',
-      name: 'Admin MyPet',
-      email: 'admin@mypet.com',
-      password: 'admin123',
-      phone: '(11) 99999-0001',
-      cpf: '000.000.000-00',
-      role: 'ADMIN',
-    },
-    {
-      id: 'cliente-001',
-      name: 'João Silva',
-      email: 'joao@mypet.com',
-      password: 'cliente123',
-      phone: '(11) 99999-9999',
-      cpf: '123.456.789-00',
-      role: 'CLIENTE',
-    },
-    {
-      id: 'vendedor-001',
-      name: 'Pet Shop Amor & Carinho',
-      email: 'petshop@mypet.com',
-      password: 'vendedor123',
-      phone: '(11) 3456-7890',
-      cpf: '99.999.999/0001-99',
-      role: 'VENDEDOR',
-    },
-  ];
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly jwtService: JwtService,
+  ) {}
 
-  login(dto: LoginDto) {
-    const user = this.users.find((u) => u.email === dto.email);
-    if (!user || user.password !== dto.password) {
+  async login(dto: LoginDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+    });
+
+    if (!user || !(await bcrypt.compare(dto.password, user.password))) {
       throw new UnauthorizedException('Email ou senha inválidos');
     }
+
     return {
       access_token: this.generateToken(user),
       user: this.toPublic(user),
     };
   }
 
-  register(dto: RegisterDto) {
-    const existing = this.users.find((u) => u.email === dto.email);
+  async register(dto: RegisterDto) {
+    const existing = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+    });
+
     if (existing) {
       throw new ConflictException('Email já cadastrado');
     }
-    const user: User = {
-      id: crypto.randomUUID(),
-      name: dto.name,
-      email: dto.email,
-      password: dto.password,
-      phone: dto.phone,
-      cpf: dto.cpf,
-      role: 'CLIENTE',
-    };
-    this.users.push(user);
+
+    const hashed = await bcrypt.hash(dto.password, 10);
+
+    let user;
+    try {
+      user = await this.prisma.user.create({
+        data: {
+          name: dto.name,
+          email: dto.email,
+          password: hashed,
+          phone: dto.phone,
+          cpf: dto.cpf,
+          role: dto.role === 'VENDEDOR' ? Role.VENDEDOR : Role.CLIENTE,
+        },
+      });
+    } catch (e: any) {
+      if (e?.code === 'P2002') {
+        const field = e?.meta?.target?.includes('cpf') ? 'CPF' : 'Email';
+        throw new ConflictException(`${field} já cadastrado`);
+      }
+      throw new InternalServerErrorException('Erro ao criar conta');
+    }
+
     return {
       access_token: this.generateToken(user),
       user: this.toPublic(user),
     };
   }
 
+  extractUserId(authHeader?: string): string | null {
+    if (!authHeader?.startsWith('Bearer ')) return null;
+    try {
+      const payload = this.jwtService.verify(authHeader.split(' ')[1]);
+      return payload.sub ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  async me(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new UnauthorizedException('Usuário não encontrado');
+    return this.toPublic(user);
+  }
+
+  async refresh(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new UnauthorizedException('Usuário não encontrado');
+    return { access_token: this.generateToken(user), user: this.toPublic(user) };
+  }
+
   private generateToken(user: User): string {
-    const payload = { sub: user.id, email: user.email, name: user.name, role: user.role };
-    return Buffer.from(JSON.stringify(payload)).toString('base64');
+    const payload = {
+      sub: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+    };
+    return this.jwtService.sign(payload);
   }
 
   private toPublic(user: User) {
