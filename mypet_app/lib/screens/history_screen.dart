@@ -4,6 +4,8 @@ import '../core/colors.dart';
 import '../models/appointment.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
+import '../services/booking_service.dart';
+import '../services/review_service.dart';
 import '../widgets/app_bottom_nav.dart';
 import '../widgets/mypet_app_bar.dart';
 
@@ -15,6 +17,7 @@ class HistoryScreen extends StatefulWidget {
 
 class _HistoryScreenState extends State<HistoryScreen> {
   List<AppointmentModel> _history = [];
+  final Set<String> _reviewed = {};
   bool _loading = false;
 
   @override
@@ -34,8 +37,33 @@ class _HistoryScreenState extends State<HistoryScreen> {
       );
       final list = data as List;
       final all = list.map((e) => AppointmentModel.fromJson(e)).toList();
+
+      // Auto-concluir bookings CONFIRMADO com 4h+ passadas
+      final now = DateTime.now();
+      for (final b in all) {
+        if (b.status == 'CONFIRMADO' &&
+            now.difference(b.date).inHours >= 4) {
+          try {
+            await BookingService.updateStatus(
+              token: auth.token!,
+              bookingId: b.id,
+              status: 'CONCLUIDO',
+            );
+          } catch (_) {}
+        }
+      }
+
+      // Recarrega após auto-conclusão
+      final data2 = await ApiService.get(
+        '/bookings/user/${auth.user!.id}',
+        token: auth.token,
+      );
+      final all2 =
+          (data2 as List).map((e) => AppointmentModel.fromJson(e)).toList();
+
       setState(() {
-        _history = all.where((b) => b.status == 'CONCLUIDO').toList();
+        _history = all2.where((b) => b.status == 'CONCLUIDO').toList()
+          ..sort((a, b) => b.date.compareTo(a.date));
       });
     } catch (_) {
       // silently fail – show empty state
@@ -102,8 +130,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   : ListView.builder(
                       padding: const EdgeInsets.all(16),
                       itemCount: _history.length,
-                      itemBuilder: (ctx, i) =>
-                          _HistoryCard(appointment: _history[i]),
+                      itemBuilder: (ctx, i) => _HistoryCard(
+                        appointment: _history[i],
+                        reviewed: _reviewed.contains(_history[i].id),
+                        onReviewed: () =>
+                            setState(() => _reviewed.add(_history[i].id)),
+                      ),
                     ),
             ),
     );
@@ -112,7 +144,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
 class _HistoryCard extends StatelessWidget {
   final AppointmentModel appointment;
-  const _HistoryCard({required this.appointment});
+  final bool reviewed;
+  final VoidCallback onReviewed;
+  const _HistoryCard({
+    required this.appointment,
+    required this.reviewed,
+    required this.onReviewed,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -163,6 +201,26 @@ class _HistoryCard extends StatelessWidget {
                   ],
                 ),
               ),
+              if (reviewed)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF3CD),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.star, size: 12, color: Color(0xFFFFC107)),
+                      SizedBox(width: 3),
+                      Text('Avaliado',
+                          style: TextStyle(
+                              fontSize: 11,
+                              color: Color(0xFF856404),
+                              fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                ),
             ],
           ),
           const SizedBox(height: 12),
@@ -199,13 +257,24 @@ class _HistoryCard extends StatelessWidget {
             children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () => _showAvaliarDialog(context),
-                  icon: const Icon(Icons.star_outline,
-                      size: 16, color: AppColors.warning),
-                  label: const Text('Avaliar',
-                      style: TextStyle(color: AppColors.warning)),
+                  onPressed: reviewed
+                      ? null
+                      : () => _showAvaliarDialog(context),
+                  icon: Icon(
+                    reviewed ? Icons.star : Icons.star_outline,
+                    size: 16,
+                    color: reviewed ? AppColors.greyLight : AppColors.warning,
+                  ),
+                  label: Text(
+                    reviewed ? 'Avaliado' : 'Avaliar',
+                    style: TextStyle(
+                        color: reviewed ? AppColors.greyLight : AppColors.warning),
+                  ),
                   style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: AppColors.warning),
+                    side: BorderSide(
+                        color: reviewed
+                            ? AppColors.greyLight
+                            : AppColors.warning),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8)),
                     padding: const EdgeInsets.symmetric(vertical: 10),
@@ -255,17 +324,24 @@ class _HistoryCard extends StatelessWidget {
         builder: (ctx, setDialogState) => AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: const Text('Avaliar Serviço',
-              style:
-                  TextStyle(fontWeight: FontWeight.bold, color: AppColors.dark)),
+              style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.dark)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Como foi sua experiência?',
+                'Deixe sua opinião sobre o serviço que recebeu.',
                 style: TextStyle(color: AppColors.grey, fontSize: 13),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
+              const Text(
+                'Como foi sua experiência?',
+                style: TextStyle(
+                    color: AppColors.dark,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500),
+              ),
+              const SizedBox(height: 10),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: List.generate(5, (i) {
@@ -278,7 +354,7 @@ class _HistoryCard extends StatelessWidget {
                       color: star <= selectedRating
                           ? const Color(0xFFFFC107)
                           : AppColors.grey,
-                      size: 32,
+                      size: 34,
                     ),
                     padding: EdgeInsets.zero,
                     constraints:
@@ -286,8 +362,8 @@ class _HistoryCard extends StatelessWidget {
                   );
                 }),
               ),
-              const SizedBox(height: 12),
-              const Text('Comentário (opcional)',
+              const SizedBox(height: 14),
+              const Text('Deixe seu comentário (opcional)',
                   style: TextStyle(fontSize: 13, color: AppColors.grey)),
               const SizedBox(height: 6),
               TextField(
@@ -316,17 +392,39 @@ class _HistoryCard extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Avaliação enviada!'),
-                      backgroundColor: AppColors.success,
-                    ),
-                  );
-                },
+                onPressed: selectedRating == 0
+                    ? null
+                    : () async {
+                        Navigator.pop(ctx);
+                        final auth = context.read<AuthProvider>();
+                        try {
+                          await ReviewService.submitReview(
+                            userId: auth.user?.id ?? '',
+                            userName: auth.user?.name ?? 'Usuário',
+                            establishmentId: appointment.establishmentId,
+                            bookingId: appointment.id,
+                            rating: selectedRating,
+                            comment: commentCtrl.text.trim().isEmpty
+                                ? null
+                                : commentCtrl.text.trim(),
+                            token: auth.token,
+                          );
+                        } catch (_) {
+                          // best-effort: even if API fails, mark as reviewed locally
+                        }
+                        onReviewed();
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Avaliação enviada!'),
+                              backgroundColor: AppColors.success,
+                            ),
+                          );
+                        }
+                      },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
+                  disabledBackgroundColor: AppColors.greyLight,
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10)),
                   padding: const EdgeInsets.symmetric(vertical: 14),

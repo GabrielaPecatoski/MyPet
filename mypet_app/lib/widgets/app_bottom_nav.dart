@@ -28,6 +28,7 @@ const estabNavItems = [
   BottomNavItemData(icon: Icons.calendar_today_outlined, activeIcon: Icons.calendar_today,  label: 'Agenda'),
   BottomNavItemData(icon: Icons.shopping_bag_outlined,   activeIcon: Icons.shopping_bag,    label: 'Produtos'),
   BottomNavItemData(icon: Icons.star_outline,            activeIcon: Icons.star,            label: 'Avaliações'),
+  BottomNavItemData(icon: Icons.bar_chart_outlined,      activeIcon: Icons.bar_chart,       label: 'Estatísticas'),
   BottomNavItemData(icon: Icons.person_outline,          activeIcon: Icons.person,          label: 'Perfil'),
 ];
 
