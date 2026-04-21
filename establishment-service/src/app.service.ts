@@ -1,130 +1,133 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import * as crypto from 'crypto';
-
-export interface Service {
-  id: string;
-  name: string;
-  price: number;
-  durationMinutes: number;
-}
-
-export interface Establishment {
-  id: string;
-  ownerId: string;
-  name: string;
-  description: string;
-  address: string;
-  city: string;
-  phone: string;
-  rating: number;
-  reviewCount: number;
-  services: Service[];
-  imageUrl?: string;
-}
+import { PrismaService } from './prisma.service';
 
 @Injectable()
 export class AppService {
-  private establishments: Establishment[] = [
-    {
-      id: 'estab-001',
-      ownerId: 'vendedor-001',
-      name: 'Pet Shop Amor & Carinho',
-      description: 'Cuidados completos para o seu pet com amor e profissionalismo.',
-      address: 'Rua das Flores, 123',
-      city: 'São Paulo',
-      phone: '(11) 3456-7890',
-      rating: 4.6,
-      reviewCount: 47,
-      services: [
-        { id: 'svc-001', name: 'Banho', price: 50.00, durationMinutes: 60 },
-        { id: 'svc-002', name: 'Tosa', price: 80.00, durationMinutes: 90 },
-        { id: 'svc-003', name: 'Banho e Tosa', price: 80.00, durationMinutes: 120 },
-        { id: 'svc-004', name: 'Consulta Veterinária', price: 120.00, durationMinutes: 45 },
-        { id: 'svc-005', name: 'Vacinação', price: 60.00, durationMinutes: 20 },
-      ],
-    },
-    {
-      id: 'estab-002',
-      ownerId: 'vendedor-002',
-      name: 'Clínica VetCare',
-      description: 'Atendimento veterinário especializado 24h.',
-      address: 'Av. Paulista, 456',
-      city: 'São Paulo',
-      phone: '(11) 4567-8901',
-      rating: 4.8,
-      reviewCount: 123,
-      services: [
-        { id: 'svc-101', name: 'Consulta', price: 150.00, durationMinutes: 30 },
-        { id: 'svc-102', name: 'Vacinação', price: 70.00, durationMinutes: 15 },
-        { id: 'svc-103', name: 'Exame de Sangue', price: 200.00, durationMinutes: 20 },
-      ],
-    },
-    {
-      id: 'estab-003',
-      ownerId: 'vendedor-003',
-      name: 'PetSpa Premium',
-      description: 'Spa e estética para seu pet com produtos premium.',
-      address: 'Rua Oscar Freire, 789',
-      city: 'São Paulo',
-      phone: '(11) 5678-9012',
-      rating: 4.4,
-      reviewCount: 89,
-      services: [
-        { id: 'svc-201', name: 'Banho Premium', price: 90.00, durationMinutes: 90 },
-        { id: 'svc-202', name: 'Tosa Artística', price: 120.00, durationMinutes: 120 },
-        { id: 'svc-203', name: 'Hidratação', price: 60.00, durationMinutes: 60 },
-      ],
-    },
-  ];
+  constructor(private readonly prisma: PrismaService) {}
 
-  findAll(search?: string): Establishment[] {
-    if (!search) return this.establishments;
-    const q = search.toLowerCase();
-    return this.establishments.filter(
-      (e) => e.name.toLowerCase().includes(q) || e.city.toLowerCase().includes(q),
-    );
+  async findAll(search?: string) {
+    return this.prisma.establishment.findMany({
+      where: search
+        ? {
+            OR: [
+              { name: { contains: search, mode: 'insensitive' } },
+              { city: { contains: search, mode: 'insensitive' } },
+            ],
+          }
+        : undefined,
+      include: { services: true },
+      orderBy: { createdAt: 'desc' },
+    });
   }
 
-  findById(id: string): Establishment {
-    const e = this.establishments.find((e) => e.id === id);
+  async findById(id: string) {
+    const e = await this.prisma.establishment.findUnique({
+      where: { id },
+      include: { services: true },
+    });
     if (!e) throw new NotFoundException('Estabelecimento não encontrado');
     return e;
   }
 
-  findByOwner(ownerId: string): Establishment[] {
-    return this.establishments.filter((e) => e.ownerId === ownerId);
+  async findByOwner(ownerId: string) {
+    return this.prisma.establishment.findMany({
+      where: { ownerId },
+      include: { services: true },
+    });
   }
 
-  create(ownerId: string, data: any): Establishment {
-    const estab: Establishment = {
-      ...data,
-      id: crypto.randomUUID(),
-      ownerId,
-      rating: 0,
-      reviewCount: 0,
-      services: [],
-    };
-    this.establishments.push(estab);
-    return estab;
+  async create(
+    ownerId: string,
+    data: {
+      name?: string;
+      description?: string;
+      address?: string;
+      city?: string;
+      phone?: string;
+      type?: string;
+      imageUrl?: string | null;
+    },
+  ) {
+    return this.prisma.establishment.create({
+      data: {
+        ownerId,
+        name: data.name ?? '',
+        description: data.description ?? '',
+        address: data.address ?? '',
+        city: data.city ?? '',
+        phone: data.phone ?? '',
+        type: data.type ?? 'PET_SHOP',
+        imageUrl: data.imageUrl ?? null,
+      },
+      include: { services: true },
+    });
   }
 
-  update(id: string, data: Partial<Establishment>): Establishment {
-    const idx = this.establishments.findIndex((e) => e.id === id);
-    if (idx === -1) throw new NotFoundException('Estabelecimento não encontrado');
-    this.establishments[idx] = { ...this.establishments[idx], ...data };
-    return this.establishments[idx];
+  async update(
+    id: string,
+    data: {
+      name?: string;
+      description?: string;
+      address?: string;
+      city?: string;
+      phone?: string;
+      type?: string;
+      imageUrl?: string | null;
+      rating?: number;
+      reviewCount?: number;
+    },
+  ) {
+    await this.findById(id);
+    return this.prisma.establishment.update({
+      where: { id },
+      data: {
+        ...(data.name !== undefined && { name: data.name }),
+        ...(data.description !== undefined && {
+          description: data.description,
+        }),
+        ...(data.address !== undefined && { address: data.address }),
+        ...(data.city !== undefined && { city: data.city }),
+        ...(data.phone !== undefined && { phone: data.phone }),
+        ...(data.type !== undefined && { type: data.type }),
+        ...(data.imageUrl !== undefined && { imageUrl: data.imageUrl }),
+        ...(data.rating !== undefined && { rating: data.rating }),
+        ...(data.reviewCount !== undefined && {
+          reviewCount: data.reviewCount,
+        }),
+      },
+      include: { services: true },
+    });
   }
 
-  addService(establishmentId: string, service: Omit<Service, 'id'>): Establishment {
-    const estab = this.findById(establishmentId);
-    const newService: Service = { ...service, id: crypto.randomUUID() };
-    estab.services.push(newService);
-    return estab;
+  async addService(
+    establishmentId: string,
+    service: {
+      name: string;
+      price: number;
+      durationMinutes: number;
+      description?: string;
+    },
+  ) {
+    await this.findById(establishmentId);
+    return this.prisma.establishment.update({
+      where: { id: establishmentId },
+      data: {
+        services: {
+          create: {
+            name: service.name,
+            price: service.price,
+            durationMinutes: service.durationMinutes,
+            description: service.description ?? null,
+          },
+        },
+      },
+      include: { services: true },
+    });
   }
 
-  removeService(establishmentId: string, serviceId: string): Establishment {
-    const estab = this.findById(establishmentId);
-    estab.services = estab.services.filter((s) => s.id !== serviceId);
-    return estab;
+  async removeService(establishmentId: string, serviceId: string) {
+    await this.findById(establishmentId);
+    await this.prisma.service.delete({ where: { id: serviceId } });
+    return this.findById(establishmentId);
   }
 }

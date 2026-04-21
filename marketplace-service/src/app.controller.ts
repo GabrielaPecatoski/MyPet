@@ -1,6 +1,13 @@
 import {
-  Controller, Get, Post, Patch, Delete,
-  Param, Body, Query, HttpCode,
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Param,
+  Body,
+  Query,
+  HttpCode,
 } from '@nestjs/common';
 import { AppService } from './app.service';
 
@@ -32,7 +39,7 @@ export class AppController {
   @Delete('marketplace/products/:id')
   @HttpCode(204)
   deleteProduct(@Param('id') id: string) {
-    this.appService.deleteProduct(id);
+    return this.appService.deleteProduct(id);
   }
 
   // ── Cart ─────────────────────────────────────────────────────────
@@ -46,7 +53,11 @@ export class AppController {
     @Param('userId') userId: string,
     @Body() body: { productId: string; quantity: number },
   ) {
-    return this.appService.addToCart(userId, body.productId, body.quantity ?? 1);
+    return this.appService.addToCart(
+      userId,
+      body.productId,
+      body.quantity ?? 1,
+    );
   }
 
   @Delete('marketplace/cart/:userId/:productId')
