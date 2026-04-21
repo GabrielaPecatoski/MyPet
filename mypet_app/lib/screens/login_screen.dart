@@ -12,8 +12,8 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _emailCtrl = TextEditingController(text: 'joao@mypet.com');
-  final _senhaCtrl = TextEditingController(text: 'cliente123');
+  final _emailCtrl = TextEditingController();
+  final _senhaCtrl = TextEditingController();
   bool _obscureSenha = true;
   bool _isEstabelecimento = false;
 
@@ -48,35 +48,27 @@ class _LoginScreenState extends State<LoginScreen> {
     final auth = context.watch<AuthProvider>();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFEEEAFF),
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
             children: [
-              const SizedBox(height: 52),
+              const SizedBox(height: 112),
 
-              // Logo
-              Image.asset('assets/images/logo.png', height: 120),
+              Image.asset('assets/images/logo.png', height: 110),
               const SizedBox(height: 10),
-              const Text(
-                'Agende serviços para seu pet com facilidade',
-                style: TextStyle(color: AppColors.grey, fontSize: 13),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 28),
 
-              // Card
               Container(
                 padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: const [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.06),
-                      blurRadius: 16,
-                      offset: const Offset(0, 4),
+                      color: Colors.black12,
+                      blurRadius: 8,
+                      offset: Offset(0, 2),
                     ),
                   ],
                 ),
@@ -88,18 +80,20 @@ class _LoginScreenState extends State<LoginScreen> {
                       _label('E-mail'),
                       _field(
                         _emailCtrl,
-                        'loren@hotmail.com',
+                        'lorem@hotmail.com',
                         keyboardType: TextInputType.emailAddress,
-                        validator: (v) => v == null || !v.contains('@')
-                            ? 'E-mail inválido'
-                            : null,
+                        validator: (v) =>
+                            v == null || !v.contains('@') ? 'E-mail inválido' : null,
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 14),
+
                       _label('Senha'),
                       TextFormField(
                         controller: _senhaCtrl,
                         obscureText: _obscureSenha,
-                        decoration: _decoration('••••••••••••••••').copyWith(
+                        enableSuggestions: false,
+                        autocorrect: false,
+                        decoration: _decoration('••••••••••••').copyWith(
                           suffixIcon: IconButton(
                             icon: Icon(
                               _obscureSenha
@@ -112,25 +106,27 @@ class _LoginScreenState extends State<LoginScreen> {
                                 setState(() => _obscureSenha = !_obscureSenha),
                           ),
                         ),
-                        validator: (v) => v == null || v.length < 6
-                            ? 'Mínimo 6 caracteres'
-                            : null,
+                        validator: (v) =>
+                            v == null || v.length < 6 ? 'Mínimo 6 caracteres' : null,
                       ),
-                      const SizedBox(height: 4),
-                      GestureDetector(
-                        onTap: () {},
-                        child: const Text(
+                      const SizedBox(height: 6),
+
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: Text(
                           'Esqueceu sua senha?',
-                          style: TextStyle(
-                              color: AppColors.primary, fontSize: 13),
+                          style: const TextStyle(
+                            color: AppColors.primary,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 20),
 
-                      // Botão
                       SizedBox(
                         width: double.infinity,
-                        height: 50,
+                        height: 52,
                         child: ElevatedButton(
                           onPressed: auth.isLoading ? null : _login,
                           style: ElevatedButton.styleFrom(
@@ -146,54 +142,51 @@ class _LoginScreenState extends State<LoginScreen> {
                                   child: CircularProgressIndicator(
                                       color: Colors.white, strokeWidth: 2.5),
                                 )
-                              : const Text('Entrar',
+                              : const Text(
+                                  'Entrar',
                                   style: TextStyle(
                                       color: Colors.white,
                                       fontSize: 16,
-                                      fontWeight: FontWeight.w500)),
+                                      fontWeight: FontWeight.w600),
+                                ),
                         ),
-                      ),
-                      const SizedBox(height: 18),
-
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Text('Não tem uma conta?  ',
-                              style: TextStyle(
-                                  color: AppColors.grey, fontSize: 14)),
-                          GestureDetector(
-                            onTap: () => Navigator.pushNamed(
-                              context,
-                              '/register',
-                              arguments: _isEstabelecimento,
-                            ),
-                            child: const Text('Criar Conta',
-                                style: TextStyle(
-                                    color: AppColors.primary,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600)),
-                          ),
-                        ],
                       ),
                     ],
                   ),
                 ),
               ),
 
-              const SizedBox(height: 28),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text('Não tem uma conta? ',
+                      style: TextStyle(color: AppColors.grey, fontSize: 14)),
+                  GestureDetector(
+                    onTap: () => Navigator.pushNamed(
+                      context,
+                      '/register',
+                      arguments: _isEstabelecimento,
+                    ),
+                    child: const Text(
+                      'Criar Conta',
+                      style: TextStyle(
+                          color: AppColors.primary,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
               GestureDetector(
-                onTap: () => setState(() {
-                  _isEstabelecimento = !_isEstabelecimento;
-                  _emailCtrl.text = _isEstabelecimento
-                      ? 'petshop@mypet.com'
-                      : 'joao@mypet.com';
-                  _senhaCtrl.text = _isEstabelecimento
-                      ? 'vendedor123'
-                      : 'cliente123';
-                }),
+                onTap: () => setState(() => _isEstabelecimento = !_isEstabelecimento),
                 child: Text(
                   _isEstabelecimento ? 'Sou um Cliente' : 'Sou um estabelecimento',
-                  style: const TextStyle(color: AppColors.grey, fontSize: 14),
+                  style: const TextStyle(
+                      color: AppColors.grey,
+                      fontSize: 14,),
                 ),
               ),
               const SizedBox(height: 32),
@@ -204,13 +197,11 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _label(String t) => Padding(
+  Widget _label(String text) => Padding(
         padding: const EdgeInsets.only(bottom: 8),
-        child: Text(t,
+        child: Text(text,
             style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: AppColors.dark)),
+                fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.dark)),
       );
 
   Widget _field(
@@ -222,6 +213,8 @@ class _LoginScreenState extends State<LoginScreen> {
       TextFormField(
         controller: ctrl,
         keyboardType: keyboardType,
+        enableSuggestions: false,
+        autocorrect: false,
         decoration: _decoration(hint),
         validator: validator,
       );
@@ -230,25 +223,22 @@ class _LoginScreenState extends State<LoginScreen> {
         hintText: hint,
         hintStyle: const TextStyle(color: AppColors.grey, fontSize: 14),
         filled: true,
-        fillColor: const Color(0xFFF7F5FF),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: BorderSide.none),
+            borderSide: const BorderSide(color: AppColors.greyLight)),
         enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: BorderSide.none),
+            borderSide: const BorderSide(color: AppColors.greyLight)),
         focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide:
-                const BorderSide(color: AppColors.primary, width: 1.5)),
+            borderSide: const BorderSide(color: AppColors.primary, width: 1.5)),
         errorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
             borderSide: const BorderSide(color: AppColors.danger)),
         focusedErrorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide:
-                const BorderSide(color: AppColors.danger, width: 1.5)),
+            borderSide: const BorderSide(color: AppColors.danger, width: 1.5)),
       );
 }

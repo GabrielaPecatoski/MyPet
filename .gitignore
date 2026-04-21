@@ -20,4 +20,5 @@ Thumbs.db
 
 # Docker volumes locais
 postgres_data/
-rabbitmq_data/
+rabbitmq_data/documentos/
+.claude/

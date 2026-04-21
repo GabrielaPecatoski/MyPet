@@ -79,17 +79,6 @@ class _ProdutosScreenState extends State<ProdutosScreen> {
 
   int get _cartCount => _cart.values.fold(0, (a, b) => a + b);
 
-  double get _cartTotal {
-    double total = 0;
-    for (final entry in _cart.entries) {
-      final product = _products.firstWhere((p) => p['id'] == entry.key, orElse: () => null);
-      if (product != null) {
-        total += (product['price'] as num).toDouble() * entry.value;
-      }
-    }
-    return total;
-  }
-
   Future<void> _checkout(String userId) async {
     try {
       await ApiService.post('${ApiConstants.ordersEndpoint}/$userId', {});
