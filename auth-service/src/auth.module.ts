@@ -9,7 +9,8 @@ import { PrismaService } from './prisma.service';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     JwtModule.register({
-      secret: process.env.JWT_SECRET ?? 'mypet_super_secret_change_in_production',
+      secret:
+        process.env.JWT_SECRET ?? 'mypet_super_secret_change_in_production',
       signOptions: { expiresIn: '7d' },
     }),
   ],
