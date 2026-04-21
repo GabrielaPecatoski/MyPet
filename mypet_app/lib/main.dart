@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'core/colors.dart';
 import 'providers/auth_provider.dart';
+import 'providers/booking_provider.dart';
+import 'providers/establishment_provider.dart';
 // Telas comuns
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
@@ -13,6 +15,7 @@ import 'screens/establishment_detail_screen.dart';
 import 'screens/schedule_screen.dart';
 import 'screens/add_pet_screen.dart';
 import 'screens/pets_screen.dart';
+import 'screens/tracking_screen.dart';
 // Cliente
 import 'screens/main_navigation.dart';
 // Estabelecimento
@@ -22,8 +25,12 @@ import 'screens/admin_screen.dart';
 
 void main() {
   runApp(
-    ChangeNotifierProvider(
-      create: (_) => AuthProvider(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => BookingProvider()),
+        ChangeNotifierProvider(create: (_) => EstablishmentProvider()),
+      ],
       child: const MyPetApp(),
     ),
   );
@@ -42,9 +49,10 @@ class MyPetApp extends StatelessWidget {
         fontFamily: 'Roboto',
         scaffoldBackgroundColor: AppColors.background,
         appBarTheme: const AppBarTheme(
-          backgroundColor: AppColors.background,
+          backgroundColor: Colors.white,
           elevation: 0,
           centerTitle: true,
+          surfaceTintColor: Colors.transparent,
         ),
       ),
       initialRoute: '/splash',
@@ -54,7 +62,10 @@ class MyPetApp extends StatelessWidget {
         '/login':         (_) => const LoginScreen(),
         '/register':      (_) => const RegisterScreen(),
         // ── Cliente ───────────────────────────────────────────
-        '/home':          (_) => const MainNavigation(),
+        '/home': (ctx) {
+          final idx = ModalRoute.of(ctx)?.settings.arguments as int?;
+          return MainNavigation(initialIndex: idx ?? 0);
+        },
         // ── Estabelecimento ───────────────────────────────────
         '/estab-home':    (_) => const EstabNavigation(),
         // ── Admin ─────────────────────────────────────────────
@@ -67,6 +78,7 @@ class MyPetApp extends StatelessWidget {
         '/schedule':      (_) => const ScheduleScreen(),
         '/add-pet':       (_) => const AddPetScreen(),
         '/pets':          (_) => const PetsScreen(),
+        '/tracking':      (_) => const TrackingScreen(),
       },
     );
   }

@@ -37,27 +37,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // ── Card usuário ──────────────────────────────────
+            // Card do usuário
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12)),
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: const [
+                  BoxShadow(
+                      color: Colors.black12, blurRadius: 8, offset: Offset(0, 2)),
+                ],
+              ),
               child: Row(
                 children: [
+                  // Avatar
                   Stack(
                     children: [
                       GestureDetector(
                         onTap: _pickImage,
                         child: CircleAvatar(
-                          radius: 30,
+                          radius: 34,
                           backgroundColor: AppColors.primaryLight,
-                          backgroundImage: photo != null
-                              ? FileImage(File(photo))
-                              : null,
+                          backgroundImage:
+                              photo != null ? FileImage(File(photo)) : null,
                           child: photo == null
                               ? const Icon(Icons.person,
-                                  size: 32, color: AppColors.primary)
+                                  size: 34, color: AppColors.primary)
                               : null,
                         ),
                       ),
@@ -70,7 +75,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             padding: const EdgeInsets.all(4),
                             decoration: BoxDecoration(
                               color: AppColors.primary,
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(10),
                             ),
                             child: const Icon(Icons.camera_alt,
                                 color: Colors.white, size: 12),
@@ -79,25 +84,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(width: 14),
+                  const SizedBox(width: 16),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(user?.name ?? 'Usuário',
-                            style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 17,
-                                color: AppColors.dark)),
-                        const SizedBox(height: 2),
+                        Text(
+                          user?.name ?? 'Usuário',
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 17,
+                              color: AppColors.dark),
+                        ),
+                        const SizedBox(height: 3),
                         Text(user?.email ?? '',
                             style: const TextStyle(
                                 fontSize: 13, color: AppColors.grey)),
-                        if (user?.phone != null &&
-                            user!.phone.isNotEmpty)
+                        if (user?.phone != null && user!.phone.isNotEmpty) ...[
+                          const SizedBox(height: 2),
                           Text(user.phone,
                               style: const TextStyle(
                                   fontSize: 13, color: AppColors.grey)),
+                        ],
                       ],
                     ),
                   ),
@@ -105,30 +113,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            // ── Menu ─────────────────────────────────────────
+
+            // Menu
             Container(
               decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12)),
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: const [
+                  BoxShadow(
+                      color: Colors.black12, blurRadius: 8, offset: Offset(0, 2)),
+                ],
+              ),
               child: Column(
                 children: [
                   _item(Icons.person_outline, 'Editar Perfil',
                       () => Navigator.pushNamed(context, '/edit-profile')),
                   _div(),
-                  _item(Icons.favorite_outline, 'Meus Pets',
-                      () => Navigator.pushNamed(context, '/pets')),
+                  _item(Icons.favorite_border, 'Meus Pets', () {
+                    Navigator.pushNamedAndRemoveUntil(
+                        context, '/home', (r) => false,
+                        arguments: 3);
+                  }),
                   _div(),
-                  _item(Icons.history, 'Histórico',
+                  _item(Icons.history_outlined, 'Histórico',
                       () => Navigator.pushNamed(context, '/history')),
                   _div(),
                   _item(Icons.notifications_outlined, 'Notificações',
                       () => Navigator.pushNamed(context, '/notifications')),
                   _div(),
-                  _item(Icons.help_outline, 'Ajuda', () {}),
+                  _item(Icons.help_outline_rounded, 'Ajuda', () {}),
                 ],
               ),
             ),
             const SizedBox(height: 24),
+
+            // Sair
             GestureDetector(
               onTap: () async {
                 await context.read<AuthProvider>().logout();
@@ -140,7 +159,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(Icons.logout, color: AppColors.danger, size: 20),
-                  SizedBox(width: 6),
+                  SizedBox(width: 8),
                   Text('Sair',
                       style: TextStyle(
                           color: AppColors.danger,
@@ -151,7 +170,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const SizedBox(height: 20),
             const Text('Versão 1.0.0',
-                style: TextStyle(color: AppColors.grey, fontSize: 13)),
+                style: TextStyle(color: AppColors.grey, fontSize: 12)),
             const SizedBox(height: 24),
           ],
         ),
@@ -161,12 +180,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _item(IconData icon, String label, VoidCallback onTap) => ListTile(
         leading: Icon(icon, color: AppColors.dark, size: 22),
-        title:
-            Text(label, style: const TextStyle(fontSize: 15, color: AppColors.dark)),
-        trailing: const Icon(Icons.chevron_right, color: AppColors.grey),
+        title: Text(label,
+            style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: AppColors.dark)),
+        trailing: const Icon(Icons.chevron_right, color: AppColors.grey, size: 20),
         onTap: onTap,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
       );
 
   Widget _div() => const Divider(

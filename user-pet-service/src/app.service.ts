@@ -1,51 +1,67 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import * as crypto from 'crypto';
-
-export interface Pet {
-  id: string;
-  userId: string;
-  name: string;
-  type: string;
-  breed: string;
-  age: number;
-  weight?: number;
-  imageUrl?: string;
-  notes?: string;
-}
+import { PrismaService } from './prisma.service';
 
 @Injectable()
 export class AppService {
-  private pets: Pet[] = [
-    { id: 'pet-001', userId: 'cliente-001', name: 'Rex', type: 'Cachorro', breed: 'Golden Retriever', age: 3, weight: 28 },
-    { id: 'pet-002', userId: 'cliente-001', name: 'Luna', type: 'Gato', breed: 'Siamês', age: 2, weight: 4 },
-  ];
+  constructor(private readonly prisma: PrismaService) {}
 
-  findByUser(userId: string): Pet[] {
-    return this.pets.filter((p) => p.userId === userId);
+  findByUser(userId: string) {
+    return this.prisma.pet.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'asc' },
+    });
   }
 
-  findById(id: string): Pet {
-    const pet = this.pets.find((p) => p.id === id);
+  async findById(id: string) {
+    const pet = await this.prisma.pet.findUnique({ where: { id } });
     if (!pet) throw new NotFoundException('Pet não encontrado');
     return pet;
   }
 
-  create(userId: string, data: Omit<Pet, 'id' | 'userId'>): Pet {
-    const pet: Pet = { ...data, id: crypto.randomUUID(), userId };
-    this.pets.push(pet);
-    return pet;
+  create(
+    userId: string,
+    data: {
+      name: string;
+      type: string;
+      breed?: string;
+      age?: number;
+      weight?: number;
+      imageUrl?: string;
+      notes?: string;
+    },
+  ) {
+    return this.prisma.pet.create({
+      data: {
+        userId,
+        name: data.name,
+        type: data.type,
+        breed: data.breed ?? '',
+        age: data.age ?? 0,
+        weight: data.weight ?? null,
+        imageUrl: data.imageUrl ?? null,
+        notes: data.notes ?? null,
+      },
+    });
   }
 
-  update(id: string, data: Partial<Pet>): Pet {
-    const idx = this.pets.findIndex((p) => p.id === id);
-    if (idx === -1) throw new NotFoundException('Pet não encontrado');
-    this.pets[idx] = { ...this.pets[idx], ...data };
-    return this.pets[idx];
+  async update(
+    id: string,
+    data: Partial<{
+      name: string;
+      type: string;
+      breed: string;
+      age: number;
+      weight: number;
+      imageUrl: string;
+      notes: string;
+    }>,
+  ) {
+    await this.findById(id);
+    return this.prisma.pet.update({ where: { id }, data });
   }
 
-  remove(id: string): void {
-    const idx = this.pets.findIndex((p) => p.id === id);
-    if (idx === -1) throw new NotFoundException('Pet não encontrado');
-    this.pets.splice(idx, 1);
+  async remove(id: string) {
+    await this.findById(id);
+    await this.prisma.pet.delete({ where: { id } });
   }
 }
