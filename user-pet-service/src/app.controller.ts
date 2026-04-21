@@ -1,6 +1,12 @@
 import {
-  Controller, Get, Post, Patch, Delete,
-  Param, Body, HttpCode,
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Param,
+  Body,
+  HttpCode,
 } from '@nestjs/common';
 import { AppService } from './app.service';
 
@@ -31,6 +37,6 @@ export class AppController {
   @Delete('pets/:id')
   @HttpCode(204)
   deletePet(@Param('id') id: string) {
-    this.appService.remove(id);
+    return this.appService.remove(id);
   }
 }

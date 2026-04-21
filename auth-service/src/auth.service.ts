@@ -1,76 +1,140 @@
-import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  UnauthorizedException,
+  ConflictException,
+  InternalServerErrorException,
+} from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { User, Role } from '@prisma/client';
+import * as bcrypt from 'bcryptjs';
+import * as http from 'http';
+import { PrismaService } from './prisma.service';
 import { LoginDto, RegisterDto } from './login.dto';
-import * as crypto from 'crypto';
 
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  password: string;
-  phone: string;
-  cpf: string;
-  role: 'ADMIN' | 'CLIENTE' | 'VENDEDOR';
+const ESTAB_URL =
+  process.env.ESTABLISHMENT_SERVICE_URL ?? 'http://localhost:3003';
+
+function createEstablishment(
+  ownerId: string,
+  name: string,
+  phone: string,
+  businessName?: string,
+): void {
+  const body = JSON.stringify({
+    name: businessName || name,
+    phone,
+    description: '',
+    address: '',
+    city: '',
+    type: 'PET_SHOP',
+  });
+  const url = new URL(`/establishments/owner/${ownerId}`, ESTAB_URL);
+  const req = http.request({
+    hostname: url.hostname,
+    port: Number(url.port) || 3003,
+    path: url.pathname,
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Content-Length': Buffer.byteLength(body),
+    },
+  });
+  req.on('error', () => {});
+  req.write(body);
+  req.end();
 }
 
 @Injectable()
 export class AuthService {
-  private readonly users: User[] = [
-    // ── Usuários pré-criados para apresentação ──────────────────
-    {
-      id: 'admin-001',
-      name: 'Admin MyPet',
-      email: 'admin@mypet.com',
-      password: 'admin123',
-      phone: '(11) 99999-0001',
-      cpf: '000.000.000-00',
-      role: 'ADMIN',
-    },
-    {
-      id: 'cliente-001',
-      name: 'João Silva',
-      email: 'joao@mypet.com',
-      password: 'cliente123',
-      phone: '(11) 99999-9999',
-      cpf: '123.456.789-00',
-      role: 'CLIENTE',
-    },
-    {
-      id: 'vendedor-001',
-      name: 'Pet Shop Amor & Carinho',
-      email: 'petshop@mypet.com',
-      password: 'vendedor123',
-      phone: '(11) 3456-7890',
-      cpf: '99.999.999/0001-99',
-      role: 'VENDEDOR',
-    },
-  ];
+  private readonly logger = new Logger(AuthService.name);
 
-  login(dto: LoginDto) {
-    const user = this.users.find((u) => u.email === dto.email);
-    if (!user || user.password !== dto.password) {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly jwtService: JwtService,
+  ) {}
+
+  async login(dto: LoginDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+    });
+
+    if (!user || !(await bcrypt.compare(dto.password, user.password))) {
       throw new UnauthorizedException('Email ou senha inválidos');
     }
+
     return {
       access_token: this.generateToken(user),
       user: this.toPublic(user),
     };
   }
 
-  register(dto: RegisterDto) {
-    const existing = this.users.find((u) => u.email === dto.email);
+  async register(dto: RegisterDto) {
+    const existing = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+    });
+
     if (existing) {
       throw new ConflictException('Email já cadastrado');
     }
-    const user: User = {
-      id: crypto.randomUUID(),
-      name: dto.name,
-      email: dto.email,
-      password: dto.password,
-      phone: dto.phone,
-      cpf: dto.cpf,
-      role: 'CLIENTE',
+
+    const hashed = await bcrypt.hash(dto.password, 10);
+
+    let user: User;
+    try {
+      user = await this.prisma.user.create({
+        data: {
+          name: dto.name,
+          email: dto.email,
+          password: hashed,
+          phone: dto.phone,
+          cpf: dto.cpf,
+          role: dto.role === 'VENDEDOR' ? Role.VENDEDOR : Role.CLIENTE,
+        },
+      });
+    } catch (e: unknown) {
+      const err = e as { code?: string; meta?: { target?: string[] }; message?: string };
+      this.logger.error('Erro ao criar usuário', err?.message);
+      if (err?.code === 'P2002') {
+        const field = err?.meta?.target?.includes('cpf') ? 'CPF' : 'Email';
+        throw new ConflictException(`${field} já cadastrado`);
+      }
+      throw new InternalServerErrorException(
+        `Erro ao criar conta: ${err?.message ?? 'erro desconhecido'}`,
+      );
+    }
+
+    if (user.role === Role.VENDEDOR) {
+      createEstablishment(user.id, user.name, user.phone, dto.businessName);
+    }
+
+    return {
+      access_token: this.generateToken(user),
+      user: this.toPublic(user),
     };
-    this.users.push(user);
+  }
+
+  extractUserId(authHeader?: string): string | null {
+    if (!authHeader?.startsWith('Bearer ')) return null;
+    try {
+      const payload = this.jwtService.verify<{ sub: string }>(
+        authHeader.split(' ')[1],
+      );
+      return payload.sub ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  async me(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new UnauthorizedException('Usuário não encontrado');
+    return this.toPublic(user);
+  }
+
+  async refresh(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new UnauthorizedException('Usuário não encontrado');
     return {
       access_token: this.generateToken(user),
       user: this.toPublic(user),
@@ -78,8 +142,13 @@ export class AuthService {
   }
 
   private generateToken(user: User): string {
-    const payload = { sub: user.id, email: user.email, name: user.name, role: user.role };
-    return Buffer.from(JSON.stringify(payload)).toString('base64');
+    const payload = {
+      sub: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+    };
+    return this.jwtService.sign(payload);
   }
 
   private toPublic(user: User) {
