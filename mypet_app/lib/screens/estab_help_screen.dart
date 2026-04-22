@@ -23,6 +23,7 @@ class _EstabHelpScreenState extends State<EstabHelpScreen>
   String? _selectedCategory;
   List<String> _categories = [];
   final Set<String> _expanded = {};
+  final Set<String> _expandedCats = {};
 
   // Categorias relevantes para estabelecimentos
   static const _estabCategories = [
@@ -60,7 +61,6 @@ class _EstabHelpScreenState extends State<EstabHelpScreen>
             cats.where((c) => _estabCategories.contains(c)).toList();
         _faqs = estabFaqs;
       });
-    } catch (_) {
     } finally {
       setState(() => _loadingFaq = false);
     }
@@ -71,12 +71,8 @@ class _EstabHelpScreenState extends State<EstabHelpScreen>
     if (auth.user == null) return;
     setState(() => _loadingQuestions = true);
     try {
-      final qs = await FaqService.getUserQuestions(
-        auth.user!.id,
-        token: auth.token,
-      );
+      final qs = await FaqService.getUserQuestions(auth.user!.id, token: auth.token);
       setState(() => _myQuestions = qs);
-    } catch (_) {
     } finally {
       setState(() => _loadingQuestions = false);
     }
@@ -149,34 +145,43 @@ class _EstabHelpScreenState extends State<EstabHelpScreen>
               if (text.isEmpty) return;
               Navigator.pop(ctx);
               final auth = context.read<AuthProvider>();
-              try {
-                await FaqService.submitQuestion(
-                  userId: auth.user?.id ?? '',
-                  userName: auth.user?.name ?? 'Estabelecimento',
-                  userRole: 'ESTABELECIMENTO',
-                  question: text,
-                  token: auth.token,
+
+              // Feedback imediato local
+              final localQ = UserQuestion(
+                id: 'local_${DateTime.now().millisecondsSinceEpoch}',
+                userId: auth.user?.id ?? '',
+                userName: auth.user?.name ?? 'Estabelecimento',
+                userRole: 'ESTABELECIMENTO',
+                question: text,
+                status: 'PENDENTE',
+                createdAt: DateTime.now(),
+              );
+              setState(() => _myQuestions = [localQ, ..._myQuestions]);
+              _tabs.animateTo(1);
+
+              final saved = await FaqService.submitQuestion(
+                userId: auth.user?.id ?? '',
+                userName: auth.user?.name ?? 'Estabelecimento',
+                userRole: 'ESTABELECIMENTO',
+                question: text,
+                token: auth.token,
+              );
+              if (saved != null) {
+                setState(() {
+                  _myQuestions = [
+                    saved,
+                    ..._myQuestions.where((q) => q.id != localQ.id),
+                  ];
+                });
+              }
+
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Dúvida enviada! Responderemos em breve.'),
+                    backgroundColor: AppColors.success,
+                  ),
                 );
-                await _loadMyQuestions();
-                _tabs.animateTo(1);
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content:
-                          Text('Dúvida enviada! Responderemos em breve.'),
-                      backgroundColor: AppColors.success,
-                    ),
-                  );
-                }
-              } catch (_) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Erro ao enviar. Tente novamente.'),
-                      backgroundColor: AppColors.danger,
-                    ),
-                  );
-                }
               }
             },
             style: ElevatedButton.styleFrom(
@@ -331,15 +336,16 @@ class _EstabHelpScreenState extends State<EstabHelpScreen>
                   categories: _categories,
                   selectedCategory: _selectedCategory,
                   expanded: _expanded,
+                  expandedCats: _expandedCats,
                   onCategorySelected: (c) =>
                       setState(() => _selectedCategory = c),
                   onToggle: (id) => setState(() {
-                    if (_expanded.contains(id)) {
-                      _expanded.remove(id);
-                    } else {
-                      _expanded.add(id);
-                    }
+                    _expanded.contains(id)
+                        ? _expanded.remove(id)
+                        : _expanded.add(id);
                   }),
+                  onExpandCat: (cat) =>
+                      setState(() => _expandedCats.add(cat)),
                   onAskTap: _showAskDialog,
                 ),
                 _EstabQuestionsTab(
@@ -364,8 +370,10 @@ class _EstabFaqTab extends StatelessWidget {
   final List<String> categories;
   final String? selectedCategory;
   final Set<String> expanded;
+  final Set<String> expandedCats;
   final void Function(String?) onCategorySelected;
   final void Function(String) onToggle;
+  final void Function(String) onExpandCat;
   final VoidCallback onAskTap;
 
   const _EstabFaqTab({
@@ -374,8 +382,10 @@ class _EstabFaqTab extends StatelessWidget {
     required this.categories,
     required this.selectedCategory,
     required this.expanded,
+    required this.expandedCats,
     required this.onCategorySelected,
     required this.onToggle,
+    required this.onExpandCat,
     required this.onAskTap,
   });
 
@@ -418,25 +428,51 @@ class _EstabFaqTab extends StatelessWidget {
         if (faqs.isEmpty)
           _Empty(onAskTap: onAskTap)
         else
-          ...grouped.entries.map((e) => Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+          ...grouped.entries.map((e) {
+            final allItems = e.value;
+            final isCatExpanded = expandedCats.contains(e.key);
+            final visible = isCatExpanded
+                ? allItems
+                : allItems.take(4).toList();
+            final hiddenCount = allItems.length - 4;
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8, top: 4),
+                  child: Text(e.key,
+                      style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary)),
+                ),
+                ...visible.map((f) => _FaqTile(
+                      faq: f,
+                      isExpanded: expanded.contains(f.id),
+                      onToggle: () => onToggle(f.id),
+                    )),
+                if (!isCatExpanded && hiddenCount > 0)
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 8, top: 4),
-                    child: Text(e.key,
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: TextButton.icon(
+                      onPressed: () => onExpandCat(e.key),
+                      icon: const Icon(Icons.expand_more,
+                          size: 16, color: AppColors.primary),
+                      label: Text(
+                        'Ver mais $hiddenCount ${hiddenCount == 1 ? 'pergunta' : 'perguntas'}',
                         style: const TextStyle(
+                            color: AppColors.primary,
                             fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primary)),
+                            fontWeight: FontWeight.w500),
+                      ),
+                      style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 4)),
+                    ),
                   ),
-                  ...e.value.map((f) => _FaqTile(
-                        faq: f,
-                        isExpanded: expanded.contains(f.id),
-                        onToggle: () => onToggle(f.id),
-                      )),
-                  const SizedBox(height: 6),
-                ],
-              )),
+                const SizedBox(height: 4),
+              ],
+            );
+          }),
         const SizedBox(height: 8),
         _Banner(onTap: onAskTap),
       ],

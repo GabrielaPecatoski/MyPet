@@ -6,6 +6,8 @@ import '../providers/auth_provider.dart';
 import '../services/faq_service.dart';
 import '../widgets/mypet_app_bar.dart';
 
+const int _kMaxVisible = 4;
+
 class HelpScreen extends StatefulWidget {
   const HelpScreen({super.key});
   @override
@@ -22,7 +24,10 @@ class _HelpScreenState extends State<HelpScreen>
   String _search = '';
   String? _selectedCategory;
   List<String> _categories = [];
+  // itens do accordion expandidos
   final Set<String> _expanded = {};
+  // categorias com "ver mais" ativado
+  final Set<String> _expandedCats = {};
 
   @override
   void initState() {
@@ -49,8 +54,6 @@ class _HelpScreenState extends State<HelpScreen>
         _categories = cats;
         _faqs = faqs;
       });
-    } catch (_) {
-      // silently show empty
     } finally {
       setState(() => _loadingFaq = false);
     }
@@ -61,12 +64,8 @@ class _HelpScreenState extends State<HelpScreen>
     if (auth.user == null) return;
     setState(() => _loadingQuestions = true);
     try {
-      final qs = await FaqService.getUserQuestions(
-        auth.user!.id,
-        token: auth.token,
-      );
+      final qs = await FaqService.getUserQuestions(auth.user!.id, token: auth.token);
       setState(() => _myQuestions = qs);
-    } catch (_) {
     } finally {
       setState(() => _loadingQuestions = false);
     }
@@ -107,22 +106,20 @@ class _HelpScreenState extends State<HelpScreen>
             TextField(
               controller: ctrl,
               maxLines: 4,
+              autofocus: true,
               decoration: InputDecoration(
                 hintText: 'Descreva sua dúvida...',
                 filled: true,
                 fillColor: AppColors.background,
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: AppColors.greyLight),
-                ),
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: AppColors.greyLight)),
                 enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: AppColors.greyLight),
-                ),
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: AppColors.greyLight)),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: AppColors.primary),
-                ),
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: AppColors.primary)),
               ),
             ),
           ],
@@ -138,40 +135,53 @@ class _HelpScreenState extends State<HelpScreen>
               if (text.isEmpty) return;
               Navigator.pop(ctx);
               final auth = context.read<AuthProvider>();
-              try {
-                await FaqService.submitQuestion(
-                  userId: auth.user?.id ?? '',
-                  userName: auth.user?.name ?? 'Usuário',
-                  userRole: 'CLIENTE',
-                  question: text,
-                  token: auth.token,
+
+              // Cria localmente imediatamente para feedback instantâneo
+              final localQ = UserQuestion(
+                id: 'local_${DateTime.now().millisecondsSinceEpoch}',
+                userId: auth.user?.id ?? '',
+                userName: auth.user?.name ?? 'Usuário',
+                userRole: 'CLIENTE',
+                question: text,
+                status: 'PENDENTE',
+                createdAt: DateTime.now(),
+              );
+              setState(() {
+                _myQuestions = [localQ, ..._myQuestions];
+              });
+              _tabs.animateTo(1);
+
+              // Tenta enviar para a API em background
+              final saved = await FaqService.submitQuestion(
+                userId: auth.user?.id ?? '',
+                userName: auth.user?.name ?? 'Usuário',
+                userRole: 'CLIENTE',
+                question: text,
+                token: auth.token,
+              );
+              if (saved != null) {
+                // substitui o item local pelo retornado da API
+                setState(() {
+                  _myQuestions = [
+                    saved,
+                    ..._myQuestions.where((q) => q.id != localQ.id),
+                  ];
+                });
+              }
+
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Dúvida enviada! Responderemos em breve.'),
+                    backgroundColor: AppColors.success,
+                  ),
                 );
-                await _loadMyQuestions();
-                _tabs.animateTo(1);
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Dúvida enviada! Responderemos em breve.'),
-                      backgroundColor: AppColors.success,
-                    ),
-                  );
-                }
-              } catch (_) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Erro ao enviar. Tente novamente.'),
-                      backgroundColor: AppColors.danger,
-                    ),
-                  );
-                }
               }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
               elevation: 0,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
             child: const Text('Enviar', style: TextStyle(color: Colors.white)),
           ),
@@ -187,7 +197,6 @@ class _HelpScreenState extends State<HelpScreen>
       appBar: const MypetAppBar(showBack: true),
       body: Column(
         children: [
-          // ── Header ────────────────────────────────────────────────
           Container(
             width: double.infinity,
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
@@ -204,34 +213,27 @@ class _HelpScreenState extends State<HelpScreen>
                 const Text('Como podemos ajudar você?',
                     style: TextStyle(fontSize: 13, color: AppColors.grey)),
                 const SizedBox(height: 14),
-                // Busca
                 TextField(
                   onChanged: (v) => setState(() => _search = v),
                   decoration: InputDecoration(
                     hintText: 'Buscar nas perguntas frequentes...',
-                    hintStyle:
-                        const TextStyle(fontSize: 13, color: AppColors.grey),
-                    prefixIcon: const Icon(Icons.search,
-                        color: AppColors.grey, size: 20),
+                    hintStyle: const TextStyle(fontSize: 13, color: AppColors.grey),
+                    prefixIcon: const Icon(Icons.search, color: AppColors.grey, size: 20),
                     filled: true,
                     fillColor: AppColors.background,
                     contentPadding: const EdgeInsets.symmetric(vertical: 10),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(color: AppColors.greyLight),
-                    ),
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: const BorderSide(color: AppColors.greyLight)),
                     enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(color: AppColors.greyLight),
-                    ),
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: const BorderSide(color: AppColors.greyLight)),
                     focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(color: AppColors.primary),
-                    ),
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: const BorderSide(color: AppColors.primary)),
                   ),
                 ),
                 const SizedBox(height: 12),
-                // Tabs
                 Container(
                   decoration: BoxDecoration(
                     color: AppColors.background,
@@ -247,8 +249,7 @@ class _HelpScreenState extends State<HelpScreen>
                     indicatorSize: TabBarIndicatorSize.tab,
                     labelColor: Colors.white,
                     unselectedLabelColor: AppColors.grey,
-                    labelStyle: const TextStyle(
-                        fontWeight: FontWeight.w600, fontSize: 13),
+                    labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                     tabs: [
                       const Tab(text: 'Perguntas Frequentes'),
                       Tab(
@@ -259,14 +260,13 @@ class _HelpScreenState extends State<HelpScreen>
                             if (_myQuestions.isNotEmpty) ...[
                               const SizedBox(width: 5),
                               Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 5, vertical: 1),
+                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                                 decoration: BoxDecoration(
                                   color: AppColors.warning,
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Text(
-                                  '${_myQuestions.where((q) => q.status == 'RESPONDIDA').length}',
+                                  '${_myQuestions.length}',
                                   style: const TextStyle(
                                       color: Colors.white,
                                       fontSize: 10,
@@ -284,8 +284,6 @@ class _HelpScreenState extends State<HelpScreen>
               ],
             ),
           ),
-
-          // ── Conteúdo ──────────────────────────────────────────────
           Expanded(
             child: TabBarView(
               controller: _tabs,
@@ -296,15 +294,12 @@ class _HelpScreenState extends State<HelpScreen>
                   categories: _categories,
                   selectedCategory: _selectedCategory,
                   expanded: _expanded,
-                  onCategorySelected: (c) =>
-                      setState(() => _selectedCategory = c),
+                  expandedCats: _expandedCats,
+                  onCategorySelected: (c) => setState(() => _selectedCategory = c),
                   onToggle: (id) => setState(() {
-                    if (_expanded.contains(id)) {
-                      _expanded.remove(id);
-                    } else {
-                      _expanded.add(id);
-                    }
+                    _expanded.contains(id) ? _expanded.remove(id) : _expanded.add(id);
                   }),
+                  onExpandCat: (cat) => setState(() => _expandedCats.add(cat)),
                   onAskTap: _showAskDialog,
                 ),
                 _QuestionsTab(
@@ -329,8 +324,10 @@ class _FaqTab extends StatelessWidget {
   final List<String> categories;
   final String? selectedCategory;
   final Set<String> expanded;
+  final Set<String> expandedCats;
   final void Function(String?) onCategorySelected;
   final void Function(String) onToggle;
+  final void Function(String) onExpandCat;
   final VoidCallback onAskTap;
 
   const _FaqTab({
@@ -339,19 +336,19 @@ class _FaqTab extends StatelessWidget {
     required this.categories,
     required this.selectedCategory,
     required this.expanded,
+    required this.expandedCats,
     required this.onCategorySelected,
     required this.onToggle,
+    required this.onExpandCat,
     required this.onAskTap,
   });
 
   @override
   Widget build(BuildContext context) {
     if (loading) {
-      return const Center(
-          child: CircularProgressIndicator(color: AppColors.primary));
+      return const Center(child: CircularProgressIndicator(color: AppColors.primary));
     }
 
-    // Agrupa por categoria
     final grouped = <String, List<FaqItem>>{};
     for (final f in faqs) {
       grouped.putIfAbsent(f.category, () => []).add(f);
@@ -363,22 +360,17 @@ class _FaqTab extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
         children: [
-          // Filtro de categoria
           if (categories.isNotEmpty) ...[
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: [
-                  _CatChip(
-                    label: 'Todos',
-                    selected: selectedCategory == null,
-                    onTap: () => onCategorySelected(null),
-                  ),
+                  _CatChip(label: 'Todos', selected: selectedCategory == null,
+                      onTap: () => onCategorySelected(null)),
                   ...categories.map((c) => _CatChip(
                         label: c,
                         selected: selectedCategory == c,
-                        onTap: () => onCategorySelected(
-                            selectedCategory == c ? null : c),
+                        onTap: () => onCategorySelected(selectedCategory == c ? null : c),
                       )),
                 ],
               ),
@@ -394,29 +386,53 @@ class _FaqTab extends StatelessWidget {
               buttonLabel: 'Enviar minha dúvida',
               onButtonTap: onAskTap,
             )
-          else ...[
-            ...grouped.entries.map((entry) => Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8, top: 4),
-                      child: Text(entry.key,
-                          style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.primary)),
-                    ),
-                    ...entry.value.map((f) => _FaqCard(
-                          faq: f,
-                          isExpanded: expanded.contains(f.id),
-                          onToggle: () => onToggle(f.id),
-                        )),
-                    const SizedBox(height: 6),
-                  ],
-                )),
-          ],
+          else
+            ...grouped.entries.map((entry) {
+              final allItems = entry.value;
+              final isExpanded = expandedCats.contains(entry.key);
+              final visible = isExpanded ? allItems : allItems.take(_kMaxVisible).toList();
+              final hiddenCount = allItems.length - _kMaxVisible;
 
-          // Banner "não encontrou?"
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8, top: 4),
+                    child: Text(entry.key,
+                        style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary)),
+                  ),
+                  ...visible.map((f) => _FaqCard(
+                        faq: f,
+                        isExpanded: expanded.contains(f.id),
+                        onToggle: () => onToggle(f.id),
+                      )),
+                  if (!isExpanded && hiddenCount > 0)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: TextButton.icon(
+                        onPressed: () => onExpandCat(entry.key),
+                        icon: const Icon(Icons.expand_more, size: 16,
+                            color: AppColors.primary),
+                        label: Text(
+                          'Ver mais $hiddenCount ${hiddenCount == 1 ? 'pergunta' : 'perguntas'}',
+                          style: const TextStyle(
+                              color: AppColors.primary,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500),
+                        ),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                        ),
+                      ),
+                    ),
+                  const SizedBox(height: 4),
+                ],
+              );
+            }),
+
           const SizedBox(height: 8),
           _AskBanner(onTap: onAskTap),
         ],
@@ -429,92 +445,82 @@ class _CatChip extends StatelessWidget {
   final String label;
   final bool selected;
   final VoidCallback onTap;
-  const _CatChip(
-      {required this.label, required this.selected, required this.onTap});
+  const _CatChip({required this.label, required this.selected, required this.onTap});
 
   @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(right: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-        decoration: BoxDecoration(
-          color: selected ? AppColors.primary : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-              color: selected ? AppColors.primary : AppColors.greyLight),
+  Widget build(BuildContext context) => GestureDetector(
+        onTap: onTap,
+        child: Container(
+          margin: const EdgeInsets.only(right: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+          decoration: BoxDecoration(
+            color: selected ? AppColors.primary : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+                color: selected ? AppColors.primary : AppColors.greyLight),
+          ),
+          child: Text(label,
+              style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: selected ? Colors.white : AppColors.grey)),
         ),
-        child: Text(label,
-            style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: selected ? Colors.white : AppColors.grey)),
-      ),
-    );
-  }
+      );
 }
 
 class _FaqCard extends StatelessWidget {
   final FaqItem faq;
   final bool isExpanded;
   final VoidCallback onToggle;
-  const _FaqCard(
-      {required this.faq, required this.isExpanded, required this.onToggle});
+  const _FaqCard({required this.faq, required this.isExpanded, required this.onToggle});
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: const [
-          BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 1))
-        ],
-      ),
-      child: InkWell(
-        onTap: onToggle,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(faq.question,
-                        style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.dark)),
-                  ),
-                  Icon(
-                    isExpanded
-                        ? Icons.keyboard_arrow_up
-                        : Icons.keyboard_arrow_down,
-                    color: AppColors.grey,
-                    size: 20,
-                  ),
+  Widget build(BuildContext context) => Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: const [
+            BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 1))
+          ],
+        ),
+        child: InkWell(
+          onTap: onToggle,
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(faq.question,
+                          style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.dark)),
+                    ),
+                    Icon(
+                      isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                      color: AppColors.grey,
+                      size: 20,
+                    ),
+                  ],
+                ),
+                if (isExpanded) ...[
+                  const SizedBox(height: 10),
+                  const Divider(height: 1, color: AppColors.greyLight),
+                  const SizedBox(height: 10),
+                  Text(faq.answer,
+                      style: const TextStyle(
+                          fontSize: 13, color: AppColors.grey, height: 1.5)),
                 ],
-              ),
-              if (isExpanded) ...[
-                const SizedBox(height: 10),
-                const Divider(height: 1, color: AppColors.greyLight),
-                const SizedBox(height: 10),
-                Text(faq.answer,
-                    style: const TextStyle(
-                        fontSize: 13,
-                        color: AppColors.grey,
-                        height: 1.5)),
               ],
-            ],
+            ),
           ),
         ),
-      ),
-    );
-  }
+      );
 }
 
 class _AskBanner extends StatelessWidget {
@@ -522,52 +528,47 @@ class _AskBanner extends StatelessWidget {
   const _AskBanner({required this.onTap});
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.primaryLight,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: AppColors.primary,
-              borderRadius: BorderRadius.circular(10),
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.primaryLight,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                  color: AppColors.primary, borderRadius: BorderRadius.circular(10)),
+              child: const Icon(Icons.help_outline, color: Colors.white, size: 22),
             ),
-            child:
-                const Icon(Icons.help_outline, color: Colors.white, size: 22),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Não encontrou o que procurava?',
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                        color: AppColors.dark)),
-                const SizedBox(height: 2),
-                const Text('Nossa equipe responde em até 24h',
-                    style: TextStyle(fontSize: 12, color: AppColors.grey)),
-              ],
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Não encontrou o que procurava?',
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                          color: AppColors.dark)),
+                  SizedBox(height: 2),
+                  Text('Nossa equipe responde em até 24h',
+                      style: TextStyle(fontSize: 12, color: AppColors.grey)),
+                ],
+              ),
             ),
-          ),
-          TextButton(
-            onPressed: onTap,
-            child: const Text('Perguntar',
-                style: TextStyle(
-                    color: AppColors.primary, fontWeight: FontWeight.w600)),
-          ),
-        ],
-      ),
-    );
-  }
+            TextButton(
+              onPressed: onTap,
+              child: const Text('Perguntar',
+                  style: TextStyle(
+                      color: AppColors.primary, fontWeight: FontWeight.w600)),
+            ),
+          ],
+        ),
+      );
 }
 
 // ── Aba Minhas Dúvidas ───────────────────────────────────────────────
@@ -587,8 +588,7 @@ class _QuestionsTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (loading) {
-      return const Center(
-          child: CircularProgressIndicator(color: AppColors.primary));
+      return const Center(child: CircularProgressIndicator(color: AppColors.primary));
     }
 
     return RefreshIndicator(
@@ -600,26 +600,23 @@ class _QuestionsTab extends StatelessWidget {
           if (questions.isEmpty)
             _EmptyState(
               icon: Icons.forum_outlined,
-              title: 'Nenhuma dúvida enviada',
+              title: 'Nenhuma dúvida enviada ainda',
               subtitle: 'Não encontrou o que procurava? Envie sua pergunta.',
               buttonLabel: 'Enviar dúvida',
               onButtonTap: onAskTap,
             )
-          else ...[
+          else
             ...questions.map((q) => _QuestionCard(question: q)),
-            const SizedBox(height: 12),
-          ],
+          const SizedBox(height: 12),
           ElevatedButton.icon(
             onPressed: onAskTap,
             icon: const Icon(Icons.add, color: Colors.white, size: 16),
-            label: const Text('Nova dúvida',
-                style: TextStyle(color: Colors.white)),
+            label: const Text('Nova dúvida', style: TextStyle(color: Colors.white)),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
               elevation: 0,
               minimumSize: const Size(double.infinity, 48),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
           ),
         ],
@@ -634,23 +631,17 @@ class _QuestionCard extends StatelessWidget {
 
   Color get _statusColor {
     switch (question.status) {
-      case 'RESPONDIDA':
-        return AppColors.success;
-      case 'FECHADA':
-        return AppColors.grey;
-      default:
-        return AppColors.warning;
+      case 'RESPONDIDA': return AppColors.success;
+      case 'FECHADA':    return AppColors.grey;
+      default:           return AppColors.warning;
     }
   }
 
   String get _statusLabel {
     switch (question.status) {
-      case 'RESPONDIDA':
-        return 'Respondida';
-      case 'FECHADA':
-        return 'Fechada';
-      default:
-        return 'Aguardando';
+      case 'RESPONDIDA': return 'Respondida';
+      case 'FECHADA':    return 'Fechada';
+      default:           return 'Aguardando';
     }
   }
 
@@ -684,8 +675,7 @@ class _QuestionCard extends StatelessWidget {
                           color: AppColors.dark)),
                 ),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
                     color: _statusColor.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(8),
@@ -700,8 +690,7 @@ class _QuestionCard extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text('Enviada em $dateStr',
-                style:
-                    const TextStyle(fontSize: 11, color: AppColors.grey)),
+                style: const TextStyle(fontSize: 11, color: AppColors.grey)),
             if (question.answer != null) ...[
               const SizedBox(height: 10),
               const Divider(height: 1, color: AppColors.greyLight),
@@ -732,9 +721,7 @@ class _QuestionCard extends StatelessWidget {
                         const SizedBox(height: 3),
                         Text(question.answer!,
                             style: const TextStyle(
-                                fontSize: 13,
-                                color: AppColors.dark,
-                                height: 1.4)),
+                                fontSize: 13, color: AppColors.dark, height: 1.4)),
                       ],
                     ),
                   ),
@@ -762,46 +749,42 @@ class _EmptyState extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 60),
-      child: Column(
-        children: [
-          Container(
-            width: 72,
-            height: 72,
-            decoration: BoxDecoration(
-              color: AppColors.primaryLight,
-              borderRadius: BorderRadius.circular(36),
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(top: 60),
+        child: Column(
+          children: [
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                color: AppColors.primaryLight,
+                borderRadius: BorderRadius.circular(36),
+              ),
+              child: Icon(icon, size: 34, color: AppColors.primary),
             ),
-            child: Icon(icon, size: 34, color: AppColors.primary),
-          ),
-          const SizedBox(height: 16),
-          Text(title,
-              style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.dark)),
-          const SizedBox(height: 6),
-          Text(subtitle,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 13, color: AppColors.grey)),
-          const SizedBox(height: 20),
-          ElevatedButton(
-            onPressed: onButtonTap,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            const SizedBox(height: 16),
+            Text(title,
+                style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.dark)),
+            const SizedBox(height: 6),
+            Text(subtitle,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 13, color: AppColors.grey)),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: onButtonTap,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              ),
+              child: Text(buttonLabel, style: const TextStyle(color: Colors.white)),
             ),
-            child: Text(buttonLabel,
-                style: const TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-  }
+          ],
+        ),
+      );
 }
