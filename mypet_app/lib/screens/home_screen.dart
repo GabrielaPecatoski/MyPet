@@ -96,10 +96,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     const Spacer(),
                     Image.asset(
-                      'assets/images/logo.png',
+                      'assets/images/logo branca.png',
                       height: 36,
-                      color: Colors.white,
-                      colorBlendMode: BlendMode.srcIn,
+                      fit: BoxFit.contain,
                     ),
                     const Spacer(),
                     GestureDetector(
