@@ -25,7 +25,6 @@ class _EstabAgendaScreenState extends State<EstabAgendaScreen> {
     'jul', 'ago', 'set', 'out', 'nov', 'dez'
   ];
 
-  // Semana que contém _selectedDate
   List<DateTime> get _weekDays {
     final dow = _selectedDate.weekday % 7; // 0 = domingo
     final sunday = _selectedDate.subtract(Duration(days: dow));
@@ -86,11 +85,12 @@ class _EstabAgendaScreenState extends State<EstabAgendaScreen> {
         );
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(status == 'CONFIRMADO'
-          ? 'Agendamento confirmado!'
-          : 'Agendamento recusado'),
-      backgroundColor:
-          status == 'CONFIRMADO' ? AppColors.success : AppColors.danger,
+      content: Text(ok
+          ? (status == 'CONFIRMADO' ? 'Agendamento confirmado!' : 'Agendamento recusado')
+          : 'Erro ao atualizar agendamento'),
+      backgroundColor: ok
+          ? (status == 'CONFIRMADO' ? AppColors.success : AppColors.danger)
+          : AppColors.danger,
     ));
   }
 
@@ -121,7 +121,6 @@ class _EstabAgendaScreenState extends State<EstabAgendaScreen> {
       ),
       body: Column(
         children: [
-          // ── Header roxo com stats ──────────────────────────────
           EstabPurpleHeader(
             pendentes: booking.pendentes.length,
             confirmados: booking.confirmados.length,
@@ -129,13 +128,11 @@ class _EstabAgendaScreenState extends State<EstabAgendaScreen> {
                 estab.establishment?.rating.toStringAsFixed(1) ?? '—',
           ),
 
-          // ── Calendário semanal ─────────────────────────────────
           Container(
             color: Colors.white,
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
             child: Column(
               children: [
-                // Mês + ano + navegação
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -160,7 +157,6 @@ class _EstabAgendaScreenState extends State<EstabAgendaScreen> {
                 ),
                 const SizedBox(height: 12),
 
-                // Dias da semana
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: week.map((date) {
@@ -212,7 +208,6 @@ class _EstabAgendaScreenState extends State<EstabAgendaScreen> {
                             ),
                           ),
                           const SizedBox(height: 4),
-                          // Pontos indicando agendamentos
                           Row(
                             mainAxisSize: MainAxisSize.min,
                             children: List.generate(
@@ -242,7 +237,6 @@ class _EstabAgendaScreenState extends State<EstabAgendaScreen> {
             ),
           ),
 
-          // ── Título do dia ──────────────────────────────────────
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
             child: Row(
@@ -266,7 +260,6 @@ class _EstabAgendaScreenState extends State<EstabAgendaScreen> {
             ),
           ),
 
-          // ── Lista ─────────────────────────────────────────────
           Expanded(
             child: RefreshIndicator(
               onRefresh: () async => _load(),
@@ -300,7 +293,6 @@ class _EstabAgendaScreenState extends State<EstabAgendaScreen> {
   }
 }
 
-// ── Card do agendamento ──────────────────────────────────────────────
 class _ApptCard extends StatelessWidget {
   final AppointmentModel appointment;
   final Future<void> Function(AppointmentModel, String) onUpdateStatus;
@@ -326,7 +318,6 @@ class _ApptCard extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Horário
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 8),
           child: Row(children: [
@@ -358,7 +349,6 @@ class _ApptCard extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Barra colorida lateral
                   Container(width: 5, color: _statusColor),
                   Expanded(
                     child: Padding(
@@ -366,7 +356,6 @@ class _ApptCard extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Pet + status badge
                           Row(
                             children: [
                               CircleAvatar(
@@ -410,7 +399,6 @@ class _ApptCard extends StatelessWidget {
                           ),
                           const SizedBox(height: 10),
 
-                          // Detalhes do tutor e serviço
                           if (ap.userName.isNotEmpty)
                             _row(Icons.person_outline, 'Tutor: ${ap.userName}'),
                           const SizedBox(height: 4),
@@ -421,7 +409,6 @@ class _ApptCard extends StatelessWidget {
                                 'R\$ ${ap.price.toStringAsFixed(2)}'),
                           ],
 
-                          // Botões para pendentes
                           if (ap.isPendente) ...[
                             const SizedBox(height: 12),
                             Row(children: [
@@ -482,7 +469,6 @@ class _ApptCard extends StatelessWidget {
                             ]),
                           ],
 
-                          // Botão Concluir para confirmados
                           if (ap.isConfirmado) ...[
                             const SizedBox(height: 12),
                             SizedBox(

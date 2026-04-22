@@ -42,7 +42,6 @@ class _EstabProfileScreenState extends State<EstabProfileScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // Card info estabelecimento
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -57,7 +56,6 @@ class _EstabProfileScreenState extends State<EstabProfileScreen> {
               ),
               child: Row(
                 children: [
-                  // Avatar
                   Stack(
                     children: [
                       GestureDetector(
@@ -121,7 +119,6 @@ class _EstabProfileScreenState extends State<EstabProfileScreen> {
             ),
             const SizedBox(height: 16),
 
-            // Menu
             Container(
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -153,7 +150,6 @@ class _EstabProfileScreenState extends State<EstabProfileScreen> {
             ),
             const SizedBox(height: 24),
 
-            // Sair
             GestureDetector(
               onTap: () async {
                 await context.read<AuthProvider>().logout();

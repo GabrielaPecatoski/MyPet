@@ -86,7 +86,6 @@ class _AgendaScreenState extends State<AgendaScreen>
       appBar: const MypetAppBar(showBack: false),
       body: Column(
         children: [
-          // ── Tabs ──────────────────────────────────────────────
           Container(
             margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
             decoration: BoxDecoration(
@@ -135,7 +134,6 @@ class _AgendaScreenState extends State<AgendaScreen>
             ),
           ),
 
-          // ── Conteúdo das abas ──────────────────────────────────
           if (booking.isLoading)
             const Expanded(
                 child: Center(
@@ -162,7 +160,6 @@ class _AgendaScreenState extends State<AgendaScreen>
   }
 }
 
-// ── Lista de cards ──────────────────────────────────────────────────
 class _BookingList extends StatelessWidget {
   final List<AppointmentModel> appointments;
   final Future<void> Function(AppointmentModel) onCancel;
@@ -210,7 +207,6 @@ class _BookingList extends StatelessWidget {
   }
 }
 
-// ── Card individual ─────────────────────────────────────────────────
 class _BookingCard extends StatelessWidget {
   final AppointmentModel appointment;
   final Future<void> Function(AppointmentModel) onCancel;
@@ -258,7 +254,6 @@ class _BookingCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Cabeçalho: avatar + nome + badge ──
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -307,7 +302,6 @@ class _BookingCard extends StatelessWidget {
             const Divider(height: 1, color: AppColors.greyLight),
             const SizedBox(height: 12),
 
-            // ── Detalhes ──
             _row(Icons.location_on_outlined, ap.establishmentName),
             const SizedBox(height: 6),
             _row(Icons.calendar_today_outlined, _formatDate(ap.date)),
@@ -325,7 +319,6 @@ class _BookingCard extends StatelessWidget {
               ),
             ],
 
-            // ── Botão Acompanhar (CONFIRMADO) ──
             if (ap.isConfirmado) ...[
               const SizedBox(height: 12),
               SizedBox(
@@ -348,7 +341,6 @@ class _BookingCard extends StatelessWidget {
               ),
             ],
 
-            // ── Botão cancelar ──
             if (ap.canCancel) ...[
               const SizedBox(height: 8),
               SizedBox(

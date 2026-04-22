@@ -117,7 +117,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
                 child: Column(
                   children: [
-                    // Foto de perfil
                     GestureDetector(
                       onTap: _pickPhoto,
                       child: Container(
@@ -229,7 +228,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ),
                           const SizedBox(height: 24),
 
-                          // Botão Criar Conta
                           SizedBox(
                             width: double.infinity,
                             height: 52,

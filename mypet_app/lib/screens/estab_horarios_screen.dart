@@ -22,7 +22,6 @@ class _EstabHorariosScreenState extends State<EstabHorariosScreen>
   bool _savingSchedule = false;
   int _slotDuration = 60;
 
-  // For "Bloquear" tab
   DateTime _selectedDay = DateTime.now();
   List<TimeSlotModel> _slots = [];
   bool _loadingSlots = false;
@@ -246,7 +245,6 @@ class _EstabHorariosScreenState extends State<EstabHorariosScreen>
     );
   }
 
-  // ── Tab 1: Configurar horários semanais ─────────────────────────
   Widget _buildScheduleTab() {
     if (_loadingSchedule) {
       return const Center(
@@ -265,7 +263,6 @@ class _EstabHorariosScreenState extends State<EstabHorariosScreen>
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        // Duração do slot
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -326,7 +323,6 @@ class _EstabHorariosScreenState extends State<EstabHorariosScreen>
                 color: AppColors.dark)),
         const SizedBox(height: 10),
 
-        // Days of the week
         ...List.generate(schedule.days.length, (i) {
           final day = schedule.days[i];
           return Container(
@@ -344,7 +340,6 @@ class _EstabHorariosScreenState extends State<EstabHorariosScreen>
             ),
             child: Row(
               children: [
-                // Day toggle
                 SizedBox(
                   width: 44,
                   child: Column(
@@ -456,11 +451,9 @@ class _EstabHorariosScreenState extends State<EstabHorariosScreen>
     );
   }
 
-  // ── Tab 2: Bloquear/liberar slots de um dia ─────────────────────
   Widget _buildBlockTab() {
     return Column(
       children: [
-        // Date picker row
         Container(
           color: Colors.white,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -517,7 +510,6 @@ class _EstabHorariosScreenState extends State<EstabHorariosScreen>
           ),
         ),
 
-        // Legend
         Padding(
           padding:
               const EdgeInsets.symmetric(horizontal: 16, vertical: 8),

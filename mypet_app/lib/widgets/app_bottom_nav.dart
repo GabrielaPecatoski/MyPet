@@ -13,7 +13,6 @@ class BottomNavItemData {
   });
 }
 
-// Tabs para clientes
 const clientNavItems = [
   BottomNavItemData(icon: Icons.home_outlined,           activeIcon: Icons.home,            label: 'Home'),
   BottomNavItemData(icon: Icons.calendar_today_outlined, activeIcon: Icons.calendar_today,  label: 'Agenda'),
@@ -22,7 +21,6 @@ const clientNavItems = [
   BottomNavItemData(icon: Icons.person_outline,          activeIcon: Icons.person,          label: 'Perfil'),
 ];
 
-// Tabs para estabelecimentos
 const estabNavItems = [
   BottomNavItemData(icon: Icons.home_outlined,           activeIcon: Icons.home,            label: 'Home'),
   BottomNavItemData(icon: Icons.calendar_today_outlined, activeIcon: Icons.calendar_today,  label: 'Agenda'),
