@@ -147,9 +147,12 @@ class _EstablishmentDetailScreenState
                                   fontWeight: FontWeight.bold,
                                   fontSize: 14,
                                   color: AppColors.dark)),
-                          Text(' (${e.reviewCount} avaliações)',
-                              style: const TextStyle(
-                                  color: AppColors.grey, fontSize: 13)),
+                          Flexible(
+                            child: Text(' (${e.reviewCount} avaliações)',
+                                style: const TextStyle(
+                                    color: AppColors.grey, fontSize: 13),
+                                overflow: TextOverflow.ellipsis),
+                          ),
                           const SizedBox(width: 12),
                           Container(
                             padding: const EdgeInsets.symmetric(

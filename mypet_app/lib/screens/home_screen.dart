@@ -82,15 +82,11 @@ class _HomeScreenState extends State<HomeScreen> {
       body: SafeArea(
         child: CustomScrollView(
           slivers: [
-            // ── AppBar roxo com logo ───────────────────────────
-            SliverAppBar(
-              backgroundColor: AppColors.primary,
-              floating: true,
-              snap: true,
-              elevation: 0,
-              toolbarHeight: 60,
-              titleSpacing: 0,
-              title: Padding(
+            // ── Header roxo com logo ───────────────────────────
+            SliverToBoxAdapter(
+              child: Container(
+                height: 60,
+                color: AppColors.primary,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(
                   children: [

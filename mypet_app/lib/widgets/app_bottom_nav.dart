@@ -68,8 +68,7 @@ class AppBottomNav extends StatelessWidget {
               return GestureDetector(
                 onTap: () => onTap(i),
                 behavior: HitTestBehavior.opaque,
-                child: SizedBox(
-                  width: 64,
+                child: Expanded(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -86,6 +85,8 @@ class AppBottomNav extends StatelessWidget {
                           color: isActive ? AppColors.primary : AppColors.grey,
                           fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),

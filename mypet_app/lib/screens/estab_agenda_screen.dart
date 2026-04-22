@@ -61,8 +61,7 @@ class _EstabAgendaScreenState extends State<EstabAgendaScreen> {
     }
   }
 
-  List<AppointmentModel> get _dayBookings {
-    final all = context.read<BookingProvider>().bookings;
+  List<AppointmentModel> _dayBookingsFor(List<AppointmentModel> all) {
     return all
         .where((b) =>
             b.date.year == _selectedDate.year &&
@@ -93,7 +92,6 @@ class _EstabAgendaScreenState extends State<EstabAgendaScreen> {
       backgroundColor:
           status == 'CONFIRMADO' ? AppColors.success : AppColors.danger,
     ));
-    if (ok) setState(() {});
   }
 
   void _prevWeek() =>
@@ -106,7 +104,7 @@ class _EstabAgendaScreenState extends State<EstabAgendaScreen> {
     final booking = context.watch<BookingProvider>();
     final estab = context.watch<EstablishmentProvider>();
     final all = booking.bookings;
-    final dayBookings = _dayBookings;
+    final dayBookings = _dayBookingsFor(all);
     final week = _weekDays;
 
     return Scaffold(
@@ -535,13 +533,13 @@ class _ApptCard extends StatelessWidget {
                 style: const TextStyle(fontSize: 12, color: AppColors.grey))),
       ]);
 
-  void _showAvaliarClienteDialog(BuildContext context, AppointmentModel ap) {
+  Future<void> _showAvaliarClienteDialog(BuildContext context, AppointmentModel ap) async {
     int selectedRating = 0;
     final commentCtrl = TextEditingController();
     final estabProvider = context.read<EstablishmentProvider>();
     final auth = context.read<AuthProvider>();
 
-    showDialog(
+    await showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
@@ -700,5 +698,6 @@ class _ApptCard extends StatelessWidget {
         ),
       ),
     );
+    commentCtrl.dispose();
   }
 }
