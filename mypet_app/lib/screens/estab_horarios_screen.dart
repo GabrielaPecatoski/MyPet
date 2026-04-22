@@ -5,6 +5,7 @@ import '../models/availability.dart';
 import '../providers/auth_provider.dart';
 import '../providers/establishment_provider.dart';
 import '../services/availability_service.dart';
+import '../widgets/mypet_app_bar.dart';
 
 class EstabHorariosScreen extends StatefulWidget {
   const EstabHorariosScreen({super.key});
@@ -213,38 +214,33 @@ class _EstabHorariosScreenState extends State<EstabHorariosScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-        centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.chevron_left, color: AppColors.dark, size: 28),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text('Gerenciar Horários',
-            style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-                color: AppColors.dark)),
-        bottom: TabBar(
-          controller: _tabCtrl,
-          indicatorColor: AppColors.primary,
-          labelColor: AppColors.primary,
-          unselectedLabelColor: AppColors.grey,
-          labelStyle:
-              const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-          tabs: const [
-            Tab(text: 'Horários'),
-            Tab(text: 'Bloquear'),
-          ],
-        ),
-      ),
-      body: TabBarView(
-        controller: _tabCtrl,
+      appBar: const MypetAppBar(showBack: true),
+      body: Column(
         children: [
-          _buildScheduleTab(),
-          _buildBlockTab(),
+          Container(
+            color: Colors.white,
+            child: TabBar(
+              controller: _tabCtrl,
+              indicatorColor: AppColors.primary,
+              labelColor: AppColors.primary,
+              unselectedLabelColor: AppColors.grey,
+              labelStyle:
+                  const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+              tabs: const [
+                Tab(text: 'Horários'),
+                Tab(text: 'Bloquear'),
+              ],
+            ),
+          ),
+          Expanded(
+            child: TabBarView(
+              controller: _tabCtrl,
+              children: [
+                _buildScheduleTab(),
+                _buildBlockTab(),
+              ],
+            ),
+          ),
         ],
       ),
     );
