@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../core/colors.dart';
+import '../widgets/mypet_app_bar.dart';
 
 class EstabEstatisticasScreen extends StatefulWidget {
   const EstabEstatisticasScreen({super.key});
@@ -42,6 +43,7 @@ class _EstabEstatisticasScreenState extends State<EstabEstatisticasScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
+      appBar: const MypetAppBar(showBack: false),
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
         child: Column(
