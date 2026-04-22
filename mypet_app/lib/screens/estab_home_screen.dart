@@ -70,7 +70,6 @@ class _EstabHomeScreenState extends State<EstabHomeScreen>
             status == 'CONFIRMADO' ? AppColors.success : AppColors.danger,
       ),
     );
-    if (ok) setState(() {});
   }
 
   @override
@@ -358,13 +357,13 @@ class _AgendCard extends StatelessWidget {
 class _ServicosTab extends StatelessWidget {
   const _ServicosTab();
 
-  void _showAddServico(BuildContext context) {
+  Future<void> _showAddServico(BuildContext context) async {
     final nomeCtrl = TextEditingController();
     final precoCtrl = TextEditingController();
     final durCtrl = TextEditingController();
     final descCtrl = TextEditingController();
 
-    showDialog(
+    await showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -449,6 +448,10 @@ class _ServicosTab extends StatelessWidget {
         ],
       ),
     );
+    nomeCtrl.dispose();
+    precoCtrl.dispose();
+    durCtrl.dispose();
+    descCtrl.dispose();
   }
 
   Future<void> _confirmDelete(
