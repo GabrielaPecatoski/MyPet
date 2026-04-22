@@ -106,11 +106,17 @@ class EstabPurpleHeader extends StatelessWidget {
               else
                 const SizedBox(width: 28),
               const Spacer(),
-              Image.asset(
-                'assets/images/logo.png',
-                height: 36,
-                color: Colors.white,
-                colorBlendMode: BlendMode.srcIn,
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Image.asset(
+                  'assets/images/logo.png',
+                  height: 28,
+                  fit: BoxFit.contain,
+                ),
               ),
               const Spacer(),
               const CircleAvatar(
