@@ -37,7 +37,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // Card do usuário
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -50,7 +49,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               child: Row(
                 children: [
-                  // Avatar
                   Stack(
                     children: [
                       GestureDetector(
@@ -114,7 +112,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const SizedBox(height: 16),
 
-            // Menu
             Container(
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -148,7 +145,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const SizedBox(height: 24),
 
-            // Sair
             GestureDetector(
               onTap: () async {
                 await context.read<AuthProvider>().logout();

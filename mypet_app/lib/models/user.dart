@@ -4,7 +4,7 @@ class UserModel {
   final String email;
   final String phone;
   final String? cpf;
-  final String role; // ADMIN | CLIENTE | VENDEDOR
+  final String role;
   final String? photoPath;
 
   UserModel({

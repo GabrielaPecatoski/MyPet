@@ -5,7 +5,6 @@ import 'providers/auth_provider.dart';
 import 'providers/booking_provider.dart';
 import 'providers/cart_provider.dart';
 import 'providers/establishment_provider.dart';
-// Telas comuns
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
@@ -21,11 +20,8 @@ import 'screens/help_screen.dart';
 import 'screens/estab_help_screen.dart';
 import 'screens/carrinho_screen.dart';
 import 'screens/pagamento_screen.dart';
-// Cliente
 import 'screens/main_navigation.dart';
-// Estabelecimento
 import 'screens/estab_navigation.dart';
-// Admin
 import 'screens/admin_screen.dart';
 
 void main() {
@@ -63,20 +59,15 @@ class MyPetApp extends StatelessWidget {
       ),
       initialRoute: '/splash',
       routes: {
-        // ── Auth ──────────────────────────────────────────────
         '/splash':        (_) => const SplashScreen(),
         '/login':         (_) => const LoginScreen(),
         '/register':      (_) => const RegisterScreen(),
-        // ── Cliente ───────────────────────────────────────────
         '/home': (ctx) {
           final idx = ModalRoute.of(ctx)?.settings.arguments as int?;
           return MainNavigation(initialIndex: idx ?? 0);
         },
-        // ── Estabelecimento ───────────────────────────────────
         '/estab-home':    (_) => const EstabNavigation(),
-        // ── Admin ─────────────────────────────────────────────
         '/admin':         (_) => const AdminScreen(),
-        // ── Telas compartilhadas ──────────────────────────────
         '/edit-profile':  (_) => const EditProfileScreen(),
         '/history':       (_) => const HistoryScreen(),
         '/notifications': (_) => const NotificationsScreen(),

@@ -10,7 +10,6 @@ class EstabEstatisticasScreen extends StatefulWidget {
 }
 
 class _EstabEstatisticasScreenState extends State<EstabEstatisticasScreen> {
-  // Mock data — substituir por chamada real à API
   final double _totalReceita = 8_450.00;
   final double _receitaMes = 2_130.00;
   final double _ticketMedio = 87.50;
@@ -60,7 +59,6 @@ class _EstabEstatisticasScreenState extends State<EstabEstatisticasScreen> {
                 style: TextStyle(fontSize: 13, color: AppColors.grey)),
             const SizedBox(height: 20),
 
-            // ── KPI Cards ─────────────────────────────────────────
             Row(
               children: [
                 Expanded(
@@ -110,7 +108,6 @@ class _EstabEstatisticasScreenState extends State<EstabEstatisticasScreen> {
             ),
             const SizedBox(height: 10),
 
-            // ── Avaliação média ───────────────────────────────────
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -183,7 +180,6 @@ class _EstabEstatisticasScreenState extends State<EstabEstatisticasScreen> {
 
             const SizedBox(height: 20),
 
-            // ── Gráfico de barras (últimos 6 meses) ───────────────
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -270,7 +266,6 @@ class _EstabEstatisticasScreenState extends State<EstabEstatisticasScreen> {
 
             const SizedBox(height: 20),
 
-            // ── Distribuição de serviços ───────────────────────────
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -345,7 +340,6 @@ class _EstabEstatisticasScreenState extends State<EstabEstatisticasScreen> {
 
             const SizedBox(height: 20),
 
-            // ── Estimativa próximo mês ─────────────────────────────
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(

@@ -2,7 +2,6 @@ import '../models/faq.dart';
 import 'api_service.dart';
 
 class FaqService {
-  // Dados locais usados quando a API não está disponível
   static final List<FaqItem> _fallback = [
     const FaqItem(id: 'l1', category: 'Agendamento', order: 1, active: true,
       question: 'Como faço para agendar um serviço?',
@@ -88,7 +87,6 @@ class FaqService {
       final list = (data as List).map((e) => e.toString()).toList();
       if (list.isNotEmpty) return list;
     } catch (_) {}
-    // fallback: extrai categorias únicas dos dados locais
     final cats = _fallback.map((f) => f.category).toSet().toList()..sort();
     return cats;
   }
@@ -113,7 +111,6 @@ class FaqService {
       );
       return UserQuestion.fromJson(data as Map<String, dynamic>);
     } catch (_) {
-      // Retorna null — a tela cria localmente
       return null;
     }
   }

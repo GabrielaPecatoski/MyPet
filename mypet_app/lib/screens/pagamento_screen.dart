@@ -122,7 +122,6 @@ class _PagamentoScreenState extends State<PagamentoScreen> {
                     color: AppColors.dark)),
             const SizedBox(height: 20),
 
-            // ── Resumo ─────────────────────────────────────────
             _Card(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -177,7 +176,6 @@ class _PagamentoScreenState extends State<PagamentoScreen> {
             ),
             const SizedBox(height: 16),
 
-            // ── Entrega ────────────────────────────────────────
             _Card(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -233,7 +231,6 @@ class _PagamentoScreenState extends State<PagamentoScreen> {
             ),
             const SizedBox(height: 16),
 
-            // ── Pagamento ──────────────────────────────────────
             _Card(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

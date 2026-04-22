@@ -25,7 +25,6 @@ class _EstabHelpScreenState extends State<EstabHelpScreen>
   final Set<String> _expanded = {};
   final Set<String> _expandedCats = {};
 
-  // Categorias relevantes para estabelecimentos
   static const _estabCategories = [
     'Agendamento',
     'Estabelecimentos',
@@ -146,7 +145,6 @@ class _EstabHelpScreenState extends State<EstabHelpScreen>
               Navigator.pop(ctx);
               final auth = context.read<AuthProvider>();
 
-              // Feedback imediato local
               final localQ = UserQuestion(
                 id: 'local_${DateTime.now().millisecondsSinceEpoch}',
                 userId: auth.user?.id ?? '',
@@ -205,7 +203,6 @@ class _EstabHelpScreenState extends State<EstabHelpScreen>
       appBar: const MypetAppBar(showBack: true),
       body: Column(
         children: [
-          // ── Header ────────────────────────────────────────────────
           Container(
             width: double.infinity,
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
@@ -325,7 +322,6 @@ class _EstabHelpScreenState extends State<EstabHelpScreen>
             ),
           ),
 
-          // ── Conteúdo ──────────────────────────────────────────────
           Expanded(
             child: TabBarView(
               controller: _tabs,
@@ -363,7 +359,6 @@ class _EstabHelpScreenState extends State<EstabHelpScreen>
   }
 }
 
-// ── FAQ Tab (estabelecimento) ────────────────────────────────────────
 class _EstabFaqTab extends StatelessWidget {
   final bool loading;
   final List<FaqItem> faqs;
@@ -667,7 +662,6 @@ class _Banner extends StatelessWidget {
       );
 }
 
-// ── Perguntas Tab (estabelecimento) ─────────────────────────────────
 class _EstabQuestionsTab extends StatelessWidget {
   final bool loading;
   final List<UserQuestion> questions;
