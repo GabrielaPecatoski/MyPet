@@ -55,20 +55,21 @@ class _EstabProfileScreenState extends State<EstabProfileScreen> {
                       offset: Offset(0, 2)),
                 ],
               ),
-              child: Column(
+              child: Row(
                 children: [
+                  // Avatar
                   Stack(
                     children: [
                       GestureDetector(
                         onTap: _pickImage,
                         child: CircleAvatar(
-                          radius: 36,
+                          radius: 34,
                           backgroundColor: AppColors.primaryLight,
                           backgroundImage:
                               photo != null ? FileImage(File(photo)) : null,
                           child: photo == null
                               ? const Icon(Icons.store,
-                                  size: 36, color: AppColors.primary)
+                                  size: 34, color: AppColors.primary)
                               : null,
                         ),
                       ),
@@ -78,36 +79,43 @@ class _EstabProfileScreenState extends State<EstabProfileScreen> {
                         child: GestureDetector(
                           onTap: _pickImage,
                           child: Container(
-                            padding: const EdgeInsets.all(5),
+                            padding: const EdgeInsets.all(4),
                             decoration: BoxDecoration(
                               color: AppColors.primary,
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(10),
                             ),
                             child: const Icon(Icons.camera_alt,
-                                color: Colors.white, size: 13),
+                                color: Colors.white, size: 12),
                           ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
-                  Text(
-                    user?.name ?? 'Estabelecimento',
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                        color: AppColors.dark),
-                    textAlign: TextAlign.center,
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          user?.name ?? 'Estabelecimento',
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 17,
+                              color: AppColors.dark),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(user?.email ?? '',
+                            style: const TextStyle(
+                                fontSize: 13, color: AppColors.grey)),
+                        if (user?.phone != null && user!.phone.isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          Text(user.phone,
+                              style: const TextStyle(
+                                  fontSize: 13, color: AppColors.grey)),
+                        ],
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(user?.email ?? '',
-                      style: const TextStyle(fontSize: 13, color: AppColors.grey)),
-                  if (user?.phone != null && user!.phone.isNotEmpty) ...[
-                    const SizedBox(height: 2),
-                    Text(user.phone,
-                        style:
-                            const TextStyle(fontSize: 13, color: AppColors.grey)),
-                  ],
                 ],
               ),
             ),
@@ -153,26 +161,16 @@ class _EstabProfileScreenState extends State<EstabProfileScreen> {
                   Navigator.pushReplacementNamed(context, '/login');
                 }
               },
-              child: Row(
+              child: const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: AppColors.danger.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(Icons.logout,
-                        color: AppColors.danger, size: 18),
-                  ),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'Sair',
-                    style: TextStyle(
-                        color: AppColors.danger,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600),
-                  ),
+                  Icon(Icons.logout, color: AppColors.danger, size: 20),
+                  SizedBox(width: 8),
+                  Text('Sair',
+                      style: TextStyle(
+                          color: AppColors.danger,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600)),
                 ],
               ),
             ),
