@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "ignoreDeprecations": "5.0",
     "module": "commonjs",
     "declaration": true,
     "removeComments": true,
@@ -18,8 +19,6 @@
     "skipLibCheck": true,
 
     "strictNullChecks": false,
-    "noImplicitAny": false,
-
-    "ignoreDeprecations": "6.0"
+    "noImplicitAny": false
   }
 }

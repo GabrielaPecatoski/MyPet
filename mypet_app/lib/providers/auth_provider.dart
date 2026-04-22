@@ -20,7 +20,6 @@ class AuthProvider extends ChangeNotifier {
   bool get isVendedor => role == 'VENDEDOR';
   bool get isCliente => role == 'CLIENTE';
 
-  /// Retorna a rota inicial para o usuário autenticado
   String get homeRoute {
     switch (role) {
       case 'ADMIN':
@@ -65,6 +64,8 @@ class AuthProvider extends ChangeNotifier {
     required String password,
     required String phone,
     required String cpf,
+    String role = 'CLIENTE',
+    String? businessName,
   }) async {
     _loading = true;
     _error = null;
@@ -76,6 +77,8 @@ class AuthProvider extends ChangeNotifier {
         password: password,
         phone: phone,
         cpf: cpf,
+        role: role,
+        businessName: businessName,
       );
       _token = data['access_token'];
       _user = UserModel.fromJson(data['user']);

@@ -14,7 +14,6 @@ class _AdminScreenState extends State<AdminScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabCtrl;
 
-  // Mock data
   final _usuarios = [
     {'nome': 'João Silva', 'email': 'joao@mypet.com', 'role': 'CLIENTE', 'pets': '2', 'agendamentos': '5'},
     {'nome': 'Maria Costa', 'email': 'maria@mypet.com', 'role': 'CLIENTE', 'pets': '1', 'agendamentos': '3'},
@@ -93,7 +92,6 @@ class _AdminScreenState extends State<AdminScreen>
       ),
       body: Column(
         children: [
-          // ── Stats cards ──────────────────────────────────────
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
             child: Column(
@@ -121,7 +119,6 @@ class _AdminScreenState extends State<AdminScreen>
             ),
           ),
           const SizedBox(height: 12),
-          // ── Tabs ─────────────────────────────────────────────
           Container(
             color: Colors.white,
             child: TabBar(
@@ -202,7 +199,6 @@ class _AdminScreenState extends State<AdminScreen>
   }
 }
 
-// ── Aba Reclamações ───────────────────────────────────────────────
 class _ReclamacoesTab extends StatelessWidget {
   final List<Map<String, String>> reclamacoes;
   const _ReclamacoesTab({required this.reclamacoes});
@@ -298,7 +294,6 @@ class _ReclamacoesTab extends StatelessWidget {
   }
 }
 
-// ── Aba Usuários ──────────────────────────────────────────────────
 class _UsuariosTab extends StatelessWidget {
   final List<Map<String, String>> usuarios;
   const _UsuariosTab({required this.usuarios});
@@ -379,7 +374,6 @@ class _UsuariosTab extends StatelessWidget {
   }
 }
 
-// ── Aba Estabelecimentos ──────────────────────────────────────────
 class _EstabelecimentosTab extends StatelessWidget {
   final List<Map<String, String>> estabelecimentos;
   const _EstabelecimentosTab({required this.estabelecimentos});
@@ -482,7 +476,6 @@ class _EstabelecimentosTab extends StatelessWidget {
       );
 }
 
-// ── Aba Estatísticas ──────────────────────────────────────────────
 class _EstatisticasTab extends StatelessWidget {
   const _EstatisticasTab();
 

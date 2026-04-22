@@ -1,116 +1,149 @@
+import 'dart:io' as dart_io;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/colors.dart';
+import '../core/constants.dart';
 import '../models/establishment.dart';
 import '../providers/auth_provider.dart';
+import '../providers/booking_provider.dart';
+import '../services/api_service.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
-  static final List<EstablishmentModel> _mockEstablishments = [
-    EstablishmentModel(
-      id: '1',
-      name: 'Pet Shop Amor & Carinho',
-      type: 'PET_SHOP',
-      address: 'Rua das Flores, 123 — Vila Nova',
-      phone: '(11) 3456-7890',
-      rating: 4.8,
-      reviewCount: 3,
-      services: [
-        ServiceModel(id: 's1', name: 'Banho', price: 50, durationMinutes: 60),
-        ServiceModel(id: 's2', name: 'Tosa', price: 80, durationMinutes: 90),
-        ServiceModel(id: 's3', name: 'Banho e Tosa', price: 80, durationMinutes: 120),
-      ],
-    ),
-    EstablishmentModel(
-      id: '2',
-      name: 'Clínica Veterinária Vida Animal',
-      type: 'VET_CLINIC',
-      address: 'Av. Principal, 456 — Jardim das Flores',
-      phone: '(11) 3456-1884',
-      rating: 4.3,
-      reviewCount: 5,
-      services: [
-        ServiceModel(id: 's4', name: 'Consulta Veterinária', price: 120, durationMinutes: 45),
-        ServiceModel(id: 's5', name: 'Vacinação', price: 80, durationMinutes: 20),
-        ServiceModel(id: 's6', name: 'Banho', price: 60, durationMinutes: 60),
-      ],
-    ),
-    EstablishmentModel(
-      id: '3',
-      name: 'PetCare Express',
-      type: 'PET_SHOP',
-      address: 'Rua Nova, 789 — Vila Nova',
-      phone: '(11) 3456-1952',
-      rating: 4.5,
-      reviewCount: 2,
-      services: [
-        ServiceModel(id: 's7', name: 'Banho', price: 45, durationMinutes: 60),
-        ServiceModel(id: 's8', name: 'Tosa', price: 75, durationMinutes: 90),
-      ],
-    ),
-  ];
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  List<EstablishmentModel> _establishments = [];
+  List<EstablishmentModel> _filtered = [];
+  bool _loading = true;
+  String? _error;
+  int _selectedChip = 0;
+
+  static const _chips = ['Todos', 'Banho', 'Tosa', 'Veterinário', 'Acessórios'];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadEstablishments());
+  }
+
+  Future<void> _loadEstablishments() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final data = await ApiService.get(ApiConstants.establishmentsEndpoint);
+      final list = data as List;
+      setState(() {
+        _establishments =
+            list.map((e) => EstablishmentModel.fromJson(e as Map<String, dynamic>)).toList();
+        _filtered = _establishments;
+      });
+    } catch (e) {
+      setState(() => _error = 'Não foi possível carregar os estabelecimentos.');
+    } finally {
+      setState(() => _loading = false);
+    }
+  }
+
+  void _onChipTap(int idx) {
+    setState(() {
+      _selectedChip = idx;
+      if (idx == 0) {
+        _filtered = _establishments;
+      } else {
+        final term = _chips[idx].toLowerCase();
+        _filtered = _establishments
+            .where((e) =>
+                e.name.toLowerCase().contains(term) ||
+                e.services.any((s) => s.name.toLowerCase().contains(term)))
+            .toList();
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthProvider>().user;
+    final bookings = context.watch<BookingProvider>().bookings;
+    final today = DateTime.now();
+    final confirmedToday = bookings.where((b) =>
+        b.status == 'CONFIRMADO' &&
+        b.date.year == today.year &&
+        b.date.month == today.month &&
+        b.date.day == today.day).toList();
 
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: CustomScrollView(
           slivers: [
-            SliverAppBar(
-              backgroundColor: AppColors.background,
-              floating: true,
-              snap: true,
-              elevation: 0,
-              titleSpacing: 0,
-              title: Padding(
+            SliverToBoxAdapter(
+              child: Container(
+                height: 60,
+                color: AppColors.primary,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(
                   children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Olá, ${user?.name.split(' ').first ?? 'visitante'} 👋',
-                            style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.dark),
-                          ),
-                          const Text(
-                            'Encontre o melhor serviço para o seu pet',
-                            style: TextStyle(fontSize: 12, color: AppColors.grey),
-                          ),
-                        ],
-                      ),
+                    const Spacer(),
+                    Image.asset(
+                      'assets/images/logo branca.png',
+                      height: 36,
+                      fit: BoxFit.contain,
                     ),
-                    CircleAvatar(
-                      radius: 20,
-                      backgroundColor: AppColors.primaryLight,
-                      child: const Icon(Icons.person, color: AppColors.primary),
+                    const Spacer(),
+                    GestureDetector(
+                      onTap: () {
+                        if (user != null) {
+                          Navigator.pushNamed(context, '/home', arguments: 4);
+                        } else {
+                          Navigator.pushNamed(context, '/login');
+                        }
+                      },
+                      child: CircleAvatar(
+                        radius: 18,
+                        backgroundColor: Colors.white24,
+                        child: user?.photoPath != null
+                            ? ClipOval(
+                                child: Image.file(
+                                  dart_io.File(user!.photoPath!),
+                                  width: 36,
+                                  height: 36,
+                                  fit: BoxFit.cover,
+                                ),
+                              )
+                            : const Icon(Icons.person, size: 20, color: Colors.white),
+                      ),
                     ),
                   ],
                 ),
               ),
             ),
+
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SizedBox(height: 8),
-                    // Barra de busca
+                    const SizedBox(height: 16),
+
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 14),
+                      height: 48,
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.greyLight),
+                        boxShadow: const [
+                          BoxShadow(
+                              color: Colors.black12,
+                              blurRadius: 8,
+                              offset: Offset(0, 2)),
+                        ],
                       ),
                       child: const Row(
                         children: [
@@ -120,190 +153,306 @@ class HomeScreen extends StatelessWidget {
                             child: TextField(
                               decoration: InputDecoration(
                                 hintText: 'Buscar pet shop, clínica...',
-                                hintStyle: TextStyle(color: AppColors.grey),
+                                hintStyle:
+                                    TextStyle(color: AppColors.grey, fontSize: 14),
                                 border: InputBorder.none,
+                                isDense: true,
                               ),
                             ),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 20),
-                    // Categorias
-                    Row(
-                      children: [
-                        _categoryChip('Todos', true),
-                        const SizedBox(width: 8),
-                        _categoryChip('Pet Shop', false),
-                        const SizedBox(width: 8),
-                        _categoryChip('Veterinário', false),
-                        const SizedBox(width: 8),
-                        _categoryChip('Acessórios', false),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    // Mais bem avaliados
-                    const Text(
-                      'Mais Bem Avaliados',
-                      style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.dark),
-                    ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      height: 160,
-                      child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: _mockEstablishments.take(3).length,
-                        separatorBuilder: (_, __) => const SizedBox(width: 12),
-                        itemBuilder: (ctx, i) =>
-                            _highlightCard(context, _mockEstablishments[i]),
+                    const SizedBox(height: 16),
+
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: List.generate(_chips.length, (i) {
+                          final sel = _selectedChip == i;
+                          return Padding(
+                            padding: EdgeInsets.only(right: i < _chips.length - 1 ? 8 : 0),
+                            child: GestureDetector(
+                              onTap: () => _onChipTap(i),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: sel ? AppColors.primary : Colors.white,
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: sel ? AppColors.primary : AppColors.greyLight,
+                                  ),
+                                ),
+                                child: Text(
+                                  _chips[i],
+                                  style: TextStyle(
+                                    color: sel ? Colors.white : AppColors.grey,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        }),
                       ),
                     ),
-                    const SizedBox(height: 24),
-                    // Todos estabelecimentos
-                    const Text(
-                      'Estabelecimentos Parceiros',
-                      style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.dark),
-                    ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 20),
+
+                    if (confirmedToday.isNotEmpty)
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 16),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: AppColors.success.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                              color: AppColors.success.withValues(alpha: 0.3)),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: AppColors.success.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(Icons.check_circle,
+                                  color: AppColors.success, size: 20),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Serviço Confirmado',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                        color: AppColors.dark),
+                                  ),
+                                  Text(
+                                    confirmedToday.first.serviceName +
+                                        ' às ' +
+                                        confirmedToday.first.time,
+                                    style: const TextStyle(
+                                        fontSize: 12, color: AppColors.grey),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                    if (_loading)
+                      const Center(
+                          child: Padding(
+                              padding: EdgeInsets.all(40),
+                              child: CircularProgressIndicator(
+                                  color: AppColors.primary)))
+                    else if (_error != null)
+                      Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(32),
+                          child: Column(
+                            children: [
+                              const Icon(Icons.wifi_off,
+                                  size: 48, color: AppColors.greyLight),
+                              const SizedBox(height: 12),
+                              Text(_error!,
+                                  style: const TextStyle(color: AppColors.grey),
+                                  textAlign: TextAlign.center),
+                              const SizedBox(height: 12),
+                              ElevatedButton(
+                                onPressed: _loadEstablishments,
+                                style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.primary),
+                                child: const Text('Tentar novamente',
+                                    style: TextStyle(color: Colors.white)),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    else if (_filtered.isEmpty)
+                      const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(32),
+                          child: Text(
+                            'Nenhum estabelecimento encontrado.',
+                            style: TextStyle(color: AppColors.grey),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      )
+                    else ...[
+                      const Text(
+                        'Mais Bem Avaliados',
+                        style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.dark),
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        height: 168,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: _filtered.take(5).length,
+                          separatorBuilder: (_, __) => const SizedBox(width: 12),
+                          itemBuilder: (ctx, i) =>
+                              _HighlightCard(establishment: _filtered[i]),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+
+                      const Text(
+                        'Estabelecimentos',
+                        style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.dark),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
                   ],
                 ),
               ),
             ),
-            SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (ctx, i) => Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  child: _establishmentCard(context, _mockEstablishments[i]),
+
+            if (!_loading && _error == null && _filtered.isNotEmpty)
+              SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (ctx, i) => Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    child: _EstabCard(establishment: _filtered[i]),
+                  ),
+                  childCount: _filtered.length,
                 ),
-                childCount: _mockEstablishments.length,
               ),
-            ),
-            const SliverToBoxAdapter(child: SizedBox(height: 16)),
+
+            const SliverToBoxAdapter(child: SizedBox(height: 24)),
           ],
         ),
       ),
     );
   }
+}
 
-  Widget _categoryChip(String label, bool selected) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: selected ? AppColors.primary : Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: selected ? AppColors.primary : AppColors.greyLight,
-        ),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: selected ? Colors.white : AppColors.grey,
-          fontSize: 13,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-    );
-  }
+class _HighlightCard extends StatelessWidget {
+  final EstablishmentModel establishment;
+  const _HighlightCard({required this.establishment});
 
-  Widget _highlightCard(BuildContext context, EstablishmentModel e) {
+  @override
+  Widget build(BuildContext context) {
+    final e = establishment;
     return GestureDetector(
       onTap: () => Navigator.pushNamed(context, '/establishment', arguments: e),
       child: Container(
-        width: 200,
-        padding: const EdgeInsets.all(12),
+        width: 160,
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
+          boxShadow: const [
+            BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 2)),
           ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              height: 80,
+              height: 90,
               decoration: BoxDecoration(
                 color: AppColors.primaryLight,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
               ),
               child: Center(
                 child: Icon(
-                  e.type == 'PET_SHOP' ? Icons.pets : Icons.local_hospital,
+                  e.type == 'VET_CLINIC' ? Icons.local_hospital : Icons.pets,
                   color: AppColors.primary,
-                  size: 36,
+                  size: 40,
                 ),
               ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              e.name,
-              style: const TextStyle(
-                  fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.dark),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                const Icon(Icons.star, size: 13, color: Color(0xFFFFC107)),
-                const SizedBox(width: 2),
-                Text('${e.rating}',
-                    style: const TextStyle(fontSize: 12, color: AppColors.grey)),
-                const SizedBox(width: 4),
-                Text('(${e.reviewCount})',
-                    style: const TextStyle(fontSize: 12, color: AppColors.grey)),
-              ],
+            Padding(
+              padding: const EdgeInsets.all(10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    e.name,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                        color: AppColors.dark),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(Icons.star, size: 13, color: Color(0xFFFFC107)),
+                      const SizedBox(width: 3),
+                      Text(
+                        '${e.rating}',
+                        style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.dark,
+                            fontWeight: FontWeight.w600),
+                      ),
+                      Text(
+                        ' (${e.reviewCount})',
+                        style: const TextStyle(fontSize: 11, color: AppColors.grey),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ],
         ),
       ),
     );
   }
+}
 
-  Widget _establishmentCard(BuildContext context, EstablishmentModel e) {
+class _EstabCard extends StatelessWidget {
+  final EstablishmentModel establishment;
+  const _EstabCard({required this.establishment});
+
+  @override
+  Widget build(BuildContext context) {
+    final e = establishment;
     return GestureDetector(
       onTap: () => Navigator.pushNamed(context, '/establishment', arguments: e),
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
-            ),
+          boxShadow: const [
+            BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 2)),
           ],
         ),
         child: Row(
           children: [
             Container(
-              width: 56,
-              height: 56,
+              width: 60,
+              height: 60,
               decoration: BoxDecoration(
                 color: AppColors.primaryLight,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Center(
                 child: Icon(
-                  e.type == 'PET_SHOP' ? Icons.pets : Icons.local_hospital,
+                  e.type == 'VET_CLINIC' ? Icons.local_hospital : Icons.pets,
                   color: AppColors.primary,
-                  size: 26,
+                  size: 28,
                 ),
               ),
             ),
@@ -314,17 +463,31 @@ class HomeScreen extends StatelessWidget {
                 children: [
                   Text(e.name,
                       style: const TextStyle(
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.bold,
                           fontSize: 14,
                           color: AppColors.dark)),
                   const SizedBox(height: 2),
-                  Text(e.typeLabel,
-                      style: const TextStyle(fontSize: 12, color: AppColors.grey)),
+                  Row(
+                    children: [
+                      const Icon(Icons.star, size: 13, color: Color(0xFFFFC107)),
+                      const SizedBox(width: 3),
+                      Text('${e.rating}',
+                          style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.dark,
+                              fontWeight: FontWeight.w600)),
+                      const SizedBox(width: 8),
+                      Text(e.typeLabel,
+                          style: const TextStyle(
+                              fontSize: 12, color: AppColors.grey)),
+                    ],
+                  ),
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      const Icon(Icons.location_on, size: 12, color: AppColors.grey),
-                      const SizedBox(width: 2),
+                      const Icon(Icons.location_on_outlined,
+                          size: 12, color: AppColors.grey),
+                      const SizedBox(width: 3),
                       Expanded(
                         child: Text(e.address,
                             style: const TextStyle(
@@ -338,28 +501,20 @@ class HomeScreen extends StatelessWidget {
               ),
             ),
             Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Row(
-                  children: [
-                    const Icon(Icons.star, size: 14, color: Color(0xFFFFC107)),
-                    const SizedBox(width: 2),
-                    Text('${e.rating}',
-                        style: const TextStyle(
-                            fontSize: 12, fontWeight: FontWeight.w600)),
-                  ],
-                ),
-                const SizedBox(height: 4),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: AppColors.primaryLight,
-                    borderRadius: BorderRadius.circular(6),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     '${e.services.length} serv.',
                     style: const TextStyle(
-                        fontSize: 11, color: AppColors.primary, fontWeight: FontWeight.w600),
+                        fontSize: 11,
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.bold),
                   ),
                 ),
               ],

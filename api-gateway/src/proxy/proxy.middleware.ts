@@ -10,6 +10,7 @@ const ROUTES = [
   { prefix: '/establishments', target: process.env.ESTABLISHMENT_SERVICE_URL ?? 'http://localhost:3003' },
   { prefix: '/marketplace',    target: process.env.MARKETPLACE_SERVICE_URL   ?? 'http://localhost:3004' },
   { prefix: '/bookings',       target: process.env.BOOKING_SERVICE_URL       ?? 'http://localhost:3005' },
+  { prefix: '/availability',   target: process.env.BOOKING_SERVICE_URL       ?? 'http://localhost:3005' },
   { prefix: '/notifications',  target: process.env.NOTIFICATION_SERVICE_URL  ?? 'http://localhost:3006' },
   { prefix: '/reviews',        target: process.env.REVIEW_SERVICE_URL        ?? 'http://localhost:3007' },
 ];

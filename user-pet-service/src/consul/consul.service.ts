@@ -1,4 +1,9 @@
-import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  OnModuleInit,
+  OnModuleDestroy,
+  Logger,
+} from '@nestjs/common';
 import * as http from 'http';
 
 export interface ConsulConfig {
@@ -17,8 +22,12 @@ export class ConsulService implements OnModuleInit, OnModuleDestroy {
     this.serviceId = `${config.serviceName}-${Date.now()}`;
   }
 
-  async onModuleInit()    { await this.register();   }
-  async onModuleDestroy() { await this.deregister(); }
+  async onModuleInit() {
+    await this.register();
+  }
+  async onModuleDestroy() {
+    await this.deregister();
+  }
 
   private register(): Promise<void> {
     const body = JSON.stringify({
@@ -33,22 +42,45 @@ export class ConsulService implements OnModuleInit, OnModuleDestroy {
       },
     });
     return this.request('PUT', '/v1/agent/service/register', body)
-      .then(() => this.logger.log(`Registrado no Consul como "${this.config.serviceName}"`))
-      .catch(err  => this.logger.warn(`Consul indisponível: ${err.message}`));
+      .then(() =>
+        this.logger.log(
+          `Registrado no Consul como "${this.config.serviceName}"`,
+        ),
+      )
+      .catch((err: Error) =>
+        this.logger.warn(`Consul indisponível: ${err.message}`),
+      );
   }
 
   private deregister(): Promise<void> {
-    return this.request('PUT', `/v1/agent/service/deregister/${this.serviceId}`, '')
+    return this.request(
+      'PUT',
+      `/v1/agent/service/deregister/${this.serviceId}`,
+      '',
+    )
       .then(() => this.logger.log(`Deregistrado do Consul`))
-      .catch(err  => this.logger.warn(`Erro ao deregistrar: ${err.message}`));
+      .catch((err: Error) =>
+        this.logger.warn(`Erro ao deregistrar: ${err.message}`),
+      );
   }
 
   private request(method: string, path: string, body: string): Promise<void> {
     return new Promise((resolve, reject) => {
       const req = http.request(
-        { hostname: this.consulHost, port: this.consulPort, path, method,
-          headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) } },
-        res => res.statusCode && res.statusCode < 300 ? resolve() : reject(new Error(`${res.statusCode}`)),
+        {
+          hostname: this.consulHost,
+          port: this.consulPort,
+          path,
+          method,
+          headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(body),
+          },
+        },
+        (res) =>
+          res.statusCode && res.statusCode < 300
+            ? resolve()
+            : reject(new Error(`${res.statusCode}`)),
       );
       req.on('error', reject);
       if (body) req.write(body);

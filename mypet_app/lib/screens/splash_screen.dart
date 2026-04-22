@@ -18,8 +18,6 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _init() async {
-    await Future.delayed(const Duration(seconds: 2));
-    if (!mounted) return;
     final auth = context.read<AuthProvider>();
     await auth.loadFromStorage();
     if (!mounted) return;
@@ -49,7 +47,7 @@ class _SplashScreenState extends State<SplashScreen> {
                     fontSize: 32,
                     fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
-            const Text('Agende serviços para seu pet com facilidade',
+            const Text('O melhor para seu pet, na palma da sua mão',
                 style: TextStyle(color: Colors.white70, fontSize: 14),
                 textAlign: TextAlign.center),
             const SizedBox(height: 48),
