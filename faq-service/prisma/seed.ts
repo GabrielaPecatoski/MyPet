@@ -32,6 +32,13 @@ const faqs = [
     answer:
       'Após o agendamento ser confirmado, acesse "Agenda" e toque em "Acompanhar serviço". Você verá o status atual e um mapa simulado da localização do estabelecimento.',
   },
+  {
+    category: 'Agendamento',
+    order: 5,
+    question: 'Recebi a confirmação mas o horário sumiu. O que fazer?',
+    answer:
+      'Tente puxar a lista para baixo para recarregar os dados. Se o problema persistir, entre em contato com o estabelecimento diretamente.',
+  },
   // ── Pets ──────────────────────────────────────────────────────────
   {
     category: 'Pets',
@@ -46,6 +53,13 @@ const faqs = [
     question: 'Quantos pets posso cadastrar?',
     answer:
       'Não há limite de pets por conta. Você pode cadastrar todos os seus animais e selecionar qual será atendido em cada agendamento.',
+  },
+  {
+    category: 'Pets',
+    order: 3,
+    question: 'Posso cadastrar pets de espécies diferentes?',
+    answer:
+      'Sim! O MyPet aceita cães, gatos, pássaros, roedores e outras espécies. Basta informar a espécie no momento do cadastro.',
   },
   // ── Conta e Perfil ────────────────────────────────────────────────
   {
@@ -69,6 +83,13 @@ const faqs = [
     answer:
       'Para exclusão de conta, entre em contato com o suporte pelo formulário de dúvidas ou pelo e-mail suporte@mypet.com.br. Sua solicitação será processada em até 5 dias úteis.',
   },
+  {
+    category: 'Conta e Perfil',
+    order: 4,
+    question: 'Como altero minha foto de perfil?',
+    answer:
+      'Acesse "Perfil" e toque na foto atual (ou no ícone de câmera). Selecione uma imagem da sua galeria para substituir.',
+  },
   // ── Avaliações ────────────────────────────────────────────────────
   {
     category: 'Avaliações',
@@ -84,6 +105,13 @@ const faqs = [
     answer:
       'No momento, avaliações enviadas não podem ser editadas. Caso haja um problema com sua avaliação, entre em contato com o suporte.',
   },
+  {
+    category: 'Avaliações',
+    order: 3,
+    question: 'Por que minha avaliação não aparece no estabelecimento?',
+    answer:
+      'Avaliações passam por uma verificação automática antes de serem publicadas. Em até 24h sua avaliação estará visível.',
+  },
   // ── Pagamentos ────────────────────────────────────────────────────
   {
     category: 'Pagamentos',
@@ -98,6 +126,13 @@ const faqs = [
     question: 'O aplicativo cobra alguma taxa?',
     answer:
       'O MyPet é gratuito para clientes. O pagamento é feito diretamente ao estabelecimento pelos serviços contratados.',
+  },
+  {
+    category: 'Pagamentos',
+    order: 3,
+    question: 'Como solicito reembolso?',
+    answer:
+      'Reembolsos são tratados diretamente com o estabelecimento. Em caso de não resolução, entre em contato com nosso suporte pelo formulário de dúvidas.',
   },
   // ── Estabelecimentos ──────────────────────────────────────────────
   {
@@ -128,17 +163,28 @@ const faqs = [
     answer:
       'Acesse a aba "Estatísticas" no menu inferior do estabelecimento. Lá você encontra faturamento total, ticket médio, agendamentos realizados e estimativas para o próximo mês.',
   },
+  {
+    category: 'Estabelecimentos',
+    order: 5,
+    question: 'Como respondo a avaliação de um cliente?',
+    answer:
+      'Acesse a aba "Avaliações" no menu do estabelecimento. Toque na avaliação desejada para visualizá-la. A funcionalidade de resposta estará disponível em breve.',
+  },
 ];
 
 async function main() {
   console.log('Seeding FAQ items...');
-  await prisma.faqItem.deleteMany();
 
-  for (const faq of faqs) {
-    await prisma.faqItem.create({ data: faq });
+  // Limpa apenas se não houver perguntas de usuário (evita apagar dados de produção)
+  const existingCount = await prisma.faqItem.count();
+  if (existingCount === 0) {
+    for (const faq of faqs) {
+      await prisma.faqItem.create({ data: faq });
+    }
+    console.log(`✓ ${faqs.length} FAQ items created.`);
+  } else {
+    console.log(`✓ Seed pulado — já existem ${existingCount} FAQs no banco.`);
   }
-
-  console.log(`✓ ${faqs.length} FAQ items created.`);
 }
 
 main()
