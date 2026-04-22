@@ -38,7 +38,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
       final list = data as List;
       final all = list.map((e) => AppointmentModel.fromJson(e)).toList();
 
-      // Auto-concluir bookings CONFIRMADO com 4h+ passadas
       final now = DateTime.now();
       for (final b in all) {
         if (b.status == 'CONFIRMADO' &&
@@ -53,7 +52,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
         }
       }
 
-      // Recarrega após auto-conclusão
       final data2 = await ApiService.get(
         '/bookings/user/${auth.user!.id}',
         token: auth.token,
@@ -66,7 +64,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
           ..sort((a, b) => b.date.compareTo(a.date));
       });
     } catch (_) {
-      // silently fail – show empty state
     } finally {
       setState(() => _loading = false);
     }
@@ -174,7 +171,6 @@ class _HistoryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Cabeçalho
           Row(
             children: [
               CircleAvatar(
@@ -234,7 +230,6 @@ class _HistoryCard extends StatelessWidget {
           _row(Icons.access_time_outlined, appointment.time),
           const SizedBox(height: 12),
 
-          // Ver detalhes
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
@@ -252,7 +247,6 @@ class _HistoryCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
 
-          // Avaliar e Reclamar
           Row(
             children: [
               Expanded(
@@ -410,7 +404,6 @@ class _HistoryCard extends StatelessWidget {
                             token: auth.token,
                           );
                         } catch (_) {
-                          // best-effort: even if API fails, mark as reviewed locally
                         }
                         onReviewed();
                         if (context.mounted) {
