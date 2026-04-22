@@ -24,9 +24,7 @@ class _HelpScreenState extends State<HelpScreen>
   String _search = '';
   String? _selectedCategory;
   List<String> _categories = [];
-  // itens do accordion expandidos
   final Set<String> _expanded = {};
-  // categorias com "ver mais" ativado
   final Set<String> _expandedCats = {};
 
   @override
@@ -136,7 +134,6 @@ class _HelpScreenState extends State<HelpScreen>
               Navigator.pop(ctx);
               final auth = context.read<AuthProvider>();
 
-              // Cria localmente imediatamente para feedback instantâneo
               final localQ = UserQuestion(
                 id: 'local_${DateTime.now().millisecondsSinceEpoch}',
                 userId: auth.user?.id ?? '',
@@ -151,7 +148,6 @@ class _HelpScreenState extends State<HelpScreen>
               });
               _tabs.animateTo(1);
 
-              // Tenta enviar para a API em background
               final saved = await FaqService.submitQuestion(
                 userId: auth.user?.id ?? '',
                 userName: auth.user?.name ?? 'Usuário',
@@ -160,7 +156,6 @@ class _HelpScreenState extends State<HelpScreen>
                 token: auth.token,
               );
               if (saved != null) {
-                // substitui o item local pelo retornado da API
                 setState(() {
                   _myQuestions = [
                     saved,
@@ -317,7 +312,6 @@ class _HelpScreenState extends State<HelpScreen>
   }
 }
 
-// ── Aba FAQ ─────────────────────────────────────────────────────────
 class _FaqTab extends StatelessWidget {
   final bool loading;
   final List<FaqItem> faqs;
@@ -571,7 +565,6 @@ class _AskBanner extends StatelessWidget {
       );
 }
 
-// ── Aba Minhas Dúvidas ───────────────────────────────────────────────
 class _QuestionsTab extends StatelessWidget {
   final bool loading;
   final List<UserQuestion> questions;

@@ -108,7 +108,6 @@ class _AddPetScreenState extends State<AddPetScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Foto do pet
                 Center(
                   child: GestureDetector(
                     onTap: _showImageOptions,
@@ -144,7 +143,6 @@ class _AddPetScreenState extends State<AddPetScreen> {
                 ),
                 const SizedBox(height: 24),
 
-                // Nome do Pet
                 _label('Nome do Pet'),
                 TextFormField(
                   controller: _nomeCtrl,
@@ -153,7 +151,6 @@ class _AddPetScreenState extends State<AddPetScreen> {
                 ),
                 const SizedBox(height: 18),
 
-                // Tipo
                 _label('Tipo'),
                 ...['Cachorro', 'Gato', 'Outro'].map((tipo) => GestureDetector(
                       onTap: () => setState(() => _tipoSelecionado = tipo),
@@ -204,7 +201,6 @@ class _AddPetScreenState extends State<AddPetScreen> {
                     )),
                 const SizedBox(height: 16),
 
-                // Raça
                 _label('Raça'),
                 TextFormField(
                   controller: _racaCtrl,
@@ -213,7 +209,6 @@ class _AddPetScreenState extends State<AddPetScreen> {
                 ),
                 const SizedBox(height: 18),
 
-                // Idade
                 _label('Idade (Anos)'),
                 TextFormField(
                   controller: _idadeCtrl,
@@ -227,7 +222,6 @@ class _AddPetScreenState extends State<AddPetScreen> {
                 ),
                 const SizedBox(height: 28),
 
-                // Botões
                 Row(
                   children: [
                     Expanded(

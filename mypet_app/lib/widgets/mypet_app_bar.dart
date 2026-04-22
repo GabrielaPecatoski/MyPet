@@ -4,8 +4,6 @@ import 'package:provider/provider.dart';
 import '../core/colors.dart';
 import '../providers/auth_provider.dart';
 
-/// Header branco padrão — widget customizado sem AppBar nativo para evitar
-/// conflitos de Hero quando múltiplas telas vivem simultaneamente em IndexedStack.
 class MypetAppBar extends StatelessWidget implements PreferredSizeWidget {
   final bool showBack;
   final VoidCallback? onBack;
@@ -32,7 +30,6 @@ class MypetAppBar extends StatelessWidget implements PreferredSizeWidget {
             height: kToolbarHeight,
             child: Row(
               children: [
-                // Leading
                 SizedBox(
                   width: 48,
                   child: showBack
@@ -44,7 +41,6 @@ class MypetAppBar extends StatelessWidget implements PreferredSizeWidget {
                       : null,
                 ),
 
-                // Logo centralizada
                 Expanded(
                   child: Center(
                     child: Image.asset(
@@ -55,7 +51,6 @@ class MypetAppBar extends StatelessWidget implements PreferredSizeWidget {
                   ),
                 ),
 
-                // Actions
                 SizedBox(
                   width: 48,
                   child: actions != null
@@ -95,7 +90,6 @@ class MypetAppBar extends StatelessWidget implements PreferredSizeWidget {
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 }
 
-/// Header roxo com gradiente — reutilizável para telas de estabelecimento.
 class EstabPurpleHeader extends StatelessWidget {
   final int pendentes;
   final int confirmados;

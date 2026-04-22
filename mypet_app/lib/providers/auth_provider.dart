@@ -20,7 +20,6 @@ class AuthProvider extends ChangeNotifier {
   bool get isVendedor => role == 'VENDEDOR';
   bool get isCliente => role == 'CLIENTE';
 
-  /// Retorna a rota inicial para o usuário autenticado
   String get homeRoute {
     switch (role) {
       case 'ADMIN':
