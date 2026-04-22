@@ -12,9 +12,13 @@
     "start:dev": "nest start --watch",
     "start:prod": "node dist/main",
     "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate deploy",
-    "prisma:seed": "ts-node prisma/seed.ts",
-    "db:setup": "npm run prisma:migrate && npm run prisma:seed"
+    "prisma:push": "prisma db push --accept-data-loss",
+    "prisma:seed": "ts-node --esm prisma/seed.ts",
+    "db:setup": "npm run prisma:push && npm run prisma:seed",
+    "start:migrate": "npm run db:setup && npm run start:prod"
+  },
+  "prisma": {
+    "seed": "ts-node --esm prisma/seed.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
