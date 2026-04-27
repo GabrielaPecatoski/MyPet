@@ -11,31 +11,44 @@ export class NotificationHandler {
 
   @EventPattern(EVENTS.BOOKING_CREATED)
   async handleBookingCreated(
-    @Payload() data: { bookingId: string; userId: string; establishmentId: string; scheduledAt: string },
+    @Payload()
+    data: {
+      bookingId: string;
+      userId: string;
+      establishmentId: string;
+      scheduledAt: string;
+    },
     @Ctx() context: RmqContext,
   ) {
     await this.notificationService.sendBookingConfirmation(data);
-    const channel = context.getChannelRef();
+    const channel = context.getChannelRef() as { ack: (msg: unknown) => void };
     channel.ack(context.getMessage());
   }
 
   @EventPattern(EVENTS.BOOKING_STATUS_UPDATED)
   async handleBookingStatusUpdated(
-    @Payload() data: { bookingId: string; status: 'CONFIRMED' | 'CANCELED'; updatedAt: string },
+    @Payload()
+    data: {
+      bookingId: string;
+      userId: string;
+      status: string;
+      scheduledAt?: string;
+      updatedAt?: string;
+    },
     @Ctx() context: RmqContext,
   ) {
     await this.notificationService.sendStatusUpdate(data);
-    const channel = context.getChannelRef();
+    const channel = context.getChannelRef() as { ack: (msg: unknown) => void };
     channel.ack(context.getMessage());
   }
 
   @EventPattern(EVENTS.BOOKING_COMPLETED)
   async handleBookingCompleted(
-    @Payload() data: { bookingId: string; completedAt: string },
+    @Payload() data: { bookingId: string; userId: string; completedAt: string },
     @Ctx() context: RmqContext,
   ) {
     await this.notificationService.sendCompletionNotification(data);
-    const channel = context.getChannelRef();
+    const channel = context.getChannelRef() as { ack: (msg: unknown) => void };
     channel.ack(context.getMessage());
   }
 }

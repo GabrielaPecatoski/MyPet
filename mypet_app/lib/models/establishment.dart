@@ -12,6 +12,14 @@ class ServiceModel {
     required this.durationMinutes,
     this.description,
   });
+
+  factory ServiceModel.fromJson(Map<String, dynamic> json) => ServiceModel(
+        id: json['id'] as String,
+        name: json['name'] as String,
+        price: (json['price'] as num).toDouble(),
+        durationMinutes: (json['durationMinutes'] as num).toInt(),
+        description: json['description'] as String?,
+      );
 }
 
 class EstablishmentModel {
@@ -36,6 +44,27 @@ class EstablishmentModel {
     this.imageUrl,
     this.services = const [],
   });
+
+  factory EstablishmentModel.fromJson(Map<String, dynamic> json) {
+    final servicesList = (json['services'] as List? ?? [])
+        .map((s) => ServiceModel.fromJson(s as Map<String, dynamic>))
+        .toList();
+    final address = [
+      json['address'] as String? ?? '',
+      if ((json['city'] as String?)?.isNotEmpty == true) json['city'] as String,
+    ].where((s) => s.isNotEmpty).join(' — ');
+    return EstablishmentModel(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      type: json['type'] as String? ?? 'PET_SHOP',
+      address: address,
+      phone: json['phone'] as String? ?? '',
+      rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
+      reviewCount: (json['reviewCount'] as num?)?.toInt() ?? 0,
+      imageUrl: json['imageUrl'] as String?,
+      services: servicesList,
+    );
+  }
 
   String get typeLabel =>
       type == 'PET_SHOP' ? 'Pet Shop' : 'Clínica Veterinária';

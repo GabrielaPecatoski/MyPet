@@ -3,6 +3,9 @@
 /node_modules
 /build
 
+# Runtime data (persistence files - not for git)
+/data
+
 # Logs
 logs
 *.log
