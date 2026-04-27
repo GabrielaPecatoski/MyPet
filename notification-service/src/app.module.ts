@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
+import { AppService } from './app.service';
 import { HealthController } from './health/health.controller';
 import { ConsulService } from './consul/consul.service';
 import { NotificationHandler } from './notification/notification.handler';
@@ -19,6 +20,7 @@ const SERVICE_PORT = 3006;
     NotificationHandler,
   ],
   providers: [
+    AppService,
     NotificationService,
     {
       provide: ConsulService,
