@@ -98,7 +98,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // Avatar clicável
             Center(
               child: GestureDetector(
                 onTap: _pickPhoto,
@@ -133,7 +132,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ),
             const SizedBox(height: 24),
 
-            // Card formulário
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -170,7 +168,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ),
             const SizedBox(height: 24),
 
-            // Salvar
             SizedBox(
               width: double.infinity,
               height: 52,
@@ -193,7 +190,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ),
             const SizedBox(height: 12),
 
-            // Cancelar
             SizedBox(
               width: double.infinity,
               height: 52,

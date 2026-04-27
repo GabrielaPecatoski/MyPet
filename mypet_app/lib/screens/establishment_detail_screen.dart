@@ -106,7 +106,6 @@ class _EstablishmentDetailScreenState
         children: [
           CustomScrollView(
             slivers: [
-              // Banner
               SliverToBoxAdapter(
                 child: Container(
                   height: 200,
@@ -129,14 +128,12 @@ class _EstablishmentDetailScreenState
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Nome
                       Text(e.name,
                           style: const TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
                               color: AppColors.dark)),
                       const SizedBox(height: 6),
-                      // Rating + tipo
                       Row(
                         children: [
                           const Icon(Icons.star,
@@ -147,9 +144,12 @@ class _EstablishmentDetailScreenState
                                   fontWeight: FontWeight.bold,
                                   fontSize: 14,
                                   color: AppColors.dark)),
-                          Text(' (${e.reviewCount} avaliações)',
-                              style: const TextStyle(
-                                  color: AppColors.grey, fontSize: 13)),
+                          Flexible(
+                            child: Text(' (${e.reviewCount} avaliações)',
+                                style: const TextStyle(
+                                    color: AppColors.grey, fontSize: 13),
+                                overflow: TextOverflow.ellipsis),
+                          ),
                           const SizedBox(width: 12),
                           Container(
                             padding: const EdgeInsets.symmetric(
@@ -167,13 +167,10 @@ class _EstablishmentDetailScreenState
                         ],
                       ),
                       const SizedBox(height: 14),
-                      // Endereço
                       _infoRow(Icons.location_on_outlined, e.address),
                       const SizedBox(height: 8),
-                      // Telefone
                       _infoRow(Icons.phone_outlined, e.phone),
                       const SizedBox(height: 8),
-                      // Horário
                       _infoRow(Icons.access_time_outlined,
                           'Seg–Sex: 8h–18h  •  Sáb: 8h–13h'),
                     ],
@@ -181,7 +178,6 @@ class _EstablishmentDetailScreenState
                 ),
               ),
 
-              // Seção Serviços
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
@@ -281,7 +277,6 @@ class _EstablishmentDetailScreenState
                 ),
               ),
 
-              // Seção Avaliações
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
@@ -296,7 +291,6 @@ class _EstablishmentDetailScreenState
                             color: AppColors.dark),
                       ),
                       const SizedBox(height: 12),
-                      // Card de média
                       if (e.rating > 0)
                         Container(
                           width: double.infinity,
@@ -331,7 +325,6 @@ class _EstablishmentDetailScreenState
                 ),
               ),
 
-              // Lista de reviews
               if (_reviewsLoading)
                 const SliverToBoxAdapter(
                   child: Center(
@@ -361,12 +354,10 @@ class _EstablishmentDetailScreenState
                   ),
                 ),
 
-              // Espaço para o botão fixo
               const SliverToBoxAdapter(child: SizedBox(height: 80)),
             ],
           ),
 
-          // Botão fixo no rodapé
           Positioned(
             left: 0,
             right: 0,

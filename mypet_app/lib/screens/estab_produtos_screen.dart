@@ -229,7 +229,6 @@ class _EstabProdutosScreenState extends State<EstabProdutosScreen> {
                 style: TextStyle(fontSize: 13, color: AppColors.grey)),
             const SizedBox(height: 16),
 
-            // ── Resumo ────────────────────────────────────────────
             GridView.count(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -263,7 +262,6 @@ class _EstabProdutosScreenState extends State<EstabProdutosScreen> {
 
             const SizedBox(height: 20),
 
-            // ── Lista de produtos ─────────────────────────────────
             ...(_products.map((p) => _ProductCard(
                   product: p,
                   onEdit: () => _editProduct(p),
@@ -286,7 +284,6 @@ class _EstabProdutosScreenState extends State<EstabProdutosScreen> {
   }
 }
 
-// ── Card de resumo ──────────────────────────────────────────────────
 class _SummaryCard extends StatelessWidget {
   final String label, value;
   final IconData icon;
@@ -342,7 +339,6 @@ class _SummaryCard extends StatelessWidget {
   }
 }
 
-// ── Card de produto ─────────────────────────────────────────────────
 class _ProductCard extends StatelessWidget {
   final _Product product;
   final VoidCallback onEdit, onToggle, onDelete;
@@ -372,7 +368,6 @@ class _ProductCard extends StatelessWidget {
             padding: const EdgeInsets.all(14),
             child: Row(
               children: [
-                // Ícone do produto
                 Container(
                   width: 52,
                   height: 52,
@@ -465,7 +460,6 @@ class _ProductCard extends StatelessWidget {
             ),
           ),
           const Divider(height: 1, color: AppColors.greyLight),
-          // Ações
           Row(
             children: [
               _ActionBtn(

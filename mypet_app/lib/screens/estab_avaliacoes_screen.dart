@@ -85,14 +85,12 @@ class _EstabAvaliacoesScreenState extends State<EstabAvaliacoesScreen>
       body: SafeArea(
         child: Column(
           children: [
-            // Header roxo
             EstabPurpleHeader(
               pendentes: booking.pendentes.length,
               confirmados: booking.confirmados.length,
               avaliacao: _mediaNota.toStringAsFixed(1),
             ),
 
-            // Tabs
             Container(
               color: Colors.white,
               child: TabBar(
@@ -114,11 +112,9 @@ class _EstabAvaliacoesScreenState extends State<EstabAvaliacoesScreen>
               child: TabBarView(
                 controller: _tabCtrl,
                 children: [
-                  // ── Avaliações ──────────────────────────────────
                   ListView(
                     padding: const EdgeInsets.all(16),
                     children: [
-                      // Score geral
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
@@ -176,7 +172,6 @@ class _EstabAvaliacoesScreenState extends State<EstabAvaliacoesScreen>
                     ],
                   ),
 
-                  // ── Reclamações ─────────────────────────────────
                   ListView(
                     padding: const EdgeInsets.all(16),
                     children:

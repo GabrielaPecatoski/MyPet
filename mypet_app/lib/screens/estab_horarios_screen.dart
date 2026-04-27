@@ -5,6 +5,7 @@ import '../models/availability.dart';
 import '../providers/auth_provider.dart';
 import '../providers/establishment_provider.dart';
 import '../services/availability_service.dart';
+import '../widgets/mypet_app_bar.dart';
 
 class EstabHorariosScreen extends StatefulWidget {
   const EstabHorariosScreen({super.key});
@@ -21,7 +22,6 @@ class _EstabHorariosScreenState extends State<EstabHorariosScreen>
   bool _savingSchedule = false;
   int _slotDuration = 60;
 
-  // For "Bloquear" tab
   DateTime _selectedDay = DateTime.now();
   List<TimeSlotModel> _slots = [];
   bool _loadingSlots = false;
@@ -213,44 +213,38 @@ class _EstabHorariosScreenState extends State<EstabHorariosScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-        centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.chevron_left, color: AppColors.dark, size: 28),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text('Gerenciar Horários',
-            style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-                color: AppColors.dark)),
-        bottom: TabBar(
-          controller: _tabCtrl,
-          indicatorColor: AppColors.primary,
-          labelColor: AppColors.primary,
-          unselectedLabelColor: AppColors.grey,
-          labelStyle:
-              const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-          tabs: const [
-            Tab(text: 'Horários'),
-            Tab(text: 'Bloquear'),
-          ],
-        ),
-      ),
-      body: TabBarView(
-        controller: _tabCtrl,
+      appBar: const MypetAppBar(showBack: true),
+      body: Column(
         children: [
-          _buildScheduleTab(),
-          _buildBlockTab(),
+          Container(
+            color: Colors.white,
+            child: TabBar(
+              controller: _tabCtrl,
+              indicatorColor: AppColors.primary,
+              labelColor: AppColors.primary,
+              unselectedLabelColor: AppColors.grey,
+              labelStyle:
+                  const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+              tabs: const [
+                Tab(text: 'Horários'),
+                Tab(text: 'Bloquear'),
+              ],
+            ),
+          ),
+          Expanded(
+            child: TabBarView(
+              controller: _tabCtrl,
+              children: [
+                _buildScheduleTab(),
+                _buildBlockTab(),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 
-  // ── Tab 1: Configurar horários semanais ─────────────────────────
   Widget _buildScheduleTab() {
     if (_loadingSchedule) {
       return const Center(
@@ -269,7 +263,6 @@ class _EstabHorariosScreenState extends State<EstabHorariosScreen>
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        // Duração do slot
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -330,7 +323,6 @@ class _EstabHorariosScreenState extends State<EstabHorariosScreen>
                 color: AppColors.dark)),
         const SizedBox(height: 10),
 
-        // Days of the week
         ...List.generate(schedule.days.length, (i) {
           final day = schedule.days[i];
           return Container(
@@ -348,7 +340,6 @@ class _EstabHorariosScreenState extends State<EstabHorariosScreen>
             ),
             child: Row(
               children: [
-                // Day toggle
                 SizedBox(
                   width: 44,
                   child: Column(
@@ -460,11 +451,9 @@ class _EstabHorariosScreenState extends State<EstabHorariosScreen>
     );
   }
 
-  // ── Tab 2: Bloquear/liberar slots de um dia ─────────────────────
   Widget _buildBlockTab() {
     return Column(
       children: [
-        // Date picker row
         Container(
           color: Colors.white,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -521,7 +510,6 @@ class _EstabHorariosScreenState extends State<EstabHorariosScreen>
           ),
         ),
 
-        // Legend
         Padding(
           padding:
               const EdgeInsets.symmetric(horizontal: 16, vertical: 8),

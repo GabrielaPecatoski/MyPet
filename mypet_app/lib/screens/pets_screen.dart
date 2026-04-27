@@ -41,7 +41,6 @@ class _PetsScreenState extends State<PetsScreen> {
         _pets = list.map((e) => PetModel.fromJson(e as Map<String, dynamic>)).toList();
       });
     } catch (_) {
-      // silently fail – lista fica vazia
     } finally {
       setState(() => _loading = false);
     }

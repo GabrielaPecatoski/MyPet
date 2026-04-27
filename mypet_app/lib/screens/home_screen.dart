@@ -82,24 +82,18 @@ class _HomeScreenState extends State<HomeScreen> {
       body: SafeArea(
         child: CustomScrollView(
           slivers: [
-            // ── AppBar roxo com logo ───────────────────────────
-            SliverAppBar(
-              backgroundColor: AppColors.primary,
-              floating: true,
-              snap: true,
-              elevation: 0,
-              toolbarHeight: 60,
-              titleSpacing: 0,
-              title: Padding(
+            SliverToBoxAdapter(
+              child: Container(
+                height: 60,
+                color: AppColors.primary,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(
                   children: [
                     const Spacer(),
                     Image.asset(
-                      'assets/images/logo.png',
+                      'assets/images/logo branca.png',
                       height: 36,
-                      color: Colors.white,
-                      colorBlendMode: BlendMode.srcIn,
+                      fit: BoxFit.contain,
                     ),
                     const Spacer(),
                     GestureDetector(
@@ -138,7 +132,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     const SizedBox(height: 16),
 
-                    // Barra de busca
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 14),
                       height: 48,
@@ -172,7 +165,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Chips de categoria
                     SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       child: Row(
@@ -208,7 +200,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     const SizedBox(height: 20),
 
-                    // Banner Serviço Confirmado hoje
                     if (confirmedToday.isNotEmpty)
                       Container(
                         margin: const EdgeInsets.only(bottom: 16),
@@ -298,7 +289,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       )
                     else ...[
-                      // Seção Mais Bem Avaliados
                       const Text(
                         'Mais Bem Avaliados',
                         style: TextStyle(
@@ -319,7 +309,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       const SizedBox(height: 24),
 
-                      // Seção Estabelecimentos
                       const Text(
                         'Estabelecimentos',
                         style: TextStyle(
@@ -375,7 +364,6 @@ class _HighlightCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Foto
             Container(
               height: 90,
               decoration: BoxDecoration(
@@ -453,7 +441,6 @@ class _EstabCard extends StatelessWidget {
         ),
         child: Row(
           children: [
-            // Foto
             Container(
               width: 60,
               height: 60,

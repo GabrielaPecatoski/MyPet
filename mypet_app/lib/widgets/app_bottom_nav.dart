@@ -13,7 +13,6 @@ class BottomNavItemData {
   });
 }
 
-// Tabs para clientes
 const clientNavItems = [
   BottomNavItemData(icon: Icons.home_outlined,           activeIcon: Icons.home,            label: 'Home'),
   BottomNavItemData(icon: Icons.calendar_today_outlined, activeIcon: Icons.calendar_today,  label: 'Agenda'),
@@ -22,7 +21,6 @@ const clientNavItems = [
   BottomNavItemData(icon: Icons.person_outline,          activeIcon: Icons.person,          label: 'Perfil'),
 ];
 
-// Tabs para estabelecimentos
 const estabNavItems = [
   BottomNavItemData(icon: Icons.home_outlined,           activeIcon: Icons.home,            label: 'Home'),
   BottomNavItemData(icon: Icons.calendar_today_outlined, activeIcon: Icons.calendar_today,  label: 'Agenda'),
@@ -68,8 +66,7 @@ class AppBottomNav extends StatelessWidget {
               return GestureDetector(
                 onTap: () => onTap(i),
                 behavior: HitTestBehavior.opaque,
-                child: SizedBox(
-                  width: 64,
+                child: Expanded(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -86,6 +83,8 @@ class AppBottomNav extends StatelessWidget {
                           color: isActive ? AppColors.primary : AppColors.grey,
                           fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
