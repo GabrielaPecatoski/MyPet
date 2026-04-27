@@ -28,6 +28,12 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   List<TimeSlotModel> _slots = [];
   bool _loadingSlots = false;
 
+  static const _weekdays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+  static const _months = [
+    'jan', 'fev', 'mar', 'abr', 'mai', 'jun',
+    'jul', 'ago', 'set', 'out', 'nov', 'dez'
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -46,7 +52,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       final list = data as List;
       setState(() => _pets = list.map((e) => PetModel.fromJson(e)).toList());
     } catch (_) {
-      // silently skip, empty list will show message
+      // silently skip
     } finally {
       setState(() => _loadingPets = false);
     }
@@ -56,9 +62,14 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     if (_selectedDate == null || establishment == null) return;
     final auth = context.read<AuthProvider>();
     if (auth.token == null) return;
-    setState(() { _loadingSlots = true; _selectedTime = null; _slots = []; });
+    setState(() {
+      _loadingSlots = true;
+      _selectedTime = null;
+      _slots = [];
+    });
     try {
-      final dateStr = '${_selectedDate!.year}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}';
+      final dateStr =
+          '${_selectedDate!.year}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}';
       _slots = await AvailabilityService.getAvailability(
         token: auth.token!,
         estabId: establishment.id,
@@ -73,20 +84,19 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
   List<DateTime> get _availableDates {
     final now = DateTime.now();
-    return List.generate(7, (i) => now.add(Duration(days: i + 1)));
+    return List.generate(14, (i) => DateTime(now.year, now.month, now.day + i));
   }
 
-  String _formatDate(DateTime date) {
-    const weekdays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-    const months = [
-      'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
-      'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'
-    ];
-    return '${weekdays[date.weekday % 7]}, ${date.day} ${months[date.month - 1]}';
+  bool _isToday(DateTime d) {
+    final now = DateTime.now();
+    return d.year == now.year && d.month == now.month && d.day == now.day;
   }
 
   Future<void> _confirmar(EstablishmentModel? establishment) async {
-    if (_selectedPet == null || _selectedService == null || _selectedDate == null || _selectedTime == null) {
+    if (_selectedPet == null ||
+        _selectedService == null ||
+        _selectedDate == null ||
+        _selectedTime == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Selecione o pet, serviço, data e horário'),
@@ -125,10 +135,28 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     if (!mounted) return;
 
     if (booking != null) {
+      // Bloqueia o horário para outras pessoas
+      if (establishment != null) {
+        final dateStr =
+            '${_selectedDate!.year}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}';
+        try {
+          await AvailabilityService.blockSlot(
+            token: auth.token!,
+            estabId: establishment.id,
+            date: dateStr,
+            time: _selectedTime!,
+            reason: 'Agendado',
+          );
+        } catch (_) {
+          // best-effort, o agendamento já foi criado
+        }
+      }
+
       showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: const Row(
             children: [
               Icon(Icons.check_circle, color: AppColors.success),
@@ -143,9 +171,14 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             children: [
               _confirmRow('Pet:', _selectedPet!.name),
               _confirmRow('Serviço:', _selectedService!.name),
-              _confirmRow('Data:', _formatDate(_selectedDate!)),
               _confirmRow(
-                  'Valor:', 'R\$ ${_selectedService!.price.toStringAsFixed(2)}'),
+                'Data:',
+                '${_weekdays[_selectedDate!.weekday % 7]}, ${_selectedDate!.day} ${_months[_selectedDate!.month - 1]}',
+              ),
+              _confirmRow('Horário:', _selectedTime!),
+              _confirmRow(
+                  'Valor:',
+                  'R\$ ${_selectedService!.price.toStringAsFixed(2)}'),
               const SizedBox(height: 8),
               const Text(
                 'Aguarde a confirmação do estabelecimento.',
@@ -194,9 +227,11 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                 style: const TextStyle(
                     fontWeight: FontWeight.w600, color: AppColors.grey)),
             const SizedBox(width: 8),
-            Text(value,
-                style: const TextStyle(
-                    fontWeight: FontWeight.w600, color: AppColors.dark)),
+            Expanded(
+              child: Text(value,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w600, color: AppColors.dark)),
+            ),
           ],
         ),
       );
@@ -217,7 +252,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Selecionar pet
+                // ── Selecionar pet ──────────────────────────────
                 _sectionTitle('Selecione o pet'),
                 const SizedBox(height: 10),
                 if (_loadingPets)
@@ -227,28 +262,45 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                           child: CircularProgressIndicator(
                               color: AppColors.primary)))
                 else if (_pets.isEmpty)
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.greyLight),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.info_outline, color: AppColors.grey),
-                        const SizedBox(width: 8),
-                        const Expanded(
-                          child: Text(
-                            'Nenhum pet cadastrado. Cadastre um pet primeiro.',
-                            style: TextStyle(color: AppColors.grey, fontSize: 13),
+                  GestureDetector(
+                    onTap: () => Navigator.pushNamedAndRemoveUntil(
+                        context, '/home', (r) => false,
+                        arguments: 3),
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.primaryLight),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.pets, color: AppColors.primary, size: 22),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Nenhum pet cadastrado',
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.dark,
+                                      fontSize: 14),
+                                ),
+                                SizedBox(height: 2),
+                                Text(
+                                  'Toque aqui para cadastrar seu pet primeiro',
+                                  style: TextStyle(
+                                      color: AppColors.grey, fontSize: 12),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                        TextButton(
-                          onPressed: () => Navigator.pushNamed(context, '/add-pet'),
-                          child: const Text('Cadastrar'),
-                        ),
-                      ],
+                          Icon(Icons.chevron_right,
+                              color: AppColors.primary, size: 22),
+                        ],
+                      ),
                     ),
                   )
                 else
@@ -260,7 +312,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
                 const SizedBox(height: 24),
 
-                // Selecionar serviço
+                // ── Selecionar serviço ──────────────────────────
                 _sectionTitle('Selecione o serviço'),
                 const SizedBox(height: 10),
                 if (establishment != null && establishment.services.isNotEmpty)
@@ -285,35 +337,122 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
                 const SizedBox(height: 24),
 
-                // Selecionar data
+                // ── Selecionar data ─────────────────────────────
                 _sectionTitle('Selecione a data'),
-                const SizedBox(height: 10),
-                GridView.count(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 10,
-                  mainAxisSpacing: 10,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  childAspectRatio: 3,
-                  children: _availableDates.take(6).map((date) => _DateCard(
-                    date: date,
-                    label: _formatDate(date),
-                    selected: _selectedDate == date,
-                    onTap: () {
-                      setState(() { _selectedDate = date; _selectedTime = null; });
-                      _loadSlots(establishment);
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 86,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: _availableDates.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 8),
+                    itemBuilder: (ctx, i) {
+                      final date = _availableDates[i];
+                      final today = _isToday(date);
+                      final selected = _selectedDate?.day == date.day &&
+                          _selectedDate?.month == date.month &&
+                          _selectedDate?.year == date.year;
+                      return GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _selectedDate = date;
+                            _selectedTime = null;
+                          });
+                          _loadSlots(establishment);
+                        },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 150),
+                          width: 60,
+                          decoration: BoxDecoration(
+                            color: selected
+                                ? AppColors.primary
+                                : today
+                                    ? AppColors.primaryLight
+                                    : Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: selected
+                                  ? AppColors.primary
+                                  : today
+                                      ? AppColors.primary
+                                          .withValues(alpha: 0.4)
+                                      : AppColors.greyLight,
+                              width: selected ? 2 : 1,
+                            ),
+                            boxShadow: selected
+                                ? [
+                                    BoxShadow(
+                                        color: AppColors.primary
+                                            .withValues(alpha: 0.35),
+                                        blurRadius: 10,
+                                        offset: const Offset(0, 4))
+                                  ]
+                                : [
+                                    const BoxShadow(
+                                        color: Colors.black12,
+                                        blurRadius: 4,
+                                        offset: Offset(0, 1))
+                                  ],
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                today ? 'Hoje' : _weekdays[date.weekday % 7],
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: today
+                                      ? FontWeight.w700
+                                      : FontWeight.w500,
+                                  color: selected
+                                      ? Colors.white
+                                      : today
+                                          ? AppColors.primary
+                                          : AppColors.grey,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '${date.day}',
+                                style: TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                  color: selected
+                                      ? Colors.white
+                                      : today
+                                          ? AppColors.primary
+                                          : AppColors.dark,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                _months[date.month - 1],
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: selected
+                                      ? Colors.white70
+                                      : AppColors.grey,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
                     },
-                  )).toList(),
+                  ),
                 ),
 
+                // ── Selecionar horário ──────────────────────────
                 if (_selectedDate != null) ...[
                   const SizedBox(height: 24),
                   _sectionTitle('Selecione o horário'),
                   const SizedBox(height: 10),
                   if (_loadingSlots)
-                    const Center(child: Padding(
+                    const Center(
+                        child: Padding(
                       padding: EdgeInsets.all(16),
-                      child: CircularProgressIndicator(color: AppColors.primary),
+                      child: CircularProgressIndicator(
+                          color: AppColors.primary),
                     ))
                   else if (_slots.isEmpty)
                     Container(
@@ -329,39 +468,11 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                       ),
                     )
                   else
-                    GridView.count(
-                      crossAxisCount: 3,
-                      crossAxisSpacing: 10,
-                      mainAxisSpacing: 10,
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      childAspectRatio: 2.2,
-                      children: _slots.where((s) => s.available).map((slot) {
-                        final selected = _selectedTime == slot.time;
-                        return GestureDetector(
-                          onTap: () => setState(() => _selectedTime = slot.time),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: selected ? AppColors.primary : Colors.white,
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: selected ? AppColors.primary : AppColors.greyLight,
-                                width: selected ? 2 : 1,
-                              ),
-                            ),
-                            child: Center(
-                              child: Text(
-                                slot.time,
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 14,
-                                  color: selected ? Colors.white : AppColors.dark,
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      }).toList(),
+                    _SlotGrid(
+                      slots: _slots,
+                      selectedTime: _selectedTime,
+                      selectedDate: _selectedDate!,
+                      onSelect: (t) => setState(() => _selectedTime = t),
                     ),
                 ],
                 const SizedBox(height: 16),
@@ -420,6 +531,149 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       );
 }
 
+// ── Slot grid com seções manhã/tarde/noite ───────────────────────────
+class _SlotGrid extends StatelessWidget {
+  final List<TimeSlotModel> slots;
+  final String? selectedTime;
+  final DateTime selectedDate;
+  final ValueChanged<String> onSelect;
+
+  const _SlotGrid({
+    required this.slots,
+    required this.selectedTime,
+    required this.selectedDate,
+    required this.onSelect,
+  });
+
+  int _hour(String time) => int.tryParse(time.split(':')[0]) ?? 0;
+  int _minute(String time) => int.tryParse(time.split(':').elementAtOrNull(1) ?? '0') ?? 0;
+
+  bool _isPast(String time) {
+    final now = DateTime.now();
+    final isToday = selectedDate.year == now.year &&
+        selectedDate.month == now.month &&
+        selectedDate.day == now.day;
+    if (!isToday) return false;
+    final h = _hour(time);
+    final m = _minute(time);
+    return h < now.hour || (h == now.hour && m <= now.minute);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final manha = slots.where((s) => _hour(s.time) < 12).toList();
+    final tarde = slots.where((s) => _hour(s.time) >= 12 && _hour(s.time) < 18).toList();
+    final noite = slots.where((s) => _hour(s.time) >= 18).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (manha.isNotEmpty) ...[
+          _periodLabel('🌅  Manhã'),
+          const SizedBox(height: 8),
+          _wrap(manha),
+          const SizedBox(height: 16),
+        ],
+        if (tarde.isNotEmpty) ...[
+          _periodLabel('☀️  Tarde'),
+          const SizedBox(height: 8),
+          _wrap(tarde),
+          const SizedBox(height: 16),
+        ],
+        if (noite.isNotEmpty) ...[
+          _periodLabel('🌙  Noite'),
+          const SizedBox(height: 8),
+          _wrap(noite),
+        ],
+      ],
+    );
+  }
+
+  Widget _periodLabel(String label) => Text(
+        label,
+        style: const TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: AppColors.grey,
+        ),
+      );
+
+  Widget _wrap(List<TimeSlotModel> group) => Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: group.map((slot) {
+          final sel = selectedTime == slot.time;
+          final avail = slot.available && !_isPast(slot.time);
+          return GestureDetector(
+            onTap: avail ? () => onSelect(slot.time) : null,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              width: 82,
+              height: 44,
+              decoration: BoxDecoration(
+                color: sel
+                    ? AppColors.primary
+                    : avail
+                        ? Colors.white
+                        : const Color(0xFFF2F2F2),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: sel
+                      ? AppColors.primary
+                      : avail
+                          ? AppColors.greyLight
+                          : Colors.transparent,
+                  width: sel ? 2 : 1,
+                ),
+                boxShadow: sel
+                    ? [
+                        BoxShadow(
+                            color: AppColors.primary.withValues(alpha: 0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3))
+                      ]
+                    : avail
+                        ? const [
+                            BoxShadow(
+                                color: Colors.black12,
+                                blurRadius: 4,
+                                offset: Offset(0, 1))
+                          ]
+                        : null,
+              ),
+              child: Center(
+                child: avail
+                    ? Text(
+                        slot.time,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                          color: sel ? Colors.white : AppColors.dark,
+                        ),
+                      )
+                    : Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            slot.time,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.grey,
+                              decoration: TextDecoration.lineThrough,
+                            ),
+                          ),
+                          const Icon(Icons.lock_outline,
+                              size: 10, color: AppColors.grey),
+                        ],
+                      ),
+              ),
+            ),
+          );
+        }).toList(),
+      );
+}
+
+// ── Pet select card ────────────────────────────────────────────────────
 class _PetSelectCard extends StatelessWidget {
   final PetModel pet;
   final bool selected;
@@ -451,7 +705,9 @@ class _PetSelectCard extends StatelessWidget {
                 ]
               : const [
                   BoxShadow(
-                      color: Colors.black12, blurRadius: 8, offset: Offset(0, 2))
+                      color: Colors.black12,
+                      blurRadius: 8,
+                      offset: Offset(0, 2))
                 ],
         ),
         child: Row(
@@ -459,8 +715,7 @@ class _PetSelectCard extends StatelessWidget {
             CircleAvatar(
               radius: 22,
               backgroundColor: AppColors.primaryLight,
-              child:
-                  Text(pet.typeIcon, style: const TextStyle(fontSize: 20)),
+              child: Text(pet.typeIcon, style: const TextStyle(fontSize: 20)),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -473,12 +728,14 @@ class _PetSelectCard extends StatelessWidget {
                           fontSize: 14,
                           color: AppColors.dark)),
                   Text('${pet.breed} • ${pet.age} anos',
-                      style: const TextStyle(fontSize: 12, color: AppColors.grey)),
+                      style:
+                          const TextStyle(fontSize: 12, color: AppColors.grey)),
                 ],
               ),
             ),
             if (selected)
-              const Icon(Icons.check_circle, color: AppColors.primary, size: 22),
+              const Icon(Icons.check_circle,
+                  color: AppColors.primary, size: 22),
           ],
         ),
       ),
@@ -486,6 +743,7 @@ class _PetSelectCard extends StatelessWidget {
   }
 }
 
+// ── Service select card ───────────────────────────────────────────────
 class _ServiceSelectCard extends StatelessWidget {
   final ServiceModel service;
   final bool selected;
@@ -509,7 +767,8 @@ class _ServiceSelectCard extends StatelessWidget {
             width: selected ? 2 : 1,
           ),
           boxShadow: const [
-            BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 2)),
+            BoxShadow(
+                color: Colors.black12, blurRadius: 8, offset: Offset(0, 2)),
           ],
         ),
         child: Row(
@@ -524,12 +783,15 @@ class _ServiceSelectCard extends StatelessWidget {
                           fontSize: 14,
                           color: AppColors.dark)),
                   const SizedBox(height: 3),
-                  if (service.description != null && service.description!.isNotEmpty)
+                  if (service.description != null &&
+                      service.description!.isNotEmpty)
                     Text(service.description!,
-                        style: const TextStyle(fontSize: 12, color: AppColors.grey)),
+                        style: const TextStyle(
+                            fontSize: 12, color: AppColors.grey)),
                   const SizedBox(height: 3),
                   Text('Duração: ${service.durationMinutes} min',
-                      style: const TextStyle(fontSize: 12, color: AppColors.grey)),
+                      style:
+                          const TextStyle(fontSize: 12, color: AppColors.grey)),
                 ],
               ),
             ),
@@ -550,55 +812,6 @@ class _ServiceSelectCard extends StatelessWidget {
                         color: AppColors.primary, size: 18),
                   ),
               ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _DateCard extends StatelessWidget {
-  final DateTime date;
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _DateCard({
-    required this.date,
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          color: selected ? AppColors.primary : Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: selected ? AppColors.primary : AppColors.greyLight,
-          ),
-          boxShadow: const [
-            BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 1)),
-          ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.calendar_today,
-                size: 14, color: selected ? Colors.white : AppColors.grey),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: selected ? Colors.white : AppColors.dark,
-              ),
             ),
           ],
         ),
