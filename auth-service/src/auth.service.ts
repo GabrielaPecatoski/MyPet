@@ -69,6 +69,28 @@ export class AuthService {
     };
   }
 
+  extractUserId(authHeader?: string): string | null {
+    if (!authHeader?.startsWith('Bearer ')) return null;
+    try {
+      const payload = this.jwtService.verify(authHeader.split(' ')[1]);
+      return payload.sub ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  async me(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new UnauthorizedException('Usuário não encontrado');
+    return this.toPublic(user);
+  }
+
+  async refresh(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new UnauthorizedException('Usuário não encontrado');
+    return { access_token: this.generateToken(user), user: this.toPublic(user) };
+  }
+
   private generateToken(user: User): string {
     const payload = {
       sub: user.id,
