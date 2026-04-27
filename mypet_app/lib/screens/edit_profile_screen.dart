@@ -66,6 +66,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       const SnackBar(
         content: Text('Perfil atualizado!'),
         backgroundColor: AppColors.success,
+        behavior: SnackBarBehavior.floating,
       ),
     );
     Navigator.pop(context);
@@ -97,7 +98,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // ── Foto de perfil ────────────────────────────────
+            // Avatar clicável
             Center(
               child: GestureDetector(
                 onTap: _pickPhoto,
@@ -106,17 +107,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     CircleAvatar(
                       radius: 52,
                       backgroundColor: AppColors.primaryLight,
-                      backgroundImage: photoPath != null
-                          ? FileImage(File(photoPath))
-                          : null,
+                      backgroundImage:
+                          photoPath != null ? FileImage(File(photoPath)) : null,
                       child: photoPath == null
                           ? const Icon(Icons.person,
                               size: 52, color: AppColors.primary)
                           : null,
                     ),
                     Positioned(
-                      bottom: 0,
-                      right: 0,
+                      bottom: 2,
+                      right: 2,
                       child: Container(
                         padding: const EdgeInsets.all(7),
                         decoration: BoxDecoration(
@@ -133,12 +133,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ),
             const SizedBox(height: 24),
 
-            // ── Formulário ────────────────────────────────────
+            // Card formulário
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
+                boxShadow: const [
+                  BoxShadow(
+                      color: Colors.black12, blurRadius: 8, offset: Offset(0, 2)),
+                ],
               ),
               child: Form(
                 key: _formKey,
@@ -147,17 +151,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   children: [
                     _label('Nome Completo'),
                     _field(_nomeCtrl,
-                        validator: (v) => v == null || v.isEmpty
-                            ? 'Informe o nome'
-                            : null),
-                    const SizedBox(height: 14),
-                    _label('Email'),
+                        validator: (v) =>
+                            v == null || v.isEmpty ? 'Informe o nome' : null),
+                    const SizedBox(height: 16),
+                    _label('E-mail'),
                     _field(_emailCtrl,
                         keyboardType: TextInputType.emailAddress,
                         validator: (v) => v == null || !v.contains('@')
                             ? 'E-mail inválido'
                             : null),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 16),
                     _label('Telefone'),
                     _field(_telefoneCtrl,
                         keyboardType: TextInputType.phone),
@@ -167,6 +170,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ),
             const SizedBox(height: 24),
 
+            // Salvar
             SizedBox(
               width: double.infinity,
               height: 52,
@@ -176,6 +180,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   backgroundColor: AppColors.primary,
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
+                  elevation: 0,
                 ),
                 child: const Text(
                   'Salvar Alterações',
@@ -187,6 +192,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ),
             ),
             const SizedBox(height: 12),
+
+            // Cancelar
             SizedBox(
               width: double.infinity,
               height: 52,
@@ -198,7 +205,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       borderRadius: BorderRadius.circular(12)),
                 ),
                 child: const Text('Cancelar',
-                    style: TextStyle(color: AppColors.dark, fontSize: 16)),
+                    style: TextStyle(
+                        color: AppColors.dark,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500)),
               ),
             ),
           ],
@@ -208,11 +218,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Widget _label(String text) => Padding(
-        padding: const EdgeInsets.only(bottom: 6),
+        padding: const EdgeInsets.only(bottom: 8),
         child: Text(text,
             style: const TextStyle(
                 fontSize: 14,
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w600,
                 color: AppColors.dark)),
       );
 
@@ -238,7 +248,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               borderSide: const BorderSide(color: AppColors.greyLight)),
           focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: AppColors.primary)),
+              borderSide: const BorderSide(color: AppColors.primary, width: 1.5)),
         ),
         validator: validator,
       );
