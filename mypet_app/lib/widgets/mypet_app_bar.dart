@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../core/colors.dart';
 import '../providers/auth_provider.dart';
 
-/// Header branco padrão — usado nas telas de cliente (agenda, histórico, etc.)
 class MypetAppBar extends StatelessWidget implements PreferredSizeWidget {
   final bool showBack;
   final VoidCallback? onBack;
@@ -18,46 +18,71 @@ class MypetAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppBar(
-      backgroundColor: Colors.white,
-      elevation: 0,
-      shadowColor: Colors.black12,
-      surfaceTintColor: Colors.transparent,
-      centerTitle: true,
-      leading: showBack
-          ? IconButton(
-              icon: const Icon(Icons.chevron_left,
-                  size: 28, color: AppColors.dark),
-              onPressed: onBack ?? () => Navigator.pop(context),
-            )
-          : null,
-      title: Image.asset(
-        'assets/images/logo.png',
-        height: 44,
-        fit: BoxFit.contain,
-      ),
-      actions: actions ??
-          [
-            Builder(builder: (ctx) {
-              final user = ctx.watch<AuthProvider>().user;
-              return Padding(
-                padding: const EdgeInsets.only(right: 12),
-                child: GestureDetector(
-                  onTap: () => Navigator.pushNamed(
-                    ctx,
-                    user != null ? '/home' : '/login',
-                    arguments: user != null ? 4 : null,
-                  ),
-                  child: const CircleAvatar(
-                    radius: 16,
-                    backgroundColor: AppColors.primaryLight,
-                    child: Icon(Icons.person,
-                        size: 18, color: AppColors.primary),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.dark,
+      child: Material(
+        color: Colors.white,
+        elevation: 0.5,
+        shadowColor: Colors.black12,
+        child: SafeArea(
+          bottom: false,
+          child: SizedBox(
+            height: kToolbarHeight,
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 48,
+                  child: showBack
+                      ? IconButton(
+                          icon: const Icon(Icons.chevron_left,
+                              size: 28, color: AppColors.dark),
+                          onPressed: onBack ?? () => Navigator.pop(context),
+                        )
+                      : null,
+                ),
+
+                Expanded(
+                  child: Center(
+                    child: Image.asset(
+                      'assets/images/logo.png',
+                      height: 40,
+                      fit: BoxFit.contain,
+                    ),
                   ),
                 ),
-              );
-            }),
-          ],
+
+                SizedBox(
+                  width: 48,
+                  child: actions != null
+                      ? Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          mainAxisSize: MainAxisSize.min,
+                          children: actions!,
+                        )
+                      : Builder(builder: (ctx) {
+                          final user = ctx.watch<AuthProvider>().user;
+                          return Center(
+                            child: GestureDetector(
+                              onTap: () => Navigator.pushNamed(
+                                ctx,
+                                user != null ? '/home' : '/login',
+                                arguments: user != null ? 4 : null,
+                              ),
+                              child: const CircleAvatar(
+                                radius: 16,
+                                backgroundColor: AppColors.primaryLight,
+                                child: Icon(Icons.person,
+                                    size: 18, color: AppColors.primary),
+                              ),
+                            ),
+                          );
+                        }),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -65,8 +90,6 @@ class MypetAppBar extends StatelessWidget implements PreferredSizeWidget {
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 }
 
-/// Header roxo com gradiente — reutilizável para telas de estabelecimento.
-/// Mostra logo + avatar no topo e os cards de estatísticas abaixo.
 class EstabPurpleHeader extends StatelessWidget {
   final int pendentes;
   final int confirmados;
@@ -107,10 +130,9 @@ class EstabPurpleHeader extends StatelessWidget {
                 const SizedBox(width: 28),
               const Spacer(),
               Image.asset(
-                'assets/images/logo.png',
+                'assets/images/logo branca.png',
                 height: 36,
-                color: Colors.white,
-                colorBlendMode: BlendMode.srcIn,
+                fit: BoxFit.contain,
               ),
               const Spacer(),
               const CircleAvatar(
@@ -152,7 +174,8 @@ class EstabPurpleHeader extends StatelessWidget {
       );
 
   Widget _divider() => Container(
-        width: 1, height: 32,
+        width: 1,
+        height: 32,
         color: Colors.white.withValues(alpha: 0.3),
       );
 }
