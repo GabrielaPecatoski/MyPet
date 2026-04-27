@@ -5,26 +5,28 @@ import { AppService } from './app.service';
 import { HealthController } from './health/health.controller';
 import { ConsulService } from './consul/consul.service';
 import { NotificationHandler } from './notification/notification.handler';
+import { NotificationController } from './notification/notification.controller';
 import { NotificationService } from './notification/notification.service';
-
-const SERVICE_NAME = 'notification-service';
-const SERVICE_PORT = 3006;
+import { PrismaService } from './prisma.service';
 
 @Module({
-  imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
-  ],
+  imports: [ConfigModule.forRoot({ isGlobal: true })],
   controllers: [
     AppController,
     HealthController,
     NotificationHandler,
+    NotificationController,
   ],
   providers: [
     AppService,
+    PrismaService,
     NotificationService,
     {
       provide: ConsulService,
-      useValue: new ConsulService({ serviceName: 'notification-service', servicePort: 3006 }),
+      useValue: new ConsulService({
+        serviceName: 'notification-service',
+        servicePort: 3006,
+      }),
     },
   ],
 })
