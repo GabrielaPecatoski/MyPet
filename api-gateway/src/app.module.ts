@@ -26,9 +26,7 @@ export class AppModule implements NestModule {
     consumer
       .apply(AuthGuardMiddleware)
       .exclude(
-        { path: 'auth/login',    method: RequestMethod.POST },
-        { path: 'auth/register', method: RequestMethod.POST },
-        { path: 'auth/refresh',  method: RequestMethod.POST },
+        { path: 'auth(.*)', method: RequestMethod.ALL },
         { path: 'establishments',       method: RequestMethod.GET },
         { path: 'establishments/(.*)', method: RequestMethod.GET },
         { path: 'marketplace',          method: RequestMethod.GET },
