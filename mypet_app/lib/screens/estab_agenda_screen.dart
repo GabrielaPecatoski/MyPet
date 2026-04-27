@@ -5,6 +5,7 @@ import '../models/appointment.dart';
 import '../providers/auth_provider.dart';
 import '../providers/booking_provider.dart';
 import '../providers/establishment_provider.dart';
+import '../services/review_service.dart';
 import '../widgets/mypet_app_bar.dart';
 import 'estab_horarios_screen.dart';
 
@@ -343,133 +344,183 @@ class _ApptCard extends StatelessWidget {
 
         Container(
           margin: const EdgeInsets.only(bottom: 4),
-          padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(14),
-            boxShadow: const [
+            boxShadow: [
               BoxShadow(
-                  color: Colors.black12,
-                  blurRadius: 8,
-                  offset: Offset(0, 2)),
+                  color: _statusColor.withValues(alpha: 0.18),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3)),
             ],
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Pet + status badge
-              Row(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  CircleAvatar(
-                    radius: 24,
-                    backgroundColor: AppColors.primaryLight,
-                    child: const Icon(Icons.pets,
-                        color: AppColors.primary, size: 24),
-                  ),
-                  const SizedBox(width: 12),
+                  // Barra colorida lateral
+                  Container(width: 5, color: _statusColor),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(ap.petName,
-                            style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 15,
-                                color: AppColors.dark)),
-                        if (ap.petBreed.isNotEmpty)
-                          Text(ap.petBreed,
-                              style: const TextStyle(
-                                  fontSize: 12, color: AppColors.grey)),
-                      ],
+                    child: Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Pet + status badge
+                          Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 24,
+                                backgroundColor: AppColors.primaryLight,
+                                child: const Icon(Icons.pets,
+                                    color: AppColors.primary, size: 24),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(ap.petName,
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 15,
+                                            color: AppColors.dark)),
+                                    if (ap.petBreed.isNotEmpty)
+                                      Text(ap.petBreed,
+                                          style: const TextStyle(
+                                              fontSize: 12,
+                                              color: AppColors.grey)),
+                                  ],
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 5),
+                                decoration: BoxDecoration(
+                                  color: _statusColor.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(ap.statusLabel,
+                                    style: TextStyle(
+                                        color: _statusColor,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600)),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+
+                          // Detalhes do tutor e serviço
+                          if (ap.userName.isNotEmpty)
+                            _row(Icons.person_outline, 'Tutor: ${ap.userName}'),
+                          const SizedBox(height: 4),
+                          _row(Icons.content_cut_outlined, ap.serviceName),
+                          if (ap.price > 0) ...[
+                            const SizedBox(height: 4),
+                            _row(Icons.attach_money,
+                                'R\$ ${ap.price.toStringAsFixed(2)}'),
+                          ],
+
+                          // Botões para pendentes
+                          if (ap.isPendente) ...[
+                            const SizedBox(height: 12),
+                            Row(children: [
+                              Expanded(
+                                child: OutlinedButton(
+                                  onPressed: () =>
+                                      onUpdateStatus(ap, 'RECUSADO'),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: AppColors.danger,
+                                    side: const BorderSide(
+                                        color: AppColors.danger),
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 8),
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(10)),
+                                  ),
+                                  child: const Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.cancel_outlined, size: 16),
+                                      SizedBox(width: 4),
+                                      Text('Recusar',
+                                          style: TextStyle(
+                                              fontWeight: FontWeight.w600)),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: ElevatedButton(
+                                  onPressed: () =>
+                                      onUpdateStatus(ap, 'CONFIRMADO'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.success,
+                                    elevation: 0,
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 8),
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(10)),
+                                  ),
+                                  child: const Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.check_circle_outline,
+                                          size: 16, color: Colors.white),
+                                      SizedBox(width: 4),
+                                      Text('Confirmar',
+                                          style: TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.w600)),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ]),
+                          ],
+
+                          // Botão Concluir para confirmados
+                          if (ap.isConfirmado) ...[
+                            const SizedBox(height: 12),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                onPressed: () async {
+                                  await onUpdateStatus(ap, 'CONCLUIDO');
+                                  if (context.mounted) {
+                                    _showAvaliarClienteDialog(context, ap);
+                                  }
+                                },
+                                icon: const Icon(Icons.check_circle,
+                                    size: 16, color: Colors.white),
+                                label: const Text('Concluir serviço',
+                                    style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w600)),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primary,
+                                  elevation: 0,
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 10),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius:
+                                          BorderRadius.circular(10)),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: _statusColor.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(ap.statusLabel,
-                        style: TextStyle(
-                            color: _statusColor,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600)),
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
-
-              // Detalhes do tutor e serviço
-              if (ap.userName.isNotEmpty)
-                _row(Icons.person_outline,
-                    'Tutor: ${ap.userName}'),
-              const SizedBox(height: 4),
-              _row(Icons.content_cut_outlined, ap.serviceName),
-              if (ap.price > 0) ...[
-                const SizedBox(height: 4),
-                _row(Icons.attach_money,
-                    'R\$ ${ap.price.toStringAsFixed(2)}'),
-              ],
-
-              // Botões para pendentes
-              if (ap.isPendente) ...[
-                const SizedBox(height: 12),
-                Row(children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => onUpdateStatus(ap, 'RECUSADO'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.danger,
-                        side:
-                            const BorderSide(color: AppColors.danger),
-                        padding:
-                            const EdgeInsets.symmetric(vertical: 8),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10)),
-                      ),
-                      child: const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.cancel_outlined, size: 16),
-                          SizedBox(width: 4),
-                          Text('Recusar',
-                              style: TextStyle(
-                                  fontWeight: FontWeight.w600)),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () =>
-                          onUpdateStatus(ap, 'CONFIRMADO'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.success,
-                        elevation: 0,
-                        padding:
-                            const EdgeInsets.symmetric(vertical: 8),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10)),
-                      ),
-                      child: const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.check_circle_outline,
-                              size: 16, color: Colors.white),
-                          SizedBox(width: 4),
-                          Text('Confirmar',
-                              style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w600)),
-                        ],
-                      ),
-                    ),
-                  ),
-                ]),
-              ],
-            ],
+            ),
           ),
         ),
       ],
@@ -481,7 +532,173 @@ class _ApptCard extends StatelessWidget {
         const SizedBox(width: 5),
         Expanded(
             child: Text(text,
-                style: const TextStyle(
-                    fontSize: 12, color: AppColors.grey))),
+                style: const TextStyle(fontSize: 12, color: AppColors.grey))),
       ]);
+
+  void _showAvaliarClienteDialog(BuildContext context, AppointmentModel ap) {
+    int selectedRating = 0;
+    final commentCtrl = TextEditingController();
+    final estabProvider = context.read<EstablishmentProvider>();
+    final auth = context.read<AuthProvider>();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              const Icon(Icons.star_outline, color: AppColors.warning, size: 22),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text('Avaliar ${ap.userName.isNotEmpty ? ap.userName : "Cliente"}',
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.dark,
+                        fontSize: 15)),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Como foi o comportamento do cliente?',
+                style: TextStyle(color: AppColors.grey, fontSize: 13),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(5, (i) {
+                  final star = i + 1;
+                  return IconButton(
+                    onPressed: () =>
+                        setDialogState(() => selectedRating = star),
+                    icon: Icon(
+                      star <= selectedRating ? Icons.star : Icons.star_border,
+                      color: star <= selectedRating
+                          ? const Color(0xFFFFC107)
+                          : AppColors.grey,
+                      size: 32,
+                    ),
+                    padding: EdgeInsets.zero,
+                    constraints:
+                        const BoxConstraints(minWidth: 40, minHeight: 40),
+                  );
+                }),
+              ),
+              const SizedBox(height: 12),
+              const Text('Observação (opcional)',
+                  style: TextStyle(fontSize: 13, color: AppColors.grey)),
+              const SizedBox(height: 6),
+              TextField(
+                controller: commentCtrl,
+                maxLines: 2,
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: AppColors.background,
+                  hintText: 'Ex: cliente pontual, pet bem comportado...',
+                  hintStyle: const TextStyle(fontSize: 12, color: AppColors.grey),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: AppColors.greyLight),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: AppColors.greyLight),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: AppColors.primary),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryLight,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.info_outline, size: 14, color: AppColors.primary),
+                    SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'Esta avaliação é visível apenas para outros estabelecimentos e para o admin.',
+                        style: TextStyle(fontSize: 11, color: AppColors.primary),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            Row(
+              children: [
+                Expanded(
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text('Pular',
+                        style: TextStyle(color: AppColors.grey)),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  flex: 2,
+                  child: ElevatedButton(
+                    onPressed: selectedRating == 0
+                        ? null
+                        : () async {
+                            Navigator.pop(ctx);
+                            try {
+                              await ReviewService.submitClientReview(
+                                establishmentId:
+                                    estabProvider.establishmentId ?? '',
+                                establishmentName:
+                                    estabProvider.establishment?.name ?? '',
+                                clientId: ap.userId,
+                                clientName: ap.userName,
+                                bookingId: ap.id,
+                                rating: selectedRating,
+                                comment: commentCtrl.text.trim().isEmpty
+                                    ? null
+                                    : commentCtrl.text.trim(),
+                                token: auth.token,
+                              );
+                            } catch (_) {}
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Avaliação enviada!'),
+                                  backgroundColor: AppColors.success,
+                                ),
+                              );
+                            }
+                          },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      disabledBackgroundColor: AppColors.greyLight,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10)),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      elevation: 0,
+                    ),
+                    child: const Text('Enviar',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600)),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

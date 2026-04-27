@@ -15,6 +15,7 @@ import 'screens/establishment_detail_screen.dart';
 import 'screens/schedule_screen.dart';
 import 'screens/add_pet_screen.dart';
 import 'screens/pets_screen.dart';
+import 'screens/tracking_screen.dart';
 // Cliente
 import 'screens/main_navigation.dart';
 // Estabelecimento
@@ -77,6 +78,7 @@ class MyPetApp extends StatelessWidget {
         '/schedule':      (_) => const ScheduleScreen(),
         '/add-pet':       (_) => const AddPetScreen(),
         '/pets':          (_) => const PetsScreen(),
+        '/tracking':      (_) => const TrackingScreen(),
       },
     );
   }

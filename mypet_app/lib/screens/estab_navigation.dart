@@ -5,8 +5,9 @@ import '../providers/establishment_provider.dart';
 import '../widgets/app_bottom_nav.dart';
 import 'estab_home_screen.dart';
 import 'estab_agenda_screen.dart';
-import 'produtos_screen.dart';
+import 'estab_produtos_screen.dart';
 import 'estab_avaliacoes_screen.dart';
+import 'estab_estatisticas_screen.dart';
 import 'estab_profile_screen.dart';
 
 class EstabNavigation extends StatefulWidget {
@@ -42,8 +43,9 @@ class _EstabNavigationState extends State<EstabNavigation> {
   final _screens = const [
     EstabHomeScreen(),
     EstabAgendaScreen(),
-    ProdutosScreen(),
+    EstabProdutosScreen(),
     EstabAvaliacoesScreen(),
+    EstabEstatisticasScreen(),
     EstabProfileScreen(),
   ];
 

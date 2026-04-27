@@ -325,9 +325,32 @@ class _BookingCard extends StatelessWidget {
               ),
             ],
 
+            // ── Botão Acompanhar (CONFIRMADO) ──
+            if (ap.isConfirmado) ...[
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () =>
+                      Navigator.pushNamed(context, '/tracking', arguments: ap),
+                  icon: const Icon(Icons.location_on_outlined,
+                      size: 16, color: Colors.white),
+                  label: const Text('Acompanhar serviço',
+                      style: TextStyle(color: Colors.white)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+              ),
+            ],
+
             // ── Botão cancelar ──
             if (ap.canCancel) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton(
