@@ -52,7 +52,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       final list = data as List;
       setState(() => _pets = list.map((e) => PetModel.fromJson(e)).toList());
     } catch (_) {
-      // silently skip
     } finally {
       setState(() => _loadingPets = false);
     }
@@ -135,7 +134,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     if (!mounted) return;
 
     if (booking != null) {
-      // Bloqueia o horário para outras pessoas
       if (establishment != null) {
         final dateStr =
             '${_selectedDate!.year}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}';
@@ -148,7 +146,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             reason: 'Agendado',
           );
         } catch (_) {
-          // best-effort, o agendamento já foi criado
         }
       }
 
@@ -252,7 +249,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ── Selecionar pet ──────────────────────────────
                 _sectionTitle('Selecione o pet'),
                 const SizedBox(height: 10),
                 if (_loadingPets)
@@ -312,7 +308,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
                 const SizedBox(height: 24),
 
-                // ── Selecionar serviço ──────────────────────────
                 _sectionTitle('Selecione o serviço'),
                 const SizedBox(height: 10),
                 if (establishment != null && establishment.services.isNotEmpty)
@@ -337,7 +332,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
                 const SizedBox(height: 24),
 
-                // ── Selecionar data ─────────────────────────────
                 _sectionTitle('Selecione a data'),
                 const SizedBox(height: 12),
                 SizedBox(
@@ -442,7 +436,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                   ),
                 ),
 
-                // ── Selecionar horário ──────────────────────────
                 if (_selectedDate != null) ...[
                   const SizedBox(height: 24),
                   _sectionTitle('Selecione o horário'),
@@ -480,7 +473,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             ),
           ),
 
-          // Botão fixo no rodapé
           Positioned(
             left: 0,
             right: 0,
@@ -531,7 +523,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       );
 }
 
-// ── Slot grid com seções manhã/tarde/noite ───────────────────────────
 class _SlotGrid extends StatelessWidget {
   final List<TimeSlotModel> slots;
   final String? selectedTime;
@@ -673,7 +664,6 @@ class _SlotGrid extends StatelessWidget {
       );
 }
 
-// ── Pet select card ────────────────────────────────────────────────────
 class _PetSelectCard extends StatelessWidget {
   final PetModel pet;
   final bool selected;
@@ -743,7 +733,6 @@ class _PetSelectCard extends StatelessWidget {
   }
 }
 
-// ── Service select card ───────────────────────────────────────────────
 class _ServiceSelectCard extends StatelessWidget {
   final ServiceModel service;
   final bool selected;

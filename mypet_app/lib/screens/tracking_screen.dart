@@ -93,10 +93,8 @@ class _TrackingScreenState extends State<TrackingScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Mapa simulado ─────────────────────────────────────
             _MapView(pulseAnim: _pulseAnim),
 
-            // ── Status bar ────────────────────────────────────────
             Container(
               color: Colors.white,
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
@@ -177,7 +175,6 @@ class _TrackingScreenState extends State<TrackingScreen>
 
             const SizedBox(height: 8),
 
-            // ── Acompanhamento (steps) ────────────────────────────
             Container(
               color: Colors.white,
               padding: const EdgeInsets.all(16),
@@ -268,7 +265,6 @@ class _TrackingScreenState extends State<TrackingScreen>
 
             const SizedBox(height: 8),
 
-            // ── Detalhes do serviço ───────────────────────────────
             if (ap != null)
               Container(
                 color: Colors.white,
@@ -331,7 +327,6 @@ class _TrackingScreenState extends State<TrackingScreen>
 
             const SizedBox(height: 8),
 
-            // ── Fotos do atendimento ──────────────────────────────
             Container(
               color: Colors.white,
               padding: const EdgeInsets.all(16),
@@ -397,7 +392,6 @@ class _TrackingScreenState extends State<TrackingScreen>
 
             const SizedBox(height: 8),
 
-            // ── Estabelecimento + botões ──────────────────────────
             if (ap != null)
               Container(
                 color: Colors.white,
@@ -507,12 +501,10 @@ class _MapView extends StatelessWidget {
       ),
       child: Stack(
         children: [
-          // Grid de ruas simuladas
           CustomPaint(
             painter: _MapGridPainter(),
             size: Size.infinite,
           ),
-          // Pin de localização animado
           Center(
             child: ScaleTransition(
               scale: pulseAnim,
@@ -535,7 +527,6 @@ class _MapView extends StatelessWidget {
               ),
             ),
           ),
-          // Anel de pulso externo
           Center(
             child: AnimatedBuilder(
               animation: pulseAnim,
@@ -553,7 +544,6 @@ class _MapView extends StatelessWidget {
               ),
             ),
           ),
-          // Label "Localização em tempo real"
           Positioned(
             bottom: 10,
             left: 0,

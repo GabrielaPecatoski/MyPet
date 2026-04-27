@@ -200,6 +200,24 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  faq-service:
+    build: ./faq-service
+    container_name: mypet-faq
+    ports:
+      - '3008:3008'
+    environment:
+      PORT: 3008
+      DATABASE_URL: postgresql://postgres:root@postgres:5432/mypet_faq
+      ADMIN_SECRET: mypet_admin_secret
+      CONSUL_HOST: consul
+      CONSUL_PORT: 8500
+    depends_on:
+      postgres:
+        condition: service_healthy
+      consul:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   rabbitmq_data:
