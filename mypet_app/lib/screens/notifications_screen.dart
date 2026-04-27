@@ -71,7 +71,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         token: auth.token,
       );
     } catch (_) {
-      // silently fail – show empty state
     } finally {
       setState(() => _loading = false);
     }

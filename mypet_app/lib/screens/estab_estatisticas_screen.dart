@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../core/colors.dart';
+import '../widgets/mypet_app_bar.dart';
 
 class EstabEstatisticasScreen extends StatefulWidget {
   const EstabEstatisticasScreen({super.key});
@@ -9,7 +10,6 @@ class EstabEstatisticasScreen extends StatefulWidget {
 }
 
 class _EstabEstatisticasScreenState extends State<EstabEstatisticasScreen> {
-  // Mock data — substituir por chamada real à API
   final double _totalReceita = 8_450.00;
   final double _receitaMes = 2_130.00;
   final double _ticketMedio = 87.50;
@@ -42,6 +42,7 @@ class _EstabEstatisticasScreenState extends State<EstabEstatisticasScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
+      appBar: const MypetAppBar(showBack: false),
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
         child: Column(
@@ -58,7 +59,6 @@ class _EstabEstatisticasScreenState extends State<EstabEstatisticasScreen> {
                 style: TextStyle(fontSize: 13, color: AppColors.grey)),
             const SizedBox(height: 20),
 
-            // ── KPI Cards ─────────────────────────────────────────
             Row(
               children: [
                 Expanded(
@@ -108,7 +108,6 @@ class _EstabEstatisticasScreenState extends State<EstabEstatisticasScreen> {
             ),
             const SizedBox(height: 10),
 
-            // ── Avaliação média ───────────────────────────────────
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -181,7 +180,6 @@ class _EstabEstatisticasScreenState extends State<EstabEstatisticasScreen> {
 
             const SizedBox(height: 20),
 
-            // ── Gráfico de barras (últimos 6 meses) ───────────────
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -268,7 +266,6 @@ class _EstabEstatisticasScreenState extends State<EstabEstatisticasScreen> {
 
             const SizedBox(height: 20),
 
-            // ── Distribuição de serviços ───────────────────────────
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -343,7 +340,6 @@ class _EstabEstatisticasScreenState extends State<EstabEstatisticasScreen> {
 
             const SizedBox(height: 20),
 
-            // ── Estimativa próximo mês ─────────────────────────────
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(

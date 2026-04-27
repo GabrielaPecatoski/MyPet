@@ -63,14 +63,14 @@ class _EstabHomeScreenState extends State<EstabHomeScreen>
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(status == 'CONFIRMADO'
-            ? 'Agendamento confirmado!'
-            : 'Agendamento recusado'),
-        backgroundColor:
-            status == 'CONFIRMADO' ? AppColors.success : AppColors.danger,
+        content: Text(ok
+            ? (status == 'CONFIRMADO' ? 'Agendamento confirmado!' : 'Agendamento recusado')
+            : 'Erro ao atualizar agendamento'),
+        backgroundColor: ok
+            ? (status == 'CONFIRMADO' ? AppColors.success : AppColors.danger)
+            : AppColors.danger,
       ),
     );
-    if (ok) setState(() {});
   }
 
   @override
@@ -112,7 +112,6 @@ class _EstabHomeScreenState extends State<EstabHomeScreen>
               child: TabBarView(
                 controller: _tabCtrl,
                 children: [
-                  // ── Aba Agendamentos ──────────────────────────
                   RefreshIndicator(
                     onRefresh: () async => _load(),
                     color: AppColors.primary,
@@ -180,7 +179,6 @@ class _EstabHomeScreenState extends State<EstabHomeScreen>
                           ),
                   ),
 
-                  // ── Aba Serviços ──────────────────────────────
                   const _ServicosTab(),
                 ],
               ),
@@ -201,7 +199,6 @@ class _EstabHomeScreenState extends State<EstabHomeScreen>
       );
 }
 
-// ── Card de agendamento ──────────────────────────────────────────
 class _AgendCard extends StatelessWidget {
   final AppointmentModel appointment;
   final bool showActions;
@@ -354,17 +351,16 @@ class _AgendCard extends StatelessWidget {
       );
 }
 
-// ── Aba de Serviços (dados reais do banco) ──────────────────────
 class _ServicosTab extends StatelessWidget {
   const _ServicosTab();
 
-  void _showAddServico(BuildContext context) {
+  Future<void> _showAddServico(BuildContext context) async {
     final nomeCtrl = TextEditingController();
     final precoCtrl = TextEditingController();
     final durCtrl = TextEditingController();
     final descCtrl = TextEditingController();
 
-    showDialog(
+    await showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -449,6 +445,10 @@ class _ServicosTab extends StatelessWidget {
         ],
       ),
     );
+    nomeCtrl.dispose();
+    precoCtrl.dispose();
+    durCtrl.dispose();
+    descCtrl.dispose();
   }
 
   Future<void> _confirmDelete(

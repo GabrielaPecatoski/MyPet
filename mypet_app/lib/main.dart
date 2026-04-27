@@ -3,8 +3,8 @@ import 'package:provider/provider.dart';
 import 'core/colors.dart';
 import 'providers/auth_provider.dart';
 import 'providers/booking_provider.dart';
+import 'providers/cart_provider.dart';
 import 'providers/establishment_provider.dart';
-// Telas comuns
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
@@ -16,11 +16,12 @@ import 'screens/schedule_screen.dart';
 import 'screens/add_pet_screen.dart';
 import 'screens/pets_screen.dart';
 import 'screens/tracking_screen.dart';
-// Cliente
+import 'screens/help_screen.dart';
+import 'screens/estab_help_screen.dart';
+import 'screens/carrinho_screen.dart';
+import 'screens/pagamento_screen.dart';
 import 'screens/main_navigation.dart';
-// Estabelecimento
 import 'screens/estab_navigation.dart';
-// Admin
 import 'screens/admin_screen.dart';
 
 void main() {
@@ -29,6 +30,7 @@ void main() {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => BookingProvider()),
+        ChangeNotifierProvider(create: (_) => CartProvider()),
         ChangeNotifierProvider(create: (_) => EstablishmentProvider()),
       ],
       child: const MyPetApp(),
@@ -57,20 +59,15 @@ class MyPetApp extends StatelessWidget {
       ),
       initialRoute: '/splash',
       routes: {
-        // ── Auth ──────────────────────────────────────────────
         '/splash':        (_) => const SplashScreen(),
         '/login':         (_) => const LoginScreen(),
         '/register':      (_) => const RegisterScreen(),
-        // ── Cliente ───────────────────────────────────────────
         '/home': (ctx) {
           final idx = ModalRoute.of(ctx)?.settings.arguments as int?;
           return MainNavigation(initialIndex: idx ?? 0);
         },
-        // ── Estabelecimento ───────────────────────────────────
         '/estab-home':    (_) => const EstabNavigation(),
-        // ── Admin ─────────────────────────────────────────────
         '/admin':         (_) => const AdminScreen(),
-        // ── Telas compartilhadas ──────────────────────────────
         '/edit-profile':  (_) => const EditProfileScreen(),
         '/history':       (_) => const HistoryScreen(),
         '/notifications': (_) => const NotificationsScreen(),
@@ -79,6 +76,10 @@ class MyPetApp extends StatelessWidget {
         '/add-pet':       (_) => const AddPetScreen(),
         '/pets':          (_) => const PetsScreen(),
         '/tracking':      (_) => const TrackingScreen(),
+        '/help':          (_) => const HelpScreen(),
+        '/estab-help':    (_) => const EstabHelpScreen(),
+        '/cart':          (_) => const CarrinhoScreen(),
+        '/payment':       (_) => const PagamentoScreen(),
       },
     );
   }
