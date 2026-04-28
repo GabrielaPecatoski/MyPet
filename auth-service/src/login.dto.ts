@@ -51,3 +51,34 @@ export class RegisterDto {
   @IsString()
   businessName?: string;
 }
+
+export class ForgotPasswordDto {
+  @IsEmail({}, { message: 'E-mail inválido' })
+  @IsNotEmpty({ message: 'E-mail obrigatório' })
+  email: string;
+}
+
+export class VerifyResetCodeDto {
+  @IsEmail({}, { message: 'E-mail inválido' })
+  @IsNotEmpty({ message: 'E-mail obrigatório' })
+  email: string;
+
+  @IsString()
+  @IsNotEmpty({ message: 'Código obrigatório' })
+  code: string;
+}
+
+export class ResetPasswordDto {
+  @IsEmail({}, { message: 'E-mail inválido' })
+  @IsNotEmpty({ message: 'E-mail obrigatório' })
+  email: string;
+
+  @IsString()
+  @IsNotEmpty({ message: 'Código obrigatório' })
+  code: string;
+
+  @IsString()
+  @IsNotEmpty({ message: 'Senha obrigatória' })
+  @MinLength(6, { message: 'Senha deve ter no mínimo 6 caracteres' })
+  newPassword: string;
+}

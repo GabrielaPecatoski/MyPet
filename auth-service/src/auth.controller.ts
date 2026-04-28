@@ -9,7 +9,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { LoginDto, RegisterDto } from './login.dto';
+import { LoginDto, RegisterDto, ForgotPasswordDto, VerifyResetCodeDto, ResetPasswordDto } from './login.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -46,5 +46,23 @@ export class AuthController {
     const userId = xUserId || this.authService.extractUserId(auth);
     if (!userId) throw new UnauthorizedException('Token não informado');
     return this.authService.refresh(userId);
+  }
+
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.OK)
+  forgotPassword(@Body() dto: ForgotPasswordDto) {
+    return this.authService.forgotPassword(dto.email);
+  }
+
+  @Post('verify-reset-code')
+  @HttpCode(HttpStatus.OK)
+  verifyResetCode(@Body() dto: VerifyResetCodeDto) {
+    return this.authService.verifyResetCode(dto.email, dto.code);
+  }
+
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.authService.resetPassword(dto.email, dto.code, dto.newPassword);
   }
 }

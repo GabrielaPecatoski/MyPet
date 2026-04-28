@@ -160,4 +160,114 @@ export class AuthService {
       role: user.role,
     };
   }
+
+  async forgotPassword(email: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('Usuário não encontrado');
+    }
+
+    const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        resetToken: code,
+        resetTokenExpires: expiresAt,
+      },
+    });
+
+    const body = JSON.stringify({
+      email: user.email,
+      name: user.name,
+      code,
+    });
+
+    const notifUrl = process.env.NOTIFICATION_SERVICE_URL ?? 'http://localhost:3006';
+    const url = new URL('/email/send-reset-password', notifUrl);
+    const req = http.request({
+      hostname: url.hostname,
+      port: Number(url.port) || 3006,
+      path: url.pathname,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(body),
+      },
+    });
+    req.on('error', () => {});
+    req.write(body);
+    req.end();
+
+    return {
+      message: 'Código de recuperação enviado para o email',
+    };
+  }
+
+  async verifyResetCode(email: string, code: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('Usuário não encontrado');
+    }
+
+    if (!user.resetToken || !user.resetTokenExpires) {
+      throw new UnauthorizedException('Código de recuperação não solicitado');
+    }
+
+    if (user.resetToken !== code) {
+      throw new UnauthorizedException('Código inválido');
+    }
+
+    if (new Date() > user.resetTokenExpires) {
+      throw new UnauthorizedException('Código expirado');
+    }
+
+    return {
+      message: 'Código validado com sucesso',
+    };
+  }
+
+  async resetPassword(email: string, code: string, newPassword: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('Usuário não encontrado');
+    }
+
+    if (!user.resetToken || !user.resetTokenExpires) {
+      throw new UnauthorizedException('Código de recuperação não solicitado');
+    }
+
+    if (user.resetToken !== code) {
+      throw new UnauthorizedException('Código inválido');
+    }
+
+    if (new Date() > user.resetTokenExpires) {
+      throw new UnauthorizedException('Código expirado');
+    }
+
+    const hashed = await bcrypt.hash(newPassword, 10);
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        password: hashed,
+        resetToken: null,
+        resetTokenExpires: null,
+      },
+    });
+
+    return {
+      message: 'Senha resetada com sucesso',
+    };
+  }
 }
