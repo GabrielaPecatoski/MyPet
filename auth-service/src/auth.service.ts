@@ -40,7 +40,10 @@ function createEstablishment(
       'Content-Length': Buffer.byteLength(body),
     },
   });
-  req.on('error', () => {});
+  req.on('error', (err) => {
+    const logger = new Logger('createEstablishment');
+    logger.warn(`Falha ao criar estabelecimento para owner ${ownerId}: ${err.message}`);
+  });
   req.write(body);
   req.end();
 }
