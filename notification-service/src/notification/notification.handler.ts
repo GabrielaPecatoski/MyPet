@@ -21,7 +21,7 @@ export class NotificationHandler {
 
   @EventPattern(EVENTS.BOOKING_STATUS_UPDATED)
   async handleBookingStatusUpdated(
-    @Payload() data: { bookingId: string; status: 'CONFIRMED' | 'CANCELED'; updatedAt: string },
+    @Payload() data: { bookingId: string; status: 'CONFIRMADO' | 'RECUSADO'; updatedAt: string },
     @Ctx() context: RmqContext,
   ) {
     await this.notificationService.sendStatusUpdate(data);

@@ -1,102 +1,81 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
+import { PrismaService } from './prisma.service';
 import { RABBITMQ_CLIENT } from './constants';
 import { EVENTS } from './events/events.constants';
-import * as crypto from 'crypto';
-
-export interface Booking {
-  id: string;
-  userId: string;
-  petId: string;
-  petName: string;
-  serviceName: string;
-  establishmentId: string;
-  establishmentName: string;
-  scheduledAt: string;
-  status: 'PENDENTE' | 'CONFIRMADO' | 'RECUSADO' | 'CONCLUIDO';
-  createdAt: string;
-}
 
 @Injectable()
 export class AppService {
-  private bookings: Booking[] = [
-    {
-      id: 'book-001',
-      userId: 'cliente-001',
-      petId: 'pet-001',
-      petName: 'Rex',
-      serviceName: 'Banho e Tosa',
-      establishmentId: 'estab-001',
-      establishmentName: 'Pet Shop Amor & Carinho',
-      scheduledAt: '2026-04-15T10:00:00.000Z',
-      status: 'CONFIRMADO',
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: 'book-002',
-      userId: 'cliente-001',
-      petId: 'pet-002',
-      petName: 'Luna',
-      serviceName: 'Consulta Veterinária',
-      establishmentId: 'estab-001',
-      establishmentName: 'Pet Shop Amor & Carinho',
-      scheduledAt: '2026-04-18T14:30:00.000Z',
-      status: 'PENDENTE',
-      createdAt: new Date().toISOString(),
-    },
-  ];
+  private readonly logger = new Logger(AppService.name);
 
   constructor(
+    private readonly prisma: PrismaService,
     @Inject(RABBITMQ_CLIENT) private readonly rabbitClient: ClientProxy,
   ) {}
 
-  findByUser(userId: string): Booking[] {
-    return this.bookings.filter((b) => b.userId === userId);
+  async findByUser(userId: string) {
+    return this.prisma.booking.findMany({
+      where: { userId },
+      orderBy: { scheduledAt: 'desc' },
+    });
   }
 
-  findByEstablishment(establishmentId: string): Booking[] {
-    return this.bookings.filter((b) => b.establishmentId === establishmentId);
+  async findByEstablishment(establishmentId: string) {
+    return this.prisma.booking.findMany({
+      where: { establishmentId },
+      orderBy: { scheduledAt: 'desc' },
+    });
   }
 
-  findById(id: string): Booking {
-    const b = this.bookings.find((b) => b.id === id);
+  async findById(id: string) {
+    const b = await this.prisma.booking.findUnique({ where: { id } });
     if (!b) throw new NotFoundException('Agendamento não encontrado');
     return b;
   }
 
   async createBooking(data: {
     userId: string;
+    userName?: string;
     petId: string;
     petName: string;
     serviceName: string;
     establishmentId: string;
     establishmentName: string;
     scheduledAt: string;
-  }): Promise<Booking> {
-    const booking: Booking = {
-      id: crypto.randomUUID(),
-      ...data,
-      status: 'PENDENTE',
-      createdAt: new Date().toISOString(),
-    };
-    this.bookings.push(booking);
+    price?: number;
+  }) {
+    const booking = await this.prisma.booking.create({
+      data: {
+        userId: data.userId,
+        userName: data.userName ?? '',
+        petId: data.petId,
+        petName: data.petName,
+        serviceName: data.serviceName,
+        establishmentId: data.establishmentId,
+        establishmentName: data.establishmentName,
+        scheduledAt: new Date(data.scheduledAt),
+        price: data.price ?? 0,
+        status: 'PENDENTE',
+      },
+    });
 
     try {
       this.rabbitClient.emit(EVENTS.BOOKING_CREATED, {
         bookingId: booking.id,
         userId: booking.userId,
         establishmentId: booking.establishmentId,
-        scheduledAt: booking.scheduledAt,
+        scheduledAt: booking.scheduledAt.toISOString(),
       });
-    } catch (_) {}
+    } catch (err) {
+      this.logger.warn(`Falha ao emitir BOOKING_CREATED: ${err}`);
+    }
 
     return booking;
   }
 
-  async updateStatus(id: string, status: 'CONFIRMADO' | 'RECUSADO'): Promise<Booking> {
-    const idx = this.bookings.findIndex((b) => b.id === id);
-    if (idx === -1) throw new NotFoundException('Agendamento não encontrado');
-    this.bookings[idx].status = status;
+  async updateStatus(id: string, status: 'CONFIRMADO' | 'RECUSADO') {
+    await this.findById(id);
+    const booking = await this.prisma.booking.update({ where: { id }, data: { status } });
 
     try {
       this.rabbitClient.emit(EVENTS.BOOKING_STATUS_UPDATED, {
@@ -104,29 +83,34 @@ export class AppService {
         status,
         updatedAt: new Date().toISOString(),
       });
-    } catch (_) {}
+    } catch (err) {
+      this.logger.warn(`Falha ao emitir BOOKING_STATUS_UPDATED: ${err}`);
+    }
 
-    return this.bookings[idx];
+    return booking;
   }
 
-  async completeBooking(id: string): Promise<Booking> {
-    const idx = this.bookings.findIndex((b) => b.id === id);
-    if (idx === -1) throw new NotFoundException('Agendamento não encontrado');
-    this.bookings[idx].status = 'CONCLUIDO';
+  async completeBooking(id: string) {
+    await this.findById(id);
+    const booking = await this.prisma.booking.update({
+      where: { id },
+      data: { status: 'CONCLUIDO' },
+    });
 
     try {
       this.rabbitClient.emit(EVENTS.BOOKING_COMPLETED, {
         bookingId: id,
         completedAt: new Date().toISOString(),
       });
-    } catch (_) {}
+    } catch (err) {
+      this.logger.warn(`Falha ao emitir BOOKING_COMPLETED: ${err}`);
+    }
 
-    return this.bookings[idx];
+    return booking;
   }
 
-  removeBooking(id: string): void {
-    const idx = this.bookings.findIndex((b) => b.id === id);
-    if (idx === -1) throw new NotFoundException('Agendamento não encontrado');
-    this.bookings.splice(idx, 1);
+  async removeBooking(id: string) {
+    await this.findById(id);
+    await this.prisma.booking.delete({ where: { id } });
   }
 }

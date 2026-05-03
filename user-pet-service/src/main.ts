@@ -6,4 +6,7 @@ async function bootstrap() {
   app.enableCors({ origin: '*', methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'] });
   await app.listen(process.env.PORT ?? 3002);
 }
-bootstrap();
+bootstrap().catch((err) => {
+  console.error('Falha ao iniciar user-pet-service:', err);
+  process.exit(1);
+});

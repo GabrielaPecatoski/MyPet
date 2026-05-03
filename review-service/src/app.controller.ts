@@ -31,12 +31,17 @@ export class AppController {
   @Delete('reviews/admin/complaints/:id')
   @HttpCode(204)
   deleteComplaint(@Param('id') id: string) {
-    this.appService.deleteComplaint(id);
+    return this.appService.deleteComplaint(id);
   }
 
   @Get('reviews/complaints/establishment/:estabId')
   getComplaintsByEstab(@Param('estabId') estabId: string) {
     return this.appService.getComplaintsByEstab(estabId);
+  }
+
+  @Post('reviews/complaints')
+  createComplaint(@Body() body: any) {
+    return this.appService.createComplaint(body);
   }
 
   @Patch('reviews/complaints/:id/respond')

@@ -8,7 +8,7 @@ services:
       POSTGRES_PASSWORD: root
       POSTGRES_DB: mypet
     ports:
-      - '5432:5432'
+      - '5433:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -172,10 +172,13 @@ services:
       - '3006:3006'
     environment:
       PORT: 3006
+      DATABASE_URL: postgresql://postgres:root@postgres:5432/mypet_notif
       RABBITMQ_URL: amqp://mypet:mypet123@rabbitmq:5672
       CONSUL_HOST: consul
       CONSUL_PORT: 8500
     depends_on:
+      postgres:
+        condition: service_healthy
       rabbitmq:
         condition: service_healthy
       consul:

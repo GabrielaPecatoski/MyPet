@@ -1,159 +1,145 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
+import { PrismaService } from './prisma.service';
 import { RABBITMQ_CLIENT } from './constants';
 import { EVENTS } from './events/events.constants';
-import * as crypto from 'crypto';
-
-export interface Product {
-  id: string;
-  name: string;
-  brand: string;
-  price: number;
-  unit: string;
-  category: string;
-  description: string;
-  stock: number;
-  imageUrl?: string;
-  establishmentId?: string;
-}
-
-export interface CartItem {
-  productId: string;
-  quantity: number;
-  product: Product;
-}
-
-export interface Order {
-  id: string;
-  userId: string;
-  items: CartItem[];
-  total: number;
-  status: 'PENDING' | 'CONFIRMED' | 'DELIVERED';
-  createdAt: string;
-}
 
 @Injectable()
 export class AppService {
-  constructor(@Inject(RABBITMQ_CLIENT) private readonly rabbitClient: ClientProxy) {}
+  private readonly logger = new Logger(AppService.name);
 
-  private products: Product[] = [
-    { id: 'prod-001', name: 'Areia Sanitária Gatos', brand: 'PetLove', price: 32.90, unit: '4kg', category: 'Higiene', description: 'Areia sanitária de alta absorção', stock: 50, establishmentId: 'estab-001' },
-    { id: 'prod-002', name: 'Areia Sanitária Gatos', brand: 'PetLove', price: 28.90, unit: '3kg', category: 'Higiene', description: 'Areia sanitária econômica', stock: 30, establishmentId: 'estab-001' },
-    { id: 'prod-003', name: 'Ração Premium Cães', brand: 'Royal Canin', price: 89.90, unit: '3kg', category: 'Alimentação', description: 'Ração premium para cães adultos', stock: 20, establishmentId: 'estab-001' },
-    { id: 'prod-004', name: 'Shampoo Pet', brand: 'PetShop Brasil', price: 24.90, unit: '500ml', category: 'Higiene', description: 'Shampoo neutro para pets', stock: 40, establishmentId: 'estab-002' },
-    { id: 'prod-005', name: 'Coleira Anti-Pulga', brand: 'Seresto', price: 45.00, unit: 'Un', category: 'Saúde', description: 'Coleira anti-pulga 8 meses de proteção', stock: 15, establishmentId: 'estab-002' },
-    { id: 'prod-006', name: 'Brinquedo Corda', brand: 'PetFun', price: 19.90, unit: 'Un', category: 'Brinquedos', description: 'Brinquedo de corda para cães', stock: 60, establishmentId: 'estab-003' },
-    { id: 'prod-007', name: 'Ração Gatos Sênior', brand: 'Purina', price: 75.00, unit: '2kg', category: 'Alimentação', description: 'Ração especial para gatos sênior', stock: 25, establishmentId: 'estab-003' },
-    { id: 'prod-008', name: 'Comedouro Inox', brand: 'PetLife', price: 35.00, unit: 'Un', category: 'Acessórios', description: 'Comedouro de inox antiferrugem', stock: 35, establishmentId: 'estab-003' },
-  ];
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(RABBITMQ_CLIENT) private readonly rabbitClient: ClientProxy,
+  ) {}
 
-  private carts: Map<string, CartItem[]> = new Map();
-  private orders: Order[] = [];
-
-  findAllProducts(search?: string): Product[] {
-    if (!search) return this.products;
-    const q = search.toLowerCase();
-    return this.products.filter(
-      (p) => p.name.toLowerCase().includes(q) || p.brand.toLowerCase().includes(q) || p.category.toLowerCase().includes(q),
-    );
+  async findAllProducts(search?: string) {
+    return this.prisma.product.findMany({
+      where: search
+        ? {
+            OR: [
+              { name: { contains: search, mode: 'insensitive' } },
+              { brand: { contains: search, mode: 'insensitive' } },
+              { category: { contains: search, mode: 'insensitive' } },
+            ],
+          }
+        : undefined,
+    });
   }
 
-  findProductById(id: string): Product {
-    const p = this.products.find((p) => p.id === id);
+  async findProductById(id: string) {
+    const p = await this.prisma.product.findUnique({ where: { id } });
     if (!p) throw new NotFoundException('Produto não encontrado');
     return p;
   }
 
-  createProduct(data: Omit<Product, 'id'>): Product {
-    const product: Product = { ...data, id: crypto.randomUUID() };
-    this.products.push(product);
-    return product;
+  async findProductsByEstab(estabId: string) {
+    return this.prisma.product.findMany({ where: { establishmentId: estabId } });
   }
 
-  updateProduct(id: string, data: Partial<Product>): Product {
-    const idx = this.products.findIndex((p) => p.id === id);
-    if (idx === -1) throw new NotFoundException('Produto não encontrado');
-    this.products[idx] = { ...this.products[idx], ...data };
-    return this.products[idx];
+  async createProduct(data: any) {
+    return this.prisma.product.create({ data });
   }
 
-  deleteProduct(id: string): void {
-    const idx = this.products.findIndex((p) => p.id === id);
-    if (idx === -1) throw new NotFoundException('Produto não encontrado');
-    this.products.splice(idx, 1);
+  async createProductForEstab(estabId: string, data: any) {
+    return this.prisma.product.create({ data: { ...data, establishmentId: estabId } });
   }
 
-  getCart(userId: string): CartItem[] {
-    return this.carts.get(userId) ?? [];
+  async updateProduct(id: string, data: any) {
+    await this.findProductById(id);
+    return this.prisma.product.update({ where: { id }, data });
   }
 
-  addToCart(userId: string, productId: string, quantity: number): CartItem[] {
-    const product = this.findProductById(productId);
-    const cart = this.carts.get(userId) ?? [];
-    const existing = cart.find((c) => c.productId === productId);
-    if (existing) {
-      existing.quantity += quantity;
-    } else {
-      cart.push({ productId, quantity, product });
-    }
-    this.carts.set(userId, cart);
-    return cart;
+  async deleteProduct(id: string) {
+    await this.findProductById(id);
+    await this.prisma.product.delete({ where: { id } });
   }
 
-  removeFromCart(userId: string, productId: string): CartItem[] {
-    const cart = (this.carts.get(userId) ?? []).filter((c) => c.productId !== productId);
-    this.carts.set(userId, cart);
-    return cart;
-  }
-
-  clearCart(userId: string): void {
-    this.carts.delete(userId);
-  }
-
-  checkout(userId: string): Order {
-    const cart = this.carts.get(userId);
-    if (!cart || cart.length === 0) throw new NotFoundException('Carrinho vazio');
-    const total = cart.reduce((sum, c) => sum + c.product.price * c.quantity, 0);
-    const order: Order = {
-      id: crypto.randomUUID(),
-      userId,
-      items: [...cart],
-      total,
-      status: 'CONFIRMED',
-      createdAt: new Date().toISOString(),
-    };
-    this.orders.push(order);
-    this.carts.delete(userId);
-    this.rabbitClient.emit(EVENTS.ORDER_CREATED, {
-      orderId: order.id,
-      userId: order.userId,
-      total: order.total,
-      itemCount: order.items.length,
-      createdAt: order.createdAt,
+  async getCart(userId: string) {
+    return this.prisma.cartItem.findMany({
+      where: { userId },
+      include: { product: true },
     });
+  }
+
+  async addToCart(userId: string, productId: string, quantity: number) {
+    await this.findProductById(productId);
+    await this.prisma.cartItem.upsert({
+      where: { userId_productId: { userId, productId } },
+      create: { userId, productId, quantity },
+      update: { quantity: { increment: quantity } },
+    });
+    return this.getCart(userId);
+  }
+
+  async updateCartItem(userId: string, productId: string, quantity: number) {
+    const item = await this.prisma.cartItem.findUnique({
+      where: { userId_productId: { userId, productId } },
+    });
+    if (!item) throw new NotFoundException('Item não encontrado no carrinho');
+    await this.prisma.cartItem.update({
+      where: { userId_productId: { userId, productId } },
+      data: { quantity },
+    });
+    return this.getCart(userId);
+  }
+
+  async removeFromCart(userId: string, productId: string) {
+    await this.prisma.cartItem.deleteMany({ where: { userId, productId } });
+    return this.getCart(userId);
+  }
+
+  async clearCart(userId: string) {
+    await this.prisma.cartItem.deleteMany({ where: { userId } });
+  }
+
+  async checkout(userId: string) {
+    const cartItems = await this.prisma.cartItem.findMany({
+      where: { userId },
+      include: { product: true },
+    });
+    if (cartItems.length === 0) throw new NotFoundException('Carrinho vazio');
+
+    const total = cartItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+
+    const order = await this.prisma.order.create({
+      data: {
+        userId,
+        total,
+        status: 'CONFIRMED',
+        items: {
+          create: cartItems.map((item) => ({
+            productId: item.productId,
+            quantity: item.quantity,
+            price: item.product.price,
+          })),
+        },
+      },
+      include: { items: { include: { product: true } } },
+    });
+
+    await this.prisma.cartItem.deleteMany({ where: { userId } });
+
+    try {
+      this.rabbitClient.emit(EVENTS.ORDER_CREATED, {
+        orderId: order.id,
+        userId: order.userId,
+        total: order.total,
+        itemCount: order.items.length,
+        createdAt: order.createdAt.toISOString(),
+      });
+    } catch (err) {
+      this.logger.warn(`Falha ao emitir ORDER_CREATED: ${err}`);
+    }
+
     return order;
   }
 
-  getUserOrders(userId: string): Order[] {
-    return this.orders.filter((o) => o.userId === userId);
-  }
-
-  findProductsByEstab(estabId: string): Product[] {
-    return this.products.filter((p) => p.establishmentId === estabId);
-  }
-
-  createProductForEstab(estabId: string, data: Omit<Product, 'id' | 'establishmentId'>): Product {
-    const product: Product = { ...data, id: crypto.randomUUID(), establishmentId: estabId };
-    this.products.push(product);
-    return product;
-  }
-
-  updateCartItem(userId: string, productId: string, quantity: number): CartItem[] {
-    const cart = this.carts.get(userId) ?? [];
-    const item = cart.find((c) => c.productId === productId);
-    if (!item) throw new NotFoundException('Item não encontrado no carrinho');
-    item.quantity = quantity;
-    this.carts.set(userId, cart);
-    return cart;
+  async getUserOrders(userId: string) {
+    return this.prisma.order.findMany({
+      where: { userId },
+      include: { items: { include: { product: true } } },
+      orderBy: { createdAt: 'desc' },
+    });
   }
 }

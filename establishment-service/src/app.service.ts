@@ -1,154 +1,101 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import * as crypto from 'crypto';
-
-export interface Service {
-  id: string;
-  name: string;
-  price: number;
-  durationMinutes: number;
-}
-
-export interface Establishment {
-  id: string;
-  ownerId: string;
-  name: string;
-  description: string;
-  address: string;
-  city: string;
-  phone: string;
-  rating: number;
-  reviewCount: number;
-  services: Service[];
-  imageUrl?: string;
-}
+import { PrismaService } from './prisma.service';
 
 @Injectable()
 export class AppService {
-  private establishments: Establishment[] = [
-    {
-      id: 'estab-001',
-      ownerId: 'vendedor-001',
-      name: 'Pet Shop Amor & Carinho',
-      description: 'Cuidados completos para o seu pet com amor e profissionalismo.',
-      address: 'Rua das Flores, 123',
-      city: 'São Paulo',
-      phone: '(11) 3456-7890',
-      rating: 4.6,
-      reviewCount: 47,
-      services: [
-        { id: 'svc-001', name: 'Banho', price: 50.00, durationMinutes: 60 },
-        { id: 'svc-002', name: 'Tosa', price: 80.00, durationMinutes: 90 },
-        { id: 'svc-003', name: 'Banho e Tosa', price: 80.00, durationMinutes: 120 },
-        { id: 'svc-004', name: 'Consulta Veterinária', price: 120.00, durationMinutes: 45 },
-        { id: 'svc-005', name: 'Vacinação', price: 60.00, durationMinutes: 20 },
-      ],
-    },
-    {
-      id: 'estab-002',
-      ownerId: 'vendedor-002',
-      name: 'Clínica VetCare',
-      description: 'Atendimento veterinário especializado 24h.',
-      address: 'Av. Paulista, 456',
-      city: 'São Paulo',
-      phone: '(11) 4567-8901',
-      rating: 4.8,
-      reviewCount: 123,
-      services: [
-        { id: 'svc-101', name: 'Consulta', price: 150.00, durationMinutes: 30 },
-        { id: 'svc-102', name: 'Vacinação', price: 70.00, durationMinutes: 15 },
-        { id: 'svc-103', name: 'Exame de Sangue', price: 200.00, durationMinutes: 20 },
-      ],
-    },
-    {
-      id: 'estab-003',
-      ownerId: 'vendedor-003',
-      name: 'PetSpa Premium',
-      description: 'Spa e estética para seu pet com produtos premium.',
-      address: 'Rua Oscar Freire, 789',
-      city: 'São Paulo',
-      phone: '(11) 5678-9012',
-      rating: 4.4,
-      reviewCount: 89,
-      services: [
-        { id: 'svc-201', name: 'Banho Premium', price: 90.00, durationMinutes: 90 },
-        { id: 'svc-202', name: 'Tosa Artística', price: 120.00, durationMinutes: 120 },
-        { id: 'svc-203', name: 'Hidratação', price: 60.00, durationMinutes: 60 },
-      ],
-    },
-  ];
+  constructor(private readonly prisma: PrismaService) {}
 
-  findAll(search?: string): Establishment[] {
-    if (!search) return this.establishments;
-    const q = search.toLowerCase();
-    return this.establishments.filter(
-      (e) => e.name.toLowerCase().includes(q) || e.city.toLowerCase().includes(q),
-    );
+  async findAll(search?: string) {
+    return this.prisma.establishment.findMany({
+      where: search
+        ? {
+            OR: [
+              { name: { contains: search, mode: 'insensitive' } },
+              { city: { contains: search, mode: 'insensitive' } },
+            ],
+          }
+        : undefined,
+      include: { services: true },
+    });
   }
 
-  findById(id: string): Establishment {
-    const e = this.establishments.find((e) => e.id === id);
+  async findById(id: string) {
+    const e = await this.prisma.establishment.findUnique({
+      where: { id },
+      include: { services: true },
+    });
     if (!e) throw new NotFoundException('Estabelecimento não encontrado');
     return e;
   }
 
-  findByOwner(ownerId: string): Establishment[] {
-    return this.establishments.filter((e) => e.ownerId === ownerId);
+  async findByOwner(ownerId: string) {
+    return this.prisma.establishment.findMany({
+      where: { ownerId },
+      include: { services: true },
+    });
   }
 
-  create(ownerId: string, data: any): Establishment {
-    const estab: Establishment = {
-      ...data,
-      id: crypto.randomUUID(),
-      ownerId,
-      rating: 0,
-      reviewCount: 0,
-      services: [],
-    };
-    this.establishments.push(estab);
-    return estab;
+  async create(ownerId: string, data: any) {
+    const { services, ...estabData } = data;
+    return this.prisma.establishment.create({
+      data: {
+        ...estabData,
+        ownerId,
+        rating: 0,
+        reviewCount: 0,
+        services: services?.length ? { create: services } : undefined,
+      },
+      include: { services: true },
+    });
   }
 
-  update(id: string, data: Partial<Establishment>): Establishment {
-    const idx = this.establishments.findIndex((e) => e.id === id);
-    if (idx === -1) throw new NotFoundException('Estabelecimento não encontrado');
-    this.establishments[idx] = { ...this.establishments[idx], ...data };
-    return this.establishments[idx];
+  async update(id: string, data: any) {
+    await this.findById(id);
+    return this.prisma.establishment.update({
+      where: { id },
+      data,
+      include: { services: true },
+    });
   }
 
-  addService(establishmentId: string, service: Omit<Service, 'id'>): Establishment {
-    const estab = this.findById(establishmentId);
-    const newService: Service = { ...service, id: crypto.randomUUID() };
-    estab.services.push(newService);
-    return estab;
+  async addService(establishmentId: string, service: { name: string; price: number; durationMinutes: number; description?: string }) {
+    await this.findById(establishmentId);
+    await this.prisma.service.create({ data: { ...service, establishmentId } });
+    return this.findById(establishmentId);
   }
 
-  removeService(establishmentId: string, serviceId: string): Establishment {
-    const estab = this.findById(establishmentId);
-    estab.services = estab.services.filter((s) => s.id !== serviceId);
-    return estab;
+  async removeService(establishmentId: string, serviceId: string) {
+    await this.findById(establishmentId);
+    await this.prisma.service.delete({ where: { id: serviceId } }).catch(() => {
+      throw new NotFoundException('Serviço não encontrado');
+    });
+    return this.findById(establishmentId);
   }
 
-  findAllAdmin() {
-    return this.establishments.map((e) => ({
+  async findAllAdmin() {
+    const establishments = await this.prisma.establishment.findMany({
+      include: { _count: { select: { services: true } } },
+    });
+    return establishments.map((e) => ({
       id: e.id,
       name: e.name,
-      type: 'Pet Shop',
+      type: e.type,
       address: e.address,
       phone: e.phone,
       rating: e.rating,
-      servicesCount: e.services.length,
+      servicesCount: e._count.services,
       bookingsCount: 0,
     }));
   }
 
-  getStats(estabId: string) {
-    const estab = this.findById(estabId);
+  async getStats(estabId: string) {
+    const estab = await this.findById(estabId);
     const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun'];
     const baseValues = [1800, 2400, 2100, 3000, 2700, 3200];
     return {
-      totalRevenue: 18500.00,
-      monthRevenue: 3200.00,
-      avgTicket: 85.00,
+      totalRevenue: 18500.0,
+      monthRevenue: 3200.0,
+      avgTicket: 85.0,
       totalBookings: 217,
       monthBookings: 38,
       avgRating: estab.rating,
@@ -158,9 +105,15 @@ export class AppService {
     };
   }
 
-  getAdminStats() {
-    const total = this.establishments.length;
-    const avgRating = this.establishments.reduce((s, e) => s + e.rating, 0) / total;
+  async getAdminStats() {
+    const [total, establishments] = await Promise.all([
+      this.prisma.establishment.count(),
+      this.prisma.establishment.findMany({ select: { rating: true } }),
+    ]);
+    const avgRating =
+      establishments.length > 0
+        ? establishments.reduce((s, e) => s + e.rating, 0) / establishments.length
+        : 0;
     return {
       totalUsers: 150,
       totalEstabs: total,
@@ -180,7 +133,7 @@ export class AppService {
         { label: 'Hotel', percentage: 15 },
         { label: 'Outros', percentage: 10 },
       ],
-      avgTicket: 92.50,
+      avgTicket: 92.5,
       clientRetention: 68.5,
       nps: 72,
       monthlyGrowth: 12.3,

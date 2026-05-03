@@ -15,7 +15,7 @@ import { HealthController } from './health/health.controller';
       },
     ]),
     JwtModule.register({
-      secret: process.env.JWT_SECRET ?? 'mypet_super_secret_change_in_production',
+      secret: process.env.JWT_SECRET || (() => { throw new Error('JWT_SECRET não definido'); })(),
     }),
   ],
   controllers: [HealthController],

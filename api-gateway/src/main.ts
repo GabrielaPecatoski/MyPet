@@ -62,4 +62,7 @@ async function bootstrap() {
   await app.listen(port);
   console.log(`API Gateway rodando na porta ${port}`);
 }
-bootstrap();
+bootstrap().catch((err) => {
+  console.error('Falha ao iniciar API Gateway:', err);
+  process.exit(1);
+});

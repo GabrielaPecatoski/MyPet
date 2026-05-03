@@ -24,4 +24,7 @@ async function bootstrap() {
     console.warn('RabbitMQ indisponível — notificações desativadas:', err.message);
   });
 }
-bootstrap();
+bootstrap().catch((err) => {
+  console.error('Falha ao iniciar notification-service:', err);
+  process.exit(1);
+});

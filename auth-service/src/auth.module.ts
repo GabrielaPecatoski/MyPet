@@ -11,7 +11,7 @@ import { RABBITMQ_CLIENT } from './constants';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     JwtModule.register({
-      secret: process.env.JWT_SECRET ?? 'mypet_super_secret_change_in_production',
+      secret: process.env.JWT_SECRET || (() => { throw new Error('JWT_SECRET não definido'); })(),
       signOptions: { expiresIn: '7d' },
     }),
     ClientsModule.register([

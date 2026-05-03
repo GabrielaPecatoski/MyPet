@@ -3,12 +3,10 @@ import { ConfigModule } from '@nestjs/config';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { PrismaService } from './prisma.service';
 import { HealthController } from './health/health.controller';
 import { ConsulService } from './consul/consul.service';
 import { RABBITMQ_CLIENT } from './constants';
-
-const SERVICE_NAME = 'booking-service';
-const SERVICE_PORT = 3005;
 
 @Module({
   imports: [
@@ -28,6 +26,7 @@ const SERVICE_PORT = 3005;
   controllers: [AppController, HealthController],
   providers: [
     AppService,
+    PrismaService,
     {
       provide: ConsulService,
       useValue: new ConsulService({ serviceName: 'booking-service', servicePort: 3005 }),
