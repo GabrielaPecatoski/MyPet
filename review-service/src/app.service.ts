@@ -1,4 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { ClientProxy } from '@nestjs/microservices';
+import { RABBITMQ_CLIENT } from './constants';
+import { EVENTS } from './events/events.constants';
 import * as crypto from 'crypto';
 
 export interface Review {
@@ -28,6 +31,8 @@ export interface Complaint {
 
 @Injectable()
 export class AppService {
+  constructor(@Inject(RABBITMQ_CLIENT) private readonly rabbitClient: ClientProxy) {}
+
   private reviews: Review[] = [
     {
       id: 'rev-001',
@@ -79,6 +84,13 @@ export class AppService {
   createReview(data: Omit<Review, 'id' | 'createdAt'>): Review {
     const review: Review = { ...data, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
     this.reviews.push(review);
+    this.rabbitClient.emit(EVENTS.REVIEW_CREATED, {
+      reviewId: review.id,
+      userId: review.userId,
+      establishmentId: review.establishmentId,
+      rating: review.rating,
+      createdAt: review.createdAt,
+    });
     return review;
   }
 

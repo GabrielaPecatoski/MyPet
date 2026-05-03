@@ -38,4 +38,34 @@ export class NotificationHandler {
     const channel = context.getChannelRef();
     channel.ack(context.getMessage());
   }
+
+  @EventPattern(EVENTS.REVIEW_CREATED)
+  async handleReviewCreated(
+    @Payload() data: { reviewId: string; userId: string; establishmentId: string; rating: number; createdAt: string },
+    @Ctx() context: RmqContext,
+  ) {
+    await this.notificationService.sendReviewNotification(data);
+    const channel = context.getChannelRef();
+    channel.ack(context.getMessage());
+  }
+
+  @EventPattern(EVENTS.ORDER_CREATED)
+  async handleOrderCreated(
+    @Payload() data: { orderId: string; userId: string; total: number; itemCount: number; createdAt: string },
+    @Ctx() context: RmqContext,
+  ) {
+    await this.notificationService.sendOrderConfirmation(data);
+    const channel = context.getChannelRef();
+    channel.ack(context.getMessage());
+  }
+
+  @EventPattern(EVENTS.USER_REGISTERED)
+  async handleUserRegistered(
+    @Payload() data: { userId: string; name: string; email: string; role: string; registeredAt: string },
+    @Ctx() context: RmqContext,
+  ) {
+    await this.notificationService.sendWelcomeNotification(data);
+    const channel = context.getChannelRef();
+    channel.ack(context.getMessage());
+  }
 }

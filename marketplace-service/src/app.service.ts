@@ -1,4 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { ClientProxy } from '@nestjs/microservices';
+import { RABBITMQ_CLIENT } from './constants';
+import { EVENTS } from './events/events.constants';
 import * as crypto from 'crypto';
 
 export interface Product {
@@ -31,6 +34,8 @@ export interface Order {
 
 @Injectable()
 export class AppService {
+  constructor(@Inject(RABBITMQ_CLIENT) private readonly rabbitClient: ClientProxy) {}
+
   private products: Product[] = [
     { id: 'prod-001', name: 'Areia Sanitária Gatos', brand: 'PetLove', price: 32.90, unit: '4kg', category: 'Higiene', description: 'Areia sanitária de alta absorção', stock: 50, establishmentId: 'estab-001' },
     { id: 'prod-002', name: 'Areia Sanitária Gatos', brand: 'PetLove', price: 28.90, unit: '3kg', category: 'Higiene', description: 'Areia sanitária econômica', stock: 30, establishmentId: 'estab-001' },
@@ -119,6 +124,13 @@ export class AppService {
     };
     this.orders.push(order);
     this.carts.delete(userId);
+    this.rabbitClient.emit(EVENTS.ORDER_CREATED, {
+      orderId: order.id,
+      userId: order.userId,
+      total: order.total,
+      itemCount: order.items.length,
+      createdAt: order.createdAt,
+    });
     return order;
   }
 

@@ -33,4 +33,38 @@ export class NotificationService {
       `  mensagem: "Seu pet foi atendido! Que tal deixar uma avaliação?"`,
     );
   }
+
+  async sendReviewNotification(data: {
+    reviewId: string; userId: string; establishmentId: string; rating: number; createdAt: string;
+  }) {
+    this.logger.log(
+      `[NOTIFICAÇÃO] Nova avaliação recebida!\n` +
+      `  estabelecimento: ${data.establishmentId}\n` +
+      `  nota: ${data.rating}/5\n` +
+      `  mensagem: "Você recebeu uma nova avaliação. Confira no painel!"`,
+    );
+  }
+
+  async sendOrderConfirmation(data: {
+    orderId: string; userId: string; total: number; itemCount: number; createdAt: string;
+  }) {
+    this.logger.log(
+      `[NOTIFICAÇÃO] Pedido realizado!\n` +
+      `  usuário: ${data.userId}\n` +
+      `  pedido: ${data.orderId}\n` +
+      `  total: R$ ${data.total.toFixed(2)} (${data.itemCount} ${data.itemCount === 1 ? 'item' : 'itens'})\n` +
+      `  mensagem: "Seu pedido foi confirmado e está sendo processado!"`,
+    );
+  }
+
+  async sendWelcomeNotification(data: {
+    userId: string; name: string; email: string; role: string; registeredAt: string;
+  }) {
+    this.logger.log(
+      `[NOTIFICAÇÃO] Bem-vindo ao MyPet!\n` +
+      `  usuário: ${data.name} (${data.email})\n` +
+      `  perfil: ${data.role}\n` +
+      `  mensagem: "Olá ${data.name}, seja bem-vindo ao MyPet! 🐾"`,
+    );
+  }
 }

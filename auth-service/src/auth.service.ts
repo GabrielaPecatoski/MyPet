@@ -4,18 +4,23 @@ import {
   ConflictException,
   InternalServerErrorException,
   NotFoundException,
+  Inject,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { ClientProxy } from '@nestjs/microservices';
 import { User, Role } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from './prisma.service';
 import { LoginDto, RegisterDto } from './login.dto';
+import { RABBITMQ_CLIENT } from './constants';
+import { EVENTS } from './events/events.constants';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
+    @Inject(RABBITMQ_CLIENT) private readonly rabbitClient: ClientProxy,
   ) {}
 
   async login(dto: LoginDto) {
@@ -63,6 +68,14 @@ export class AuthService {
       }
       throw new InternalServerErrorException('Erro ao criar conta');
     }
+
+    this.rabbitClient.emit(EVENTS.USER_REGISTERED, {
+      userId: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      registeredAt: new Date().toISOString(),
+    });
 
     return {
       access_token: this.generateToken(user),
