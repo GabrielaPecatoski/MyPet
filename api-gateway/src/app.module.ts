@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { JwtModule } from '@nestjs/jwt';
 import { AuthGuardMiddleware } from './auth/auth-guard.middleware';
+import { AuthController } from './auth/auth.controller';
 import { HealthController } from './health/health.controller';
 
 @Module({
@@ -18,7 +19,7 @@ import { HealthController } from './health/health.controller';
       secret: process.env.JWT_SECRET ?? 'mypet_super_secret_change_in_production',
     }),
   ],
-  controllers: [HealthController],
+  controllers: [HealthController, AuthController],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
