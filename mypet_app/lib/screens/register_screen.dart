@@ -1,9 +1,9 @@
-import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../core/colors.dart';
+import '../core/platform_file_image.dart';
 import '../providers/auth_provider.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -136,16 +136,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           color: const Color(0xFFEEEAFF),
                           borderRadius: BorderRadius.circular(43),
                         ),
-                        child: _photoPath != null && !kIsWeb
-                            ? ClipRRect(
-                                borderRadius: BorderRadius.circular(43),
-                                child: Image.file(
-                                  File(_photoPath!),
-                                  fit: BoxFit.cover,
-                                ),
-                              )
-                            : const Icon(Icons.download,
-                                size: 32, color: AppColors.dark),
+                        child: fileImageWidget(
+                          path: _photoPath,
+                          fit: BoxFit.cover,
+                          fallback: const Icon(Icons.download, size: 32, color: AppColors.dark),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 24),

@@ -1,7 +1,7 @@
-import 'dart:io' as dart_io;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/colors.dart';
+import '../core/platform_file_image.dart';
 import '../providers/auth_provider.dart';
 
 class MypetAppBar extends StatelessWidget implements PreferredSizeWidget {
@@ -51,16 +51,14 @@ class MypetAppBar extends StatelessWidget implements PreferredSizeWidget {
                     child: CircleAvatar(
                       radius: 16,
                       backgroundColor: AppColors.primaryLight,
-                      child: user?.photoPath != null
-                          ? ClipOval(
-                              child: Image.file(
-                                dart_io.File(user!.photoPath!),
-                                width: 32,
-                                height: 32,
-                                fit: BoxFit.cover,
-                              ),
-                            )
-                          : const Icon(Icons.person, size: 18, color: AppColors.primary),
+                      child: ClipOval(
+                        child: fileImageWidget(
+                          path: user?.photoPath,
+                          width: 32,
+                          height: 32,
+                          fallback: const Icon(Icons.person, size: 18, color: AppColors.primary),
+                        ),
+                      ),
                     ),
                   ),
                 );

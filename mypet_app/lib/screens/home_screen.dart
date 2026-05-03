@@ -1,7 +1,7 @@
-import 'dart:io' as dart_io;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/colors.dart';
+import '../core/platform_file_image.dart';
 import '../models/establishment.dart';
 import '../providers/auth_provider.dart';
 
@@ -100,16 +100,14 @@ class HomeScreen extends StatelessWidget {
                       child: CircleAvatar(
                         radius: 20,
                         backgroundColor: AppColors.primaryLight,
-                        child: user?.photoPath != null
-                            ? ClipOval(
-                                child: Image.file(
-                                  dart_io.File(user!.photoPath!),
-                                  width: 40,
-                                  height: 40,
-                                  fit: BoxFit.cover,
-                                ),
-                              )
-                            : const Icon(Icons.person, color: AppColors.primary),
+                        child: ClipOval(
+                        child: fileImageWidget(
+                          path: user?.photoPath,
+                          width: 40,
+                          height: 40,
+                          fallback: const Icon(Icons.person, color: AppColors.primary),
+                        ),
+                      ),
                       ),
                     ),
                   ],

@@ -1,7 +1,7 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../core/colors.dart';
+import '../core/platform_file_image.dart';
 import '../models/pet.dart';
 import '../widgets/mypet_app_bar.dart';
 
@@ -111,9 +111,7 @@ class _AddPetScreenState extends State<AddPetScreen> {
                         CircleAvatar(
                           radius: 45,
                           backgroundColor: AppColors.greyLight,
-                          backgroundImage: _photoPath != null
-                              ? FileImage(File(_photoPath!))
-                              : null,
+                          backgroundImage: fileImageProvider(_photoPath),
                           child: _photoPath == null
                               ? const Icon(Icons.download,
                                   size: 32, color: AppColors.dark)

@@ -1,8 +1,8 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../core/colors.dart';
+import '../core/platform_file_image.dart';
 import '../models/user.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/app_bottom_nav.dart';
@@ -106,9 +106,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     CircleAvatar(
                       radius: 52,
                       backgroundColor: AppColors.primaryLight,
-                      backgroundImage: photoPath != null
-                          ? FileImage(File(photoPath))
-                          : null,
+                      backgroundImage: fileImageProvider(photoPath),
                       child: photoPath == null
                           ? const Icon(Icons.person,
                               size: 52, color: AppColors.primary)

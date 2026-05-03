@@ -1,8 +1,8 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../core/colors.dart';
+import '../core/platform_file_image.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/mypet_app_bar.dart';
 
@@ -52,9 +52,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         child: CircleAvatar(
                           radius: 30,
                           backgroundColor: AppColors.primaryLight,
-                          backgroundImage: photo != null
-                              ? FileImage(File(photo))
-                              : null,
+                          backgroundImage: fileImageProvider(photo),
                           child: photo == null
                               ? const Icon(Icons.person,
                                   size: 32, color: AppColors.primary)
