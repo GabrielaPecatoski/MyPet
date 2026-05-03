@@ -127,4 +127,63 @@ export class AppService {
     estab.services = estab.services.filter((s) => s.id !== serviceId);
     return estab;
   }
+
+  findAllAdmin() {
+    return this.establishments.map((e) => ({
+      id: e.id,
+      name: e.name,
+      type: 'Pet Shop',
+      address: e.address,
+      phone: e.phone,
+      rating: e.rating,
+      servicesCount: e.services.length,
+      bookingsCount: 0,
+    }));
+  }
+
+  getStats(estabId: string) {
+    const estab = this.findById(estabId);
+    const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun'];
+    const baseValues = [1800, 2400, 2100, 3000, 2700, 3200];
+    return {
+      totalRevenue: 18500.00,
+      monthRevenue: 3200.00,
+      avgTicket: 85.00,
+      totalBookings: 217,
+      monthBookings: 38,
+      avgRating: estab.rating,
+      totalReviews: estab.reviewCount,
+      last6Months: monthNames.map((month, i) => ({ month, value: baseValues[i] })),
+      topServices: estab.services.slice(0, 3).map((s, i) => ({ name: s.name, count: 30 - i * 5 })),
+    };
+  }
+
+  getAdminStats() {
+    const total = this.establishments.length;
+    const avgRating = this.establishments.reduce((s, e) => s + e.rating, 0) / total;
+    return {
+      totalUsers: 150,
+      totalEstabs: total,
+      totalBookings: 1240,
+      avgRating: parseFloat(avgRating.toFixed(1)),
+      bookingsByMonth: [
+        { month: 'Jan', count: 180 },
+        { month: 'Fev', count: 210 },
+        { month: 'Mar', count: 195 },
+        { month: 'Abr', count: 230 },
+        { month: 'Mai', count: 245 },
+        { month: 'Jun', count: 180 },
+      ],
+      serviceDistribution: [
+        { label: 'Banho & Tosa', percentage: 45 },
+        { label: 'Veterinário', percentage: 30 },
+        { label: 'Hotel', percentage: 15 },
+        { label: 'Outros', percentage: 10 },
+      ],
+      avgTicket: 92.50,
+      clientRetention: 68.5,
+      nps: 72,
+      monthlyGrowth: 12.3,
+    };
+  }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'core/colors.dart';
 import 'providers/auth_provider.dart';
+import 'providers/cart_provider.dart';
 // Telas comuns
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
@@ -19,11 +20,15 @@ import 'screens/main_navigation.dart';
 import 'screens/estab_navigation.dart';
 // Admin
 import 'screens/admin_screen.dart';
+import 'screens/product_detail_screen.dart';
 
 void main() {
   runApp(
-    ChangeNotifierProvider(
-      create: (_) => AuthProvider(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => CartProvider()),
+      ],
       child: const MyPetApp(),
     ),
   );
@@ -70,6 +75,7 @@ class MyPetApp extends StatelessWidget {
         '/schedule':      (_) => const ScheduleScreen(),
         '/add-pet':       (_) => const AddPetScreen(),
         '/pets':          (_) => const PetsScreen(),
+        '/product-detail': (_) => const ProductDetailScreen(),
       },
     );
   }

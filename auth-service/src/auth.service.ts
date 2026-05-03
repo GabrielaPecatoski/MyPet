@@ -3,6 +3,7 @@ import {
   UnauthorizedException,
   ConflictException,
   InternalServerErrorException,
+  NotFoundException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { User, Role } from '@prisma/client';
@@ -89,6 +90,19 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new UnauthorizedException('Usuário não encontrado');
     return { access_token: this.generateToken(user), user: this.toPublic(user) };
+  }
+
+  async getAllUsers() {
+    const users = await this.prisma.user.findMany();
+    return users.map((u) => ({ ...this.toPublic(u), petsCount: 0, bookingsCount: 0 }));
+  }
+
+  async deleteUser(id: string) {
+    try {
+      await this.prisma.user.delete({ where: { id } });
+    } catch {
+      throw new NotFoundException('Usuário não encontrado');
+    }
   }
 
   private generateToken(user: User): string {

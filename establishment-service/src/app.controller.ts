@@ -18,6 +18,21 @@ export class AppController {
     return this.appService.findByOwner(ownerId);
   }
 
+  @Get('establishments/admin/all')
+  findAllAdmin() {
+    return this.appService.findAllAdmin();
+  }
+
+  @Get('establishments/admin/stats')
+  getAdminStats() {
+    return this.appService.getAdminStats();
+  }
+
+  @Get('establishments/:id/stats')
+  getStats(@Param('id') id: string) {
+    return this.appService.getStats(id);
+  }
+
   @Get('establishments/:id')
   findById(@Param('id') id: string) {
     return this.appService.findById(id);
