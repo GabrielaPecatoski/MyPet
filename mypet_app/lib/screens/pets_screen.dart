@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../core/colors.dart';
+import '../core/constants.dart';
 import '../core/platform_file_image.dart';
 import '../models/pet.dart';
+import '../providers/auth_provider.dart';
+import '../services/api_service.dart';
 import '../widgets/mypet_app_bar.dart';
 import 'add_pet_screen.dart';
 
@@ -12,17 +16,112 @@ class PetsScreen extends StatefulWidget {
 }
 
 class _PetsScreenState extends State<PetsScreen> {
-  final List<PetModel> _pets = [
-    PetModel(id: '1', name: 'Rex', type: 'Cachorro', breed: 'Golden Retriever', age: 3),
-    PetModel(id: '2', name: 'Luna', type: 'Gato', breed: 'Siamês', age: 2),
-  ];
+  List<PetModel> _pets = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPets();
+  }
+
+  Future<void> _loadPets() async {
+    final userId = context.read<AuthProvider>().user?.id;
+    final token = context.read<AuthProvider>().token;
+    if (userId == null) {
+      setState(() => _loading = false);
+      return;
+    }
+    setState(() => _loading = true);
+    try {
+      final data = await ApiService.get(
+        '${ApiConstants.petsEndpoint}/$userId',
+        token: token,
+      );
+      if (mounted) {
+        setState(() {
+          _pets = (data as List<dynamic>)
+              .map((p) => PetModel.fromJson(p as Map<String, dynamic>))
+              .toList();
+          _loading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
 
   Future<void> _addPet() async {
     final pet = await Navigator.push<PetModel>(
       context,
       MaterialPageRoute(builder: (_) => const AddPetScreen()),
     );
-    if (pet != null) setState(() => _pets.add(pet));
+    if (pet == null || !mounted) return;
+
+    final userId = context.read<AuthProvider>().user?.id;
+    final token = context.read<AuthProvider>().token;
+    if (userId == null) return;
+
+    try {
+      await ApiService.post(
+        '${ApiConstants.petsEndpoint}/$userId',
+        {
+          'name': pet.name,
+          'type': pet.type,
+          'breed': pet.breed,
+          'age': pet.age,
+        },
+        token: token,
+      );
+      await _loadPets();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Erro ao cadastrar pet'),
+          backgroundColor: AppColors.danger,
+        ));
+      }
+    }
+  }
+
+  Future<void> _deletePet(PetModel pet) async {
+    final token = context.read<AuthProvider>().token;
+    try {
+      await ApiService.delete('/pets/${pet.id}', token: token);
+      await _loadPets();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Erro ao remover pet'),
+          backgroundColor: AppColors.danger,
+        ));
+      }
+    }
+  }
+
+  void _confirmDelete(PetModel pet) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Remover pet'),
+        content: Text('Deseja remover ${pet.name}?'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancelar')),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _deletePet(pet);
+            },
+            style:
+                ElevatedButton.styleFrom(backgroundColor: AppColors.danger),
+            child: const Text('Remover',
+                style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -35,29 +134,47 @@ class _PetsScreenState extends State<PetsScreen> {
         backgroundColor: AppColors.primary,
         child: const Icon(Icons.add, color: Colors.white),
       ),
-      body: _pets.isEmpty
+      body: _loading
           ? const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.pets, size: 64, color: AppColors.greyLight),
-                  SizedBox(height: 16),
-                  Text('Nenhum pet cadastrado',
-                      style: TextStyle(color: AppColors.grey, fontSize: 15)),
-                  SizedBox(height: 8),
-                  Text('Toque no + para adicionar',
-                      style: TextStyle(color: AppColors.grey, fontSize: 13)),
-                ],
-              ),
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-              itemCount: _pets.length,
-              itemBuilder: (ctx, i) => _PetCard(
-                pet: _pets[i],
-                onDelete: () => setState(() => _pets.removeAt(i)),
-              ),
-            ),
+              child: CircularProgressIndicator(color: AppColors.primary))
+          : _pets.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.pets,
+                          size: 64, color: AppColors.greyLight),
+                      const SizedBox(height: 16),
+                      const Text('Nenhum pet cadastrado',
+                          style:
+                              TextStyle(color: AppColors.grey, fontSize: 15)),
+                      const SizedBox(height: 8),
+                      const Text('Toque no + para adicionar',
+                          style:
+                              TextStyle(color: AppColors.grey, fontSize: 13)),
+                      const SizedBox(height: 16),
+                      TextButton.icon(
+                        onPressed: _loadPets,
+                        icon: const Icon(Icons.refresh,
+                            color: AppColors.primary),
+                        label: const Text('Atualizar',
+                            style: TextStyle(color: AppColors.primary)),
+                      ),
+                    ],
+                  ),
+                )
+              : RefreshIndicator(
+                  onRefresh: _loadPets,
+                  child: ListView.builder(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 16),
+                    itemCount: _pets.length,
+                    itemBuilder: (ctx, i) => _PetCard(
+                      pet: _pets[i],
+                      onDelete: () => _confirmDelete(_pets[i]),
+                    ),
+                  ),
+                ),
     );
   }
 }
@@ -104,42 +221,17 @@ class _PetCard extends StatelessWidget {
                         color: AppColors.dark)),
                 const SizedBox(height: 2),
                 Text('${pet.breed} • ${pet.age} anos',
-                    style: const TextStyle(fontSize: 13, color: AppColors.grey)),
+                    style:
+                        const TextStyle(fontSize: 13, color: AppColors.grey)),
               ],
             ),
           ),
           PopupMenuButton<String>(
             onSelected: (v) {
-              if (v == 'delete') {
-                showDialog(
-                  context: context,
-                  builder: (ctx) => AlertDialog(
-                    title: const Text('Remover pet'),
-                    content: Text('Deseja remover ${pet.name}?'),
-                    actions: [
-                      TextButton(
-                          onPressed: () => Navigator.pop(ctx),
-                          child: const Text('Cancelar')),
-                      ElevatedButton(
-                        onPressed: () {
-                          Navigator.pop(ctx);
-                          onDelete();
-                        },
-                        style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.danger),
-                        child: const Text('Remover',
-                            style: TextStyle(color: Colors.white)),
-                      ),
-                    ],
-                  ),
-                );
-              }
+              if (v == 'delete') onDelete();
             },
             itemBuilder: (_) => [
-              const PopupMenuItem(
-                  value: 'edit', child: Text('Editar')),
-              const PopupMenuItem(
-                  value: 'delete', child: Text('Remover')),
+              const PopupMenuItem(value: 'delete', child: Text('Remover')),
             ],
             child: const Icon(Icons.more_vert, color: AppColors.grey),
           ),

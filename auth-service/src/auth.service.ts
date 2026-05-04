@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Logger,
   UnauthorizedException,
   ConflictException,
   InternalServerErrorException,
@@ -17,6 +18,8 @@ import { EVENTS } from './events/events.constants';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
@@ -67,6 +70,19 @@ export class AuthService {
         throw new ConflictException(`${field} já cadastrado`);
       }
       throw new InternalServerErrorException('Erro ao criar conta');
+    }
+
+    if (user.role === Role.VENDEDOR && dto.businessName) {
+      const estabUrl = process.env.ESTABLISHMENT_SERVICE_URL ?? 'http://localhost:3003';
+      try {
+        await fetch(`${estabUrl}/establishments/owner/${user.id}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: dto.businessName, phone: dto.phone }),
+        });
+      } catch (err) {
+        this.logger.warn(`Falha ao criar estabelecimento para vendedor ${user.id}: ${err}`);
+      }
     }
 
     this.rabbitClient.emit(EVENTS.USER_REGISTERED, {

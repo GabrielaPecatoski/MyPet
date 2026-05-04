@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../widgets/app_bottom_nav.dart';
 import 'estab_home_screen.dart';
 import 'estab_agenda_screen.dart';
-import 'produtos_screen.dart';
+import 'estab_produtos_screen.dart';
 import 'estab_avaliacoes_screen.dart';
 import 'estab_profile_screen.dart';
 
@@ -27,7 +27,7 @@ class _EstabNavigationState extends State<EstabNavigation> {
   final _screens = const [
     EstabHomeScreen(),
     EstabAgendaScreen(),
-    ProdutosScreen(),
+    EstabProdutosScreen(),
     EstabAvaliacoesScreen(),
     EstabProfileScreen(),
   ];

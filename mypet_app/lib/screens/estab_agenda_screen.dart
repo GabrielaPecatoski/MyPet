@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../core/colors.dart';
+import '../providers/auth_provider.dart';
+import '../services/api_service.dart';
 import '../widgets/mypet_app_bar.dart';
 
 class EstabAgendaScreen extends StatefulWidget {
@@ -9,174 +12,247 @@ class EstabAgendaScreen extends StatefulWidget {
 }
 
 class _EstabAgendaScreenState extends State<EstabAgendaScreen> {
-  DateTime _selectedDate = DateTime(2026, 3, 3);
-  DateTime _currentMonth = DateTime(2026, 3, 1);
+  DateTime _selectedDate = DateTime.now();
+  DateTime _currentMonth =
+      DateTime(DateTime.now().year, DateTime.now().month, 1);
 
-  final _appointments = {
-    DateTime(2026, 3, 3): [
-      {'hora': '10:00', 'pet': 'Rex', 'raca': 'Golden Retriever', 'tutor': 'João Silva', 'servico': 'Banho e Tosa', 'telefone': '(11) 99999-9999', 'status': 'CONFIRMADO'},
-      {'hora': '14:30', 'pet': 'Luna', 'raca': 'Siamês', 'tutor': 'João Silva', 'servico': 'Banho', 'telefone': '(11) 99999-9999', 'status': 'PENDENTE'},
-    ],
-    DateTime(2026, 3, 18): [
-      {'hora': '09:00', 'pet': 'Mel', 'raca': 'Poodle', 'tutor': 'Maria Costa', 'servico': 'Tosa', 'telefone': '(11) 98888-7777', 'status': 'CONFIRMADO'},
-    ],
-    DateTime(2026, 3, 20): [
-      {'hora': '11:00', 'pet': 'Thor', 'raca': 'Labrador', 'tutor': 'Carlos Souza', 'servico': 'Banho', 'telefone': '(11) 97777-6666', 'status': 'CONFIRMADO'},
-      {'hora': '15:00', 'pet': 'Nina', 'raca': 'Yorkshire', 'tutor': 'Ana Lima', 'servico': 'Banho e Tosa', 'telefone': '(11) 96666-5555', 'status': 'PENDENTE'},
-    ],
-  };
+  List<Map<String, dynamic>> _allBookings = [];
+  bool _loading = true;
 
-  List<Map<String, String>> get _selectedDayAppts {
-    for (final entry in _appointments.entries) {
-      if (entry.key.year == _selectedDate.year &&
-          entry.key.month == _selectedDate.month &&
-          entry.key.day == _selectedDate.day) {
-        return List<Map<String, String>>.from(entry.value);
-      }
-    }
-    return [];
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
   }
 
-  bool _hasAppointments(DateTime date) {
-    for (final key in _appointments.keys) {
-      if (key.year == date.year && key.month == date.month && key.day == date.day) {
-        return true;
+  Future<void> _loadData() async {
+    final userId = context.read<AuthProvider>().user?.id;
+    final token = context.read<AuthProvider>().token;
+    if (userId == null) {
+      setState(() => _loading = false);
+      return;
+    }
+    setState(() => _loading = true);
+    try {
+      final estabData = await ApiService.get(
+        '/establishments/owner/$userId',
+        token: token,
+      );
+      final list = estabData as List<dynamic>;
+      if (list.isEmpty) {
+        if (mounted) setState(() => _loading = false);
+        return;
+      }
+      final estabId = (list.first as Map<String, dynamic>)['id'] as String;
+      final bookingData = await ApiService.get(
+        '/bookings/establishment/$estabId',
+        token: token,
+      );
+      if (mounted) {
+        setState(() {
+          _allBookings = (bookingData as List<dynamic>)
+              .map((b) => b as Map<String, dynamic>)
+              .toList();
+          _loading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  List<Map<String, dynamic>> _bookingsForDate(DateTime date) {
+    return _allBookings.where((b) {
+      final iso = b['scheduledAt'] as String?;
+      if (iso == null) return false;
+      try {
+        final dt = DateTime.parse(iso).toLocal();
+        return dt.year == date.year &&
+            dt.month == date.month &&
+            dt.day == date.day;
+      } catch (_) {
+        return false;
+      }
+    }).toList();
+  }
+
+  bool _hasBookings(DateTime date) => _bookingsForDate(date).isNotEmpty;
+
+  List<Map<String, dynamic>> get _selectedDayBookings =>
+      _bookingsForDate(_selectedDate);
+
+  int get _pendentes =>
+      _allBookings.where((b) => b['status'] == 'PENDENTE').length;
+  int get _confirmados =>
+      _allBookings.where((b) => b['status'] == 'CONFIRMADO').length;
+
+  Future<void> _updateStatus(String bookingId, String status) async {
+    final token = context.read<AuthProvider>().token;
+    try {
+      await ApiService.patch(
+        '/bookings/$bookingId/status',
+        {'status': status},
+        token: token,
+      );
+      await _loadData();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(status == 'CONFIRMADO'
+              ? 'Agendamento confirmado!'
+              : 'Agendamento recusado.'),
+          backgroundColor:
+              status == 'CONFIRMADO' ? AppColors.success : AppColors.danger,
+        ));
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Erro ao atualizar status'),
+          backgroundColor: AppColors.danger,
+        ));
       }
     }
-    return false;
+  }
+
+  String _formatHour(String? iso) {
+    if (iso == null) return '—';
+    try {
+      final dt = DateTime.parse(iso).toLocal();
+      return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    } catch (_) {
+      return '—';
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: MypetAppBar(
-        showBack: false,
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: CircleAvatar(
-              radius: 16,
-              backgroundColor: AppColors.primaryLight,
-              child: const Icon(Icons.person, size: 18, color: AppColors.primary),
-            ),
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // ── Header roxo com stats ────────────────────────────
-          Container(
-            color: AppColors.primary,
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-            child: Row(
+      appBar: const MypetAppBar(showBack: false),
+      body: _loading
+          ? const Center(
+              child: CircularProgressIndicator(color: AppColors.primary))
+          : Column(
               children: [
-                _topStat('Pendentes', '2', AppColors.warning),
-                const SizedBox(width: 8),
-                _topStat('Confirmados', '2', AppColors.success),
-                const SizedBox(width: 8),
-                _topStat('Avaliação', '4.6', const Color(0xFFFFC107)),
-              ],
-            ),
-          ),
-          // ── Calendário ──────────────────────────────────────
-          Container(
-            color: Colors.white,
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              children: [
-                // Cabeçalho do mês
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.chevron_left),
-                      onPressed: () => setState(() => _currentMonth =
-                          DateTime(_currentMonth.year, _currentMonth.month - 1)),
-                    ),
-                    Text(
-                      _formatMonth(_currentMonth),
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
-                          color: AppColors.dark),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.chevron_right),
-                      onPressed: () => setState(() => _currentMonth =
-                          DateTime(_currentMonth.year, _currentMonth.month + 1)),
-                    ),
-                  ],
-                ),
-                // Dias da semana
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb']
-                      .map((d) => SizedBox(
-                            width: 36,
-                            child: Text(d,
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                    fontSize: 11, color: AppColors.grey)),
-                          ))
-                      .toList(),
-                ),
-                const SizedBox(height: 4),
-                // Grade de dias
-                _buildCalendarGrid(),
-              ],
-            ),
-          ),
-          // ── Agendamentos do dia ──────────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
-            child: Row(
-              children: [
-                Text(
-                  'Agendamentos (${_selectedDayAppts.length})',
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15,
-                      color: AppColors.dark),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: _selectedDayAppts.isEmpty
-                ? const Center(
-                    child: Text('Nenhum agendamento neste dia',
-                        style: TextStyle(color: AppColors.grey)))
-                : ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: _selectedDayAppts.length,
-                    itemBuilder: (ctx, i) {
-                      final ap = _selectedDayAppts[i];
-                      return _apptCard(ap);
-                    },
+                Container(
+                  color: AppColors.primary,
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+                  child: Row(
+                    children: [
+                      _topStat('Pendentes', '$_pendentes', AppColors.warning),
+                      const SizedBox(width: 8),
+                      _topStat(
+                          'Confirmados', '$_confirmados', AppColors.success),
+                      const SizedBox(width: 8),
+                      _topStat('Total',
+                          '${_allBookings.length}', Colors.white),
+                    ],
                   ),
-          ),
-        ],
-      ),
+                ),
+                Container(
+                  color: Colors.white,
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.chevron_left),
+                            onPressed: () => setState(() => _currentMonth =
+                                DateTime(_currentMonth.year,
+                                    _currentMonth.month - 1)),
+                          ),
+                          Text(
+                            _formatMonth(_currentMonth),
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                                color: AppColors.dark),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.chevron_right),
+                            onPressed: () => setState(() => _currentMonth =
+                                DateTime(_currentMonth.year,
+                                    _currentMonth.month + 1)),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb']
+                            .map((d) => SizedBox(
+                                  width: 36,
+                                  child: Text(d,
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                          fontSize: 11, color: AppColors.grey)),
+                                ))
+                            .toList(),
+                      ),
+                      const SizedBox(height: 4),
+                      _buildCalendarGrid(),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Agendamentos (${_selectedDayBookings.length})',
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                            color: AppColors.dark),
+                      ),
+                      TextButton.icon(
+                        onPressed: _loadData,
+                        icon: const Icon(Icons.refresh,
+                            size: 16, color: AppColors.primary),
+                        label: const Text('Atualizar',
+                            style: TextStyle(color: AppColors.primary)),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: _selectedDayBookings.isEmpty
+                      ? const Center(
+                          child: Text('Nenhum agendamento neste dia',
+                              style: TextStyle(color: AppColors.grey)))
+                      : ListView.builder(
+                          padding:
+                              const EdgeInsets.symmetric(horizontal: 16),
+                          itemCount: _selectedDayBookings.length,
+                          itemBuilder: (ctx, i) =>
+                              _apptCard(_selectedDayBookings[i]),
+                        ),
+                ),
+              ],
+            ),
     );
   }
 
   Widget _buildCalendarGrid() {
-    final firstDay = DateTime(_currentMonth.year, _currentMonth.month, 1);
+    final firstDay =
+        DateTime(_currentMonth.year, _currentMonth.month, 1);
     final daysInMonth =
         DateTime(_currentMonth.year, _currentMonth.month + 1, 0).day;
-    final startWeekday = firstDay.weekday % 7; // domingo = 0
+    final startWeekday = firstDay.weekday % 7;
 
     final cells = <Widget>[];
     for (int i = 0; i < startWeekday; i++) {
       cells.add(const SizedBox(width: 36, height: 36));
     }
     for (int day = 1; day <= daysInMonth; day++) {
-      final date = DateTime(_currentMonth.year, _currentMonth.month, day);
+      final date =
+          DateTime(_currentMonth.year, _currentMonth.month, day);
       final isSelected = date.year == _selectedDate.year &&
           date.month == _selectedDate.month &&
           date.day == _selectedDate.day;
-      final hasAppts = _hasAppointments(date);
+      final hasAppts = _hasBookings(date);
       cells.add(GestureDetector(
         onTap: () => setState(() => _selectedDate = date),
         child: Container(
@@ -193,20 +269,18 @@ class _EstabAgendaScreenState extends State<EstabAgendaScreen> {
                   style: TextStyle(
                       fontSize: 13,
                       color: isSelected ? Colors.white : AppColors.dark,
-                      fontWeight:
-                          isSelected ? FontWeight.bold : FontWeight.normal)),
+                      fontWeight: isSelected
+                          ? FontWeight.bold
+                          : FontWeight.normal)),
               if (hasAppts && !isSelected)
                 Positioned(
                   bottom: 3,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(width: 4, height: 4,
-                          decoration: const BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: AppColors.primary)),
-                    ],
-                  ),
+                  child: Container(
+                      width: 4,
+                      height: 4,
+                      decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppColors.primary)),
                 ),
             ],
           ),
@@ -214,15 +288,14 @@ class _EstabAgendaScreenState extends State<EstabAgendaScreen> {
       ));
     }
 
-    return Wrap(
-      spacing: 4,
-      runSpacing: 2,
-      children: cells,
-    );
+    return Wrap(spacing: 4, runSpacing: 2, children: cells);
   }
 
-  Widget _apptCard(Map<String, String> ap) {
-    final isConfirmed = ap['status'] == 'CONFIRMADO';
+  Widget _apptCard(Map<String, dynamic> b) {
+    final status = b['status'] as String? ?? 'PENDENTE';
+    final isConfirmed = status == 'CONFIRMADO';
+    final isPending = status == 'PENDENTE';
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -232,7 +305,7 @@ class _EstabAgendaScreenState extends State<EstabAgendaScreen> {
             children: [
               const Icon(Icons.access_time, size: 14, color: AppColors.grey),
               const SizedBox(width: 4),
-              Text(ap['hora']!,
+              Text(_formatHour(b['scheduledAt'] as String?),
                   style: const TextStyle(
                       fontWeight: FontWeight.w600, color: AppColors.grey)),
             ],
@@ -264,17 +337,9 @@ class _EstabAgendaScreenState extends State<EstabAgendaScreen> {
                   ),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(ap['pet']!,
-                            style: const TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 14)),
-                        Text(ap['raca']!,
-                            style: const TextStyle(
-                                fontSize: 12, color: AppColors.grey)),
-                      ],
-                    ),
+                    child: Text(b['petName'] as String? ?? '—',
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 14)),
                   ),
                   Container(
                     padding: const EdgeInsets.symmetric(
@@ -282,34 +347,45 @@ class _EstabAgendaScreenState extends State<EstabAgendaScreen> {
                     decoration: BoxDecoration(
                       color: isConfirmed
                           ? AppColors.success.withValues(alpha: 0.12)
-                          : AppColors.warning.withValues(alpha: 0.12),
+                          : isPending
+                              ? AppColors.warning.withValues(alpha: 0.12)
+                              : AppColors.grey.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: Text(ap['status']!,
+                    child: Text(status,
                         style: TextStyle(
                             color: isConfirmed
                                 ? AppColors.success
-                                : AppColors.warning,
+                                : isPending
+                                    ? AppColors.warning
+                                    : AppColors.grey,
                             fontSize: 11,
                             fontWeight: FontWeight.w600)),
                   ),
                 ],
               ),
               const SizedBox(height: 8),
-              _row(Icons.person_outline, 'Tutor: ${ap['tutor']}'),
-              _row(Icons.content_cut, ap['servico']!),
-              _row(Icons.phone_outlined, ap['telefone']!),
-              if (!isConfirmed) ...[
+              _row(Icons.person_outline,
+                  'Tutor: ${b['userName'] as String? ?? '—'}'),
+              _row(Icons.content_cut,
+                  b['serviceName'] as String? ?? '—'),
+              if (b['price'] != null)
+                _row(Icons.attach_money,
+                    'R\$ ${(b['price'] as num).toStringAsFixed(2)}'),
+              if (isPending) ...[
                 const SizedBox(height: 8),
                 Row(
                   children: [
                     Expanded(
                       child: OutlinedButton(
-                        onPressed: () {},
+                        onPressed: () =>
+                            _updateStatus(b['id'] as String, 'RECUSADO'),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.danger,
-                          side: const BorderSide(color: AppColors.danger),
-                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          side:
+                              const BorderSide(color: AppColors.danger),
+                          padding:
+                              const EdgeInsets.symmetric(vertical: 8),
                         ),
                         child: const Text('Recusar'),
                       ),
@@ -317,10 +393,12 @@ class _EstabAgendaScreenState extends State<EstabAgendaScreen> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: () {},
+                        onPressed: () =>
+                            _updateStatus(b['id'] as String, 'CONFIRMADO'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.success,
-                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          padding:
+                              const EdgeInsets.symmetric(vertical: 8),
                         ),
                         child: const Text('Confirmar',
                             style: TextStyle(color: Colors.white)),
@@ -364,16 +442,18 @@ class _EstabAgendaScreenState extends State<EstabAgendaScreen> {
           children: [
             Icon(icon, size: 13, color: AppColors.grey),
             const SizedBox(width: 4),
-            Text(text,
-                style: const TextStyle(fontSize: 12, color: AppColors.grey)),
+            Expanded(
+                child: Text(text,
+                    style: const TextStyle(
+                        fontSize: 12, color: AppColors.grey))),
           ],
         ),
       );
 
   String _formatMonth(DateTime d) {
     const months = [
-      'jan', 'fev', 'mar', 'abr', 'mai', 'jun',
-      'jul', 'ago', 'set', 'out', 'nov', 'dez'
+      'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
+      'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'
     ];
     return '${months[d.month - 1]} ${d.year}';
   }
