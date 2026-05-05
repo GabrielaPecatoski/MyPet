@@ -11,8 +11,10 @@ const ROUTES = [
   { prefix: '/establishments', target: process.env.ESTABLISHMENT_SERVICE_URL ?? 'http://localhost:3003' },
   { prefix: '/marketplace',    target: process.env.MARKETPLACE_SERVICE_URL   ?? 'http://localhost:3004' },
   { prefix: '/bookings',       target: process.env.BOOKING_SERVICE_URL       ?? 'http://localhost:3005' },
+  { prefix: '/availability',   target: process.env.BOOKING_SERVICE_URL       ?? 'http://localhost:3005' },
   { prefix: '/notifications',  target: process.env.NOTIFICATION_SERVICE_URL  ?? 'http://localhost:3006' },
   { prefix: '/reviews',        target: process.env.REVIEW_SERVICE_URL        ?? 'http://localhost:3007' },
+  { prefix: '/faq',            target: process.env.FAQ_SERVICE_URL           ?? 'http://localhost:3008' },
 ];
 
 const GATEWAY_HANDLED = ['/auth/me', '/auth/refresh'];
@@ -62,7 +64,4 @@ async function bootstrap() {
   await app.listen(port);
   console.log(`API Gateway rodando na porta ${port}`);
 }
-bootstrap().catch((err) => {
-  console.error('Falha ao iniciar API Gateway:', err);
-  process.exit(1);
-});
+bootstrap();

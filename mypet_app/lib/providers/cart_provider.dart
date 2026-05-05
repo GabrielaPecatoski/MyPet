@@ -1,45 +1,66 @@
 import 'package:flutter/material.dart';
-import '../models/product.dart';
 
 class CartItem {
-  final ProductModel product;
+  final String id;
+  final String name;
+  final String brand;
+  final double price;
+  final String unit;
   int quantity;
-  CartItem({required this.product, required this.quantity});
+
+  CartItem({
+    required this.id,
+    required this.name,
+    required this.brand,
+    required this.price,
+    required this.unit,
+    required this.quantity,
+  });
 }
 
 class CartProvider extends ChangeNotifier {
   final Map<String, CartItem> _items = {};
 
   List<CartItem> get items => _items.values.toList();
+  int get count => _items.values.fold(0, (s, i) => s + i.quantity);
+  double get total => _items.values.fold(0.0, (s, i) => s + i.price * i.quantity);
 
-  int get totalItems => _items.values.fold(0, (sum, item) => sum + item.quantity);
-
-  double get totalPrice =>
-      _items.values.fold(0, (sum, item) => sum + item.product.price * item.quantity);
-
-  int quantityOf(String productId) => _items[productId]?.quantity ?? 0;
-
-  void addQty(Map<String, dynamic> productData, int qty) {
-    final id = productData['id'] as String;
+  void add(Map<String, dynamic> product) {
+    final id = product['id'] as String;
     if (_items.containsKey(id)) {
-      _items[id]!.quantity += qty;
+      _items[id]!.quantity++;
     } else {
-      _items[id] = CartItem(product: ProductModel.fromJson(productData), quantity: qty);
+      _items[id] = CartItem(
+        id: id,
+        name: product['name'] ?? '',
+        brand: product['brand'] ?? '',
+        price: (product['price'] as num).toDouble(),
+        unit: product['unit'] ?? '',
+        quantity: 1,
+      );
     }
     notifyListeners();
   }
 
-  void updateQuantity(String productId, int qty) {
-    if (qty <= 0) {
-      _items.remove(productId);
-    } else if (_items.containsKey(productId)) {
-      _items[productId]!.quantity = qty;
+  void increment(String id) {
+    if (_items.containsKey(id)) {
+      _items[id]!.quantity++;
+      notifyListeners();
+    }
+  }
+
+  void decrement(String id) {
+    if (!_items.containsKey(id)) return;
+    if (_items[id]!.quantity <= 1) {
+      _items.remove(id);
+    } else {
+      _items[id]!.quantity--;
     }
     notifyListeners();
   }
 
-  void removeItem(String productId) {
-    _items.remove(productId);
+  void remove(String id) {
+    _items.remove(id);
     notifyListeners();
   }
 
@@ -47,4 +68,6 @@ class CartProvider extends ChangeNotifier {
     _items.clear();
     notifyListeners();
   }
+
+  int quantityOf(String id) => _items[id]?.quantity ?? 0;
 }

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/colors.dart';
-import '../models/establishment.dart';
+import '../models/appointment.dart';
 import '../providers/auth_provider.dart';
-import '../services/api_service.dart';
+import '../providers/booking_provider.dart';
+import '../providers/establishment_provider.dart';
+import '../widgets/mypet_app_bar.dart';
 
 class EstabHomeScreen extends StatefulWidget {
   const EstabHomeScreen({super.key});
@@ -15,16 +17,11 @@ class _EstabHomeScreenState extends State<EstabHomeScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabCtrl;
 
-  EstablishmentModel? _establishment;
-  List<Map<String, dynamic>> _agendamentos = [];
-  bool _loadingEstab = true;
-  bool _loadingBookings = true;
-
   @override
   void initState() {
     super.initState();
-    _tabCtrl = TabController(length: 3, vsync: this);
-    _loadData();
+    _tabCtrl = TabController(length: 2, vsync: this);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 
   @override
@@ -33,276 +30,159 @@ class _EstabHomeScreenState extends State<EstabHomeScreen>
     super.dispose();
   }
 
-  Future<void> _loadData() async {
-    final userId = context.read<AuthProvider>().user?.id;
-    final token = context.read<AuthProvider>().token;
-    if (userId == null) return;
+  Future<void> _load() async {
+    final auth = context.read<AuthProvider>();
+    if (auth.token == null || auth.user == null) return;
 
-    try {
-      final data = await ApiService.get(
-        '/establishments/owner/$userId',
-        token: token,
+    final estabProvider = context.read<EstablishmentProvider>();
+    if (estabProvider.establishment == null) {
+      await estabProvider.loadByOwner(
+        token: auth.token!,
+        ownerId: auth.user!.id,
+        ownerName: auth.user!.name,
+        ownerPhone: auth.user!.phone,
       );
-      final list = data as List<dynamic>;
-      if (list.isNotEmpty && mounted) {
-        final estab = EstablishmentModel.fromJson(
-            list.first as Map<String, dynamic>);
-        setState(() {
-          _establishment = estab;
-          _loadingEstab = false;
-        });
-        await _loadBookings(estab.id, token);
-      } else if (mounted) {
-        setState(() => _loadingEstab = false);
-      }
-    } catch (_) {
-      if (mounted) setState(() => _loadingEstab = false);
+    }
+
+    final estabId = estabProvider.establishmentId;
+    if (estabId != null && mounted) {
+      context.read<BookingProvider>().loadEstabBookings(
+            token: auth.token!,
+            estabId: estabId,
+          );
     }
   }
 
-  Future<void> _loadBookings(String estabId, String? token) async {
-    try {
-      final data = await ApiService.get(
-        '/bookings/establishment/$estabId',
-        token: token,
-      );
-      if (mounted) {
-        setState(() {
-          _agendamentos = (data as List<dynamic>)
-              .map((b) => b as Map<String, dynamic>)
-              .toList();
-          _loadingBookings = false;
-        });
-      }
-    } catch (_) {
-      if (mounted) setState(() => _loadingBookings = false);
-    }
+  Future<void> _updateStatus(AppointmentModel booking, String status) async {
+    final auth = context.read<AuthProvider>();
+    final ok = await context.read<BookingProvider>().updateStatus(
+          token: auth.token!,
+          bookingId: booking.id,
+          status: status,
+        );
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(ok
+            ? (status == 'CONFIRMADO' ? 'Agendamento confirmado!' : 'Agendamento recusado')
+            : 'Erro ao atualizar agendamento'),
+        backgroundColor: ok
+            ? (status == 'CONFIRMADO' ? AppColors.success : AppColors.danger)
+            : AppColors.danger,
+      ),
+    );
   }
-
-  Future<void> _updateStatus(String bookingId, String status) async {
-    final token = context.read<AuthProvider>().token;
-    try {
-      await ApiService.patch(
-        '/bookings/$bookingId/status',
-        {'status': status},
-        token: token,
-      );
-      setState(() {
-        final idx = _agendamentos.indexWhere((b) => b['id'] == bookingId);
-        if (idx >= 0) _agendamentos[idx]['status'] = status;
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(status == 'CONFIRMADO'
-              ? 'Agendamento confirmado!'
-              : 'Agendamento recusado.'),
-          backgroundColor:
-              status == 'CONFIRMADO' ? AppColors.success : AppColors.danger,
-        ));
-      }
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Erro ao atualizar status'),
-          backgroundColor: AppColors.danger,
-        ));
-      }
-    }
-  }
-
-  Future<void> _addService(String name, double price, int duration) async {
-    if (_establishment == null) return;
-    final token = context.read<AuthProvider>().token;
-    try {
-      final data = await ApiService.post(
-        '/establishments/${_establishment!.id}/services',
-        {'name': name, 'price': price, 'durationMinutes': duration},
-        token: token,
-      );
-      final updated = EstablishmentModel.fromJson(data as Map<String, dynamic>);
-      setState(() => _establishment = updated);
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Erro ao adicionar serviço'),
-          backgroundColor: AppColors.danger,
-        ));
-      }
-    }
-  }
-
-  int get _pendentes =>
-      _agendamentos.where((a) => a['status'] == 'PENDENTE').length;
-  int get _confirmados =>
-      _agendamentos.where((a) => a['status'] == 'CONFIRMADO').length;
-  int get _concluidos =>
-      _agendamentos.where((a) => a['status'] == 'CONCLUIDO').length;
-  double get _receitaTotal => _agendamentos
-      .where((a) => a['status'] == 'CONCLUIDO')
-      .fold(0.0, (s, a) => s + ((a['price'] as num?)?.toDouble() ?? 0));
 
   @override
   Widget build(BuildContext context) {
-    final pendentes =
-        _agendamentos.where((a) => a['status'] == 'PENDENTE').toList();
-    final proximos =
-        _agendamentos.where((a) => a['status'] == 'CONFIRMADO').toList();
+    final booking = context.watch<BookingProvider>();
+    final estab = context.watch<EstablishmentProvider>();
+    final pendentes = booking.pendentes;
+    final proximos = booking.confirmados;
 
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: Column(
           children: [
-            Container(
-              color: AppColors.primary,
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.chevron_left, color: Colors.transparent),
-                      const Spacer(),
-                      Image.asset('assets/images/logo.png',
-                          height: 32,
-                          color: Colors.white,
-                          colorBlendMode: BlendMode.srcIn),
-                      const Spacer(),
-                      IconButton(
-                        icon: const Icon(Icons.logout, color: Colors.white70),
-                        onPressed: () async {
-                          await context.read<AuthProvider>().logout();
-                          if (context.mounted) {
-                            Navigator.pushReplacementNamed(context, '/login');
-                          }
-                        },
-                      ),
-                    ],
-                  ),
-                  if (_establishment != null) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      _establishment!.name,
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                  Row(
-                    children: [
-                      _statCard('Pendentes', '$_pendentes',
-                          Icons.schedule, Colors.white),
-                      const SizedBox(width: 10),
-                      _statCard('Confirmados', '$_confirmados',
-                          Icons.check_circle_outline, Colors.white),
-                      const SizedBox(width: 10),
-                      _statCard(
-                          'Avaliação',
-                          _establishment != null
-                              ? _establishment!.rating.toStringAsFixed(1)
-                              : '—',
-                          Icons.star_outline,
-                          Colors.white),
-                    ],
-                  ),
-                ],
-              ),
+            EstabPurpleHeader(
+              pendentes: pendentes.length,
+              confirmados: proximos.length,
+              avaliacao: estab.establishment?.rating.toStringAsFixed(1) ?? '—',
             ),
+
             Container(
               color: Colors.white,
               child: TabBar(
                 controller: _tabCtrl,
                 indicatorColor: AppColors.primary,
+                indicatorWeight: 3,
                 labelColor: AppColors.primary,
                 unselectedLabelColor: AppColors.grey,
-                labelStyle: const TextStyle(fontWeight: FontWeight.w600),
+                labelStyle: const TextStyle(
+                    fontWeight: FontWeight.w600, fontSize: 14),
                 tabs: const [
                   Tab(text: 'Agendamentos'),
                   Tab(text: 'Serviços'),
-                  Tab(text: 'Estatísticas'),
                 ],
               ),
             ),
+
             Expanded(
               child: TabBarView(
                 controller: _tabCtrl,
                 children: [
-                  _loadingBookings
-                      ? const Center(
-                          child: CircularProgressIndicator(
-                              color: AppColors.primary))
-                      : _agendamentos.isEmpty
-                          ? const Center(
-                              child: Text('Nenhum agendamento ainda',
-                                  style: TextStyle(color: AppColors.grey)))
-                          : ListView(
-                              padding: const EdgeInsets.all(16),
-                              children: [
-                                if (pendentes.isNotEmpty) ...[
-                                  _sectionLabel(
-                                      'Aguardando Confirmação (${pendentes.length})'),
-                                  ...pendentes.map((a) => _AgendCard(
-                                        booking: a,
-                                        showActions: true,
-                                        onConfirmar: () => _updateStatus(
-                                            a['id'], 'CONFIRMADO'),
-                                        onRecusar: () => _updateStatus(
-                                            a['id'], 'RECUSADO'),
-                                      )),
-                                  const SizedBox(height: 8),
-                                ],
-                                if (proximos.isNotEmpty) ...[
-                                  _sectionLabel('Próximos Agendamentos'),
-                                  ...proximos.map(
-                                      (a) => _AgendCard(booking: a)),
-                                ],
+                  RefreshIndicator(
+                    onRefresh: () async => _load(),
+                    color: AppColors.primary,
+                    child: booking.isLoading
+                        ? const Center(
+                            child: CircularProgressIndicator(
+                                color: AppColors.primary))
+                        : ListView(
+                            padding: const EdgeInsets.all(16),
+                            children: [
+                              if (pendentes.isNotEmpty) ...[
+                                _sectionLabel(
+                                    'Aguardando confirmação (${pendentes.length})'),
+                                ...pendentes.map((a) => _AgendCard(
+                                      appointment: a,
+                                      showActions: true,
+                                      onConfirmar: () =>
+                                          _updateStatus(a, 'CONFIRMADO'),
+                                      onRecusar: () =>
+                                          _updateStatus(a, 'RECUSADO'),
+                                    )),
+                                const SizedBox(height: 8),
                               ],
-                            ),
-                  _ServicosTab(
-                    establishment: _establishment,
-                    loading: _loadingEstab,
-                    onAddService: _addService,
+                              if (proximos.isNotEmpty) ...[
+                                _sectionLabel('Próximos Agendamentos'),
+                                ...proximos
+                                    .map((a) => _AgendCard(appointment: a)),
+                              ],
+                              if (pendentes.isEmpty && proximos.isEmpty)
+                                Center(
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(32),
+                                    child: Column(
+                                      children: [
+                                        Container(
+                                          width: 64,
+                                          height: 64,
+                                          decoration: BoxDecoration(
+                                            color: AppColors.primaryLight,
+                                            borderRadius:
+                                                BorderRadius.circular(32),
+                                          ),
+                                          child: const Icon(
+                                              Icons.calendar_today,
+                                              color: AppColors.primary,
+                                              size: 30),
+                                        ),
+                                        const SizedBox(height: 12),
+                                        const Text('Sem agendamentos',
+                                            style: TextStyle(
+                                                color: AppColors.dark,
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 15)),
+                                        const SizedBox(height: 4),
+                                        const Text(
+                                            'Novos pedidos aparecerão aqui',
+                                            style: TextStyle(
+                                                color: AppColors.grey,
+                                                fontSize: 13)),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
                   ),
-                  _EstatisticasTab(
-                    agendamentos: _agendamentos,
-                    loading: _loadingBookings,
-                    pendentes: _pendentes,
-                    confirmados: _confirmados,
-                    concluidos: _concluidos,
-                    receitaTotal: _receitaTotal,
-                    avgRating: _establishment?.rating ?? 0,
-                  ),
+
+                  const _ServicosTab(),
                 ],
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _statCard(
-      String label, String value, IconData icon, Color color) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: color, size: 18),
-            const SizedBox(height: 4),
-            Text(value,
-                style: TextStyle(
-                    color: color,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18)),
-            Text(label,
-                style: TextStyle(
-                    color: color.withValues(alpha: 0.8), fontSize: 10)),
           ],
         ),
       ),
@@ -320,20 +200,20 @@ class _EstabHomeScreenState extends State<EstabHomeScreen>
 }
 
 class _AgendCard extends StatelessWidget {
-  final Map<String, dynamic> booking;
+  final AppointmentModel appointment;
   final bool showActions;
   final VoidCallback? onConfirmar;
   final VoidCallback? onRecusar;
 
   const _AgendCard({
-    required this.booking,
+    required this.appointment,
     this.showActions = false,
     this.onConfirmar,
     this.onRecusar,
   });
 
   Color get _statusColor {
-    switch (booking['status'] as String? ?? '') {
+    switch (appointment.status) {
       case 'CONFIRMADO':
         return AppColors.success;
       case 'RECUSADO':
@@ -343,36 +223,17 @@ class _AgendCard extends StatelessWidget {
     }
   }
 
-  String _formatDate(String? isoDate) {
-    if (isoDate == null) return '—';
-    try {
-      final dt = DateTime.parse(isoDate).toLocal();
-      return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}  '
-          '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-    } catch (_) {
-      return isoDate;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final petName = booking['petName'] as String? ?? '—';
-    final tutorName = booking['userName'] as String? ?? '—';
-    final servico = booking['serviceName'] as String? ?? '—';
-    final status = booking['status'] as String? ?? 'PENDENTE';
-    final scheduledAt = _formatDate(booking['scheduledAt'] as String?);
-
+    final ap = appointment;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 6,
-              offset: const Offset(0, 2))
+        boxShadow: const [
+          BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 2)),
         ],
       ),
       child: Column(
@@ -383,26 +244,61 @@ class _AgendCard extends StatelessWidget {
               CircleAvatar(
                 radius: 22,
                 backgroundColor: AppColors.primaryLight,
-                child: const Icon(Icons.pets,
-                    color: AppColors.primary, size: 22),
+                child:
+                    const Icon(Icons.pets, color: AppColors.primary, size: 22),
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: Text(petName,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 15)),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(ap.petName,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                            color: AppColors.dark)),
+                    Text(
+                      ap.petBreed.isNotEmpty ? ap.petBreed : ap.serviceName,
+                      style:
+                          const TextStyle(fontSize: 12, color: AppColors.grey),
+                    ),
+                  ],
+                ),
               ),
-              _statusChip(status),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: _statusColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(ap.statusLabel,
+                    style: TextStyle(
+                        color: _statusColor,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600)),
+              ),
             ],
           ),
-          const SizedBox(height: 8),
-          _row(Icons.person_outline, 'Tutor: $tutorName'),
-          const SizedBox(height: 3),
-          _row(Icons.content_cut, servico),
-          const SizedBox(height: 3),
-          _row(Icons.calendar_today_outlined, scheduledAt),
+          const SizedBox(height: 10),
+          const Divider(height: 1, color: AppColors.divider),
+          const SizedBox(height: 10),
+
+          _row(Icons.person_outline,
+              ap.userName.isNotEmpty ? ap.userName : 'Tutor'),
+          const SizedBox(height: 4),
+          _row(Icons.content_cut_outlined, ap.serviceName),
+          const SizedBox(height: 4),
+          _row(
+              Icons.calendar_today_outlined,
+              '${ap.date.day.toString().padLeft(2, '0')}/${ap.date.month.toString().padLeft(2, '0')}/${ap.date.year}  ${ap.time}'),
+          if (ap.price > 0) ...[
+            const SizedBox(height: 4),
+            _row(Icons.attach_money, 'R\$ ${ap.price.toStringAsFixed(2)}'),
+          ],
+
           if (showActions) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             Row(
               children: [
                 Expanded(
@@ -413,9 +309,10 @@ class _AgendCard extends StatelessWidget {
                       side: const BorderSide(color: AppColors.danger),
                       padding: const EdgeInsets.symmetric(vertical: 10),
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8)),
+                          borderRadius: BorderRadius.circular(10)),
                     ),
-                    child: const Text('Recusar'),
+                    child: const Text('Recusar',
+                        style: TextStyle(fontWeight: FontWeight.w600)),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -426,10 +323,13 @@ class _AgendCard extends StatelessWidget {
                       backgroundColor: AppColors.success,
                       padding: const EdgeInsets.symmetric(vertical: 10),
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8)),
+                          borderRadius: BorderRadius.circular(10)),
+                      elevation: 0,
                     ),
                     child: const Text('Confirmar',
-                        style: TextStyle(color: Colors.white)),
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600)),
                   ),
                 ),
               ],
@@ -440,23 +340,10 @@ class _AgendCard extends StatelessWidget {
     );
   }
 
-  Widget _statusChip(String status) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(
-          color: _statusColor.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Text(status,
-            style: TextStyle(
-                color: _statusColor,
-                fontSize: 11,
-                fontWeight: FontWeight.w600)),
-      );
-
   Widget _row(IconData icon, String text) => Row(
         children: [
-          Icon(icon, size: 13, color: AppColors.grey),
-          const SizedBox(width: 4),
+          Icon(icon, size: 14, color: AppColors.grey),
+          const SizedBox(width: 6),
           Expanded(
               child: Text(text,
                   style: const TextStyle(fontSize: 12, color: AppColors.grey))),
@@ -464,237 +351,46 @@ class _AgendCard extends StatelessWidget {
       );
 }
 
-class _EstatisticasTab extends StatelessWidget {
-  final List<Map<String, dynamic>> agendamentos;
-  final bool loading;
-  final int pendentes;
-  final int confirmados;
-  final int concluidos;
-  final double receitaTotal;
-  final double avgRating;
+class _ServicosTab extends StatelessWidget {
+  const _ServicosTab();
 
-  const _EstatisticasTab({
-    required this.agendamentos,
-    required this.loading,
-    required this.pendentes,
-    required this.confirmados,
-    required this.concluidos,
-    required this.receitaTotal,
-    required this.avgRating,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (loading) {
-      return const Center(
-          child: CircularProgressIndicator(color: AppColors.primary));
-    }
-
-    final recusados =
-        agendamentos.where((a) => a['status'] == 'RECUSADO').length;
-    final total = agendamentos.length;
-
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        const Text('Resumo Geral',
-            style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 15,
-                color: AppColors.dark)),
-        const SizedBox(height: 12),
-        Row(children: [
-          Expanded(
-              child: _StatBox('Agendamentos', '$total',
-                  Icons.calendar_month, AppColors.primary)),
-          const SizedBox(width: 10),
-          Expanded(
-              child: _StatBox('Concluídos', '$concluidos',
-                  Icons.check_circle_outline, AppColors.success)),
-        ]),
-        const SizedBox(height: 10),
-        Row(children: [
-          Expanded(
-              child: _StatBox('Pendentes', '$pendentes',
-                  Icons.schedule, AppColors.warning)),
-          const SizedBox(width: 10),
-          Expanded(
-              child: _StatBox('Recusados', '$recusados',
-                  Icons.cancel_outlined, AppColors.danger)),
-        ]),
-        const SizedBox(height: 20),
-        const Text('Financeiro',
-            style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 15,
-                color: AppColors.dark)),
-        const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 6)
-            ],
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: AppColors.success.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(22),
-                ),
-                child: const Icon(Icons.attach_money,
-                    color: AppColors.success, size: 24),
-              ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Receita (serviços concluídos)',
-                      style:
-                          TextStyle(fontSize: 12, color: AppColors.grey)),
-                  Text(
-                    'R\$ ${receitaTotal.toStringAsFixed(2)}',
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 22,
-                        color: AppColors.dark),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 20),
-        const Text('Qualidade',
-            style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 15,
-                color: AppColors.dark)),
-        const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 6)
-            ],
-          ),
-          child: Row(
-            children: [
-              const Icon(Icons.star, color: Color(0xFFFFC107), size: 36),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Avaliação Média',
-                      style:
-                          TextStyle(fontSize: 12, color: AppColors.grey)),
-                  Text(
-                    avgRating > 0 ? avgRating.toStringAsFixed(1) : '—',
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 22,
-                        color: AppColors.dark),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _StatBox extends StatelessWidget {
-  final String label;
-  final String value;
-  final IconData icon;
-  final Color color;
-
-  const _StatBox(this.label, this.value, this.icon, this.color);
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04), blurRadius: 6)
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: color, size: 20),
-          const SizedBox(height: 6),
-          Text(value,
-              style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 22,
-                  color: AppColors.dark)),
-          Text(label,
-              style:
-                  const TextStyle(fontSize: 11, color: AppColors.grey)),
-        ],
-      ),
-    );
-  }
-}
-
-class _ServicosTab extends StatefulWidget {
-  final EstablishmentModel? establishment;
-  final bool loading;
-  final Future<void> Function(String name, double price, int duration)
-      onAddService;
-
-  const _ServicosTab({
-    required this.establishment,
-    required this.loading,
-    required this.onAddService,
-  });
-
-  @override
-  State<_ServicosTab> createState() => _ServicosTabState();
-}
-
-class _ServicosTabState extends State<_ServicosTab> {
-  void _showAddServico(BuildContext context) {
+  Future<void> _showAddServico(BuildContext context) async {
     final nomeCtrl = TextEditingController();
     final precoCtrl = TextEditingController();
     final durCtrl = TextEditingController();
-    showDialog(
+    final descCtrl = TextEditingController();
+
+    await showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Novo Serviço'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-                controller: nomeCtrl,
-                decoration: const InputDecoration(labelText: 'Nome')),
-            TextField(
-                controller: precoCtrl,
-                decoration: const InputDecoration(labelText: 'Preço (R\$)'),
-                keyboardType: TextInputType.number),
-            TextField(
-                controller: durCtrl,
-                decoration: const InputDecoration(labelText: 'Duração (min)'),
-                keyboardType: TextInputType.number),
-          ],
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Novo Serviço',
+            style: TextStyle(
+                fontWeight: FontWeight.bold, color: AppColors.dark)),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                  controller: nomeCtrl,
+                  decoration: const InputDecoration(labelText: 'Nome *')),
+              TextField(
+                  controller: precoCtrl,
+                  decoration:
+                      const InputDecoration(labelText: 'Preço (R\$) *'),
+                  keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true)),
+              TextField(
+                  controller: durCtrl,
+                  decoration:
+                      const InputDecoration(labelText: 'Duração (min) *'),
+                  keyboardType: TextInputType.number),
+              TextField(
+                  controller: descCtrl,
+                  decoration:
+                      const InputDecoration(labelText: 'Descrição (opcional)')),
+            ],
+          ),
         ),
         actions: [
           TextButton(
@@ -702,34 +398,106 @@ class _ServicosTabState extends State<_ServicosTab> {
               child: const Text('Cancelar')),
           ElevatedButton(
             onPressed: () async {
-              if (nomeCtrl.text.isNotEmpty &&
-                  precoCtrl.text.isNotEmpty &&
-                  durCtrl.text.isNotEmpty) {
-                Navigator.pop(ctx);
-                await widget.onAddService(
-                  nomeCtrl.text,
-                  double.tryParse(precoCtrl.text) ?? 0,
-                  int.tryParse(durCtrl.text) ?? 0,
-                );
+              final nome = nomeCtrl.text.trim();
+              final preco = double.tryParse(
+                  precoCtrl.text.replaceAll(',', '.'));
+              final dur = int.tryParse(durCtrl.text.trim());
+
+              if (nome.isEmpty || preco == null || dur == null) {
+                ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(
+                  content: Text('Preencha nome, preço e duração'),
+                  backgroundColor: AppColors.warning,
+                  behavior: SnackBarBehavior.floating,
+                ));
+                return;
+              }
+
+              Navigator.pop(ctx);
+
+              final auth = context.read<AuthProvider>();
+              final ok =
+                  await context.read<EstablishmentProvider>().addService(
+                        token: auth.token!,
+                        name: nome,
+                        price: preco,
+                        durationMinutes: dur,
+                        description: descCtrl.text.trim().isEmpty
+                            ? null
+                            : descCtrl.text.trim(),
+                      );
+
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content: Text(ok
+                      ? 'Serviço adicionado com sucesso!'
+                      : (context.read<EstablishmentProvider>().error ??
+                          'Erro ao salvar serviço')),
+                  backgroundColor: ok ? AppColors.success : AppColors.danger,
+                  behavior: SnackBarBehavior.floating,
+                ));
               }
             },
-            style:
-                ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary, elevation: 0),
             child:
                 const Text('Salvar', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
     );
+    nomeCtrl.dispose();
+    precoCtrl.dispose();
+    durCtrl.dispose();
+    descCtrl.dispose();
+  }
+
+  Future<void> _confirmDelete(
+      BuildContext context, String serviceId, String serviceName) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Remover serviço?'),
+        content: Text('Deseja remover o serviço "$serviceName"?'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancelar')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.danger, elevation: 0),
+            child:
+                const Text('Remover', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true || !context.mounted) return;
+
+    final auth = context.read<AuthProvider>();
+    final ok = await context.read<EstablishmentProvider>().removeService(
+          token: auth.token!,
+          serviceId: serviceId,
+        );
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(ok
+            ? 'Serviço removido'
+            : (context.read<EstablishmentProvider>().error ??
+                'Erro ao remover')),
+        backgroundColor: ok ? AppColors.success : AppColors.danger,
+        behavior: SnackBarBehavior.floating,
+      ));
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (widget.loading) {
-      return const Center(
-          child: CircularProgressIndicator(color: AppColors.primary));
-    }
-    final services = widget.establishment?.services ?? [];
+    final estab = context.watch<EstablishmentProvider>();
+    final services = estab.services;
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -740,41 +508,73 @@ class _ServicosTabState extends State<_ServicosTab> {
             const Text('Serviços Cadastrados',
                 style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    fontSize: 15,
+                    fontSize: 16,
                     color: AppColors.dark)),
             ElevatedButton.icon(
-              onPressed: () => _showAddServico(context),
+              onPressed:
+                  estab.establishmentId == null
+                      ? null
+                      : () => _showAddServico(context),
               icon: const Icon(Icons.add, size: 16, color: Colors.white),
               label: const Text('Novo',
                   style: TextStyle(color: Colors.white, fontSize: 13)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8)),
+                    borderRadius: BorderRadius.circular(10)),
+                elevation: 0,
               ),
             ),
           ],
         ),
         const SizedBox(height: 12),
-        if (services.isEmpty)
+
+        if (estab.isLoading)
           const Center(
             child: Padding(
-              padding: EdgeInsets.symmetric(vertical: 32),
-              child: Text('Nenhum serviço cadastrado',
-                  style: TextStyle(color: AppColors.grey)),
+              padding: EdgeInsets.all(32),
+              child:
+                  CircularProgressIndicator(color: AppColors.primary),
+            ),
+          )
+        else if (services.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.greyLight),
+            ),
+            child: const Center(
+              child: Column(
+                children: [
+                  Icon(Icons.content_cut, color: AppColors.greyLight, size: 36),
+                  SizedBox(height: 8),
+                  Text('Nenhum serviço cadastrado',
+                      style: TextStyle(color: AppColors.grey)),
+                  SizedBox(height: 4),
+                  Text('Toque em "Novo" para adicionar',
+                      style: TextStyle(color: AppColors.greyLight, fontSize: 12)),
+                ],
+              ),
             ),
           )
         else
           ...services.map((s) => Container(
-                margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 14, vertical: 12),
+                margin: const EdgeInsets.only(bottom: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppColors.greyLight),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: const [
+                    BoxShadow(
+                        color: Colors.black12,
+                        blurRadius: 8,
+                        offset: Offset(0, 2)),
+                  ],
                 ),
                 child: Row(
                   children: [
@@ -784,21 +584,43 @@ class _ServicosTabState extends State<_ServicosTab> {
                         children: [
                           Text(s.name,
                               style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
+                                  fontWeight: FontWeight.bold,
                                   fontSize: 14,
                                   color: AppColors.dark)),
-                          Text('Duração: ${s.durationMinutes} min',
-                              style: const TextStyle(
-                                  fontSize: 11, color: AppColors.grey)),
+                          if (s.description != null &&
+                              s.description!.isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            Text(s.description!,
+                                style: const TextStyle(
+                                    fontSize: 12, color: AppColors.grey)),
+                          ],
+                          const SizedBox(height: 3),
+                          Row(
+                            children: [
+                              const Icon(Icons.access_time,
+                                  size: 13, color: AppColors.grey),
+                              const SizedBox(width: 4),
+                              Text('${s.durationMinutes} min',
+                                  style: const TextStyle(
+                                      fontSize: 12, color: AppColors.grey)),
+                            ],
+                          ),
                         ],
                       ),
                     ),
+                    const SizedBox(width: 8),
                     Text(
                       'R\$ ${s.price.toStringAsFixed(2)}',
                       style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           color: AppColors.primary,
-                          fontSize: 14),
+                          fontSize: 15),
+                    ),
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: () => _confirmDelete(context, s.id, s.name),
+                      child: const Icon(Icons.delete_outline,
+                          size: 20, color: AppColors.grey),
                     ),
                   ],
                 ),

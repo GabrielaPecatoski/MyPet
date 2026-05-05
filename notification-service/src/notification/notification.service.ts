@@ -7,15 +7,24 @@ export class NotificationService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  private async save(userId: string, title: string, body: string, type: string) {
-    try {
-      await this.prisma.notification.create({ data: { userId, title, body, type } });
-    } catch (err) {
-      this.logger.warn(`Falha ao salvar notificação: ${err}`);
-    }
+  async create(data: {
+    userId: string;
+    title: string;
+    body: string;
+    type: string;
+  }) {
+    this.logger.log(`[NOTIF] → ${data.userId}: ${data.title}`);
+    return this.prisma.notification.create({
+      data: {
+        userId: data.userId,
+        title: data.title,
+        body: data.body,
+        type: data.type,
+      },
+    });
   }
 
-  async getByUser(userId: string) {
+  getByUser(userId: string) {
     return this.prisma.notification.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
@@ -23,60 +32,70 @@ export class NotificationService {
   }
 
   async markRead(id: string) {
-    return this.prisma.notification.update({ where: { id }, data: { read: true } });
+    return this.prisma.notification.update({
+      where: { id },
+      data: { read: true },
+    });
+  }
+
+  async markAllRead(userId: string) {
+    await this.prisma.notification.updateMany({
+      where: { userId, read: false },
+      data: { read: true },
+    });
+  }
+
+  async countUnread(userId: string) {
+    return this.prisma.notification.count({ where: { userId, read: false } });
   }
 
   async sendBookingConfirmation(data: {
-    bookingId: string; userId: string; establishmentId: string; scheduledAt: string;
+    bookingId: string;
+    userId: string;
+    establishmentId: string;
+    scheduledAt: string;
   }) {
-    const title = 'Agendamento recebido';
-    const body = 'Seu agendamento foi recebido e está pendente de confirmação.';
-    this.logger.log(`[NOTIF] ${title} — booking: ${data.bookingId}`);
-    await this.save(data.userId, title, body, 'BOOKING_CREATED');
+    await this.create({
+      userId: data.establishmentId,
+      title: 'Novo Agendamento',
+      body: `Um novo agendamento foi solicitado para ${new Date(data.scheduledAt).toLocaleDateString('pt-BR')}.`,
+      type: 'NEW_BOOKING',
+    });
   }
 
   async sendStatusUpdate(data: {
-    bookingId: string; status: 'CONFIRMADO' | 'RECUSADO'; updatedAt: string;
+    bookingId: string;
+    userId: string;
+    status: string;
+    scheduledAt?: string;
   }) {
-    const title = data.status === 'CONFIRMADO' ? 'Agendamento confirmado!' : 'Agendamento recusado';
-    const body = data.status === 'CONFIRMADO'
-      ? 'Seu agendamento foi confirmado pelo estabelecimento.'
-      : 'Seu agendamento foi recusado. Entre em contato com o estabelecimento.';
-    this.logger.log(`[NOTIF] ${title} — booking: ${data.bookingId}`);
-    await this.save('unknown', title, body, 'BOOKING_STATUS_UPDATED');
+    if (data.status === 'CONFIRMADO') {
+      await this.create({
+        userId: data.userId,
+        title: 'Agendamento Confirmado!',
+        body: `Seu agendamento foi confirmado${data.scheduledAt ? ' para ' + new Date(data.scheduledAt).toLocaleDateString('pt-BR') : ''}.`,
+        type: 'BOOKING_CONFIRMED',
+      });
+    } else if (data.status === 'RECUSADO') {
+      await this.create({
+        userId: data.userId,
+        title: 'Agendamento Recusado',
+        body: 'Infelizmente seu agendamento foi recusado pelo estabelecimento.',
+        type: 'BOOKING_REJECTED',
+      });
+    }
   }
 
-  async sendCompletionNotification(data: { bookingId: string; completedAt: string }) {
-    const title = 'Atendimento finalizado!';
-    const body = 'Seu pet foi atendido! Que tal deixar uma avaliação?';
-    this.logger.log(`[NOTIF] ${title} — booking: ${data.bookingId}`);
-    await this.save('unknown', title, body, 'BOOKING_COMPLETED');
-  }
-
-  async sendReviewNotification(data: {
-    reviewId: string; userId: string; establishmentId: string; rating: number; createdAt: string;
+  async sendCompletionNotification(data: {
+    bookingId: string;
+    userId: string;
+    completedAt: string;
   }) {
-    const title = 'Nova avaliação recebida';
-    const body = `Você recebeu uma nova avaliação com nota ${data.rating}/5. Confira no painel!`;
-    this.logger.log(`[NOTIF] ${title} — estabelecimento: ${data.establishmentId}`);
-    await this.save(data.establishmentId, title, body, 'REVIEW_CREATED');
-  }
-
-  async sendOrderConfirmation(data: {
-    orderId: string; userId: string; total: number; itemCount: number; createdAt: string;
-  }) {
-    const title = 'Pedido confirmado!';
-    const body = `Seu pedido foi confirmado. Total: R$ ${data.total.toFixed(2)} (${data.itemCount} ${data.itemCount === 1 ? 'item' : 'itens'}).`;
-    this.logger.log(`[NOTIF] ${title} — pedido: ${data.orderId}`);
-    await this.save(data.userId, title, body, 'ORDER_CREATED');
-  }
-
-  async sendWelcomeNotification(data: {
-    userId: string; name: string; email: string; role: string; registeredAt: string;
-  }) {
-    const title = 'Bem-vindo ao MyPet!';
-    const body = `Olá ${data.name}, seja bem-vindo ao MyPet! Comece agendando serviços para o seu pet.`;
-    this.logger.log(`[NOTIF] ${title} — usuário: ${data.name}`);
-    await this.save(data.userId, title, body, 'USER_REGISTERED');
+    await this.create({
+      userId: data.userId,
+      title: 'Atendimento Concluído!',
+      body: 'Seu pet foi atendido! Que tal deixar uma avaliação?',
+      type: 'BOOKING_COMPLETED',
+    });
   }
 }

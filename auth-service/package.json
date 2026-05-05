@@ -21,7 +21,8 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "ts-node prisma/seed.ts",
-    "db:setup": "prisma migrate dev --name init && ts-node prisma/seed.ts"
+    "db:setup": "prisma db push && ts-node prisma/seed.ts",
+    "start:migrate": "npm run build && npm run db:setup && npm run start:prod"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"
@@ -31,12 +32,9 @@
     "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^11.0.1",
     "@nestjs/jwt": "^11.0.2",
-    "@nestjs/microservices": "^11.1.19",
     "@nestjs/platform-express": "^11.0.1",
     "@prisma/client": "^5.22.0",
     "@types/bcryptjs": "^2.4.6",
-    "amqp-connection-manager": "^5.0.0",
-    "amqplib": "^1.0.3",
     "bcryptjs": "^3.0.3",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",

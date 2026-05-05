@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../core/constants.dart';
 
@@ -62,7 +63,5 @@ class ApiService {
   }
 
   static bool isNetworkError(Object e) =>
-      e.toString().contains('SocketException') ||
-      e.toString().contains('TimeoutException') ||
-      e.toString().contains('Failed host lookup');
+      e is SocketException || e.toString().contains('TimeoutException') || e.toString().contains('SocketException');
 }

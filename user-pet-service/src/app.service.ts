@@ -5,8 +5,11 @@ import { PrismaService } from './prisma.service';
 export class AppService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findByUser(userId: string) {
-    return this.prisma.pet.findMany({ where: { userId }, orderBy: { createdAt: 'desc' } });
+  findByUser(userId: string) {
+    return this.prisma.pet.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'asc' },
+    });
   }
 
   async findById(id: string) {
@@ -15,11 +18,44 @@ export class AppService {
     return pet;
   }
 
-  async create(userId: string, data: any) {
-    return this.prisma.pet.create({ data: { ...data, userId } });
+  create(
+    userId: string,
+    data: {
+      name: string;
+      type: string;
+      breed?: string;
+      age?: number;
+      weight?: number;
+      imageUrl?: string;
+      notes?: string;
+    },
+  ) {
+    return this.prisma.pet.create({
+      data: {
+        userId,
+        name: data.name,
+        type: data.type,
+        breed: data.breed ?? '',
+        age: data.age ?? 0,
+        weight: data.weight ?? null,
+        imageUrl: data.imageUrl ?? null,
+        notes: data.notes ?? null,
+      },
+    });
   }
 
-  async update(id: string, data: any) {
+  async update(
+    id: string,
+    data: Partial<{
+      name: string;
+      type: string;
+      breed: string;
+      age: number;
+      weight: number;
+      imageUrl: string;
+      notes: string;
+    }>,
+  ) {
     await this.findById(id);
     return this.prisma.pet.update({ where: { id }, data });
   }

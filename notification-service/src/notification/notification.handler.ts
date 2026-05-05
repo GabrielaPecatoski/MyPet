@@ -11,61 +11,44 @@ export class NotificationHandler {
 
   @EventPattern(EVENTS.BOOKING_CREATED)
   async handleBookingCreated(
-    @Payload() data: { bookingId: string; userId: string; establishmentId: string; scheduledAt: string },
+    @Payload()
+    data: {
+      bookingId: string;
+      userId: string;
+      establishmentId: string;
+      scheduledAt: string;
+    },
     @Ctx() context: RmqContext,
   ) {
     await this.notificationService.sendBookingConfirmation(data);
-    const channel = context.getChannelRef();
+    const channel = context.getChannelRef() as { ack: (msg: unknown) => void };
     channel.ack(context.getMessage());
   }
 
   @EventPattern(EVENTS.BOOKING_STATUS_UPDATED)
   async handleBookingStatusUpdated(
-    @Payload() data: { bookingId: string; status: 'CONFIRMADO' | 'RECUSADO'; updatedAt: string },
+    @Payload()
+    data: {
+      bookingId: string;
+      userId: string;
+      status: string;
+      scheduledAt?: string;
+      updatedAt?: string;
+    },
     @Ctx() context: RmqContext,
   ) {
     await this.notificationService.sendStatusUpdate(data);
-    const channel = context.getChannelRef();
+    const channel = context.getChannelRef() as { ack: (msg: unknown) => void };
     channel.ack(context.getMessage());
   }
 
   @EventPattern(EVENTS.BOOKING_COMPLETED)
   async handleBookingCompleted(
-    @Payload() data: { bookingId: string; completedAt: string },
+    @Payload() data: { bookingId: string; userId: string; completedAt: string },
     @Ctx() context: RmqContext,
   ) {
     await this.notificationService.sendCompletionNotification(data);
-    const channel = context.getChannelRef();
-    channel.ack(context.getMessage());
-  }
-
-  @EventPattern(EVENTS.REVIEW_CREATED)
-  async handleReviewCreated(
-    @Payload() data: { reviewId: string; userId: string; establishmentId: string; rating: number; createdAt: string },
-    @Ctx() context: RmqContext,
-  ) {
-    await this.notificationService.sendReviewNotification(data);
-    const channel = context.getChannelRef();
-    channel.ack(context.getMessage());
-  }
-
-  @EventPattern(EVENTS.ORDER_CREATED)
-  async handleOrderCreated(
-    @Payload() data: { orderId: string; userId: string; total: number; itemCount: number; createdAt: string },
-    @Ctx() context: RmqContext,
-  ) {
-    await this.notificationService.sendOrderConfirmation(data);
-    const channel = context.getChannelRef();
-    channel.ack(context.getMessage());
-  }
-
-  @EventPattern(EVENTS.USER_REGISTERED)
-  async handleUserRegistered(
-    @Payload() data: { userId: string; name: string; email: string; role: string; registeredAt: string },
-    @Ctx() context: RmqContext,
-  ) {
-    await this.notificationService.sendWelcomeNotification(data);
-    const channel = context.getChannelRef();
+    const channel = context.getChannelRef() as { ack: (msg: unknown) => void };
     channel.ack(context.getMessage());
   }
 }

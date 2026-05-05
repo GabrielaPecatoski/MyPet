@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/colors.dart';
-import '../core/constants.dart';
+import '../models/appointment.dart';
 import '../providers/auth_provider.dart';
-import '../services/api_service.dart';
+import '../providers/booking_provider.dart';
 import '../widgets/mypet_app_bar.dart';
 
 class AgendaScreen extends StatefulWidget {
   const AgendaScreen({super.key});
+
   @override
   State<AgendaScreen> createState() => _AgendaScreenState();
 }
@@ -15,14 +16,21 @@ class AgendaScreen extends StatefulWidget {
 class _AgendaScreenState extends State<AgendaScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  List<Map<String, dynamic>> _bookings = [];
-  bool _loading = true;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _loadBookings();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
+  void _load() {
+    final auth = context.read<AuthProvider>();
+    if (auth.token == null || auth.user == null) return;
+    context.read<BookingProvider>().loadUserBookings(
+          token: auth.token!,
+          userId: auth.user!.id,
+        );
   }
 
   @override
@@ -31,261 +39,340 @@ class _AgendaScreenState extends State<AgendaScreen>
     super.dispose();
   }
 
-  Future<void> _loadBookings() async {
-    final userId = context.read<AuthProvider>().user?.id;
-    final token = context.read<AuthProvider>().token;
-    if (userId == null) {
-      setState(() => _loading = false);
-      return;
-    }
-    setState(() => _loading = true);
-    try {
-      final data = await ApiService.get(
-        '${ApiConstants.bookingsEndpoint}/user/$userId',
-        token: token,
-      );
-      if (mounted) {
-        setState(() {
-          _bookings = (data as List<dynamic>)
-              .map((b) => b as Map<String, dynamic>)
-              .toList();
-          _loading = false;
-        });
-      }
-    } catch (_) {
-      if (mounted) setState(() => _loading = false);
-    }
+  Future<void> _cancel(AppointmentModel booking) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Cancelar agendamento?'),
+        content: Text(
+            'Deseja cancelar ${booking.serviceName} com ${booking.petName}?'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Não')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.danger, elevation: 0),
+            child:
+                const Text('Cancelar', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true || !mounted) return;
+    final auth = context.read<AuthProvider>();
+    final ok = await context
+        .read<BookingProvider>()
+        .cancelBooking(token: auth.token!, bookingId: booking.id);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(ok
+          ? 'Agendamento cancelado'
+          : (context.read<BookingProvider>().error ?? 'Erro')),
+      backgroundColor: ok ? AppColors.success : AppColors.danger,
+    ));
   }
-
-  List<Map<String, dynamic>> get _confirmados =>
-      _bookings.where((b) => b['status'] == 'CONFIRMADO').toList();
-
-  List<Map<String, dynamic>> get _pendentes =>
-      _bookings.where((b) => b['status'] == 'PENDENTE').toList();
 
   @override
   Widget build(BuildContext context) {
+    final booking = context.watch<BookingProvider>();
+    final proximos = booking.confirmados;
+    final pendentes = booking.pendentes;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: const MypetAppBar(showBack: false),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
-          : Column(
-              children: [
-                Container(
-                  margin: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.greyLight),
-                  ),
-                  child: TabBar(
-                    controller: _tabController,
-                    indicator: BoxDecoration(
-                      color: AppColors.primary,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    indicatorSize: TabBarIndicatorSize.tab,
-                    labelColor: Colors.white,
-                    unselectedLabelColor: AppColors.grey,
-                    labelStyle: const TextStyle(fontWeight: FontWeight.w600),
-                    tabs: [
-                      const Tab(text: 'Confirmados'),
-                      Tab(
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Text('Pendentes'),
-                            if (_pendentes.isNotEmpty) ...[
-                              const SizedBox(width: 4),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: AppColors.warning,
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Text(
-                                  '${_pendentes.length}',
-                                  style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.bold),
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: TabBarView(
-                    controller: _tabController,
+      body: Column(
+        children: [
+          Container(
+            margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.greyLight),
+            ),
+            child: TabBar(
+              controller: _tabController,
+              indicator: BoxDecoration(
+                color: AppColors.primary,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              indicatorSize: TabBarIndicatorSize.tab,
+              labelColor: Colors.white,
+              unselectedLabelColor: AppColors.grey,
+              labelStyle:
+                  const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+              tabs: [
+                const Tab(text: 'Próximos'),
+                Tab(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      _BookingList(
-                          bookings: _confirmados, onRefresh: _loadBookings),
-                      _BookingList(
-                          bookings: _pendentes, onRefresh: _loadBookings),
+                      const Text('Pendentes'),
+                      if (pendentes.isNotEmpty) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.warning,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text('${pendentes.length}',
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold)),
+                        ),
+                      ],
                     ],
                   ),
                 ),
               ],
             ),
+          ),
+
+          if (booking.isLoading)
+            const Expanded(
+                child: Center(
+                    child: CircularProgressIndicator(color: AppColors.primary)))
+          else
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: () async => _load(),
+                color: AppColors.primary,
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _BookingList(
+                        appointments: proximos, onCancel: _cancel),
+                    _BookingList(
+                        appointments: pendentes, onCancel: _cancel),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
 
 class _BookingList extends StatelessWidget {
-  final List<Map<String, dynamic>> bookings;
-  final VoidCallback onRefresh;
+  final List<AppointmentModel> appointments;
+  final Future<void> Function(AppointmentModel) onCancel;
 
-  const _BookingList({required this.bookings, required this.onRefresh});
+  const _BookingList(
+      {required this.appointments, required this.onCancel});
 
   @override
   Widget build(BuildContext context) {
-    if (bookings.isEmpty) {
+    if (appointments.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.calendar_today,
-                size: 48, color: AppColors.greyLight),
-            const SizedBox(height: 12),
-            const Text('Nenhum agendamento',
-                style: TextStyle(color: AppColors.grey, fontSize: 15)),
-            const SizedBox(height: 16),
-            TextButton.icon(
-              onPressed: onRefresh,
-              icon: const Icon(Icons.refresh, color: AppColors.primary),
-              label: const Text('Atualizar',
-                  style: TextStyle(color: AppColors.primary)),
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                color: AppColors.primaryLight,
+                borderRadius: BorderRadius.circular(36),
+              ),
+              child: const Icon(Icons.calendar_today,
+                  size: 34, color: AppColors.primary),
             ),
+            const SizedBox(height: 16),
+            const Text('Nenhum agendamento',
+                style: TextStyle(
+                    color: AppColors.dark,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600)),
+            const SizedBox(height: 6),
+            const Text('Seus agendamentos aparecerão aqui',
+                style: TextStyle(color: AppColors.grey, fontSize: 13)),
           ],
         ),
       );
     }
-    return RefreshIndicator(
-      onRefresh: () async => onRefresh(),
-      child: ListView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: bookings.length,
-        itemBuilder: (ctx, i) => _BookingCard(booking: bookings[i]),
-      ),
+
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+      itemCount: appointments.length,
+      itemBuilder: (_, i) =>
+          _BookingCard(appointment: appointments[i], onCancel: onCancel),
     );
   }
 }
 
 class _BookingCard extends StatelessWidget {
-  final Map<String, dynamic> booking;
-  const _BookingCard({required this.booking});
+  final AppointmentModel appointment;
+  final Future<void> Function(AppointmentModel) onCancel;
+
+  const _BookingCard(
+      {required this.appointment, required this.onCancel});
 
   Color get _statusColor {
-    switch (booking['status'] as String? ?? '') {
+    switch (appointment.status) {
       case 'CONFIRMADO':
         return AppColors.success;
+      case 'PENDENTE':
+        return AppColors.warning;
+      case 'CANCELADO':
       case 'RECUSADO':
         return AppColors.danger;
-      case 'CONCLUIDO':
-        return AppColors.grey;
       default:
-        return AppColors.warning;
+        return AppColors.grey;
     }
   }
 
-  String _formatDate(String? iso) {
-    if (iso == null) return '—';
-    try {
-      final dt = DateTime.parse(iso).toLocal();
-      return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}  '
-          '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-    } catch (_) {
-      return iso;
-    }
+  String _formatDate(DateTime d) {
+    const months = [
+      'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
+      'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'
+    ];
+    return '${d.day} de ${months[d.month - 1]} de ${d.year}';
   }
 
   @override
   Widget build(BuildContext context) {
-    final status = booking['status'] as String? ?? 'PENDENTE';
+    final ap = appointment;
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 6,
-              offset: const Offset(0, 2))
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: const [
+          BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 2)),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 22,
-                backgroundColor: AppColors.primaryLight,
-                child: const Icon(Icons.pets,
-                    color: AppColors.primary, size: 22),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(booking['petName'] as String? ?? '—',
-                        style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
-                            color: AppColors.dark)),
-                    Text(booking['serviceName'] as String? ?? '—',
-                        style: const TextStyle(
-                            fontSize: 12, color: AppColors.grey)),
-                  ],
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                CircleAvatar(
+                  radius: 28,
+                  backgroundColor: AppColors.primaryLight,
+                  child: const Icon(Icons.pets,
+                      color: AppColors.primary, size: 28),
                 ),
-              ),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: _statusColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(20),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(ap.petName,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              color: AppColors.dark)),
+                      if (ap.petBreed.isNotEmpty)
+                        Text(
+                          '${ap.petBreed}${ap.petAge > 0 ? ' • ${ap.petAge} anos' : ''}',
+                          style: const TextStyle(
+                              fontSize: 13, color: AppColors.grey),
+                        ),
+                    ],
+                  ),
                 ),
-                child: Text(status,
-                    style: TextStyle(
-                        color: _statusColor,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600)),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: _statusColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(ap.statusLabel,
+                      style: TextStyle(
+                          color: _statusColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600)),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 12),
+            const Divider(height: 1, color: AppColors.greyLight),
+            const SizedBox(height: 12),
+
+            _row(Icons.location_on_outlined, ap.establishmentName),
+            const SizedBox(height: 6),
+            _row(Icons.calendar_today_outlined, _formatDate(ap.date)),
+            const SizedBox(height: 6),
+            _row(Icons.access_time_outlined, ap.time),
+
+            if (ap.price > 0) ...[
+              const SizedBox(height: 10),
+              Text(
+                'Valor: R\$ ${ap.price.toStringAsFixed(2)}',
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: AppColors.primary),
               ),
             ],
-          ),
-          const SizedBox(height: 10),
-          _row(Icons.location_on_outlined,
-              booking['establishmentName'] as String? ?? '—'),
-          const SizedBox(height: 4),
-          _row(Icons.calendar_today_outlined,
-              _formatDate(booking['scheduledAt'] as String?)),
-          if (booking['price'] != null) ...[
-            const SizedBox(height: 4),
-            _row(Icons.attach_money,
-                'R\$ ${(booking['price'] as num).toStringAsFixed(2)}'),
+
+            if (ap.isConfirmado) ...[
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () =>
+                      Navigator.pushNamed(context, '/tracking', arguments: ap),
+                  icon: const Icon(Icons.location_on_outlined,
+                      size: 16, color: Colors.white),
+                  label: const Text('Acompanhar serviço',
+                      style: TextStyle(color: Colors.white)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+              ),
+            ],
+
+            if (ap.canCancel) ...[
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: () => onCancel(ap),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.danger,
+                    side: const BorderSide(color: AppColors.danger),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                  ),
+                  child: const Text('Cancelar agendamento',
+                      style: TextStyle(fontWeight: FontWeight.w600)),
+                ),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
 
   Widget _row(IconData icon, String text) => Row(
         children: [
-          Icon(icon, size: 14, color: AppColors.grey),
-          const SizedBox(width: 4),
+          Icon(icon, size: 15, color: AppColors.grey),
+          const SizedBox(width: 6),
           Expanded(
               child: Text(text,
-                  style: const TextStyle(fontSize: 12, color: AppColors.grey))),
+                  style:
+                      const TextStyle(fontSize: 13, color: AppColors.grey))),
         ],
       );
 }

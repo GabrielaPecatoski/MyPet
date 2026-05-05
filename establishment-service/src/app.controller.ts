@@ -1,6 +1,13 @@
 import {
-  Controller, Get, Post, Patch, Delete,
-  Param, Body, Query, HttpCode,
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Param,
+  Body,
+  Query,
+  HttpCode,
 } from '@nestjs/common';
 import { AppService } from './app.service';
 
@@ -18,44 +25,67 @@ export class AppController {
     return this.appService.findByOwner(ownerId);
   }
 
-  @Get('establishments/admin/all')
-  findAllAdmin() {
-    return this.appService.findAllAdmin();
-  }
-
-  @Get('establishments/admin/stats')
-  getAdminStats() {
-    return this.appService.getAdminStats();
-  }
-
-  @Get('establishments/:id/stats')
-  getStats(@Param('id') id: string) {
-    return this.appService.getStats(id);
-  }
-
   @Get('establishments/:id')
   findById(@Param('id') id: string) {
     return this.appService.findById(id);
   }
 
   @Post('establishments/owner/:ownerId')
-  create(@Param('ownerId') ownerId: string, @Body() body: any) {
+  create(
+    @Param('ownerId') ownerId: string,
+    @Body()
+    body: {
+      name?: string;
+      description?: string;
+      address?: string;
+      city?: string;
+      phone?: string;
+      type?: string;
+      imageUrl?: string | null;
+    },
+  ) {
     return this.appService.create(ownerId, body);
   }
 
   @Patch('establishments/:id')
-  update(@Param('id') id: string, @Body() body: any) {
+  update(
+    @Param('id') id: string,
+    @Body()
+    body: {
+      name?: string;
+      description?: string;
+      address?: string;
+      city?: string;
+      phone?: string;
+      type?: string;
+      imageUrl?: string | null;
+      rating?: number;
+      reviewCount?: number;
+    },
+  ) {
     return this.appService.update(id, body);
   }
 
   @Post('establishments/:id/services')
-  addService(@Param('id') id: string, @Body() body: any) {
+  addService(
+    @Param('id') id: string,
+    @Body()
+    body: {
+      name: string;
+      price: number;
+      durationMinutes: number;
+      description?: string;
+    },
+  ) {
     return this.appService.addService(id, body);
   }
 
   @Delete('establishments/:id/services/:serviceId')
   @HttpCode(200)
-  removeService(@Param('id') id: string, @Param('serviceId') serviceId: string) {
+  removeService(
+    @Param('id') id: string,
+    @Param('serviceId') serviceId: string,
+  ) {
     return this.appService.removeService(id, serviceId);
   }
 }

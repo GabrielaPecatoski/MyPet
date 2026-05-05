@@ -16,6 +16,7 @@ export class AppService {
           }
         : undefined,
       include: { services: true },
+      orderBy: { createdAt: 'desc' },
     });
   }
 
@@ -35,108 +36,98 @@ export class AppService {
     });
   }
 
-  async create(ownerId: string, data: any) {
-    const { services, ...estabData } = data;
+  async create(
+    ownerId: string,
+    data: {
+      name?: string;
+      description?: string;
+      address?: string;
+      city?: string;
+      phone?: string;
+      type?: string;
+      imageUrl?: string | null;
+    },
+  ) {
     return this.prisma.establishment.create({
       data: {
-        ...estabData,
         ownerId,
-        rating: 0,
-        reviewCount: 0,
-        services: services?.length ? { create: services } : undefined,
+        name: data.name ?? '',
+        description: data.description ?? '',
+        address: data.address ?? '',
+        city: data.city ?? '',
+        phone: data.phone ?? '',
+        type: data.type ?? 'PET_SHOP',
+        imageUrl: data.imageUrl ?? null,
       },
       include: { services: true },
     });
   }
 
-  async update(id: string, data: any) {
+  async update(
+    id: string,
+    data: {
+      name?: string;
+      description?: string;
+      address?: string;
+      city?: string;
+      phone?: string;
+      type?: string;
+      imageUrl?: string | null;
+      rating?: number;
+      reviewCount?: number;
+    },
+  ) {
     await this.findById(id);
     return this.prisma.establishment.update({
       where: { id },
-      data,
+      data: {
+        ...(data.name !== undefined && { name: data.name }),
+        ...(data.description !== undefined && {
+          description: data.description,
+        }),
+        ...(data.address !== undefined && { address: data.address }),
+        ...(data.city !== undefined && { city: data.city }),
+        ...(data.phone !== undefined && { phone: data.phone }),
+        ...(data.type !== undefined && { type: data.type }),
+        ...(data.imageUrl !== undefined && { imageUrl: data.imageUrl }),
+        ...(data.rating !== undefined && { rating: data.rating }),
+        ...(data.reviewCount !== undefined && {
+          reviewCount: data.reviewCount,
+        }),
+      },
       include: { services: true },
     });
   }
 
-  async addService(establishmentId: string, service: { name: string; price: number; durationMinutes: number; description?: string }) {
+  async addService(
+    establishmentId: string,
+    service: {
+      name: string;
+      price: number;
+      durationMinutes: number;
+      description?: string;
+    },
+  ) {
     await this.findById(establishmentId);
-    await this.prisma.service.create({ data: { ...service, establishmentId } });
-    return this.findById(establishmentId);
+    return this.prisma.establishment.update({
+      where: { id: establishmentId },
+      data: {
+        services: {
+          create: {
+            name: service.name,
+            price: service.price,
+            durationMinutes: service.durationMinutes,
+            description: service.description ?? null,
+          },
+        },
+      },
+      include: { services: true },
+    });
   }
 
   async removeService(establishmentId: string, serviceId: string) {
     await this.findById(establishmentId);
-    await this.prisma.service.delete({ where: { id: serviceId } }).catch(() => {
-      throw new NotFoundException('Serviço não encontrado');
-    });
+    await this.prisma.service.delete({ where: { id: serviceId } });
     return this.findById(establishmentId);
-  }
-
-  async findAllAdmin() {
-    const establishments = await this.prisma.establishment.findMany({
-      include: { _count: { select: { services: true } } },
-    });
-    return establishments.map((e) => ({
-      id: e.id,
-      name: e.name,
-      type: e.type,
-      address: e.address,
-      phone: e.phone,
-      rating: e.rating,
-      servicesCount: e._count.services,
-      bookingsCount: 0,
-    }));
-  }
-
-  async getStats(estabId: string) {
-    const estab = await this.findById(estabId);
-    const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun'];
-    const baseValues = [1800, 2400, 2100, 3000, 2700, 3200];
-    return {
-      totalRevenue: 18500.0,
-      monthRevenue: 3200.0,
-      avgTicket: 85.0,
-      totalBookings: 217,
-      monthBookings: 38,
-      avgRating: estab.rating,
-      totalReviews: estab.reviewCount,
-      last6Months: monthNames.map((month, i) => ({ month, value: baseValues[i] })),
-      topServices: estab.services.slice(0, 3).map((s, i) => ({ name: s.name, count: 30 - i * 5 })),
-    };
-  }
-
-  async getAdminStats() {
-    const [total, establishments] = await Promise.all([
-      this.prisma.establishment.count(),
-      this.prisma.establishment.findMany({ select: { rating: true } }),
-    ]);
-    const avgRating =
-      establishments.length > 0
-        ? establishments.reduce((s, e) => s + e.rating, 0) / establishments.length
-        : 0;
-    return {
-      totalUsers: 150,
-      totalEstabs: total,
-      totalBookings: 1240,
-      avgRating: parseFloat(avgRating.toFixed(1)),
-      bookingsByMonth: [
-        { month: 'Jan', count: 180 },
-        { month: 'Fev', count: 210 },
-        { month: 'Mar', count: 195 },
-        { month: 'Abr', count: 230 },
-        { month: 'Mai', count: 245 },
-        { month: 'Jun', count: 180 },
-      ],
-      serviceDistribution: [
-        { label: 'Banho & Tosa', percentage: 45 },
-        { label: 'Veterinário', percentage: 30 },
-        { label: 'Hotel', percentage: 15 },
-        { label: 'Outros', percentage: 10 },
-      ],
-      avgTicket: 92.5,
-      clientRetention: 68.5,
-      nps: 72,
-      monthlyGrowth: 12.3,
-    };
   }
 }
