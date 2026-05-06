@@ -4,6 +4,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { PrismaService } from './prisma.service';
+import { HealthController } from './health/health.controller';
 
 @Module({
   imports: [
@@ -14,7 +15,7 @@ import { PrismaService } from './prisma.service';
       signOptions: { expiresIn: '7d' },
     }),
   ],
-  controllers: [AuthController],
+  controllers: [AuthController, HealthController],
   providers: [AuthService, PrismaService],
 })
 export class AppModule {}

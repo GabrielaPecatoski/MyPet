@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/colors.dart';
 import '../core/constants.dart';
+import '../models/product.dart';
 import '../providers/cart_provider.dart';
 import '../services/api_service.dart';
 import '../widgets/mypet_app_bar.dart';
+import 'product_detail_screen.dart';
 
 class ProdutosScreen extends StatefulWidget {
   const ProdutosScreen({super.key});
@@ -172,14 +174,23 @@ class _ProdutosScreenState extends State<ProdutosScreen> {
                         ),
                         itemCount: _products.length,
                         itemBuilder: (ctx, i) {
-                          final p = _products[i];
+                          final p = _products[i] as Map<String, dynamic>;
                           return _ProductCard(
                             product: p,
                             cartQty: cart.quantityOf(p['id'] as String),
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const ProductDetailScreen(),
+                                settings: RouteSettings(
+                                  arguments: ProductModel.fromJson(p),
+                                ),
+                              ),
+                            ),
                             onAdd: () {
                               context
                                   .read<CartProvider>()
-                                  .add(p as Map<String, dynamic>);
+                                  .add(p);
                               ScaffoldMessenger.of(context)
                                   .showSnackBar(SnackBar(
                                 content:
@@ -208,15 +219,19 @@ class _ProductCard extends StatelessWidget {
   final dynamic product;
   final int cartQty;
   final VoidCallback onAdd;
+  final VoidCallback onTap;
 
   const _ProductCard(
       {required this.product,
       required this.cartQty,
-      required this.onAdd});
+      required this.onAdd,
+      required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -305,6 +320,7 @@ class _ProductCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }

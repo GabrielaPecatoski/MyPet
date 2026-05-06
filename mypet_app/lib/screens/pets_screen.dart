@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/colors.dart';
@@ -174,11 +173,7 @@ class _PetCard extends StatelessWidget {
           CircleAvatar(
             radius: 28,
             backgroundColor: AppColors.primaryLight,
-            backgroundImage:
-                pet.imageUrl != null ? FileImage(File(pet.imageUrl!)) : null,
-            child: pet.imageUrl == null
-                ? Text(pet.typeIcon, style: const TextStyle(fontSize: 24))
-                : null,
+            child: Text(pet.typeIcon, style: const TextStyle(fontSize: 24)),
           ),
           const SizedBox(width: 14),
           Expanded(

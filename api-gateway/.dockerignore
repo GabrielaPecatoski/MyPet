@@ -1,0 +1,9 @@
+﻿node_modules
+dist
+.git
+*.log
+.env.local
+.env.*.local
+npm-debug.log*
+coverage
+tsconfig.build.tsbuildinfo

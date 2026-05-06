@@ -59,8 +59,11 @@ export class AuthService {
       where: { email: dto.email },
     });
 
-    if (!user || !(await bcrypt.compare(dto.password, user.password))) {
-      throw new UnauthorizedException('Email ou senha inválidos');
+    if (!user) {
+      throw new UnauthorizedException('Email não cadastrado');
+    }
+    if (!(await bcrypt.compare(dto.password, user.password))) {
+      throw new UnauthorizedException('Senha incorreta');
     }
 
     return {
