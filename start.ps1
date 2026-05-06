@@ -15,8 +15,8 @@ $services = @(
 
 Write-Host ""
 Write-Host "Verificando Docker..." -ForegroundColor Cyan
-docker info > $null 2>&1
-if (-not $?) {
+docker info 2>&1 | Out-Null
+if ($LASTEXITCODE -ne 0) {
   Write-Host "Docker nao esta rodando. Abra o Docker Desktop e tente novamente." -ForegroundColor Red
   exit 1
 }
