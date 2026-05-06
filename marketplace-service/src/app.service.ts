@@ -3,9 +3,6 @@ import { PrismaService } from './prisma.service';
 
 @Injectable()
 export class AppService {
-  private carts: Map<string, { productId: string; quantity: number }[]> =
-    new Map();
-
   constructor(private readonly prisma: PrismaService) {}
 
   findAllProducts(search?: string) {
@@ -69,64 +66,53 @@ export class AppService {
     });
   }
 
-  async getCart(userId: string) {
-    const items = this.carts.get(userId) ?? [];
-    const products = await Promise.all(
-      items.map(async (item) => {
-        const product = await this.prisma.product.findUnique({
-          where: { id: item.productId },
-        });
-        return product ? { ...item, product } : null;
-      }),
-    );
-    return products.filter(Boolean);
+  getCart(userId: string) {
+    return this.prisma.cartItem.findMany({
+      where: { userId },
+      include: { product: true },
+    });
   }
 
   async addToCart(userId: string, productId: string, quantity: number) {
     await this.findProductById(productId);
-    const cart = this.carts.get(userId) ?? [];
-    const existing = cart.find((c) => c.productId === productId);
-    if (existing) {
-      existing.quantity += quantity;
-    } else {
-      cart.push({ productId, quantity });
+    await this.prisma.cartItem.upsert({
+      where: { userId_productId: { userId, productId } },
+      create: { userId, productId, quantity },
+      update: { quantity: { increment: quantity } },
+    });
+    return this.getCart(userId);
+  }
+
+  async updateCartItem(userId: string, productId: string, quantity: number) {
+    if (quantity <= 0) {
+      return this.removeFromCart(userId, productId);
     }
-    this.carts.set(userId, cart);
+    await this.prisma.cartItem.upsert({
+      where: { userId_productId: { userId, productId } },
+      create: { userId, productId, quantity },
+      update: { quantity },
+    });
     return this.getCart(userId);
   }
 
-  removeFromCart(userId: string, productId: string) {
-    const cart = (this.carts.get(userId) ?? []).filter(
-      (c) => c.productId !== productId,
-    );
-    this.carts.set(userId, cart);
+  async removeFromCart(userId: string, productId: string) {
+    await this.prisma.cartItem.deleteMany({ where: { userId, productId } });
     return this.getCart(userId);
   }
 
-  clearCart(userId: string) {
-    this.carts.delete(userId);
+  async clearCart(userId: string) {
+    await this.prisma.cartItem.deleteMany({ where: { userId } });
   }
 
   async checkout(userId: string) {
-    const cartItems = this.carts.get(userId);
-    if (!cartItems || cartItems.length === 0)
-      throw new NotFoundException('Carrinho vazio');
+    const cartItems = await this.prisma.cartItem.findMany({
+      where: { userId },
+      include: { product: true },
+    });
+    if (cartItems.length === 0) throw new NotFoundException('Carrinho vazio');
 
-    const itemsWithProducts = await Promise.all(
-      cartItems.map(async (item) => {
-        const product = await this.prisma.product.findUnique({
-          where: { id: item.productId },
-        });
-        if (!product)
-          throw new NotFoundException(
-            `Produto ${item.productId} não encontrado`,
-          );
-        return { product, quantity: item.quantity, price: product.price };
-      }),
-    );
-
-    const total = itemsWithProducts.reduce(
-      (sum, i) => sum + i.price * i.quantity,
+    const total = cartItems.reduce(
+      (sum, i) => sum + i.product.price * i.quantity,
       0,
     );
 
@@ -136,17 +122,17 @@ export class AppService {
         total,
         status: 'CONFIRMED',
         items: {
-          create: itemsWithProducts.map((i) => ({
-            productId: i.product.id,
+          create: cartItems.map((i) => ({
+            productId: i.productId,
             quantity: i.quantity,
-            price: i.price,
+            price: i.product.price,
           })),
         },
       },
       include: { items: { include: { product: true } } },
     });
 
-    this.carts.delete(userId);
+    await this.prisma.cartItem.deleteMany({ where: { userId } });
     return order;
   }
 

@@ -299,7 +299,7 @@ export class AppService {
     const rawSlots = this.generateSlots(day.startTime, day.endTime, schedule.slotDurationMinutes);
 
     const slots: TimeSlot[] = rawSlots.map(time => {
-      // Check manual/auto blocked slots
+
       const block = this.blockedSlots.find(
         b => b.establishmentId === establishmentId && b.date === date && b.time === time,
       );
@@ -307,7 +307,6 @@ export class AppService {
         return { time, available: false, reason: block.reason, blockId: block.id };
       }
 
-      // Check existing bookings at this slot
       const booking = this.bookings.find(b => {
         if (b.establishmentId !== establishmentId) return false;
         const bDate = new Date(b.scheduledAt);

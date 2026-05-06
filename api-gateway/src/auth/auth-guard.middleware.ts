@@ -20,7 +20,6 @@ export class AuthGuardMiddleware implements NestMiddleware {
         secret: process.env.JWT_SECRET ?? 'mypet_super_secret_change_in_production',
       });
 
-      // Passa o ID e o role do usuário para os microserviços via header
       req.headers['x-user-id']   = payload.sub ?? payload.userId;
       req.headers['x-user-role'] = payload.role;
 
