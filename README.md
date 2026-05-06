@@ -52,6 +52,16 @@ Cada microsserviço tem seu próprio banco PostgreSQL. RabbitMQ transporta event
 
 ## Rodar com Docker (recomendado)
 
+### Script automático (Windows)
+
+```powershell
+.\start.ps1
+```
+
+O script sobe toda a stack, aguarda os serviços iniciarem e exibe o status de saúde de cada um com resultado colorido (OK / ERRO). Requer Docker Desktop em execução.
+
+### Manual
+
 ```bash
 # Subir toda a stack (infraestrutura + 9 serviços)
 docker compose up -d --build
