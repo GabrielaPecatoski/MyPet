@@ -42,6 +42,23 @@ class CartProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void addQty(Map<String, dynamic> product, int qty) {
+    final id = product['id'] as String;
+    if (_items.containsKey(id)) {
+      _items[id]!.quantity += qty;
+    } else {
+      _items[id] = CartItem(
+        id: id,
+        name: product['name'] ?? '',
+        brand: product['brand'] ?? '',
+        price: (product['price'] as num).toDouble(),
+        unit: product['unit'] ?? '',
+        quantity: qty,
+      );
+    }
+    notifyListeners();
+  }
+
   void increment(String id) {
     if (_items.containsKey(id)) {
       _items[id]!.quantity++;
