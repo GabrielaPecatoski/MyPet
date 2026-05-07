@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -17,7 +18,6 @@ class _AddPetScreenState extends State<AddPetScreen> {
   final _racaCtrl = TextEditingController();
   final _idadeCtrl = TextEditingController();
   String _tipoSelecionado = 'Cachorro';
-  XFile? _imageFile;
   Uint8List? _imageBytes;
 
   static const _tipos = [
@@ -37,11 +37,15 @@ class _AddPetScreenState extends State<AddPetScreen> {
   Future<void> _pickImage(ImageSource source) async {
     if (kIsWeb) return;
     final picker = ImagePicker();
-    final picked = await picker.pickImage(source: source, imageQuality: 80);
+    final picked = await picker.pickImage(
+      source: source,
+      imageQuality: 75,
+      maxWidth: 800,
+      maxHeight: 800,
+    );
     if (picked != null && mounted) {
       final bytes = await picked.readAsBytes();
       setState(() {
-        _imageFile = picked;
         _imageBytes = bytes;
       });
     }
@@ -111,13 +115,17 @@ class _AddPetScreenState extends State<AddPetScreen> {
 
   void _salvar() {
     if (!_formKey.currentState!.validate()) return;
+    String? imageUrl;
+    if (_imageBytes != null) {
+      imageUrl = 'data:image/jpeg;base64,${base64Encode(_imageBytes!)}';
+    }
     final pet = PetModel(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       name: _nomeCtrl.text.trim(),
       type: _tipoSelecionado,
       breed: _racaCtrl.text.trim(),
       age: int.tryParse(_idadeCtrl.text) ?? 0,
-      imageUrl: _imageFile?.path,
+      imageUrl: imageUrl,
     );
     Navigator.pop(context, pet);
   }
