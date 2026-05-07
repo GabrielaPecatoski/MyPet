@@ -59,8 +59,11 @@ Write-Host "  PostgreSQL      -> localhost:5433"
 Write-Host "  RabbitMQ UI     -> http://localhost:15672  (mypet/mypet123)"
 Write-Host "  Consul UI       -> http://localhost:8500"
 Write-Host ""
-Write-Host "Para o Flutter app (dispositivo fisico/emulador):"
-Write-Host "  API Gateway     -> http://172.18.16.1:3000"
+$wslIp = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.InterfaceAlias -like '*WSL*' } | Select-Object -First 1 -ExpandProperty IPAddress)
+if (-not $wslIp) { $wslIp = "<seu-IP-WSL>" }
+Write-Host "Para o Flutter app (dispositivo fisico/emulador Android):"
+Write-Host "  API Gateway     -> http://${wslIp}:3000  (IP WSL desta maquina)"
+Write-Host "  Emulador Android-> http://10.0.2.2:3000"
 Write-Host ""
 Write-Host "Bancos de dados:"
 Write-Host "  mypet_auth, mypet_users, mypet_estab, mypet_market,"
