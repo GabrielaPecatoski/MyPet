@@ -1,5 +1,8 @@
 # MyPet - Start Stack
-$ErrorActionPreference = 'SilentlyContinue'
+# Se travar na politica de execucao, rode no terminal:
+#   Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+
+$ErrorActionPreference = 'Continue'
 
 $services = @(
   @{ name = 'gateway';      port = 3000 },
@@ -15,23 +18,25 @@ $services = @(
 
 Write-Host ""
 Write-Host "Verificando Docker..." -ForegroundColor Cyan
-docker info 2>&1 | Out-Null
+docker info | Out-Null
 if ($LASTEXITCODE -ne 0) {
   Write-Host "Docker nao esta rodando. Abra o Docker Desktop e tente novamente." -ForegroundColor Red
   exit 1
 }
 
-Write-Host "Subindo a stack..." -ForegroundColor Cyan
-docker compose down > $null 2>&1
+Write-Host "Parando containers anteriores..." -ForegroundColor Cyan
+docker compose down | Out-Null
+
+Write-Host "Subindo a stack (pode demorar no primeiro build)..." -ForegroundColor Cyan
 docker compose up -d --build
-if (-not $?) {
-  Write-Host "Erro ao subir os containers." -ForegroundColor Red
+if ($LASTEXITCODE -ne 0) {
+  Write-Host "Erro ao subir os containers. Verifique se o Docker Desktop esta aberto." -ForegroundColor Red
   exit 1
 }
 
 Write-Host ""
-Write-Host "Aguardando servicos iniciarem (60s)..." -ForegroundColor Yellow
-Start-Sleep -Seconds 60
+Write-Host "Aguardando servicos iniciarem (90s)..." -ForegroundColor Yellow
+Start-Sleep -Seconds 90
 
 Write-Host ""
 Write-Host "Status dos servicos:" -ForegroundColor Cyan
@@ -40,7 +45,7 @@ Write-Host "--------------------"
 $allOk = $true
 foreach ($svc in $services) {
   try {
-    $res = Invoke-WebRequest -Uri "http://localhost:$($svc.port)/health" -TimeoutSec 5 -UseBasicParsing
+    $res = Invoke-WebRequest -Uri "http://localhost:$($svc.port)/health" -TimeoutSec 8 -UseBasicParsing -ErrorAction Stop
     if ($res.StatusCode -eq 200) {
       Write-Host "  $($svc.name.PadRight(15)) [OK]" -ForegroundColor Green
     } else {
@@ -59,22 +64,29 @@ Write-Host "  PostgreSQL      -> localhost:5433"
 Write-Host "  RabbitMQ UI     -> http://localhost:15672  (mypet/mypet123)"
 Write-Host "  Consul UI       -> http://localhost:8500"
 Write-Host ""
-$wslIp = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.InterfaceAlias -like '*WSL*' } | Select-Object -First 1 -ExpandProperty IPAddress)
-if (-not $wslIp) { $wslIp = "<seu-IP-WSL>" }
-Write-Host "Para o Flutter app (dispositivo fisico/emulador Android):"
-Write-Host "  API Gateway     -> http://${wslIp}:3000  (IP WSL desta maquina)"
-Write-Host "  Emulador Android-> http://10.0.2.2:3000"
-Write-Host ""
-Write-Host "Bancos de dados:"
-Write-Host "  mypet_auth, mypet_users, mypet_estab, mypet_market,"
-Write-Host "  mypet_booking, mypet_notif, mypet_review, mypet_faq"
+
+$wslIp = $null
+try {
+  $wslIp = (Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue |
+    Where-Object { $_.InterfaceAlias -like '*WSL*' } |
+    Select-Object -First 1 -ExpandProperty IPAddress)
+} catch { }
+
+Write-Host "Para Flutter em dispositivo fisico / emulador Android:" -ForegroundColor Cyan
+if ($wslIp) {
+  Write-Host "  Esta maquina (WSL) -> http://${wslIp}:3000"
+} else {
+  Write-Host "  Descubra seu IP:      ipconfig | findstr IPv4"
+  Write-Host "  Use o IP da maquina-> http://<SEU-IP>:3000"
+}
+Write-Host "  Emulador Android   -> http://10.0.2.2:3000"
 Write-Host ""
 Write-Host "Comandos uteis:"
-Write-Host "  docker compose logs -f gateway  # logs do gateway"
-Write-Host "  docker compose logs -f auth     # logs de um servico"
-Write-Host "  docker compose ps               # status dos containers"
-Write-Host "  docker compose down             # parar tudo"
-Write-Host "  docker compose down -v          # parar + apagar volumes (reset DB)"
+Write-Host "  docker compose logs -f gateway   # logs do gateway"
+Write-Host "  docker compose logs -f auth      # logs de um servico"
+Write-Host "  docker compose ps                # status dos containers"
+Write-Host "  docker compose down              # parar tudo"
+Write-Host "  docker compose down -v           # parar + apagar volumes (reset DB)"
 Write-Host ""
 
 if ($allOk) {
@@ -83,7 +95,8 @@ if ($allOk) {
   Write-Host "================================================" -ForegroundColor Green
 } else {
   Write-Host "================================================" -ForegroundColor Yellow
-  Write-Host "  Alguns servicos falharam. Verifique os logs." -ForegroundColor Yellow
+  Write-Host "  Alguns servicos falharam. Verifique com:" -ForegroundColor Yellow
+  Write-Host "  docker compose logs <nome-do-servico>" -ForegroundColor Yellow
   Write-Host "================================================" -ForegroundColor Yellow
 }
 Write-Host ""
