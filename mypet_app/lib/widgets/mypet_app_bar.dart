@@ -51,15 +51,15 @@ class MypetAppBar extends StatelessWidget implements PreferredSizeWidget {
                   ),
                 ),
 
-                SizedBox(
-                  width: 48,
-                  child: actions != null
-                      ? Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          mainAxisSize: MainAxisSize.min,
-                          children: actions!,
-                        )
-                      : Builder(builder: (ctx) {
+                actions != null
+                    ? Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        mainAxisSize: MainAxisSize.min,
+                        children: actions!,
+                      )
+                    : SizedBox(
+                        width: 48,
+                        child: Builder(builder: (ctx) {
                           final user = ctx.watch<AuthProvider>().user;
                           return Center(
                             child: GestureDetector(

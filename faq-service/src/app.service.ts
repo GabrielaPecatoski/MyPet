@@ -5,8 +5,6 @@ import { PrismaService } from './prisma.service.js';
 export class AppService {
   constructor(private readonly prisma: PrismaService) {}
 
-  // ── FAQ Items ─────────────────────────────────────────────────────
-
   findActiveFaqs(category?: string) {
     return this.prisma.faqItem.findMany({
       where: {
@@ -70,8 +68,6 @@ export class AppService {
     return { deleted: true };
   }
 
-  // ── User Questions ────────────────────────────────────────────────
-
   submitQuestion(data: {
     userId: string;
     userName: string;
@@ -122,8 +118,6 @@ export class AppService {
       data: { status: 'FECHADA' },
     });
   }
-
-  // ── Helpers ───────────────────────────────────────────────────────
 
   private async ensureFaqExists(id: string) {
     const item = await this.prisma.faqItem.findUnique({ where: { id } });

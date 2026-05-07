@@ -152,7 +152,6 @@ class _AddPetScreenState extends State<AddPetScreen> {
                   style: TextStyle(fontSize: 13, color: AppColors.grey)),
               const SizedBox(height: 24),
 
-              // Foto
               if (!kIsWeb)
                 Center(
                   child: GestureDetector(
@@ -201,7 +200,6 @@ class _AddPetScreenState extends State<AddPetScreen> {
                 ),
               if (!kIsWeb) const SizedBox(height: 28),
 
-              // Tipo
               _sectionTitle('Tipo do Pet'),
               const SizedBox(height: 10),
               Row(
@@ -259,7 +257,6 @@ class _AddPetScreenState extends State<AddPetScreen> {
               ),
               const SizedBox(height: 20),
 
-              // Campos
               _sectionTitle('Nome do Pet'),
               const SizedBox(height: 8),
               _field(

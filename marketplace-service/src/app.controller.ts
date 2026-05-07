@@ -15,7 +15,6 @@ import { AppService } from './app.service';
 export class AppController {
   constructor(private readonly appService: AppService) {}
 
-  // ── Products ─────────────────────────────────────────────────────
   @Get('marketplace/products')
   listProducts(@Query('search') search?: string) {
     return this.appService.findAllProducts(search);
@@ -42,7 +41,6 @@ export class AppController {
     return this.appService.deleteProduct(id);
   }
 
-  // ── Cart ─────────────────────────────────────────────────────────
   @Get('marketplace/cart/:userId')
   getCart(@Param('userId') userId: string) {
     return this.appService.getCart(userId);
@@ -60,6 +58,15 @@ export class AppController {
     );
   }
 
+  @Patch('marketplace/cart/:userId/:productId')
+  updateCartItem(
+    @Param('userId') userId: string,
+    @Param('productId') productId: string,
+    @Body() body: { quantity: number },
+  ) {
+    return this.appService.updateCartItem(userId, productId, body.quantity);
+  }
+
   @Delete('marketplace/cart/:userId/:productId')
   removeFromCart(
     @Param('userId') userId: string,
@@ -68,7 +75,12 @@ export class AppController {
     return this.appService.removeFromCart(userId, productId);
   }
 
-  // ── Orders ───────────────────────────────────────────────────────
+  @Delete('marketplace/cart/:userId')
+  @HttpCode(204)
+  clearCart(@Param('userId') userId: string) {
+    return this.appService.clearCart(userId);
+  }
+
   @Post('marketplace/orders/:userId')
   checkout(@Param('userId') userId: string) {
     return this.appService.checkout(userId);

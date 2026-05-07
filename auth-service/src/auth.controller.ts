@@ -37,6 +37,11 @@ export class AuthController {
     return this.authService.me(userId);
   }
 
+  @Get('admin/users')
+  getAllUsers(@Headers('x-admin-secret') secret: string) {
+    return this.authService.getAllUsers(secret);
+  }
+
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   refresh(

@@ -30,16 +30,26 @@ const estabNavItems = [
   BottomNavItemData(icon: Icons.person_outline,          activeIcon: Icons.person,          label: 'Perfil'),
 ];
 
+const adminNavItems = [
+  BottomNavItemData(icon: Icons.dashboard_outlined,      activeIcon: Icons.dashboard,       label: 'Dashboard'),
+  BottomNavItemData(icon: Icons.people_outlined,         activeIcon: Icons.people,          label: 'Usuários'),
+  BottomNavItemData(icon: Icons.help_outline,            activeIcon: Icons.help,            label: 'FAQ'),
+  BottomNavItemData(icon: Icons.bar_chart_outlined,      activeIcon: Icons.bar_chart,       label: 'Estatísticas'),
+  BottomNavItemData(icon: Icons.logout,                  activeIcon: Icons.logout,          label: 'Sair'),
+];
+
 class AppBottomNav extends StatelessWidget {
   final int currentIndex;
   final List<BottomNavItemData> items;
   final void Function(int) onTap;
+  final Map<int, int> badges;
 
   const AppBottomNav({
     super.key,
     required this.currentIndex,
     required this.items,
     required this.onTap,
+    this.badges = const {},
   });
 
   @override
@@ -70,10 +80,30 @@ class AppBottomNav extends StatelessWidget {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(
-                        isActive ? item.activeIcon : item.icon,
-                        color: isActive ? AppColors.primary : AppColors.grey,
-                        size: 24,
+                      Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Icon(
+                            isActive ? item.activeIcon : item.icon,
+                            color: isActive ? AppColors.primary : AppColors.grey,
+                            size: 24,
+                          ),
+                          if (badges.containsKey(i) && badges[i]! > 0)
+                            Positioned(
+                              top: -4,
+                              right: -6,
+                              child: Container(
+                                padding: const EdgeInsets.all(3),
+                                decoration: const BoxDecoration(color: AppColors.danger, shape: BoxShape.circle),
+                                constraints: const BoxConstraints(minWidth: 14, minHeight: 14),
+                                child: Text(
+                                  '${badges[i]}',
+                                  style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                       const SizedBox(height: 2),
                       Text(

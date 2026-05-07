@@ -2,7 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/colors.dart';
 import '../providers/auth_provider.dart';
+import '../services/api_service.dart';
+import '../widgets/app_bottom_nav.dart';
 import '../widgets/mypet_app_bar.dart';
+
+const _adminSecret = 'mypet_admin_secret';
+const _adminHeaders = {'x-admin-secret': _adminSecret};
 
 class AdminScreen extends StatefulWidget {
   const AdminScreen({super.key});
@@ -10,293 +15,444 @@ class AdminScreen extends StatefulWidget {
   State<AdminScreen> createState() => _AdminScreenState();
 }
 
-class _AdminScreenState extends State<AdminScreen>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabCtrl;
+class _AdminScreenState extends State<AdminScreen> {
+  int _selectedIndex = 0;
 
-  final _usuarios = [
-    {'nome': 'João Silva', 'email': 'joao@mypet.com', 'role': 'CLIENTE', 'pets': '2', 'agendamentos': '5'},
-    {'nome': 'Maria Costa', 'email': 'maria@mypet.com', 'role': 'CLIENTE', 'pets': '1', 'agendamentos': '3'},
-    {'nome': 'Carlos Souza', 'email': 'carlos@mypet.com', 'role': 'CLIENTE', 'pets': '3', 'agendamentos': '7'},
-    {'nome': 'Ana Lima', 'email': 'ana@mypet.com', 'role': 'CLIENTE', 'pets': '1', 'agendamentos': '2'},
-    {'nome': 'Paulo R.', 'email': 'paulo@mypet.com', 'role': 'CLIENTE', 'pets': '2', 'agendamentos': '4'},
-    {'nome': 'Admin MyPet', 'email': 'admin@mypet.com', 'role': 'ADMIN', 'pets': '0', 'agendamentos': '0'},
-    {'nome': 'Pet Shop Amor & Carinho', 'email': 'petshop@mypet.com', 'role': 'VENDEDOR', 'pets': '0', 'agendamentos': '0'},
-  ];
-
-  final _estabelecimentos = [
-    {
-      'nome': 'Pet Shop Amor & Carinho',
-      'tipo': 'Pet Shop',
-      'endereco': 'Rua das Flores, 123 — Vila Nova',
-      'telefone': '(11) 3456-7890',
-      'nota': '4.8',
-      'servicos': '3',
-      'agendamentos': '48',
-    },
-    {
-      'nome': 'Clínica Veterinária Vida Animal',
-      'tipo': 'Clínica Veterinária',
-      'endereco': 'Av. Principal, 456 — Jardim das Flores',
-      'telefone': '(11) 3456-1884',
-      'nota': '4.3',
-      'servicos': '5',
-      'agendamentos': '32',
-    },
-    {
-      'nome': 'PetCare Express',
-      'tipo': 'Pet Shop',
-      'endereco': 'Rua Nova, 789 — Vila Nova',
-      'telefone': '(11) 3456-1952',
-      'nota': '4.5',
-      'servicos': '2',
-      'agendamentos': '21',
-    },
-  ];
-
-  final _reclamacoes = [
-    {'usuario': 'Carlos M.', 'estab': 'Pet Shop Amor & Carinho', 'assunto': 'Atraso no atendimento', 'data': '2026-02-10', 'status': 'RESPONDIDA'},
-    {'usuario': 'Paula T.', 'estab': 'PetCare Express', 'assunto': 'Serviço incompleto', 'data': '2026-03-01', 'status': 'PENDENTE'},
-    {'usuario': 'Roberto A.', 'estab': 'Clínica Vida Animal', 'assunto': 'Cobrança indevida', 'data': '2026-03-05', 'status': 'PENDENTE'},
-  ];
+  List<dynamic> _users = [];
+  List<dynamic> _faqItems = [];
+  List<dynamic> _userQuestions = [];
+  bool _loading = true;
+  String? _error;
 
   @override
   void initState() {
     super.initState();
-    _tabCtrl = TabController(length: 4, vsync: this);
+    _loadAll();
   }
 
-  @override
-  void dispose() {
-    _tabCtrl.dispose();
-    super.dispose();
+  Future<void> _loadAll() async {
+    setState(() { _loading = true; _error = null; });
+    try {
+      await Future.wait([_loadUsers(), _loadFaq(), _loadQuestions()]);
+    } catch (e) {
+      setState(() => _error = e.toString());
+    }
+    setState(() => _loading = false);
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: MypetAppBar(
-        showBack: false,
+  Future<void> _loadUsers() async {
+    final data = await ApiService.get('/auth/admin/users', headers: _adminHeaders);
+    setState(() => _users = data as List<dynamic>);
+  }
+
+  Future<void> _loadFaq() async {
+    final data = await ApiService.get('/faq/admin/all', headers: _adminHeaders);
+    setState(() => _faqItems = data as List<dynamic>);
+  }
+
+  Future<void> _loadQuestions() async {
+    final data = await ApiService.get('/faq/questions/admin/all', headers: _adminHeaders);
+    setState(() => _userQuestions = data as List<dynamic>);
+  }
+
+  Future<void> _answerQuestion(String id, String answer) async {
+    await ApiService.put('/faq/questions/admin/$id/answer', {'answer': answer}, headers: _adminHeaders);
+    await _loadQuestions();
+  }
+
+  Future<void> _closeQuestion(String id) async {
+    await ApiService.put('/faq/questions/admin/$id/close', {}, headers: _adminHeaders);
+    await _loadQuestions();
+  }
+
+  Future<void> _createFaq(String question, String answer, String category) async {
+    await ApiService.post('/faq/admin', {'question': question, 'answer': answer, 'category': category}, headers: _adminHeaders);
+    await _loadFaq();
+  }
+
+  Future<void> _updateFaq(String id, Map<String, dynamic> data) async {
+    await ApiService.put('/faq/admin/$id', data, headers: _adminHeaders);
+    await _loadFaq();
+  }
+
+  Future<void> _deleteFaq(String id) async {
+    await ApiService.delete('/faq/admin/$id', headers: _adminHeaders);
+    await _loadFaq();
+  }
+
+  Future<void> _logout() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Sair da conta'),
+        content: const Text('Tem certeza que quer sair?'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.logout, color: AppColors.danger),
-            onPressed: () async {
-              await context.read<AuthProvider>().logout();
-              if (context.mounted) {
-                Navigator.pushReplacementNamed(context, '/login');
-              }
-            },
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
           ),
-        ],
-      ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    _statCard('Usuários', '16', Icons.people_outlined,
-                        const Color(0xFF4285F4)),
-                    const SizedBox(width: 12),
-                    _statCard('Estabelecimentos', '3', Icons.store_outlined,
-                        const Color(0xFF34A853)),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    _statCard('Agendamentos', '48', Icons.calendar_month_outlined,
-                        const Color(0xFFFBBC04)),
-                    const SizedBox(width: 12),
-                    _statCard('Avaliação Média', '4.7', Icons.star_outline,
-                        const Color(0xFFEA4335)),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          Container(
-            color: Colors.white,
-            child: TabBar(
-              controller: _tabCtrl,
-              isScrollable: true,
-              indicatorColor: AppColors.primary,
-              labelColor: AppColors.primary,
-              unselectedLabelColor: AppColors.grey,
-              labelStyle: const TextStyle(
-                  fontWeight: FontWeight.w600, fontSize: 13),
-              tabs: const [
-                Tab(text: 'Reclamações'),
-                Tab(text: 'Usuários'),
-                Tab(text: 'Estabelecimentos'),
-                Tab(text: 'Estatísticas'),
-              ],
-            ),
-          ),
-          Expanded(
-            child: TabBarView(
-              controller: _tabCtrl,
-              children: [
-                _ReclamacoesTab(reclamacoes: _reclamacoes),
-                _UsuariosTab(usuarios: _usuarios),
-                _EstabelecimentosTab(estabelecimentos: _estabelecimentos),
-                const _EstatisticasTab(),
-              ],
-            ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.danger),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Sair', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
     );
+    if (ok == true && mounted) {
+      await context.read<AuthProvider>().logout();
+      Navigator.pushReplacementNamed(context, '/login');
+    }
   }
 
-  Widget _statCard(
-      String label, String value, IconData icon, Color color) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 6,
-                offset: const Offset(0, 2))
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(icon, color: color, size: 22),
-            ),
-            const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(value,
-                    style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: color)),
-                Text(label,
-                    style: const TextStyle(
-                        fontSize: 11, color: AppColors.grey)),
-              ],
-            ),
-          ],
-        ),
+  @override
+  Widget build(BuildContext context) {
+    final pages = [
+      _DashboardPage(
+        users: _users,
+        faqItems: _faqItems,
+        userQuestions: _userQuestions,
+        loading: _loading,
+        error: _error,
+        onRetry: _loadAll,
+        onGoToFaq: () => setState(() => _selectedIndex = 2),
+        onGoToUsers: () => setState(() => _selectedIndex = 1),
+      ),
+      _UsuariosPage(users: _users, loading: _loading),
+      _FaqPage(
+        faqItems: _faqItems,
+        userQuestions: _userQuestions,
+        loading: _loading,
+        onCreateFaq: _createFaq,
+        onUpdateFaq: _updateFaq,
+        onDeleteFaq: _deleteFaq,
+        onAnswer: _answerQuestion,
+        onClose: _closeQuestion,
+      ),
+      _EstatisticasPage(users: _users, loading: _loading),
+    ];
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: _selectedIndex == 0 ? null : const MypetAppBar(showBack: false),
+      body: pages[_selectedIndex],
+      bottomNavigationBar: AppBottomNav(
+        currentIndex: _selectedIndex,
+        items: adminNavItems,
+        onTap: (i) {
+          if (i == 4) { _logout(); return; }
+          setState(() => _selectedIndex = i);
+        },
+        badges: {
+          2: _userQuestions.where((q) => q['status'] == 'PENDENTE').length,
+        },
       ),
     );
   }
 }
 
-class _ReclamacoesTab extends StatelessWidget {
-  final List<Map<String, String>> reclamacoes;
-  const _ReclamacoesTab({required this.reclamacoes});
+class _DashboardPage extends StatelessWidget {
+  final List<dynamic> users;
+  final List<dynamic> faqItems;
+  final List<dynamic> userQuestions;
+  final bool loading;
+  final String? error;
+  final VoidCallback onRetry;
+  final VoidCallback onGoToFaq;
+  final VoidCallback onGoToUsers;
+
+  const _DashboardPage({
+    required this.users,
+    required this.faqItems,
+    required this.userQuestions,
+    required this.loading,
+    required this.error,
+    required this.onRetry,
+    required this.onGoToFaq,
+    required this.onGoToUsers,
+  });
+
+  String _fmt(String? d) {
+    if (d == null) return '—';
+    try {
+      final dt = DateTime.parse(d).toLocal();
+      return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}';
+    } catch (_) {
+      return '—';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: reclamacoes.length,
-      itemBuilder: (ctx, i) {
-        final r = reclamacoes[i];
-        final isPendente = r['status'] == 'PENDENTE';
-        return Container(
-          margin: const EdgeInsets.only(bottom: 10),
+    if (loading) {
+      return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+    }
+    if (error != null) {
+      return Center(
+        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          const Icon(Icons.wifi_off, size: 48, color: AppColors.grey),
+          const SizedBox(height: 12),
+          const Text('Sem conexão com o servidor', style: TextStyle(color: AppColors.grey)),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: onRetry,
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+            child: const Text('Tentar novamente', style: TextStyle(color: Colors.white)),
+          ),
+        ]),
+      );
+    }
+
+    final clientes = users.where((u) => u['role'] == 'CLIENTE').length;
+    final vendedores = users.where((u) => u['role'] == 'VENDEDOR').length;
+    final pendentes = userQuestions.where((q) => q['status'] == 'PENDENTE').length;
+    final now = DateTime.now();
+    final novosNoMes = users.where((u) {
+      try {
+        final d = DateTime.parse(u['createdAt'] as String);
+        return d.year == now.year && d.month == now.month;
+      } catch (_) {
+        return false;
+      }
+    }).length;
+
+    final recentes = [...users]..sort((a, b) {
+        final da = DateTime.tryParse(a['createdAt'] as String? ?? '') ?? DateTime(2000);
+        final db = DateTime.tryParse(b['createdAt'] as String? ?? '') ?? DateTime(2000);
+        return db.compareTo(da);
+      });
+
+    return ListView(
+      padding: EdgeInsets.zero,
+      children: [
+
+        Builder(builder: (ctx) {
+          final topPad = MediaQuery.of(ctx).padding.top;
+          return Container(
+          width: double.infinity,
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF7B3FF2), Color(0xFF5B2FBF)],
+            ),
+          ),
+          padding: EdgeInsets.fromLTRB(20, topPad + 16, 20, 24),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.center, children: [
+            Image.asset('assets/images/logo branca.png', height: 48, fit: BoxFit.contain),
+            const SizedBox(height: 6),
+            Text(
+              'Painel Administrativo',
+              style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 12, letterSpacing: 0.5),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: Row(children: [
+                _BannerStat('${users.length}', 'Usuários'),
+                _bannerDivider(),
+                _BannerStat('$clientes', 'Clientes'),
+                _bannerDivider(),
+                _BannerStat('$vendedores', 'Fornecedores'),
+                _bannerDivider(),
+                _BannerStat('$novosNoMes', 'Novos/mês'),
+              ]),
+            ),
+          ]),
+        );
+        }),
+
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+
+            if (pendentes > 0) ...[
+              GestureDetector(
+                onTap: onGoToFaq,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: AppColors.warning.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.warning.withValues(alpha: 0.4)),
+                  ),
+                  child: Row(children: [
+                    const Icon(Icons.mark_chat_unread_outlined, color: AppColors.warning, size: 22),
+                    const SizedBox(width: 10),
+                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(
+                        '$pendentes ${pendentes == 1 ? 'dúvida pendente' : 'dúvidas pendentes'}',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.warning),
+                      ),
+                      const Text('Toque para responder', style: TextStyle(fontSize: 12, color: AppColors.grey)),
+                    ])),
+                    const Icon(Icons.chevron_right, color: AppColors.warning),
+                  ]),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+
+            Row(children: [
+              _ActionCard(
+                icon: Icons.people,
+                color: const Color(0xFF4285F4),
+                label: 'Usuários',
+                value: '${users.length}',
+                sub: '$clientes clientes · $vendedores fornec.',
+                onTap: onGoToUsers,
+              ),
+              const SizedBox(width: 12),
+              _ActionCard(
+                icon: Icons.help,
+                color: AppColors.primary,
+                label: 'FAQ',
+                value: '${faqItems.length}',
+                sub: '${faqItems.where((f) => f['active'] == true).length} publicadas',
+                onTap: onGoToFaq,
+              ),
+            ]),
+            const SizedBox(height: 12),
+            Row(children: [
+              _ActionCard(
+                icon: Icons.question_answer,
+                color: pendentes > 0 ? AppColors.warning : AppColors.success,
+                label: 'Dúvidas',
+                value: '${userQuestions.length}',
+                sub: '$pendentes pendentes',
+                onTap: onGoToFaq,
+              ),
+              const SizedBox(width: 12),
+              _ActionCard(
+                icon: Icons.person_add,
+                color: const Color(0xFF34A853),
+                label: 'Novos',
+                value: '$novosNoMes',
+                sub: 'cadastros este mês',
+                onTap: onGoToUsers,
+              ),
+            ]),
+
+            const SizedBox(height: 20),
+            const Text('Últimos cadastros', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.dark)),
+            const SizedBox(height: 10),
+            ...recentes.take(5).map((u) {
+              final role = u['role'] as String? ?? 'CLIENTE';
+              final isVendedor = role == 'VENDEDOR';
+              final color = isVendedor ? const Color(0xFF4285F4) : AppColors.success;
+              return Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 4, offset: const Offset(0, 2))],
+                ),
+                child: Row(children: [
+                  CircleAvatar(
+                    radius: 16,
+                    backgroundColor: color.withValues(alpha: 0.12),
+                    child: Text(
+                      (u['name'] as String? ?? '?')[0].toUpperCase(),
+                      style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(u['name'] as String? ?? '', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.dark), overflow: TextOverflow.ellipsis),
+                    Text(u['email'] as String? ?? '', style: const TextStyle(fontSize: 11, color: AppColors.grey), overflow: TextOverflow.ellipsis),
+                  ])),
+                  Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)),
+                      child: Text(isVendedor ? 'Fornec.' : 'Cliente', style: TextStyle(color: color, fontSize: 9, fontWeight: FontWeight.w600)),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(_fmt(u['createdAt'] as String?), style: const TextStyle(fontSize: 10, color: AppColors.grey)),
+                  ]),
+                ]),
+              );
+            }),
+          ]),
+        ),
+      ],
+    );
+  }
+}
+
+Widget _bannerDivider() => Container(width: 1, height: 30, color: Colors.white.withValues(alpha: 0.3), margin: const EdgeInsets.symmetric(horizontal: 8));
+
+class _BannerStat extends StatelessWidget {
+  final String value;
+  final String label;
+  const _BannerStat(this.value, this.label);
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Column(children: [
+        Text(value, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+        Text(label, style: const TextStyle(color: Colors.white70, fontSize: 10)),
+      ]),
+    );
+  }
+}
+
+class _ActionCard extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final String label;
+  final String value;
+  final String sub;
+  final VoidCallback onTap;
+
+  const _ActionCard({
+    required this.icon,
+    required this.color,
+    required this.label,
+    required this.value,
+    required this.sub,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: isPendente
-                  ? AppColors.warning.withValues(alpha: 0.4)
-                  : AppColors.greyLight,
-            ),
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 6, offset: const Offset(0, 2))],
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(r['assunto']!,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                            color: AppColors.dark)),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: isPendente
-                          ? AppColors.warning.withValues(alpha: 0.12)
-                          : AppColors.success.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(r['status']!,
-                        style: TextStyle(
-                            color: isPendente
-                                ? AppColors.warning
-                                : AppColors.success,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600)),
-                  ),
-                ],
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
+                child: Icon(icon, color: color, size: 18),
               ),
-              const SizedBox(height: 4),
-              Text('${r['usuario']} → ${r['estab']}',
-                  style: const TextStyle(fontSize: 12, color: AppColors.grey)),
-              Text(r['data']!,
-                  style: const TextStyle(fontSize: 11, color: AppColors.grey)),
-              if (isPendente) ...[
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () {},
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.danger,
-                          side: const BorderSide(color: AppColors.danger),
-                        ),
-                        child: const Text('Remover'),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () {},
-                        style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary),
-                        child: const Text('Resolver',
-                            style: TextStyle(color: Colors.white)),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ],
-          ),
-        );
-      },
+              Icon(Icons.chevron_right, color: AppColors.greyLight, size: 18),
+            ]),
+            const SizedBox(height: 10),
+            Text(value, style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: color)),
+            Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.dark)),
+            const SizedBox(height: 2),
+            Text(sub, style: const TextStyle(fontSize: 10, color: AppColors.grey)),
+          ]),
+        ),
+      ),
     );
   }
 }
 
-class _UsuariosTab extends StatelessWidget {
-  final List<Map<String, String>> usuarios;
-  const _UsuariosTab({required this.usuarios});
+class _UsuariosPage extends StatelessWidget {
+  final List<dynamic> users;
+  final bool loading;
+  const _UsuariosPage({required this.users, required this.loading});
 
   Color _roleColor(String role) {
     switch (role) {
@@ -306,364 +462,667 @@ class _UsuariosTab extends StatelessWidget {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: usuarios.length,
-      itemBuilder: (ctx, i) {
-        final u = usuarios[i];
-        return Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2))
-            ],
-          ),
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 20,
-                backgroundColor: _roleColor(u['role']!).withValues(alpha: 0.12),
-                child: Text(u['nome']![0],
-                    style: TextStyle(
-                        color: _roleColor(u['role']!),
-                        fontWeight: FontWeight.bold)),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(u['nome']!,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w600, fontSize: 14)),
-                    Text(u['email']!,
-                        style: const TextStyle(
-                            fontSize: 11, color: AppColors.grey)),
-                    if (u['role'] == 'CLIENTE')
-                      Text('${u['pets']} pets · ${u['agendamentos']} agendamentos',
-                          style: const TextStyle(
-                              fontSize: 11, color: AppColors.grey)),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: _roleColor(u['role']!).withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(u['role']!,
-                    style: TextStyle(
-                        color: _roleColor(u['role']!),
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600)),
-              ),
-            ],
-          ),
-        );
-      },
-    );
+  String _fmt(String? d) {
+    if (d == null) return '—';
+    try {
+      final dt = DateTime.parse(d).toLocal();
+      return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
+    } catch (_) { return '—'; }
   }
-}
-
-class _EstabelecimentosTab extends StatelessWidget {
-  final List<Map<String, String>> estabelecimentos;
-  const _EstabelecimentosTab({required this.estabelecimentos});
 
   @override
   Widget build(BuildContext context) {
+    if (loading) return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+    if (users.isEmpty) return const Center(child: Text('Nenhum usuário encontrado', style: TextStyle(color: AppColors.grey)));
+
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: estabelecimentos.length,
+      itemCount: users.length,
       itemBuilder: (ctx, i) {
-        final e = estabelecimentos[i];
-        final isPetShop = e['tipo'] == 'Pet Shop';
+        final u = users[i] as Map<String, dynamic>;
+        final role = u['role'] as String? ?? 'CLIENTE';
         return Container(
           margin: const EdgeInsets.only(bottom: 10),
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 6,
-                  offset: const Offset(0, 2))
-            ],
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 4, offset: const Offset(0, 2))],
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                        color: AppColors.primaryLight,
-                        borderRadius: BorderRadius.circular(10)),
-                    child: Icon(
-                        isPetShop ? Icons.pets : Icons.local_hospital,
-                        color: AppColors.primary,
-                        size: 22),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(e['nome']!,
-                            style: const TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 14)),
-                        Text(e['tipo']!,
-                            style: const TextStyle(
-                                fontSize: 12, color: AppColors.grey)),
-                      ],
-                    ),
-                  ),
-                  Row(
-                    children: [
-                      const Icon(Icons.star,
-                          size: 14, color: Color(0xFFFFC107)),
-                      Text(e['nota']!,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w600, fontSize: 13)),
-                    ],
-                  ),
-                ],
+          child: Row(children: [
+            CircleAvatar(
+              radius: 22,
+              backgroundColor: _roleColor(role).withValues(alpha: 0.12),
+              child: Text(
+                (u['name'] as String? ?? '?')[0].toUpperCase(),
+                style: TextStyle(color: _roleColor(role), fontWeight: FontWeight.bold, fontSize: 16),
               ),
-              const SizedBox(height: 6),
-              Row(children: [
-                const Icon(Icons.location_on_outlined,
-                    size: 13, color: AppColors.grey),
-                const SizedBox(width: 3),
-                Expanded(
-                    child: Text(e['endereco']!,
-                        style: const TextStyle(
-                            fontSize: 11, color: AppColors.grey))),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(u['name'] as String? ?? '', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: AppColors.dark)),
+                const SizedBox(height: 2),
+                Row(children: [
+                  const Icon(Icons.email_outlined, size: 12, color: AppColors.grey),
+                  const SizedBox(width: 4),
+                  Flexible(child: Text(u['email'] as String? ?? '', style: const TextStyle(fontSize: 12, color: AppColors.grey), overflow: TextOverflow.ellipsis)),
+                ]),
+                const SizedBox(height: 2),
+                Row(children: [
+                  const Icon(Icons.calendar_today_outlined, size: 11, color: AppColors.grey),
+                  const SizedBox(width: 4),
+                  Text('Cadastro: ${_fmt(u['createdAt'] as String?)}', style: const TextStyle(fontSize: 11, color: AppColors.grey)),
+                ]),
+                Row(children: [
+                  const Icon(Icons.login_outlined, size: 11, color: AppColors.grey),
+                  const SizedBox(width: 4),
+                  Text('Último acesso: ${_fmt(u['lastLoginAt'] as String?)}', style: const TextStyle(fontSize: 11, color: AppColors.grey)),
+                ]),
               ]),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  _chip('${e['servicos']} serv.', AppColors.primary),
-                  const SizedBox(width: 6),
-                  _chip('${e['agendamentos']} agend.', AppColors.success),
-                ],
-              ),
-            ],
-          ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(color: _roleColor(role).withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)),
+              child: Text(role, style: TextStyle(color: _roleColor(role), fontSize: 10, fontWeight: FontWeight.w600)),
+            ),
+          ]),
         );
       },
     );
   }
-
-  Widget _chip(String text, Color color) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(20)),
-        child: Text(text,
-            style: TextStyle(
-                color: color, fontSize: 11, fontWeight: FontWeight.w600)),
-      );
 }
 
-class _EstatisticasTab extends StatelessWidget {
-  const _EstatisticasTab();
+class _FaqPage extends StatefulWidget {
+  final List<dynamic> faqItems;
+  final List<dynamic> userQuestions;
+  final bool loading;
+  final Future<void> Function(String q, String a, String cat) onCreateFaq;
+  final Future<void> Function(String id, Map<String, dynamic> data) onUpdateFaq;
+  final Future<void> Function(String id) onDeleteFaq;
+  final Future<void> Function(String id, String answer) onAnswer;
+  final Future<void> Function(String id) onClose;
+
+  const _FaqPage({
+    required this.faqItems,
+    required this.userQuestions,
+    required this.loading,
+    required this.onCreateFaq,
+    required this.onUpdateFaq,
+    required this.onDeleteFaq,
+    required this.onAnswer,
+    required this.onClose,
+  });
 
   @override
-  Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        _chartCard('Agendamentos por mês', [
-          _BarData('Jan', 28, AppColors.primary),
-          _BarData('Fev', 35, AppColors.primary),
-          _BarData('Mar', 48, AppColors.primary),
-          _BarData('Abr', 42, AppColors.greyLight),
-          _BarData('Mai', 50, AppColors.greyLight),
-        ]),
-        const SizedBox(height: 12),
-        _pieCard('Distribuição de Serviços', [
-          {'label': 'Banho', 'valor': '38%', 'color': AppColors.primary},
-          {'label': 'Tosa', 'valor': '25%', 'color': AppColors.warning},
-          {'label': 'Banho e Tosa', 'valor': '22%', 'color': AppColors.success},
-          {'label': 'Consulta', 'valor': '15%', 'color': AppColors.danger},
-        ]),
-        const SizedBox(height: 12),
-        _infoCard('Resumo Geral', [
-          {'label': 'Ticket médio', 'valor': 'R\$ 68,50'},
-          {'label': 'Retenção de clientes', 'valor': '74%'},
-          {'label': 'NPS', 'valor': '87'},
-          {'label': 'Crescimento mensal', 'valor': '+12%'},
-        ]),
-      ],
-    );
+  State<_FaqPage> createState() => _FaqPageState();
+}
+
+class _FaqPageState extends State<_FaqPage> with SingleTickerProviderStateMixin {
+  late TabController _tab;
+
+  @override
+  void initState() {
+    super.initState();
+    _tab = TabController(length: 2, vsync: this);
   }
 
-  Widget _chartCard(String title, List<_BarData> bars) {
-    final maxVal = bars.map((b) => b.value).reduce((a, b) => a > b ? a : b);
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-          color: Colors.white, borderRadius: BorderRadius.circular(12)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title,
-              style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                  color: AppColors.dark)),
-          const SizedBox(height: 16),
-          SizedBox(
-            height: 100,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: bars.map((b) {
-                final h = (b.value / maxVal) * 90;
-                return Column(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    Text('${b.value}',
-                        style: const TextStyle(
-                            fontSize: 10, color: AppColors.grey)),
-                    const SizedBox(height: 2),
-                    Container(
-                      width: 28,
-                      height: h,
-                      decoration: BoxDecoration(
-                        color: b.color,
-                        borderRadius: const BorderRadius.vertical(
-                            top: Radius.circular(4)),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(b.label,
-                        style: const TextStyle(
-                            fontSize: 10, color: AppColors.grey)),
-                  ],
-                );
-              }).toList(),
-            ),
+  @override
+  void dispose() {
+    _tab.dispose();
+    super.dispose();
+  }
+
+  void _showFaqDialog({Map<String, dynamic>? existing}) {
+    final qCtrl = TextEditingController(text: existing?['question'] as String? ?? '');
+    final aCtrl = TextEditingController(text: existing?['answer'] as String? ?? '');
+    final catCtrl = TextEditingController(text: existing?['category'] as String? ?? 'Geral');
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(existing == null ? 'Nova pergunta' : 'Editar pergunta'),
+        content: SingleChildScrollView(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            TextField(controller: catCtrl, decoration: const InputDecoration(labelText: 'Categoria')),
+            const SizedBox(height: 8),
+            TextField(controller: qCtrl, decoration: const InputDecoration(labelText: 'Pergunta'), maxLines: 2),
+            const SizedBox(height: 8),
+            TextField(controller: aCtrl, decoration: const InputDecoration(labelText: 'Resposta'), maxLines: 4),
+          ]),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+            onPressed: () async {
+              Navigator.pop(context);
+              if (existing == null) {
+                await widget.onCreateFaq(qCtrl.text.trim(), aCtrl.text.trim(), catCtrl.text.trim());
+              } else {
+                await widget.onUpdateFaq(existing['id'] as String, {
+                  'question': qCtrl.text.trim(),
+                  'answer': aCtrl.text.trim(),
+                  'category': catCtrl.text.trim(),
+                });
+              }
+            },
+            child: Text(existing == null ? 'Criar' : 'Salvar', style: const TextStyle(color: Colors.white)),
           ),
         ],
       ),
     );
   }
 
-  Widget _pieCard(String title, List<Map<String, dynamic>> items) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-          color: Colors.white, borderRadius: BorderRadius.circular(12)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title,
-              style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                  color: AppColors.dark)),
+  void _showAnswerDialog(Map<String, dynamic> q) {
+    final ctrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Responder dúvida'),
+        content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(8)),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('${q['userName']} (${q['userRole']})',
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.grey)),
+              const SizedBox(height: 4),
+              Text(q['question'] as String? ?? '',
+                  style: const TextStyle(fontSize: 13, color: AppColors.dark, fontStyle: FontStyle.italic)),
+            ]),
+          ),
           const SizedBox(height: 12),
-          ...items.map((item) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Row(
-                  children: [
-                    Container(
-                        width: 12,
-                        height: 12,
-                        decoration: BoxDecoration(
-                            color: item['color'] as Color,
-                            shape: BoxShape.circle)),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(item['label'],
-                                  style: const TextStyle(
-                                      fontSize: 13, color: AppColors.dark)),
-                              Text(item['valor'],
-                                  style: const TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.dark)),
-                            ],
-                          ),
-                          const SizedBox(height: 3),
-                          LinearProgressIndicator(
-                            value: double.parse(
-                                    (item['valor'] as String).replaceAll('%', '')) /
-                                100,
-                            backgroundColor: AppColors.greyLight,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                                item['color'] as Color),
-                            minHeight: 4,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              )),
+          TextField(controller: ctrl, decoration: const InputDecoration(labelText: 'Sua resposta'), maxLines: 4),
+        ]),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+            onPressed: () async {
+              if (ctrl.text.trim().isEmpty) return;
+              Navigator.pop(context);
+              await widget.onAnswer(q['id'] as String, ctrl.text.trim());
+            },
+            child: const Text('Enviar', style: TextStyle(color: Colors.white)),
+          ),
         ],
       ),
     );
   }
 
-  Widget _infoCard(String title, List<Map<String, String>> items) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-          color: Colors.white, borderRadius: BorderRadius.circular(12)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title,
-              style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                  color: AppColors.dark)),
-          const SizedBox(height: 12),
-          ...items.map((item) => Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(item['label']!,
-                        style: const TextStyle(
-                            fontSize: 13, color: AppColors.grey)),
-                    Text(item['valor']!,
-                        style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primary)),
-                  ],
+  @override
+  Widget build(BuildContext context) {
+    if (widget.loading) {
+      return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+    }
+
+    final pending = widget.userQuestions.where((q) => q['status'] == 'PENDENTE').length;
+
+    return Column(children: [
+      Container(
+        color: Colors.white,
+        child: TabBar(
+          controller: _tab,
+          indicatorColor: AppColors.primary,
+          labelColor: AppColors.primary,
+          unselectedLabelColor: AppColors.grey,
+          labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+          tabs: [
+            const Tab(text: 'Perguntas Frequentes'),
+            Tab(
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                const Text('Dúvidas dos clientes'),
+                if (pending > 0) ...[
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: const BoxDecoration(color: AppColors.danger, shape: BoxShape.circle),
+                    child: Text('$pending', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                  ),
+                ],
+              ]),
+            ),
+          ],
+        ),
+      ),
+      Expanded(
+        child: TabBarView(controller: _tab, children: [
+
+          Stack(children: [
+            widget.faqItems.isEmpty
+                ? const Center(child: Text('Nenhuma pergunta cadastrada.\nToque no + para adicionar.', textAlign: TextAlign.center, style: TextStyle(color: AppColors.grey)))
+                : ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
+                    itemCount: widget.faqItems.length,
+                    itemBuilder: (ctx, i) {
+                      final f = widget.faqItems[i] as Map<String, dynamic>;
+                      final active = f['active'] as bool? ?? true;
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: active ? AppColors.greyLight : AppColors.greyLight.withValues(alpha: 0.4)),
+                        ),
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Row(children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(20)),
+                              child: Text(f['category'] as String? ?? 'Geral', style: const TextStyle(color: AppColors.primary, fontSize: 10, fontWeight: FontWeight.w600)),
+                            ),
+                            const Spacer(),
+                            if (!active)
+                              const Padding(padding: EdgeInsets.only(right: 8), child: Text('inativo', style: TextStyle(color: AppColors.grey, fontSize: 11))),
+                            GestureDetector(
+                              onTap: () => _showFaqDialog(existing: f),
+                              child: const Icon(Icons.edit_outlined, size: 18, color: AppColors.grey),
+                            ),
+                            const SizedBox(width: 12),
+                            GestureDetector(
+                              onTap: () async {
+                                final ok = await showDialog<bool>(
+                                  context: context,
+                                  builder: (_) => AlertDialog(
+                                    title: const Text('Excluir pergunta?'),
+                                    content: const Text('Esta ação não pode ser desfeita.'),
+                                    actions: [
+                                      TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
+                                      TextButton(
+                                          onPressed: () => Navigator.pop(context, true),
+                                          child: const Text('Excluir', style: TextStyle(color: AppColors.danger))),
+                                    ],
+                                  ),
+                                );
+                                if (ok == true) await widget.onDeleteFaq(f['id'] as String);
+                              },
+                              child: const Icon(Icons.delete_outline, size: 18, color: AppColors.danger),
+                            ),
+                          ]),
+                          const SizedBox(height: 8),
+                          Text(f['question'] as String? ?? '', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: AppColors.dark)),
+                          const SizedBox(height: 4),
+                          Text(f['answer'] as String? ?? '', style: const TextStyle(fontSize: 13, color: AppColors.grey, height: 1.4)),
+                        ]),
+                      );
+                    },
+                  ),
+            Positioned(
+              bottom: 16,
+              right: 16,
+              child: FloatingActionButton(
+                backgroundColor: AppColors.primary,
+                onPressed: () => _showFaqDialog(),
+                child: const Icon(Icons.add, color: Colors.white),
+              ),
+            ),
+          ]),
+
+          widget.userQuestions.isEmpty
+              ? const Center(child: Text('Nenhuma dúvida enviada ainda.', style: TextStyle(color: AppColors.grey)))
+              : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: widget.userQuestions.length,
+                  itemBuilder: (ctx, i) {
+                    final q = widget.userQuestions[i] as Map<String, dynamic>;
+                    final status = q['status'] as String? ?? '';
+                    final isPendente = status == 'PENDENTE';
+                    final role = q['userRole'] as String? ?? 'CLIENTE';
+                    final isVendedor = role == 'VENDEDOR';
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: isPendente ? AppColors.warning.withValues(alpha: 0.4) : AppColors.greyLight),
+                      ),
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Row(children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                                color: (isVendedor ? const Color(0xFF4285F4) : AppColors.success).withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(20)),
+                            child: Text(
+                                isVendedor ? 'Estabelecimento' : 'Cliente',
+                                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: isVendedor ? const Color(0xFF4285F4) : AppColors.success)),
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(q['userName'] as String? ?? '',
+                                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.dark), overflow: TextOverflow.ellipsis),
+                          ),
+                          _StatusBadge(status),
+                        ]),
+                        const SizedBox(height: 8),
+                        Text(q['question'] as String? ?? '', style: const TextStyle(fontSize: 13, color: AppColors.dark, height: 1.4)),
+                        if (q['answer'] != null) ...[
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(color: AppColors.success.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(8)),
+                            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                              const Icon(Icons.check_circle, size: 14, color: AppColors.success),
+                              const SizedBox(width: 6),
+                              Expanded(child: Text(q['answer'] as String, style: const TextStyle(fontSize: 12, color: AppColors.success, height: 1.3))),
+                            ]),
+                          ),
+                        ],
+                        if (isPendente) ...[
+                          const SizedBox(height: 10),
+                          Row(children: [
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: () async => await widget.onClose(q['id'] as String),
+                                style: OutlinedButton.styleFrom(foregroundColor: AppColors.grey, side: const BorderSide(color: AppColors.greyLight)),
+                                child: const Text('Fechar'),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: ElevatedButton(
+                                onPressed: () => _showAnswerDialog(q),
+                                style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+                                child: const Text('Responder', style: TextStyle(color: Colors.white)),
+                              ),
+                            ),
+                          ]),
+                        ],
+                      ]),
+                    );
+                  },
                 ),
-              )),
+        ]),
+      ),
+    ]);
+  }
+}
+
+class _StatusBadge extends StatelessWidget {
+  final String status;
+  const _StatusBadge(this.status);
+
+  @override
+  Widget build(BuildContext context) {
+    Color color;
+    switch (status) {
+      case 'RESPONDIDA': color = AppColors.success; break;
+      case 'FECHADA': color = AppColors.grey; break;
+      default: color = AppColors.warning;
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)),
+      child: Text(status, style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w600)),
+    );
+  }
+}
+
+class _EstatisticasPage extends StatefulWidget {
+  final List<dynamic> users;
+  final bool loading;
+  const _EstatisticasPage({required this.users, required this.loading});
+
+  @override
+  State<_EstatisticasPage> createState() => _EstatisticasPageState();
+}
+
+class _EstatisticasPageState extends State<_EstatisticasPage> with SingleTickerProviderStateMixin {
+  late TabController _tab;
+
+  @override
+  void initState() {
+    super.initState();
+    _tab = TabController(length: 3, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tab.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.loading) {
+      return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+    }
+
+    final clientes = widget.users.where((u) => u['role'] == 'CLIENTE').toList();
+    final vendedores = widget.users.where((u) => u['role'] == 'VENDEDOR').toList();
+    final todos = widget.users;
+
+    return Column(children: [
+      Container(
+        color: Colors.white,
+        child: TabBar(
+          controller: _tab,
+          indicatorColor: AppColors.primary,
+          labelColor: AppColors.primary,
+          unselectedLabelColor: AppColors.grey,
+          labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+          tabs: const [
+            Tab(text: 'Clientes'),
+            Tab(text: 'Fornecedores'),
+            Tab(text: 'Geral'),
+          ],
+        ),
+      ),
+      Expanded(
+        child: TabBarView(controller: _tab, children: [
+          _StatsView(users: clientes, label: 'Clientes', color: AppColors.success),
+          _StatsView(users: vendedores, label: 'Fornecedores', color: const Color(0xFF4285F4)),
+          _StatsView(users: todos, label: 'Todos', color: AppColors.primary, showBreakdown: true),
+        ]),
+      ),
+    ]);
+  }
+}
+
+class _StatsView extends StatelessWidget {
+  final List<dynamic> users;
+  final String label;
+  final Color color;
+  final bool showBreakdown;
+
+  const _StatsView({
+    required this.users,
+    required this.label,
+    required this.color,
+    this.showBreakdown = false,
+  });
+
+  int _cadastrosNoMes(List<dynamic> list, int monthsAgo) {
+    final now = DateTime.now();
+    final from = DateTime(now.year, now.month - monthsAgo, 1);
+    final to = DateTime(now.year, now.month - monthsAgo + 1, 1);
+    return list.where((u) {
+      try {
+        final d = DateTime.parse(u['createdAt'] as String);
+        return d.isAfter(from) && d.isBefore(to);
+      } catch (_) { return false; }
+    }).length;
+  }
+
+  int _ativosUltimos30(List<dynamic> list) {
+    final cutoff = DateTime.now().subtract(const Duration(days: 30));
+    return list.where((u) {
+      try {
+        final d = DateTime.parse(u['lastLoginAt'] as String? ?? '');
+        return d.isAfter(cutoff);
+      } catch (_) { return false; }
+    }).length;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final total = users.length;
+    final ativos = _ativosUltimos30(users);
+    final inativos = total - ativos;
+    final mesAtual = _cadastrosNoMes(users, 0);
+    final mesAnterior = _cadastrosNoMes(users, 1);
+
+    final clientes = showBreakdown ? users.where((u) => u['role'] == 'CLIENTE').length : 0;
+    final vendedores = showBreakdown ? users.where((u) => u['role'] == 'VENDEDOR').length : 0;
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+
+        Row(children: [
+          _MiniCard('Total', '$total', Icons.people_outlined, color),
+          const SizedBox(width: 12),
+          _MiniCard('Ativos (30d)', '$ativos', Icons.check_circle_outline, AppColors.success),
+        ]),
+        const SizedBox(height: 12),
+        Row(children: [
+          _MiniCard('Inativos', '$inativos', Icons.person_off_outlined, AppColors.grey),
+          const SizedBox(width: 12),
+          _MiniCard('Novos (mês)', '$mesAtual', Icons.person_add_outlined, AppColors.warning),
+        ]),
+
+        if (showBreakdown) ...[
+          const SizedBox(height: 16),
+          _SectionCard(
+            title: 'Distribuição por tipo',
+            child: Column(children: [
+              _BarRow('Clientes', clientes, total, AppColors.success),
+              const SizedBox(height: 10),
+              _BarRow('Fornecedores', vendedores, total, const Color(0xFF4285F4)),
+            ]),
+          ),
         ],
+
+        const SizedBox(height: 16),
+        _SectionCard(
+          title: 'Cadastros — últimos 3 meses',
+          child: Column(children: [
+            _BarRow(_monthLabel(0), mesAtual, mesAtual + mesAnterior + 1, color),
+            const SizedBox(height: 10),
+            _BarRow(_monthLabel(1), mesAnterior, mesAtual + mesAnterior + 1, color.withValues(alpha: 0.6)),
+            const SizedBox(height: 10),
+            _BarRow(_monthLabel(2), _cadastrosNoMes(users, 2), mesAtual + mesAnterior + 1, color.withValues(alpha: 0.3)),
+          ]),
+        ),
+
+        const SizedBox(height: 16),
+        _SectionCard(
+          title: 'Engajamento',
+          child: Column(children: [
+            _InfoRow('Taxa de usuários ativos', total > 0 ? '${(ativos / total * 100).toStringAsFixed(0)}%' : '—'),
+            const SizedBox(height: 8),
+            _InfoRow('Sem acesso registrado', '${users.where((u) => u['lastLoginAt'] == null).length}'),
+            const SizedBox(height: 8),
+            _InfoRow('Crescimento vs. mês anterior',
+                mesAnterior == 0 ? '—' : '${mesAtual >= mesAnterior ? '+' : ''}${mesAtual - mesAnterior} usuários'),
+          ]),
+        ),
+      ],
+    );
+  }
+
+  String _monthLabel(int ago) {
+    final months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    final now = DateTime.now();
+    final m = (now.month - 1 - ago) % 12;
+    return months[(m + 12) % 12];
+  }
+}
+
+class _MiniCard extends StatelessWidget {
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color color;
+  const _MiniCard(this.label, this.value, this.icon, this.color);
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 6, offset: const Offset(0, 2))],
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Icon(icon, color: color, size: 22),
+          const SizedBox(height: 8),
+          Text(value, style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: color)),
+          Text(label, style: const TextStyle(fontSize: 11, color: AppColors.grey)),
+        ]),
       ),
     );
   }
 }
 
-class _BarData {
+class _SectionCard extends StatelessWidget {
+  final String title;
+  final Widget child;
+  const _SectionCard({required this.title, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 6, offset: const Offset(0, 2))],
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.dark)),
+        const SizedBox(height: 14),
+        child,
+      ]),
+    );
+  }
+}
+
+class _BarRow extends StatelessWidget {
   final String label;
-  final double value;
+  final int value;
+  final int total;
   final Color color;
-  const _BarData(this.label, this.value, this.color);
+  const _BarRow(this.label, this.value, this.total, this.color);
+
+  @override
+  Widget build(BuildContext context) {
+    final pct = total == 0 ? 0.0 : (value / total).clamp(0.0, 1.0);
+    return Row(children: [
+      SizedBox(width: 90, child: Text(label, style: const TextStyle(fontSize: 12, color: AppColors.grey))),
+      Expanded(
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: pct,
+            minHeight: 8,
+            backgroundColor: AppColors.greyLight,
+            valueColor: AlwaysStoppedAnimation<Color>(color),
+          ),
+        ),
+      ),
+      const SizedBox(width: 8),
+      Text('$value', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: color)),
+    ]);
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  final String label;
+  final String value;
+  const _InfoRow(this.label, this.value);
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+      Text(label, style: const TextStyle(fontSize: 13, color: AppColors.grey)),
+      Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.dark)),
+    ]);
+  }
 }

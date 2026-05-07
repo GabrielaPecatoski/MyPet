@@ -30,7 +30,10 @@ void main() {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => BookingProvider()),
-        ChangeNotifierProvider(create: (_) => CartProvider()),
+        ChangeNotifierProxyProvider<AuthProvider, CartProvider>(
+          create: (_) => CartProvider(),
+          update: (_, auth, cart) => cart!..update(auth),
+        ),
         ChangeNotifierProvider(create: (_) => EstablishmentProvider()),
       ],
       child: const MyPetApp(),

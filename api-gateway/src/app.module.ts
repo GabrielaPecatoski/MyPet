@@ -22,7 +22,7 @@ import { HealthController } from './health/health.controller';
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    // Rotas que NÃO precisam de token JWT
+
     consumer
       .apply(AuthGuardMiddleware)
       .exclude(
@@ -31,7 +31,9 @@ export class AppModule implements NestModule {
         { path: 'establishments/(.*)', method: RequestMethod.GET },
         { path: 'marketplace',          method: RequestMethod.GET },
         { path: 'marketplace/(.*)',     method: RequestMethod.GET },
-        { path: 'health',               method: RequestMethod.GET },
+        { path: 'faq',                          method: RequestMethod.ALL },
+        { path: 'faq/(.*)',                     method: RequestMethod.ALL },
+        { path: 'health',                       method: RequestMethod.GET },
       )
       .forRoutes('*');
   }
