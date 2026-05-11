@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/colors.dart';
@@ -672,6 +673,22 @@ class _PetSelectCard extends StatelessWidget {
   const _PetSelectCard(
       {required this.pet, required this.selected, required this.onTap});
 
+  Widget _buildPetAvatar(PetModel pet, double radius) {
+    final url = pet.imageUrl;
+    if (url != null && url.isNotEmpty) {
+      if (url.startsWith('data:image/')) {
+        final bytes = base64Decode(url.split(',').last);
+        return CircleAvatar(radius: radius, backgroundImage: MemoryImage(bytes));
+      }
+      return CircleAvatar(radius: radius, backgroundImage: NetworkImage(url));
+    }
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: AppColors.primaryLight,
+      child: Text(pet.typeIcon, style: TextStyle(fontSize: radius * 0.9)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -702,11 +719,7 @@ class _PetSelectCard extends StatelessWidget {
         ),
         child: Row(
           children: [
-            CircleAvatar(
-              radius: 22,
-              backgroundColor: AppColors.primaryLight,
-              child: Text(pet.typeIcon, style: const TextStyle(fontSize: 20)),
-            ),
+            _buildPetAvatar(pet, 22),
             const SizedBox(width: 12),
             Expanded(
               child: Column(

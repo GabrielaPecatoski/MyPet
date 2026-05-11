@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/colors.dart';
@@ -63,6 +64,7 @@ class _PetsScreenState extends State<PetsScreen> {
           'type': formData.type,
           'breed': formData.breed,
           'age': formData.age,
+          if (formData.imageUrl != null) 'imageUrl': formData.imageUrl,
         },
         token: auth.token,
       );
@@ -152,6 +154,36 @@ class _PetsScreenState extends State<PetsScreen> {
   }
 }
 
+class _PetAvatar extends StatelessWidget {
+  final PetModel pet;
+  final double radius;
+  const _PetAvatar({required this.pet, required this.radius});
+
+  @override
+  Widget build(BuildContext context) {
+    final url = pet.imageUrl;
+    if (url != null && url.isNotEmpty) {
+      if (url.startsWith('data:image/')) {
+        final base64Str = url.split(',').last;
+        final bytes = base64Decode(base64Str);
+        return CircleAvatar(
+          radius: radius,
+          backgroundImage: MemoryImage(bytes),
+        );
+      }
+      return CircleAvatar(
+        radius: radius,
+        backgroundImage: NetworkImage(url),
+      );
+    }
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: AppColors.primaryLight,
+      child: Text(pet.typeIcon, style: TextStyle(fontSize: radius * 0.85)),
+    );
+  }
+}
+
 class _PetCard extends StatelessWidget {
   final PetModel pet;
   const _PetCard({required this.pet});
@@ -170,11 +202,7 @@ class _PetCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 28,
-            backgroundColor: AppColors.primaryLight,
-            child: Text(pet.typeIcon, style: const TextStyle(fontSize: 24)),
-          ),
+          _PetAvatar(pet: pet, radius: 28),
           const SizedBox(width: 14),
           Expanded(
             child: Column(

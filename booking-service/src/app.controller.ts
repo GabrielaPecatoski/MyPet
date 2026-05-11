@@ -88,14 +88,25 @@ export class AppController {
 
   @Post('availability/schedule')
   setSchedule(
-    @Body() body: { establishmentId: string; slotDurationMinutes?: number; days: any[] },
+    @Body()
+    body: {
+      establishmentId: string;
+      slotDurationMinutes?: number;
+      days: any[];
+    },
   ) {
     return this.appService.setSchedule(body);
   }
 
   @Post('availability/block')
   blockSlot(
-    @Body() body: { establishmentId: string; date: string; time: string; reason?: string },
+    @Body()
+    body: {
+      establishmentId: string;
+      date: string;
+      time: string;
+      reason?: string;
+    },
   ) {
     return this.appService.blockSlot(body);
   }
@@ -111,6 +122,9 @@ export class AppController {
     @Param('estabId') estabId: string,
     @Query('date') date: string,
   ) {
-    return this.appService.getAvailability(estabId, date ?? new Date().toISOString().split('T')[0]);
+    return this.appService.getAvailability(
+      estabId,
+      date ?? new Date().toISOString().split('T')[0],
+    );
   }
 }
