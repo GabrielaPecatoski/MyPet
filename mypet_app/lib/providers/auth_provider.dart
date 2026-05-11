@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/user.dart';
+import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../services/storage_service.dart';
 
@@ -35,6 +36,20 @@ class AuthProvider extends ChangeNotifier {
     _token = await StorageService.getToken();
     _user = await StorageService.getUser();
     notifyListeners();
+  }
+
+  Future<bool> validateToken() async {
+    if (_token == null) return false;
+    try {
+      final data = await ApiService.get('/auth/me', token: _token);
+      _user = UserModel.fromJson(data as Map<String, dynamic>);
+      await StorageService.saveUser(_user!);
+      notifyListeners();
+      return true;
+    } catch (_) {
+      await logout();
+      return false;
+    }
   }
 
   Future<bool> login(String email, String password) async {

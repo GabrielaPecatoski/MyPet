@@ -63,6 +63,7 @@ services:
       BOOKING_SERVICE_URL: http://booking-service:3005
       NOTIFICATION_SERVICE_URL: http://notification-service:3006
       REVIEW_SERVICE_URL: http://review-service:3007
+      FAQ_SERVICE_URL: http://faq-service:3008
       THROTTLE_TTL: 60000
       THROTTLE_LIMIT: 100
     depends_on:

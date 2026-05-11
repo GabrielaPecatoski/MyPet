@@ -17,8 +17,6 @@ import { AppService } from './app.service.js';
 export class AppController {
   constructor(private readonly appService: AppService) {}
 
-  // ── FAQ Items (público) ───────────────────────────────────────────
-
   @Get('faq')
   getActiveFaqs(@Query('category') category?: string) {
     return this.appService.findActiveFaqs(category);
@@ -28,8 +26,6 @@ export class AppController {
   getCategories() {
     return this.appService.getCategories();
   }
-
-  // ── FAQ Items (admin) ─────────────────────────────────────────────
 
   @Get('faq/admin/all')
   getAllFaqs(@Headers('x-admin-secret') secret: string) {
@@ -78,8 +74,6 @@ export class AppController {
     return this.appService.deleteFaq(id);
   }
 
-  // ── Perguntas de usuários ─────────────────────────────────────────
-
   @Post('faq/questions')
   submitQuestion(
     @Body()
@@ -97,8 +91,6 @@ export class AppController {
   getUserQuestions(@Param('userId') userId: string) {
     return this.appService.getUserQuestions(userId);
   }
-
-  // ── Admin: gerenciar perguntas ────────────────────────────────────
 
   @Get('faq/questions/admin/all')
   getAllQuestions(
@@ -130,8 +122,6 @@ export class AppController {
     this.checkAdmin(secret);
     return this.appService.closeQuestion(id);
   }
-
-  // ── Util ──────────────────────────────────────────────────────────
 
   private checkAdmin(secret: string) {
     const expected = process.env.ADMIN_SECRET ?? 'mypet_admin_secret';

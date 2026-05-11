@@ -2,7 +2,6 @@ import { Injectable, NestMiddleware } from '@nestjs/common';
 import { createProxyMiddleware, Options } from 'http-proxy-middleware';
 import { Request, Response, NextFunction } from 'express';
 
-// Mapa: prefixo da rota → microserviço de destino
 const ROUTES = [
   { prefix: '/auth',           target: process.env.AUTH_SERVICE_URL          ?? 'http://localhost:3001' },
   { prefix: '/users',          target: process.env.USER_PET_SERVICE_URL      ?? 'http://localhost:3002' },
@@ -13,6 +12,7 @@ const ROUTES = [
   { prefix: '/availability',   target: process.env.BOOKING_SERVICE_URL       ?? 'http://localhost:3005' },
   { prefix: '/notifications',  target: process.env.NOTIFICATION_SERVICE_URL  ?? 'http://localhost:3006' },
   { prefix: '/reviews',        target: process.env.REVIEW_SERVICE_URL        ?? 'http://localhost:3007' },
+  { prefix: '/faq',            target: process.env.FAQ_SERVICE_URL            ?? 'http://localhost:3008' },
 ];
 
 @Injectable()

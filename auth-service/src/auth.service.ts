@@ -3,6 +3,7 @@ import {
   Logger,
   UnauthorizedException,
   ConflictException,
+  ForbiddenException,
   InternalServerErrorException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -66,6 +67,11 @@ export class AuthService {
       throw new UnauthorizedException('Senha incorreta');
     }
 
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { lastLoginAt: new Date() },
+    });
+
     return {
       access_token: this.generateToken(user),
       user: this.toPublic(user),
@@ -115,6 +121,22 @@ export class AuthService {
       access_token: this.generateToken(user),
       user: this.toPublic(user),
     };
+  }
+
+  async getAllUsers(secret: string) {
+    const expected = process.env.ADMIN_SECRET ?? 'mypet_admin_secret';
+    if (secret !== expected) throw new ForbiddenException('Acesso negado');
+    return this.prisma.user.findMany({
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        createdAt: true,
+        lastLoginAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
   }
 
   extractUserId(authHeader?: string): string | null {

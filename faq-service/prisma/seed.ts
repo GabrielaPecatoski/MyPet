@@ -3,7 +3,7 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 const faqs = [
-  // ── Agendamento ───────────────────────────────────────────────────
+
   {
     category: 'Agendamento',
     order: 1,
@@ -39,7 +39,7 @@ const faqs = [
     answer:
       'Tente puxar a lista para baixo para recarregar os dados. Se o problema persistir, entre em contato com o estabelecimento diretamente.',
   },
-  // ── Pets ──────────────────────────────────────────────────────────
+
   {
     category: 'Pets',
     order: 1,
@@ -61,7 +61,7 @@ const faqs = [
     answer:
       'Sim! O MyPet aceita cães, gatos, pássaros, roedores e outras espécies. Basta informar a espécie no momento do cadastro.',
   },
-  // ── Conta e Perfil ────────────────────────────────────────────────
+
   {
     category: 'Conta e Perfil',
     order: 1,
@@ -90,7 +90,7 @@ const faqs = [
     answer:
       'Acesse "Perfil" e toque na foto atual (ou no ícone de câmera). Selecione uma imagem da sua galeria para substituir.',
   },
-  // ── Avaliações ────────────────────────────────────────────────────
+
   {
     category: 'Avaliações',
     order: 1,
@@ -112,7 +112,7 @@ const faqs = [
     answer:
       'Avaliações passam por uma verificação automática antes de serem publicadas. Em até 24h sua avaliação estará visível.',
   },
-  // ── Pagamentos ────────────────────────────────────────────────────
+
   {
     category: 'Pagamentos',
     order: 1,
@@ -134,7 +134,7 @@ const faqs = [
     answer:
       'Reembolsos são tratados diretamente com o estabelecimento. Em caso de não resolução, entre em contato com nosso suporte pelo formulário de dúvidas.',
   },
-  // ── Estabelecimentos ──────────────────────────────────────────────
+
   {
     category: 'Estabelecimentos',
     order: 1,
@@ -175,7 +175,6 @@ const faqs = [
 async function main() {
   console.log('Seeding FAQ items...');
 
-  // Limpa apenas se não houver perguntas de usuário (evita apagar dados de produção)
   const existingCount = await prisma.faqItem.count();
   if (existingCount === 0) {
     for (const faq of faqs) {

@@ -73,8 +73,6 @@ export class AppController {
   @HttpCode(204)
   deleteBooking() {}
 
-  // ── Availability ──────────────────────────────────────────────────
-
   @Get('availability/schedule/:estabId')
   getSchedule(@Param('estabId') estabId: string) {
     return this.appService.getSchedule(estabId);

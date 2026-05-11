@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-// Web stub: local file paths don't exist on web.
-// image_picker on web returns blob URLs, so NetworkImage works.
 ImageProvider? fileImageProvider(String? path) {
   if (path == null) return null;
   return NetworkImage(path);
