@@ -130,4 +130,11 @@ export class AppService {
     await this.prisma.service.delete({ where: { id: serviceId } });
     return this.findById(establishmentId);
   }
+
+  async findAllAdmin() {
+    return this.prisma.establishment.findMany({
+      include: { services: true },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
 }

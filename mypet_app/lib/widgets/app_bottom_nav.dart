@@ -31,11 +31,12 @@ const estabNavItems = [
 ];
 
 const adminNavItems = [
-  BottomNavItemData(icon: Icons.dashboard_outlined,      activeIcon: Icons.dashboard,       label: 'Dashboard'),
+  BottomNavItemData(icon: Icons.dashboard_outlined,      activeIcon: Icons.dashboard,       label: 'Painel'),
+  BottomNavItemData(icon: Icons.warning_amber_outlined,  activeIcon: Icons.warning_amber,   label: 'Reclamações'),
   BottomNavItemData(icon: Icons.people_outlined,         activeIcon: Icons.people,          label: 'Usuários'),
+  BottomNavItemData(icon: Icons.store_outlined,          activeIcon: Icons.store,           label: 'Lojas'),
   BottomNavItemData(icon: Icons.help_outline,            activeIcon: Icons.help,            label: 'FAQ'),
   BottomNavItemData(icon: Icons.bar_chart_outlined,      activeIcon: Icons.bar_chart,       label: 'Estatísticas'),
-  BottomNavItemData(icon: Icons.logout,                  activeIcon: Icons.logout,          label: 'Sair'),
 ];
 
 class AppBottomNav extends StatelessWidget {
@@ -69,14 +70,13 @@ class AppBottomNav extends StatelessWidget {
         child: SizedBox(
           height: 60,
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: List.generate(items.length, (i) {
               final item = items[i];
               final isActive = i == currentIndex;
-              return GestureDetector(
-                onTap: () => onTap(i),
-                behavior: HitTestBehavior.opaque,
-                child: Expanded(
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () => onTap(i),
+                  behavior: HitTestBehavior.opaque,
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [

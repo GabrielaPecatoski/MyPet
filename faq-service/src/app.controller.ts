@@ -41,6 +41,7 @@ export class AppController {
       question: string;
       answer: string;
       category?: string;
+      targetRole?: string;
       order?: number;
     },
   ) {
@@ -57,12 +58,18 @@ export class AppController {
       question?: string;
       answer?: string;
       category?: string;
+      targetRole?: string;
       order?: number;
       active?: boolean;
     },
   ) {
     this.checkAdmin(secret);
     return this.appService.updateFaq(id, body);
+  }
+
+  @Put('faq/:id/view')
+  incrementView(@Param('id') id: string) {
+    return this.appService.incrementViewCount(id);
   }
 
   @Delete('faq/admin/:id')

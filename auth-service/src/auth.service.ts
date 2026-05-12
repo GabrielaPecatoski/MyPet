@@ -131,6 +131,7 @@ export class AuthService {
         id: true,
         name: true,
         email: true,
+        phone: true,
         role: true,
         createdAt: true,
         lastLoginAt: true,

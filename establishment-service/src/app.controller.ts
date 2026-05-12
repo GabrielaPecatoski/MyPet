@@ -8,12 +8,22 @@ import {
   Body,
   Query,
   HttpCode,
+  Headers,
+  ForbiddenException,
 } from '@nestjs/common';
 import { AppService } from './app.service';
+
+const ADMIN_SECRET = process.env.ADMIN_SECRET ?? 'mypet_admin_secret';
 
 @Controller()
 export class AppController {
   constructor(private readonly appService: AppService) {}
+
+  @Get('establishments/admin/all')
+  findAllAdmin(@Headers('x-admin-secret') secret: string) {
+    if (secret !== ADMIN_SECRET) throw new ForbiddenException('Acesso negado');
+    return this.appService.findAllAdmin();
+  }
 
   @Get('establishments')
   findAll(@Query('search') search?: string) {

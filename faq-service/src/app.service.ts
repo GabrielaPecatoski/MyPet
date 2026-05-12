@@ -35,6 +35,7 @@ export class AppService {
     question: string;
     answer: string;
     category?: string;
+    targetRole?: string;
     order?: number;
   }) {
     return this.prisma.faqItem.create({
@@ -42,6 +43,7 @@ export class AppService {
         question: data.question,
         answer: data.answer,
         category: data.category ?? 'Geral',
+        targetRole: data.targetRole ?? 'CLIENTE',
         order: data.order ?? 0,
         active: true,
       },
@@ -54,12 +56,20 @@ export class AppService {
       question?: string;
       answer?: string;
       category?: string;
+      targetRole?: string;
       order?: number;
       active?: boolean;
     },
   ) {
     await this.ensureFaqExists(id);
     return this.prisma.faqItem.update({ where: { id }, data });
+  }
+
+  async incrementViewCount(id: string) {
+    return this.prisma.faqItem.update({
+      where: { id },
+      data: { viewCount: { increment: 1 } },
+    });
   }
 
   async deleteFaq(id: string) {
