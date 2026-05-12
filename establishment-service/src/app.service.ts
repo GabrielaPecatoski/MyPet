@@ -1,5 +1,30 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import * as http from 'http';
 import { PrismaService } from './prisma.service';
+
+function httpGetJson(url: string): Promise<any> {
+  return new Promise((resolve, reject) => {
+    const u = new URL(url);
+    const req = http.get(
+      {
+        hostname: u.hostname,
+        port: Number(u.port) || 80,
+        path: u.pathname + u.search,
+        method: 'GET',
+      },
+      (res) => {
+        let data = '';
+        res.on('data', (chunk) => { data += chunk; });
+        res.on('end', () => {
+          try { resolve(JSON.parse(data)); }
+          catch { reject(new Error('Invalid JSON')); }
+        });
+      },
+    );
+    req.on('error', reject);
+    req.end();
+  });
+}
 
 @Injectable()
 export class AppService {
@@ -129,5 +154,37 @@ export class AppService {
     await this.findById(establishmentId);
     await this.prisma.service.delete({ where: { id: serviceId } });
     return this.findById(establishmentId);
+  }
+
+  async getStats(establishmentId: string) {
+    const bookingUrl =
+      process.env.BOOKING_SERVICE_URL ?? 'http://localhost:3005';
+    const reviewUrl =
+      process.env.REVIEW_SERVICE_URL ?? 'http://localhost:3007';
+
+    const emptyBookingStats = {
+      totalBookings: 0,
+      monthBookings: 0,
+      totalRevenue: 0,
+      monthRevenue: 0,
+      avgTicket: 0,
+      last6Months: [],
+      topServices: [],
+    };
+
+    const [bookingStats, reviewStats] = await Promise.all([
+      httpGetJson(
+        `${bookingUrl}/bookings/stats/establishment/${establishmentId}`,
+      ).catch(() => emptyBookingStats),
+      httpGetJson(
+        `${reviewUrl}/reviews/establishment/${establishmentId}/stats`,
+      ).catch(() => ({ avg: 0, count: 0 })),
+    ]);
+
+    return {
+      ...bookingStats,
+      avgRating: (reviewStats as any).avg ?? 0,
+      totalReviews: (reviewStats as any).count ?? 0,
+    };
   }
 }

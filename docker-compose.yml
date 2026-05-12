@@ -118,6 +118,8 @@ services:
       JWT_SECRET: mypet_super_secret_change_in_production
       CONSUL_HOST: consul
       CONSUL_PORT: 8500
+      BOOKING_SERVICE_URL: http://booking-service:3005
+      REVIEW_SERVICE_URL: http://review-service:3007
     depends_on:
       postgres:
         condition: service_healthy

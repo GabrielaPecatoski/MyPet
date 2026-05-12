@@ -22,6 +22,11 @@ export class AppController {
     return this.appService.findByUser(userId);
   }
 
+  @Get('bookings/stats/establishment/:establishmentId')
+  getEstabStats(@Param('establishmentId') id: string) {
+    return this.appService.getEstabStats(id);
+  }
+
   @Get('bookings/establishment/:establishmentId')
   getByEstablishment(@Param('establishmentId') id: string) {
     return this.appService.findByEstablishment(id);
