@@ -45,6 +45,62 @@ class EstablishmentProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> updateEstablishment({
+    required String token,
+    required String name,
+    required String description,
+    required String address,
+    required String city,
+    required String phone,
+    required String type,
+    String? imageUrl,
+  }) async {
+    if (_establishment == null) return false;
+    _loading = true;
+    _error = null;
+    notifyListeners();
+    try {
+      final updated = await EstablishmentService.update(
+        token: token,
+        establishmentId: _establishment!.id,
+        name: name,
+        description: description,
+        address: address,
+        city: city,
+        phone: phone,
+        type: type,
+        imageUrl: imageUrl,
+      );
+      _establishment = updated;
+      _loading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _error = e.toString().replaceAll('Exception: ', '');
+      _loading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> deleteEstablishment({required String token}) async {
+    if (_establishment == null) return false;
+    _error = null;
+    try {
+      await EstablishmentService.delete(
+        token: token,
+        establishmentId: _establishment!.id,
+      );
+      _establishment = null;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _error = e.toString().replaceAll('Exception: ', '');
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<bool> addService({
     required String token,
     required String name,

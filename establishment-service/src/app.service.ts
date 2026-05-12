@@ -99,6 +99,11 @@ export class AppService {
     });
   }
 
+  async remove(id: string) {
+    await this.findById(id);
+    await this.prisma.establishment.delete({ where: { id } });
+  }
+
   async addService(
     establishmentId: string,
     service: {
