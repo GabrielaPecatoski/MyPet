@@ -4,12 +4,14 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { HealthController } from './health/health.controller';
 import { ConsulService } from './consul/consul.service';
+import { PrismaService } from './prisma.service';
 
 @Module({
   imports: [ConfigModule.forRoot({ isGlobal: true })],
   controllers: [AppController, HealthController],
   providers: [
     AppService,
+    PrismaService,
     {
       provide: ConsulService,
       useValue: new ConsulService({

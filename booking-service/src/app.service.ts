@@ -7,6 +7,7 @@ import * as crypto from 'crypto';
 import * as http from 'http';
 import * as fs from 'fs';
 import * as path from 'path';
+import { PrismaService } from './prisma.service';
 
 export interface Booking {
   id: string;
@@ -24,24 +25,24 @@ export interface Booking {
 }
 
 export interface WorkingDay {
-  dayOfWeek: number; // 0=Sunday … 6=Saturday
-  startTime: string; // "08:00"
-  endTime: string; // "18:00"
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
   isOpen: boolean;
 }
 
 export interface WorkingSchedule {
   establishmentId: string;
-  slotDurationMinutes: number; // default 60
+  slotDurationMinutes: number;
   days: WorkingDay[];
 }
 
 export interface BlockedSlot {
   id: string;
   establishmentId: string;
-  date: string; // "YYYY-MM-DD"
-  time: string; // "HH:MM"
-  reason: string; // "Bloqueado" | "Agendamento"
+  date: string;
+  time: string;
+  reason: string;
   isAutomatic: boolean;
 }
 
@@ -59,6 +60,11 @@ const NOTIF_URL =
 const DATA_DIR = path.join(process.cwd(), 'data');
 const SCHEDULES_FILE = path.join(DATA_DIR, 'schedules.json');
 const BLOCKED_FILE = path.join(DATA_DIR, 'blocked_slots.json');
+
+const PT_MONTHS = [
+  'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
+  'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez',
+];
 
 function ensureDataDir() {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -97,11 +103,10 @@ function postNotification(body: object): void {
 
 @Injectable()
 export class AppService {
-  private bookings: Booking[] = [];
   private schedules: Map<string, WorkingSchedule>;
   private blockedSlots: BlockedSlot[];
 
-  constructor() {
+  constructor(private readonly prisma: PrismaService) {
     ensureDataDir();
     const savedSchedules = loadJson<Record<string, WorkingSchedule>>(
       SCHEDULES_FILE,
@@ -119,18 +124,39 @@ export class AppService {
     saveJson(BLOCKED_FILE, this.blockedSlots);
   }
 
+  private toBooking(b: any): Booking {
+    return {
+      id: b.id,
+      userId: b.userId,
+      userName: b.userName,
+      petId: b.petId,
+      petName: b.petName,
+      serviceName: b.serviceName,
+      establishmentId: b.establishmentId,
+      establishmentName: b.establishmentName,
+      scheduledAt:
+        b.scheduledAt instanceof Date
+          ? b.scheduledAt.toISOString()
+          : b.scheduledAt,
+      price: b.price,
+      status: b.status as Booking['status'],
+      createdAt:
+        b.createdAt instanceof Date ? b.createdAt.toISOString() : b.createdAt,
+    };
+  }
+
   private defaultSchedule(establishmentId: string): WorkingSchedule {
     return {
       establishmentId,
       slotDurationMinutes: 60,
       days: [
-        { dayOfWeek: 0, startTime: '08:00', endTime: '12:00', isOpen: false }, // Dom
-        { dayOfWeek: 1, startTime: '08:00', endTime: '18:00', isOpen: true }, // Seg
-        { dayOfWeek: 2, startTime: '08:00', endTime: '18:00', isOpen: true }, // Ter
-        { dayOfWeek: 3, startTime: '08:00', endTime: '18:00', isOpen: true }, // Qua
-        { dayOfWeek: 4, startTime: '08:00', endTime: '18:00', isOpen: true }, // Qui
-        { dayOfWeek: 5, startTime: '08:00', endTime: '18:00', isOpen: true }, // Sex
-        { dayOfWeek: 6, startTime: '08:00', endTime: '14:00', isOpen: true }, // Sáb
+        { dayOfWeek: 0, startTime: '08:00', endTime: '12:00', isOpen: false },
+        { dayOfWeek: 1, startTime: '08:00', endTime: '18:00', isOpen: true },
+        { dayOfWeek: 2, startTime: '08:00', endTime: '18:00', isOpen: true },
+        { dayOfWeek: 3, startTime: '08:00', endTime: '18:00', isOpen: true },
+        { dayOfWeek: 4, startTime: '08:00', endTime: '18:00', isOpen: true },
+        { dayOfWeek: 5, startTime: '08:00', endTime: '18:00', isOpen: true },
+        { dayOfWeek: 6, startTime: '08:00', endTime: '14:00', isOpen: true },
       ],
     };
   }
@@ -159,25 +185,29 @@ export class AppService {
     return slots;
   }
 
-  findByUser(userId: string): Booking[] {
-    return this.bookings
-      .filter((b) => b.userId === userId)
-      .sort((a, b) => b.scheduledAt.localeCompare(a.scheduledAt));
+  async findByUser(userId: string): Promise<Booking[]> {
+    const bookings = await this.prisma.booking.findMany({
+      where: { userId },
+      orderBy: { scheduledAt: 'desc' },
+    });
+    return bookings.map((b) => this.toBooking(b));
   }
 
-  findByEstablishment(establishmentId: string): Booking[] {
-    return this.bookings
-      .filter((b) => b.establishmentId === establishmentId)
-      .sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt));
+  async findByEstablishment(establishmentId: string): Promise<Booking[]> {
+    const bookings = await this.prisma.booking.findMany({
+      where: { establishmentId },
+      orderBy: { scheduledAt: 'asc' },
+    });
+    return bookings.map((b) => this.toBooking(b));
   }
 
-  findById(id: string): Booking {
-    const b = this.bookings.find((b) => b.id === id);
+  async findById(id: string): Promise<Booking> {
+    const b = await this.prisma.booking.findUnique({ where: { id } });
     if (!b) throw new NotFoundException('Agendamento não encontrado');
-    return b;
+    return this.toBooking(b);
   }
 
-  createBooking(data: {
+  async createBooking(data: {
     userId: string;
     userName?: string;
     petId: string;
@@ -187,22 +217,21 @@ export class AppService {
     establishmentName: string;
     scheduledAt: string;
     price?: number;
-  }): Booking {
-    const booking: Booking = {
-      id: crypto.randomUUID(),
-      userId: data.userId,
-      userName: data.userName ?? '',
-      petId: data.petId,
-      petName: data.petName,
-      serviceName: data.serviceName,
-      establishmentId: data.establishmentId,
-      establishmentName: data.establishmentName,
-      scheduledAt: data.scheduledAt,
-      price: data.price ?? 0,
-      status: 'PENDENTE',
-      createdAt: new Date().toISOString(),
-    };
-    this.bookings.push(booking);
+  }): Promise<Booking> {
+    const booking = await this.prisma.booking.create({
+      data: {
+        userId: data.userId,
+        userName: data.userName ?? '',
+        petId: data.petId,
+        petName: data.petName,
+        serviceName: data.serviceName,
+        establishmentId: data.establishmentId,
+        establishmentName: data.establishmentName,
+        scheduledAt: new Date(data.scheduledAt),
+        price: data.price ?? 0,
+        status: 'PENDENTE',
+      },
+    });
 
     postNotification({
       userId: booking.establishmentId,
@@ -211,21 +240,24 @@ export class AppService {
       type: 'NEW_BOOKING',
     });
 
-    return booking;
+    return this.toBooking(booking);
   }
 
-  updateStatus(id: string, status: 'CONFIRMADO' | 'RECUSADO'): Booking {
-    const idx = this.bookings.findIndex((b) => b.id === id);
-    if (idx === -1) throw new NotFoundException('Agendamento não encontrado');
-
-    const booking = this.bookings[idx];
+  async updateStatus(
+    id: string,
+    status: 'CONFIRMADO' | 'RECUSADO',
+  ): Promise<Booking> {
+    const booking = await this.findById(id);
     if (booking.status !== 'PENDENTE') {
       throw new BadRequestException(
         'Apenas agendamentos pendentes podem ser confirmados ou recusados',
       );
     }
 
-    this.bookings[idx] = { ...booking, status };
+    const updated = await this.prisma.booking.update({
+      where: { id },
+      data: { status },
+    });
 
     postNotification({
       userId: booking.userId,
@@ -240,13 +272,11 @@ export class AppService {
       type: status === 'CONFIRMADO' ? 'BOOKING_CONFIRMED' : 'BOOKING_REJECTED',
     });
 
-    return this.bookings[idx];
+    return this.toBooking(updated);
   }
 
-  cancelBooking(id: string, userId: string): Booking {
-    const idx = this.bookings.findIndex((b) => b.id === id);
-    if (idx === -1) throw new NotFoundException('Agendamento não encontrado');
-    const booking = this.bookings[idx];
+  async cancelBooking(id: string, userId: string): Promise<Booking> {
+    const booking = await this.findById(id);
 
     if (booking.userId !== userId) {
       throw new BadRequestException(
@@ -275,7 +305,10 @@ export class AppService {
       }
     }
 
-    this.bookings[idx] = { ...booking, status: 'CANCELADO' };
+    const updated = await this.prisma.booking.update({
+      where: { id },
+      data: { status: 'CANCELADO' },
+    });
 
     postNotification({
       userId: booking.establishmentId,
@@ -284,7 +317,30 @@ export class AppService {
       type: 'BOOKING_CANCELLED',
     });
 
-    return this.bookings[idx];
+    return this.toBooking(updated);
+  }
+
+  async completeBooking(id: string): Promise<Booking> {
+    const booking = await this.findById(id);
+    if (booking.status !== 'CONFIRMADO') {
+      throw new BadRequestException(
+        'Apenas agendamentos confirmados podem ser concluídos',
+      );
+    }
+
+    const updated = await this.prisma.booking.update({
+      where: { id },
+      data: { status: 'CONCLUIDO' },
+    });
+
+    postNotification({
+      userId: booking.userId,
+      title: 'Atendimento Concluído!',
+      body: 'Seu pet foi atendido! Que tal deixar uma avaliação?',
+      type: 'BOOKING_COMPLETED',
+    });
+
+    return this.toBooking(updated);
   }
 
   getSchedule(establishmentId: string): WorkingSchedule {
@@ -309,12 +365,12 @@ export class AppService {
     return schedule;
   }
 
-  getAvailability(
+  async getAvailability(
     establishmentId: string,
     date: string,
-  ): { date: string; slots: TimeSlot[] } {
+  ): Promise<{ date: string; slots: TimeSlot[] }> {
     const d = new Date(date + 'T12:00:00Z');
-    const dow = d.getUTCDay(); // 0=Sunday
+    const dow = d.getUTCDay();
     const schedule = this.getSchedule(establishmentId);
     const day = schedule.days.find((d) => d.dayOfWeek === dow);
 
@@ -327,6 +383,17 @@ export class AppService {
       day.endTime,
       schedule.slotDurationMinutes,
     );
+
+    const startOfDay = new Date(date + 'T00:00:00Z');
+    const endOfDay = new Date(date + 'T23:59:59Z');
+    const dayBookings = await this.prisma.booking.findMany({
+      where: {
+        establishmentId,
+        scheduledAt: { gte: startOfDay, lte: endOfDay },
+        status: { notIn: ['CANCELADO', 'RECUSADO'] },
+      },
+      select: { id: true, scheduledAt: true },
+    });
 
     const slots: TimeSlot[] = rawSlots.map((time) => {
       const block = this.blockedSlots.find(
@@ -344,17 +411,10 @@ export class AppService {
         };
       }
 
-      const booking = this.bookings.find((b) => {
-        if (b.establishmentId !== establishmentId) return false;
-        const bDate = new Date(b.scheduledAt);
-        const bDateStr = `${bDate.getUTCFullYear()}-${String(bDate.getUTCMonth() + 1).padStart(2, '0')}-${String(bDate.getUTCDate()).padStart(2, '0')}`;
-        const bTime = `${String(bDate.getUTCHours()).padStart(2, '0')}:${String(bDate.getUTCMinutes()).padStart(2, '0')}`;
-        return (
-          bDateStr === date &&
-          bTime === time &&
-          b.status !== 'CANCELADO' &&
-          b.status !== 'RECUSADO'
-        );
+      const booking = dayBookings.find((b) => {
+        const t = b.scheduledAt;
+        const bTime = `${String(t.getUTCHours()).padStart(2, '0')}:${String(t.getUTCMinutes()).padStart(2, '0')}`;
+        return bTime === time;
       });
       if (booking) {
         return {
@@ -415,24 +475,94 @@ export class AppService {
     );
   }
 
-  completeBooking(id: string): Booking {
-    const idx = this.bookings.findIndex((b) => b.id === id);
-    if (idx === -1) throw new NotFoundException('Agendamento não encontrado');
-    if (this.bookings[idx].status !== 'CONFIRMADO') {
-      throw new BadRequestException(
-        'Apenas agendamentos confirmados podem ser concluídos',
-      );
-    }
+  async getEstabStats(establishmentId: string) {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    this.bookings[idx] = { ...this.bookings[idx], status: 'CONCLUIDO' };
-    const booking = this.bookings[idx];
+    const [totalBookings, monthBookings, revenueAgg, monthRevenueAgg] =
+      await Promise.all([
+        this.prisma.booking.count({
+          where: {
+            establishmentId,
+            status: { notIn: ['CANCELADO', 'RECUSADO'] },
+          },
+        }),
+        this.prisma.booking.count({
+          where: {
+            establishmentId,
+            status: { notIn: ['CANCELADO', 'RECUSADO'] },
+            scheduledAt: { gte: startOfMonth },
+          },
+        }),
+        this.prisma.booking.aggregate({
+          where: { establishmentId, status: 'CONCLUIDO' },
+          _sum: { price: true },
+          _avg: { price: true },
+        }),
+        this.prisma.booking.aggregate({
+          where: {
+            establishmentId,
+            status: 'CONCLUIDO',
+            scheduledAt: { gte: startOfMonth },
+          },
+          _sum: { price: true },
+        }),
+      ]);
 
-    postNotification({
-      userId: booking.userId,
-      title: 'Atendimento Concluído!',
-      body: 'Seu pet foi atendido! Que tal deixar uma avaliação?',
-      type: 'BOOKING_COMPLETED',
+    const totalRevenue = revenueAgg._sum.price ?? 0;
+    const avgTicket = revenueAgg._avg.price ?? 0;
+    const monthRevenue = monthRevenueAgg._sum.price ?? 0;
+
+    const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+    const concludedInPeriod = await this.prisma.booking.findMany({
+      where: {
+        establishmentId,
+        status: 'CONCLUIDO',
+        scheduledAt: { gte: sixMonthsAgo },
+      },
+      select: { scheduledAt: true, price: true },
     });
-    return booking;
+
+    const monthMap = new Map<string, number>();
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      monthMap.set(`${d.getFullYear()}-${d.getMonth()}`, 0);
+    }
+    for (const b of concludedInPeriod) {
+      const key = `${b.scheduledAt.getFullYear()}-${b.scheduledAt.getMonth()}`;
+      if (monthMap.has(key)) {
+        monthMap.set(key, (monthMap.get(key) ?? 0) + b.price);
+      }
+    }
+    const last6Months = Array.from(monthMap.entries()).map(([key, value]) => {
+      const month = parseInt(key.split('-')[1]);
+      return { month: PT_MONTHS[month], value };
+    });
+
+    const allActive = await this.prisma.booking.findMany({
+      where: {
+        establishmentId,
+        status: { notIn: ['CANCELADO', 'RECUSADO'] },
+      },
+      select: { serviceName: true },
+    });
+    const svcCount = new Map<string, number>();
+    for (const b of allActive) {
+      svcCount.set(b.serviceName, (svcCount.get(b.serviceName) ?? 0) + 1);
+    }
+    const topServices = Array.from(svcCount.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([name, count]) => ({ name, count }));
+
+    return {
+      totalBookings,
+      monthBookings,
+      totalRevenue,
+      monthRevenue,
+      avgTicket,
+      last6Months,
+      topServices,
+    };
   }
 }

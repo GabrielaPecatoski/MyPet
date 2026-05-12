@@ -25,6 +25,11 @@ export class AppController {
     return this.appService.findByOwner(ownerId);
   }
 
+  @Get('establishments/:id/stats')
+  getStats(@Param('id') id: string) {
+    return this.appService.getStats(id);
+  }
+
   @Get('establishments/:id')
   findById(@Param('id') id: string) {
     return this.appService.findById(id);
