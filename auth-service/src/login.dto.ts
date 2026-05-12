@@ -51,3 +51,15 @@ export class RegisterDto {
   @IsString()
   businessName?: string;
 }
+
+export class UpdateUserDto {
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty({ message: 'Nome não pode ser vazio' })
+  @MaxLength(100)
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  phone?: string;
+}

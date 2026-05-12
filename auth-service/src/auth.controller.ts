@@ -2,6 +2,8 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
+  Delete,
   Body,
   Headers,
   HttpCode,
@@ -9,7 +11,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { LoginDto, RegisterDto } from './login.dto';
+import { LoginDto, RegisterDto, UpdateUserDto } from './login.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -35,6 +37,28 @@ export class AuthController {
     const userId = xUserId || this.authService.extractUserId(auth);
     if (!userId) throw new UnauthorizedException('Token não informado');
     return this.authService.me(userId);
+  }
+
+  @Patch('me')
+  updateMe(
+    @Body() dto: UpdateUserDto,
+    @Headers('authorization') auth: string,
+    @Headers('x-user-id') xUserId: string,
+  ) {
+    const userId = xUserId || this.authService.extractUserId(auth);
+    if (!userId) throw new UnauthorizedException('Token não informado');
+    return this.authService.updateMe(userId, dto);
+  }
+
+  @Delete('me')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteMe(
+    @Headers('authorization') auth: string,
+    @Headers('x-user-id') xUserId: string,
+  ) {
+    const userId = xUserId || this.authService.extractUserId(auth);
+    if (!userId) throw new UnauthorizedException('Token não informado');
+    await this.authService.deleteMe(userId);
   }
 
   @Get('admin/users')
