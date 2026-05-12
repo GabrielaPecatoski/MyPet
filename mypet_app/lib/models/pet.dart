@@ -4,6 +4,7 @@ class PetModel {
   final String type; // Cachorro, Gato, Outro
   final String breed;
   final int age;
+  final double? weight;
   final String? imageUrl;
 
   PetModel({
@@ -12,6 +13,7 @@ class PetModel {
     required this.type,
     required this.breed,
     required this.age,
+    this.weight,
     this.imageUrl,
   });
 
@@ -22,6 +24,7 @@ class PetModel {
       type: json['type'] ?? 'Cachorro',
       breed: json['breed'] ?? '',
       age: json['age'] ?? 0,
+      weight: (json['weight'] as num?)?.toDouble(),
       imageUrl: json['imageUrl'],
     );
   }
@@ -32,7 +35,8 @@ class PetModel {
         'type': type,
         'breed': breed,
         'age': age,
-        'imageUrl': imageUrl,
+        if (weight != null) 'weight': weight,
+        if (imageUrl != null) 'imageUrl': imageUrl,
       };
 
   String get typeIcon {

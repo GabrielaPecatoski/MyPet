@@ -7,7 +7,8 @@ import '../models/pet.dart';
 import '../widgets/mypet_app_bar.dart';
 
 class AddPetScreen extends StatefulWidget {
-  const AddPetScreen({super.key});
+  final PetModel? initialPet;
+  const AddPetScreen({super.key, this.initialPet});
   @override
   State<AddPetScreen> createState() => _AddPetScreenState();
 }
@@ -17,8 +18,12 @@ class _AddPetScreenState extends State<AddPetScreen> {
   final _nomeCtrl = TextEditingController();
   final _racaCtrl = TextEditingController();
   final _idadeCtrl = TextEditingController();
+  final _pesoCtrl = TextEditingController();
   String _tipoSelecionado = 'Cachorro';
   Uint8List? _imageBytes;
+  String? _existingImageUrl;
+
+  bool get _isEditing => widget.initialPet != null;
 
   static const _tipos = [
     ('Cachorro', '🐶', Icons.pets),
@@ -27,10 +32,25 @@ class _AddPetScreenState extends State<AddPetScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    final pet = widget.initialPet;
+    if (pet != null) {
+      _nomeCtrl.text = pet.name;
+      _racaCtrl.text = pet.breed;
+      _idadeCtrl.text = pet.age.toString();
+      _pesoCtrl.text = pet.weight != null ? pet.weight.toString() : '';
+      _tipoSelecionado = pet.type;
+      _existingImageUrl = pet.imageUrl;
+    }
+  }
+
+  @override
   void dispose() {
     _nomeCtrl.dispose();
     _racaCtrl.dispose();
     _idadeCtrl.dispose();
+    _pesoCtrl.dispose();
     super.dispose();
   }
 
@@ -45,9 +65,7 @@ class _AddPetScreenState extends State<AddPetScreen> {
     );
     if (picked != null && mounted) {
       final bytes = await picked.readAsBytes();
-      setState(() {
-        _imageBytes = bytes;
-      });
+      setState(() => _imageBytes = bytes);
     }
   }
 
@@ -118,13 +136,17 @@ class _AddPetScreenState extends State<AddPetScreen> {
     String? imageUrl;
     if (_imageBytes != null) {
       imageUrl = 'data:image/jpeg;base64,${base64Encode(_imageBytes!)}';
+    } else {
+      imageUrl = _existingImageUrl;
     }
+    final peso = double.tryParse(_pesoCtrl.text.trim().replaceAll(',', '.'));
     final pet = PetModel(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      id: widget.initialPet?.id ?? '',
       name: _nomeCtrl.text.trim(),
       type: _tipoSelecionado,
       breed: _racaCtrl.text.trim(),
-      age: int.tryParse(_idadeCtrl.text) ?? 0,
+      age: int.tryParse(_idadeCtrl.text.trim()) ?? 0,
+      weight: peso,
       imageUrl: imageUrl,
     );
     Navigator.pop(context, pet);
@@ -142,14 +164,20 @@ class _AddPetScreenState extends State<AddPetScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Cadastrar Pet',
-                  style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.dark)),
+              Text(
+                _isEditing ? 'Editar Pet' : 'Cadastrar Pet',
+                style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.dark),
+              ),
               const SizedBox(height: 4),
-              const Text('Adicione as informações do seu pet',
-                  style: TextStyle(fontSize: 13, color: AppColors.grey)),
+              Text(
+                _isEditing
+                    ? 'Atualize as informações do seu pet'
+                    : 'Adicione as informações do seu pet',
+                style: const TextStyle(fontSize: 13, color: AppColors.grey),
+              ),
               const SizedBox(height: 24),
 
               if (!kIsWeb)
@@ -158,28 +186,7 @@ class _AddPetScreenState extends State<AddPetScreen> {
                     onTap: _showImageOptions,
                     child: Stack(
                       children: [
-                        Container(
-                          width: 100,
-                          height: 100,
-                          decoration: BoxDecoration(
-                            color: AppColors.primaryLight,
-                            shape: BoxShape.circle,
-                            image: _imageBytes != null
-                                ? DecorationImage(
-                                    image: MemoryImage(_imageBytes!),
-                                    fit: BoxFit.cover)
-                                : null,
-                          ),
-                          child: _imageBytes == null
-                              ? const Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(Icons.pets,
-                                        size: 36, color: AppColors.primary),
-                                  ],
-                                )
-                              : null,
-                        ),
+                        _buildAvatar(),
                         Positioned(
                           bottom: 2,
                           right: 2,
@@ -213,9 +220,7 @@ class _AddPetScreenState extends State<AddPetScreen> {
                         margin: const EdgeInsets.only(right: 8),
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         decoration: BoxDecoration(
-                          color: selected
-                              ? AppColors.primary
-                              : Colors.white,
+                          color: selected ? AppColors.primary : Colors.white,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                             color: selected
@@ -225,7 +230,8 @@ class _AddPetScreenState extends State<AddPetScreen> {
                           boxShadow: selected
                               ? [
                                   BoxShadow(
-                                    color: AppColors.primary.withValues(alpha: 0.25),
+                                    color: AppColors.primary
+                                        .withValues(alpha: 0.25),
                                     blurRadius: 8,
                                     offset: const Offset(0, 3),
                                   )
@@ -234,12 +240,14 @@ class _AddPetScreenState extends State<AddPetScreen> {
                         ),
                         child: Column(
                           children: [
-                            Text(t.$1 == 'Cachorro'
-                                ? '🐶'
-                                : t.$1 == 'Gato'
-                                    ? '🐱'
-                                    : '🐾',
-                                style: const TextStyle(fontSize: 22)),
+                            Text(
+                              t.$1 == 'Cachorro'
+                                  ? '🐶'
+                                  : t.$1 == 'Gato'
+                                      ? '🐱'
+                                      : '🐾',
+                              style: const TextStyle(fontSize: 22),
+                            ),
                             const SizedBox(height: 4),
                             Text(t.$1,
                                 style: TextStyle(
@@ -279,18 +287,45 @@ class _AddPetScreenState extends State<AddPetScreen> {
               ),
               const SizedBox(height: 16),
 
-              _sectionTitle('Idade'),
-              const SizedBox(height: 8),
-              _field(
-                controller: _idadeCtrl,
-                hint: 'Em anos',
-                icon: Icons.cake_outlined,
-                isNumber: true,
-                validator: (v) {
-                  if (v == null || v.isEmpty) return 'Informe a idade';
-                  if (int.tryParse(v) == null) return 'Número inválido';
-                  return null;
-                },
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _sectionTitle('Idade'),
+                        const SizedBox(height: 8),
+                        _field(
+                          controller: _idadeCtrl,
+                          hint: 'Anos',
+                          icon: Icons.cake_outlined,
+                          isNumber: true,
+                          validator: (v) {
+                            if (v == null || v.isEmpty) return 'Informe';
+                            if (int.tryParse(v) == null) return 'Inválido';
+                            return null;
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _sectionTitle('Peso (kg)'),
+                        const SizedBox(height: 8),
+                        _field(
+                          controller: _pesoCtrl,
+                          hint: 'Ex: 4.5',
+                          icon: Icons.monitor_weight_outlined,
+                          isDecimal: true,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 32),
 
@@ -324,11 +359,13 @@ class _AddPetScreenState extends State<AddPetScreen> {
                             borderRadius: BorderRadius.circular(12)),
                         elevation: 0,
                       ),
-                      child: const Text('Cadastrar Pet',
-                          style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15)),
+                      child: Text(
+                        _isEditing ? 'Salvar Alterações' : 'Cadastrar Pet',
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15),
+                      ),
                     ),
                   ),
                 ],
@@ -336,6 +373,58 @@ class _AddPetScreenState extends State<AddPetScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildAvatar() {
+    if (_imageBytes != null) {
+      return Container(
+        width: 100,
+        height: 100,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          image: DecorationImage(
+              image: MemoryImage(_imageBytes!), fit: BoxFit.cover),
+        ),
+      );
+    }
+    final url = _existingImageUrl;
+    if (url != null && url.isNotEmpty) {
+      if (url.startsWith('data:image/')) {
+        final bytes = base64Decode(url.split(',').last);
+        return Container(
+          width: 100,
+          height: 100,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            image: DecorationImage(
+                image: MemoryImage(bytes), fit: BoxFit.cover),
+          ),
+        );
+      }
+      return Container(
+        width: 100,
+        height: 100,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          image:
+              DecorationImage(image: NetworkImage(url), fit: BoxFit.cover),
+        ),
+      );
+    }
+    return Container(
+      width: 100,
+      height: 100,
+      decoration: const BoxDecoration(
+        color: AppColors.primaryLight,
+        shape: BoxShape.circle,
+      ),
+      child: const Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.pets, size: 36, color: AppColors.primary),
+        ],
       ),
     );
   }
@@ -351,11 +440,16 @@ class _AddPetScreenState extends State<AddPetScreen> {
     required String hint,
     required IconData icon,
     bool isNumber = false,
+    bool isDecimal = false,
     String? Function(String?)? validator,
   }) =>
       TextFormField(
         controller: controller,
-        keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+        keyboardType: isDecimal
+            ? const TextInputType.numberWithOptions(decimal: true)
+            : isNumber
+                ? TextInputType.number
+                : TextInputType.text,
         decoration: InputDecoration(
           hintText: hint,
           hintStyle: const TextStyle(color: AppColors.grey, fontSize: 14),
