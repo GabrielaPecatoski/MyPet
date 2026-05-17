@@ -34,7 +34,7 @@ export class BookingService {
     })!;
     await this.repo.create(booking);
     await this.safePublish(BookingExchangeName.CREATED, BookingRoutingKey.CREATED, {
-      bookingId: booking.id,
+      bookingId: booking.id!,
       establishmentId: booking.establishmentId,
       clientName: booking.userName,
       serviceName: booking.serviceName,
@@ -64,21 +64,21 @@ export class BookingService {
 
     if (status === "CONFIRMADO" || status === "RECUSADO") {
       await this.safePublish(BookingExchangeName.STATUS_UPDATED, BookingRoutingKey.STATUS_UPDATED, {
-        bookingId: booking.id,
+        bookingId: booking.id!,
         userId: booking.userId,
         status,
         establishmentName: booking.establishmentName,
       });
     } else if (status === "CONCLUIDO") {
       await this.safePublish(BookingExchangeName.COMPLETED, BookingRoutingKey.COMPLETED, {
-        bookingId: booking.id,
+        bookingId: booking.id!,
         userId: booking.userId,
         establishmentName: booking.establishmentName,
         serviceName: booking.serviceName,
       });
     } else if (status === "CANCELADO") {
       await this.safePublish(BookingExchangeName.CANCELED, BookingRoutingKey.CANCELED, {
-        bookingId: booking.id,
+        bookingId: booking.id!,
         userId: booking.userId,
       });
     }

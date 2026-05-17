@@ -50,7 +50,7 @@ export class OrderService {
     const dto = OrderDto.fromOrder(created!)!;
 
     await this.safePublish(MarketplaceExchangeName.ORDER_CREATED, MarketplaceRoutingKey.ORDER_CREATED, {
-      orderId: dto.id,
+      orderId: dto.id!,
       userId,
       total: dto.total,
       itemCount: orderItems.length,

@@ -29,7 +29,7 @@ export class ReviewService {
     })!;
     await this.reviewRepo.create(review);
     await this.safePublish(ReviewExchangeName.CREATED, ReviewRoutingKey.CREATED, {
-      reviewId: review.id,
+      reviewId: review.id!,
       establishmentId: dto.establishmentId,
       userId,
       rating: dto.rating,

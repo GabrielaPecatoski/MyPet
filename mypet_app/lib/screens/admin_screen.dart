@@ -8,8 +8,6 @@ import '../services/api_service.dart';
 import '../widgets/app_bottom_nav.dart';
 import '../widgets/mypet_app_bar.dart';
 
-const _adminSecret = 'mypet_admin_secret';
-const _adminHeaders = {'x-admin-secret': _adminSecret};
 
 class AdminScreen extends StatefulWidget {
   const AdminScreen({super.key});
@@ -28,10 +26,12 @@ class _AdminScreenState extends State<AdminScreen> {
   Map<String, dynamic> _reviewStats = {};
   bool _loading = true;
   String? _error;
+  String? _token;
 
   @override
   void initState() {
     super.initState();
+    _token = Provider.of<AuthProvider>(context, listen: false).token;
     _loadAll();
   }
 
@@ -53,13 +53,13 @@ class _AdminScreenState extends State<AdminScreen> {
   }
 
   Future<void> _loadUsers() async {
-    final data = await ApiService.get('/auth/admin/users', headers: _adminHeaders);
+    final data = await ApiService.get('/auth/admin/users', token: _token);
     setState(() => _users = (data as List).map((e) => AdminUserModel.fromJson(e as Map<String, dynamic>)).toList());
   }
 
   Future<void> _loadEstabs() async {
     try {
-      final data = await ApiService.get('/establishments/admin/all', headers: _adminHeaders);
+      final data = await ApiService.get('/establishments/admin/all', token: _token);
       setState(() => _estabs = (data as List).map((e) => AdminEstabModel.fromJson(e as Map<String, dynamic>)).toList());
     } catch (_) {
       final data = await ApiService.get('/establishments');
@@ -69,7 +69,7 @@ class _AdminScreenState extends State<AdminScreen> {
 
   Future<void> _loadComplaints() async {
     try {
-      final data = await ApiService.get('/reviews/admin/complaints', headers: _adminHeaders);
+      final data = await ApiService.get('/reviews/admin/complaints', token: _token);
       setState(() => _complaints = (data as List).map((e) => ComplaintModel.fromJson(e as Map<String, dynamic>)).toList());
     } catch (_) {
       setState(() => _complaints = []);
@@ -78,7 +78,7 @@ class _AdminScreenState extends State<AdminScreen> {
 
   Future<void> _loadFaq() async {
     try {
-      final data = await ApiService.get('/faq/admin/all', headers: _adminHeaders);
+      final data = await ApiService.get('/faq/admin/all', token: _token);
       setState(() => _faqItems = data as List<dynamic>);
     } catch (_) {
       setState(() => _faqItems = []);
@@ -87,7 +87,7 @@ class _AdminScreenState extends State<AdminScreen> {
 
   Future<void> _loadReviewStats() async {
     try {
-      final data = await ApiService.get('/reviews/admin/stats', headers: _adminHeaders);
+      final data = await ApiService.get('/reviews/admin/stats', token: _token);
       setState(() => _reviewStats = data as Map<String, dynamic>);
     } catch (_) {
       setState(() => _reviewStats = {});
@@ -96,7 +96,7 @@ class _AdminScreenState extends State<AdminScreen> {
 
   Future<void> _loadUserQuestions() async {
     try {
-      final data = await ApiService.get('/faq/questions/admin/all', headers: _adminHeaders);
+      final data = await ApiService.get('/faq/questions/admin/all', token: _token);
       setState(() => _userQuestions = data as List<dynamic>);
     } catch (_) {
       setState(() => _userQuestions = []);
@@ -104,12 +104,12 @@ class _AdminScreenState extends State<AdminScreen> {
   }
 
   Future<void> _resolveComplaint(String id) async {
-    await ApiService.patch('/reviews/admin/complaints/$id/resolve', {}, headers: _adminHeaders);
+    await ApiService.patch('/reviews/admin/complaints/$id/resolve', {}, token: _token);
     await _loadComplaints();
   }
 
   Future<void> _rejectComplaint(String id) async {
-    await ApiService.patch('/reviews/admin/complaints/$id/reject', {}, headers: _adminHeaders);
+    await ApiService.patch('/reviews/admin/complaints/$id/reject', {}, token: _token);
     await _loadComplaints();
   }
 
@@ -117,27 +117,27 @@ class _AdminScreenState extends State<AdminScreen> {
     await ApiService.post('/faq/admin', {
       'question': question, 'answer': answer,
       'category': category, 'targetRole': targetRole,
-    }, headers: _adminHeaders);
+    }, token: _token);
     await _loadFaq();
   }
 
   Future<void> _updateFaq(String id, Map<String, dynamic> data) async {
-    await ApiService.put('/faq/admin/$id', data, headers: _adminHeaders);
+    await ApiService.put('/faq/admin/$id', data, token: _token);
     await _loadFaq();
   }
 
   Future<void> _deleteFaq(String id) async {
-    await ApiService.delete('/faq/admin/$id', headers: _adminHeaders);
+    await ApiService.delete('/faq/admin/$id', token: _token);
     await _loadFaq();
   }
 
   Future<void> _answerUserQuestion(String id, String answer) async {
-    await ApiService.put('/faq/questions/admin/$id/answer', {'answer': answer}, headers: _adminHeaders);
+    await ApiService.put('/faq/questions/admin/$id/answer', {'answer': answer}, token: _token);
     await _loadUserQuestions();
   }
 
   Future<void> _closeUserQuestion(String id) async {
-    await ApiService.put('/faq/questions/admin/$id/close', {}, headers: _adminHeaders);
+    await ApiService.put('/faq/questions/admin/$id/close', {}, token: _token);
     await _loadUserQuestions();
   }
 
