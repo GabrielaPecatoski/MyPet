@@ -1,20 +1,8 @@
-# MyPet - Start Stack
+# MyPet - Start Stack (Docker)
 # Se travar na politica de execucao, rode no terminal:
 #   Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
 
 $ErrorActionPreference = 'Continue'
-
-$services = @(
-  @{ name = 'gateway';      port = 3000 },
-  @{ name = 'auth';         port = 3001 },
-  @{ name = 'user-pet';     port = 3002 },
-  @{ name = 'establishment';port = 3003 },
-  @{ name = 'marketplace';  port = 3004 },
-  @{ name = 'booking';      port = 3005 },
-  @{ name = 'notification'; port = 3006 },
-  @{ name = 'review';       port = 3007 },
-  @{ name = 'faq';          port = 3008 }
-)
 
 Write-Host ""
 Write-Host "Verificando Docker..." -ForegroundColor Cyan
@@ -39,30 +27,28 @@ Write-Host "Aguardando servicos iniciarem (90s)..." -ForegroundColor Yellow
 Start-Sleep -Seconds 90
 
 Write-Host ""
-Write-Host "Status dos servicos:" -ForegroundColor Cyan
+Write-Host "Status do gateway:" -ForegroundColor Cyan
 Write-Host "--------------------"
 
-$allOk = $true
-foreach ($svc in $services) {
-  try {
-    $res = Invoke-WebRequest -Uri "http://localhost:$($svc.port)/health" -TimeoutSec 8 -UseBasicParsing -ErrorAction Stop
-    if ($res.StatusCode -eq 200) {
-      Write-Host "  $($svc.name.PadRight(15)) [OK]" -ForegroundColor Green
-    } else {
-      Write-Host "  $($svc.name.PadRight(15)) [ERRO - HTTP $($res.StatusCode)]" -ForegroundColor Red
-      $allOk = $false
-    }
-  } catch {
-    Write-Host "  $($svc.name.PadRight(15)) [ERRO - sem resposta]" -ForegroundColor Red
-    $allOk = $false
+try {
+  $res = Invoke-WebRequest -Uri "http://localhost:3000/health" -TimeoutSec 10 -UseBasicParsing -ErrorAction Stop
+  if ($res.StatusCode -eq 200) {
+    Write-Host "  gateway          [OK]" -ForegroundColor Green
+  } else {
+    Write-Host "  gateway          [ERRO - HTTP $($res.StatusCode)]" -ForegroundColor Red
   }
+} catch {
+  Write-Host "  gateway          [ERRO - sem resposta]" -ForegroundColor Red
 }
+
+Write-Host ""
+Write-Host "Verificando containers:" -ForegroundColor Cyan
+docker compose ps
 
 Write-Host ""
 Write-Host "Infraestrutura:" -ForegroundColor Cyan
 Write-Host "  PostgreSQL      -> localhost:5433"
 Write-Host "  RabbitMQ UI     -> http://localhost:15672  (mypet/mypet123)"
-Write-Host "  Consul UI       -> http://localhost:8500"
 Write-Host ""
 
 $wslIp = $null
@@ -82,21 +68,9 @@ if ($wslIp) {
 Write-Host "  Emulador Android   -> http://10.0.2.2:3000"
 Write-Host ""
 Write-Host "Comandos uteis:"
-Write-Host "  docker compose logs -f gateway   # logs do gateway"
-Write-Host "  docker compose logs -f auth      # logs de um servico"
-Write-Host "  docker compose ps                # status dos containers"
-Write-Host "  docker compose down              # parar tudo"
-Write-Host "  docker compose down -v           # parar + apagar volumes (reset DB)"
-Write-Host ""
-
-if ($allOk) {
-  Write-Host "================================================" -ForegroundColor Green
-  Write-Host "  Todos os servicos estao rodando!" -ForegroundColor Green
-  Write-Host "================================================" -ForegroundColor Green
-} else {
-  Write-Host "================================================" -ForegroundColor Yellow
-  Write-Host "  Alguns servicos falharam. Verifique com:" -ForegroundColor Yellow
-  Write-Host "  docker compose logs <nome-do-servico>" -ForegroundColor Yellow
-  Write-Host "================================================" -ForegroundColor Yellow
-}
+Write-Host "  docker compose logs -f api-gateway   # logs do gateway"
+Write-Host "  docker compose logs -f user-auth     # logs de um servico"
+Write-Host "  docker compose ps                    # status dos containers"
+Write-Host "  docker compose down                  # parar tudo"
+Write-Host "  docker compose down -v               # parar + apagar volumes (reset DB)"
 Write-Host ""

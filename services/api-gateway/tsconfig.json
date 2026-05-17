@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "../../dist/services/api-gateway",
+    "baseUrl": "."
+  },
+  "include": ["src"]
+}

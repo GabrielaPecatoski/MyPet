@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "../..",
+    "outDir": "../../dist",
+    "baseUrl": ".",
+    "paths": {
+      "@shared/*": ["../../shared/src/*"],
+      "@notification/*": ["./src/modules/notification/*"]
+    }
+  },
+  "include": ["src", "../../shared/src"]
+}

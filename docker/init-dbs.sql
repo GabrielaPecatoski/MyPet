@@ -1,3 +1,4 @@
+-- mypet_auth is created automatically via POSTGRES_DB env var
 CREATE DATABASE mypet_users;
 CREATE DATABASE mypet_estab;
 CREATE DATABASE mypet_market;
