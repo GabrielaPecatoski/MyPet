@@ -38,4 +38,14 @@ export class DrizzleReviewRepository implements ReviewRepository {
       .where(eq(reviewsSchema.establishmentId, establishmentId));
     return { average: Number(result?.average ?? 0), count: result?.count ?? 0 };
   }
+
+  async getAdminStats(): Promise<{ avgRating: number; totalReviews: number }> {
+    const [result] = await this.drizzleService.db
+      .select({
+        avgRating: sql<number>`coalesce(avg(${reviewsSchema.rating}), 0)::float`,
+        totalReviews: sql<number>`count(*)::int`,
+      })
+      .from(reviewsSchema);
+    return { avgRating: Number(result?.avgRating ?? 0), totalReviews: result?.totalReviews ?? 0 };
+  }
 }

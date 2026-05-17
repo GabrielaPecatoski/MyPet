@@ -1,4 +1,4 @@
-import { Order } from "@market/orders/domain/models/order.entity";
+import { Order, type OrderStatus } from "@market/orders/domain/models/order.entity";
 import type { OrderRepository } from "@market/orders/domain/repositories/order-repository.interface";
 import { orderItemsSchema, ordersSchema } from "@market/orders/infra/database/schemas/order.schema";
 import { Injectable } from "@nestjs/common";
@@ -44,7 +44,7 @@ export class DrizzleOrderRepository implements OrderRepository {
         .select()
         .from(orderItemsSchema)
         .where(eq(orderItemsSchema.orderId, o.id));
-      result.push(Order.restore({ ...o, status: o.status as any, items })!);
+      result.push(Order.restore({ ...o, status: o.status as OrderStatus, items })!);
     }
     return result;
   }
@@ -53,6 +53,6 @@ export class DrizzleOrderRepository implements OrderRepository {
     const [o] = await this.drizzleService.db.select().from(ordersSchema).where(eq(ordersSchema.id, id)).limit(1);
     if (!o) return null;
     const items = await this.drizzleService.db.select().from(orderItemsSchema).where(eq(orderItemsSchema.orderId, o.id));
-    return Order.restore({ ...o, status: o.status as any, items });
+    return Order.restore({ ...o, status: o.status as OrderStatus, items });
   }
 }

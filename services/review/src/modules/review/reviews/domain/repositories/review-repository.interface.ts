@@ -6,4 +6,5 @@ export interface ReviewRepository {
   create(review: Review): Promise<void>;
   findByEstablishmentId(establishmentId: string): Promise<Review[]>;
   getStats(establishmentId: string): Promise<{ average: number; count: number }>;
+  getAdminStats(): Promise<{ avgRating: number; totalReviews: number }>;
 }

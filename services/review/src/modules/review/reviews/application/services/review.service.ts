@@ -44,6 +44,10 @@ export class ReviewService {
     return this.reviewRepo.getStats(establishmentId);
   }
 
+  async getAdminStats() {
+    return this.reviewRepo.getAdminStats();
+  }
+
   async createComplaint(userId: string, userName: string, dto: CreateComplaintDto): Promise<void> {
     const complaint = Complaint.restore({
       userId,

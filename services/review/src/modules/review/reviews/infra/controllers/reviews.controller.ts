@@ -43,6 +43,14 @@ export class ReviewsController {
     });
   }
 
+  @Get("admin/stats")
+  @ApiBearerAuth()
+  @RequirePermissions(Permission.ADMIN_READ)
+  @ApiOperation({ summary: "Estatísticas globais de avaliações (admin)" })
+  async getAdminStats() {
+    return this.reviewService.getAdminStats();
+  }
+
   @Get("admin/complaints")
   @ApiBearerAuth()
   @RequirePermissions(Permission.ADMIN_READ)

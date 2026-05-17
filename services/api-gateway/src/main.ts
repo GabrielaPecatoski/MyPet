@@ -1,3 +1,4 @@
+import { Logger } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module";
 import helmet from "helmet";
@@ -6,7 +7,7 @@ import type { NextFunction, Request, Response } from "express";
 
 const ROUTES = [
   { prefix: "/auth",           target: process.env.AUTH_SERVICE_URL          ?? "http://localhost:3001" },
-  { prefix: "/users",          target: process.env.USER_PET_SERVICE_URL      ?? "http://localhost:3002" },
+  { prefix: "/users",          target: process.env.AUTH_SERVICE_URL          ?? "http://localhost:3001" },
   { prefix: "/pets",           target: process.env.USER_PET_SERVICE_URL      ?? "http://localhost:3002" },
   { prefix: "/establishments", target: process.env.ESTABLISHMENT_SERVICE_URL ?? "http://localhost:3003" },
   { prefix: "/marketplace",    target: process.env.MARKETPLACE_SERVICE_URL   ?? "http://localhost:3004" },
@@ -26,6 +27,7 @@ const CORS_HEADERS = {
 };
 
 async function bootstrap() {
+  const logger = new Logger("Bootstrap");
   const app = await NestFactory.create(AppModule);
 
   app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
@@ -62,6 +64,6 @@ async function bootstrap() {
 
   const port = process.env.PORT ?? 3000;
   await app.listen(port);
-  console.log(`API Gateway rodando na porta ${port}`);
+  logger.log(`API Gateway rodando na porta ${port}`);
 }
 bootstrap();
