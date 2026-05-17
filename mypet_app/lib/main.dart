@@ -22,6 +22,7 @@ import 'screens/carrinho_screen.dart';
 import 'screens/pagamento_screen.dart';
 import 'screens/main_navigation.dart';
 import 'screens/estab_navigation.dart';
+import 'screens/estab_edit_screen.dart';
 import 'screens/admin_screen.dart';
 
 void main() {
@@ -70,6 +71,7 @@ class MyPetApp extends StatelessWidget {
           return MainNavigation(initialIndex: idx ?? 0);
         },
         '/estab-home':    (_) => const EstabNavigation(),
+        '/estab-edit':    (_) => const EstabEditScreen(),
         '/admin':         (_) => const AdminScreen(),
         '/edit-profile':  (_) => const EditProfileScreen(),
         '/history':       (_) => const HistoryScreen(),

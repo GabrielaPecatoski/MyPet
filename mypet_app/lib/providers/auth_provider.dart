@@ -116,6 +116,46 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<bool> updateProfile({
+    required String name,
+    required String phone,
+  }) async {
+    if (_user == null || _token == null) return false;
+    _loading = true;
+    _error = null;
+    notifyListeners();
+    try {
+      final data = await ApiService.patch(
+        '/auth/me',
+        {'name': name, 'phone': phone},
+        token: _token,
+      );
+      _user = UserModel.fromJson(data as Map<String, dynamic>);
+      await StorageService.saveUser(_user!);
+      _loading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _error = e.toString().replaceAll('Exception: ', '');
+      _loading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> deleteAccount() async {
+    if (_user == null || _token == null) return false;
+    try {
+      await ApiService.delete('/auth/me', token: _token);
+      await logout();
+      return true;
+    } catch (e) {
+      _error = e.toString().replaceAll('Exception: ', '');
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<void> logout() async {
     _token = null;
     _user = null;

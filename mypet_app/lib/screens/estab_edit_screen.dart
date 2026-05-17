@@ -2,55 +2,55 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
 import '../core/colors.dart';
-import '../models/pet.dart';
+import '../providers/auth_provider.dart';
+import '../providers/establishment_provider.dart';
 import '../widgets/mypet_app_bar.dart';
 
-class AddPetScreen extends StatefulWidget {
-  final PetModel? initialPet;
-  const AddPetScreen({super.key, this.initialPet});
+class EstabEditScreen extends StatefulWidget {
+  const EstabEditScreen({super.key});
+
   @override
-  State<AddPetScreen> createState() => _AddPetScreenState();
+  State<EstabEditScreen> createState() => _EstabEditScreenState();
 }
 
-class _AddPetScreenState extends State<AddPetScreen> {
+class _EstabEditScreenState extends State<EstabEditScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _nomeCtrl = TextEditingController();
-  final _racaCtrl = TextEditingController();
-  final _idadeCtrl = TextEditingController();
-  final _pesoCtrl = TextEditingController();
-  String _tipoSelecionado = 'Cachorro';
+  late TextEditingController _nomeCtrl;
+  late TextEditingController _descCtrl;
+  late TextEditingController _enderecoCtrl;
+  late TextEditingController _cidadeCtrl;
+  late TextEditingController _telefoneCtrl;
+  String _tipo = 'PET_SHOP';
   Uint8List? _imageBytes;
   String? _existingImageUrl;
 
-  bool get _isEditing => widget.initialPet != null;
-
   static const _tipos = [
-    ('Cachorro', '🐶', Icons.pets),
-    ('Gato', '🐱', Icons.cruelty_free_outlined),
-    ('Outro', '🐾', Icons.emoji_nature_outlined),
+    ('PET_SHOP', 'Pet Shop', Icons.store_outlined),
+    ('VETERINARIA', 'Clínica Veterinária', Icons.local_hospital_outlined),
   ];
 
   @override
   void initState() {
     super.initState();
-    final pet = widget.initialPet;
-    if (pet != null) {
-      _nomeCtrl.text = pet.name;
-      _racaCtrl.text = pet.breed;
-      _idadeCtrl.text = pet.age.toString();
-      _pesoCtrl.text = pet.weight != null ? pet.weight.toString() : '';
-      _tipoSelecionado = pet.type;
-      _existingImageUrl = pet.imageUrl;
-    }
+    final estab = context.read<EstablishmentProvider>().establishment;
+    _nomeCtrl = TextEditingController(text: estab?.name ?? '');
+    _descCtrl = TextEditingController(text: estab?.description ?? '');
+    _enderecoCtrl = TextEditingController(text: estab?.rawAddress ?? '');
+    _cidadeCtrl = TextEditingController(text: estab?.city ?? '');
+    _telefoneCtrl = TextEditingController(text: estab?.phone ?? '');
+    _tipo = estab?.type ?? 'PET_SHOP';
+    _existingImageUrl = estab?.imageUrl;
   }
 
   @override
   void dispose() {
     _nomeCtrl.dispose();
-    _racaCtrl.dispose();
-    _idadeCtrl.dispose();
-    _pesoCtrl.dispose();
+    _descCtrl.dispose();
+    _enderecoCtrl.dispose();
+    _cidadeCtrl.dispose();
+    _telefoneCtrl.dispose();
     super.dispose();
   }
 
@@ -131,29 +131,56 @@ class _AddPetScreenState extends State<AddPetScreen> {
     );
   }
 
-  void _salvar() {
+  Future<void> _salvar() async {
     if (!_formKey.currentState!.validate()) return;
+
+    final auth = context.read<AuthProvider>();
+    final provider = context.read<EstablishmentProvider>();
+
     String? imageUrl;
     if (_imageBytes != null) {
       imageUrl = 'data:image/jpeg;base64,${base64Encode(_imageBytes!)}';
     } else {
       imageUrl = _existingImageUrl;
     }
-    final peso = double.tryParse(_pesoCtrl.text.trim().replaceAll(',', '.'));
-    final pet = PetModel(
-      id: widget.initialPet?.id ?? '',
+
+    final ok = await provider.updateEstablishment(
+      token: auth.token ?? '',
       name: _nomeCtrl.text.trim(),
-      type: _tipoSelecionado,
-      breed: _racaCtrl.text.trim(),
-      age: int.tryParse(_idadeCtrl.text.trim()) ?? 0,
-      weight: peso,
+      description: _descCtrl.text.trim(),
+      address: _enderecoCtrl.text.trim(),
+      city: _cidadeCtrl.text.trim(),
+      phone: _telefoneCtrl.text.trim(),
+      type: _tipo,
       imageUrl: imageUrl,
     );
-    Navigator.pop(context, pet);
+
+    if (!mounted) return;
+
+    if (ok) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Estabelecimento atualizado com sucesso!'),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      Navigator.pop(context);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(provider.error ?? 'Erro ao atualizar estabelecimento.'),
+          backgroundColor: AppColors.danger,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final isLoading = context.watch<EstablishmentProvider>().isLoading;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: const MypetAppBar(showBack: true),
@@ -164,23 +191,21 @@ class _AddPetScreenState extends State<AddPetScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                _isEditing ? 'Editar Pet' : 'Cadastrar Pet',
-                style: const TextStyle(
+              const Text(
+                'Editar Estabelecimento',
+                style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
                     color: AppColors.dark),
               ),
               const SizedBox(height: 4),
-              Text(
-                _isEditing
-                    ? 'Atualize as informações do seu pet'
-                    : 'Adicione as informações do seu pet',
-                style: const TextStyle(fontSize: 13, color: AppColors.grey),
+              const Text(
+                'Atualize as informações do seu negócio',
+                style: TextStyle(fontSize: 13, color: AppColors.grey),
               ),
               const SizedBox(height: 24),
 
-              if (!kIsWeb)
+              if (!kIsWeb) ...[
                 Center(
                   child: GestureDetector(
                     onTap: _showImageOptions,
@@ -205,20 +230,21 @@ class _AddPetScreenState extends State<AddPetScreen> {
                     ),
                   ),
                 ),
-              if (!kIsWeb) const SizedBox(height: 28),
+                const SizedBox(height: 28),
+              ],
 
-              _sectionTitle('Tipo do Pet'),
+              _sectionTitle('Tipo de Estabelecimento'),
               const SizedBox(height: 10),
               Row(
                 children: _tipos.map((t) {
-                  final selected = _tipoSelecionado == t.$1;
+                  final selected = _tipo == t.$1;
                   return Expanded(
                     child: GestureDetector(
-                      onTap: () => setState(() => _tipoSelecionado = t.$1),
+                      onTap: () => setState(() => _tipo = t.$1),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
                         margin: const EdgeInsets.only(right: 8),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
                         decoration: BoxDecoration(
                           color: selected ? AppColors.primary : Colors.white,
                           borderRadius: BorderRadius.circular(12),
@@ -240,22 +266,23 @@ class _AddPetScreenState extends State<AddPetScreen> {
                         ),
                         child: Column(
                           children: [
-                            Text(
-                              t.$1 == 'Cachorro'
-                                  ? '🐶'
-                                  : t.$1 == 'Gato'
-                                      ? '🐱'
-                                      : '🐾',
-                              style: const TextStyle(fontSize: 22),
+                            Icon(
+                              t.$3,
+                              size: 26,
+                              color:
+                                  selected ? Colors.white : AppColors.primary,
                             ),
-                            const SizedBox(height: 4),
-                            Text(t.$1,
-                                style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: selected
-                                        ? Colors.white
-                                        : AppColors.dark)),
+                            const SizedBox(height: 6),
+                            Text(
+                              t.$2,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: selected
+                                      ? Colors.white
+                                      : AppColors.dark),
+                            ),
                           ],
                         ),
                       ),
@@ -265,46 +292,50 @@ class _AddPetScreenState extends State<AddPetScreen> {
               ),
               const SizedBox(height: 20),
 
-              _sectionTitle('Nome do Pet'),
+              _sectionTitle('Nome do Estabelecimento'),
               const SizedBox(height: 8),
               _field(
                 controller: _nomeCtrl,
-                hint: 'Ex: Rex, Mel, Bolinha...',
-                icon: Icons.badge_outlined,
+                hint: 'Ex: Pet Shop do João',
+                icon: Icons.store_outlined,
                 validator: (v) =>
                     v == null || v.isEmpty ? 'Informe o nome' : null,
               ),
               const SizedBox(height: 16),
 
-              _sectionTitle('Raça'),
+              _sectionTitle('Telefone'),
               const SizedBox(height: 8),
               _field(
-                controller: _racaCtrl,
-                hint: 'Ex: Labrador, Persa, Vira-lata...',
-                icon: Icons.category_outlined,
-                validator: (v) =>
-                    v == null || v.isEmpty ? 'Informe a raça' : null,
+                controller: _telefoneCtrl,
+                hint: 'Ex: (11) 99999-9999',
+                icon: Icons.phone_outlined,
+                keyboard: TextInputType.phone,
+              ),
+              const SizedBox(height: 16),
+
+              _sectionTitle('Descrição'),
+              const SizedBox(height: 8),
+              _field(
+                controller: _descCtrl,
+                hint: 'Descreva seu estabelecimento...',
+                icon: Icons.description_outlined,
+                maxLines: 3,
               ),
               const SizedBox(height: 16),
 
               Row(
                 children: [
                   Expanded(
+                    flex: 2,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _sectionTitle('Idade'),
+                        _sectionTitle('Endereço'),
                         const SizedBox(height: 8),
                         _field(
-                          controller: _idadeCtrl,
-                          hint: 'Anos',
-                          icon: Icons.cake_outlined,
-                          isNumber: true,
-                          validator: (v) {
-                            if (v == null || v.isEmpty) return 'Informe';
-                            if (int.tryParse(v) == null) return 'Inválido';
-                            return null;
-                          },
+                          controller: _enderecoCtrl,
+                          hint: 'Rua, número...',
+                          icon: Icons.location_on_outlined,
                         ),
                       ],
                     ),
@@ -314,13 +345,12 @@ class _AddPetScreenState extends State<AddPetScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _sectionTitle('Peso (kg)'),
+                        _sectionTitle('Cidade'),
                         const SizedBox(height: 8),
                         _field(
-                          controller: _pesoCtrl,
-                          hint: 'Ex: 4.5',
-                          icon: Icons.monitor_weight_outlined,
-                          isDecimal: true,
+                          controller: _cidadeCtrl,
+                          hint: 'Cidade',
+                          icon: Icons.location_city_outlined,
                         ),
                       ],
                     ),
@@ -351,21 +381,29 @@ class _AddPetScreenState extends State<AddPetScreen> {
                   Expanded(
                     flex: 2,
                     child: ElevatedButton(
-                      onPressed: _salvar,
+                      onPressed: isLoading ? null : _salvar,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
+                        disabledBackgroundColor: AppColors.primaryLight,
                         padding: const EdgeInsets.symmetric(vertical: 15),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12)),
                         elevation: 0,
                       ),
-                      child: Text(
-                        _isEditing ? 'Salvar Alterações' : 'Cadastrar Pet',
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15),
-                      ),
+                      child: isLoading
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                  color: Colors.white, strokeWidth: 2.5),
+                            )
+                          : const Text(
+                              'Salvar Alterações',
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15),
+                            ),
                     ),
                   ),
                 ],
@@ -408,8 +446,8 @@ class _AddPetScreenState extends State<AddPetScreen> {
         height: 100,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          image:
-              DecorationImage(image: NetworkImage(url), fit: BoxFit.cover),
+          image: DecorationImage(
+              image: NetworkImage(url), fit: BoxFit.cover),
         ),
       );
     }
@@ -420,12 +458,7 @@ class _AddPetScreenState extends State<AddPetScreen> {
         color: AppColors.primaryLight,
         shape: BoxShape.circle,
       ),
-      child: const Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.pets, size: 36, color: AppColors.primary),
-        ],
-      ),
+      child: const Icon(Icons.store, size: 40, color: AppColors.primary),
     );
   }
 
@@ -439,21 +472,20 @@ class _AddPetScreenState extends State<AddPetScreen> {
     required TextEditingController controller,
     required String hint,
     required IconData icon,
-    bool isNumber = false,
-    bool isDecimal = false,
+    TextInputType? keyboard,
+    int maxLines = 1,
     String? Function(String?)? validator,
   }) =>
       TextFormField(
         controller: controller,
-        keyboardType: isDecimal
-            ? const TextInputType.numberWithOptions(decimal: true)
-            : isNumber
-                ? TextInputType.number
-                : TextInputType.text,
+        keyboardType: keyboard,
+        maxLines: maxLines,
         decoration: InputDecoration(
           hintText: hint,
           hintStyle: const TextStyle(color: AppColors.grey, fontSize: 14),
-          prefixIcon: Icon(icon, color: AppColors.grey, size: 20),
+          prefixIcon: maxLines == 1
+              ? Icon(icon, color: AppColors.grey, size: 20)
+              : null,
           filled: true,
           fillColor: Colors.white,
           contentPadding:
