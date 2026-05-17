@@ -5,13 +5,14 @@ import {
   ConflictException,
   ForbiddenException,
   InternalServerErrorException,
+  NotFoundException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { User, Role } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import * as http from 'http';
 import { PrismaService } from './prisma.service';
-import { LoginDto, RegisterDto } from './login.dto';
+import { LoginDto, RegisterDto, UpdateUserDto } from './login.dto';
 
 const ESTAB_URL =
   process.env.ESTABLISHMENT_SERVICE_URL ?? 'http://localhost:3003';
@@ -155,6 +156,25 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new UnauthorizedException('Usuário não encontrado');
     return this.toPublic(user);
+  }
+
+  async updateMe(userId: string, dto: UpdateUserDto) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('Usuário não encontrado');
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(dto.name !== undefined && { name: dto.name }),
+        ...(dto.phone !== undefined && { phone: dto.phone }),
+      },
+    });
+    return this.toPublic(updated);
+  }
+
+  async deleteMe(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('Usuário não encontrado');
+    await this.prisma.user.delete({ where: { id: userId } });
   }
 
   async refresh(userId: string) {

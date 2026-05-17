@@ -85,6 +85,12 @@ export class AppController {
     return this.appService.addService(id, body);
   }
 
+  @Delete('establishments/:id')
+  @HttpCode(204)
+  async remove(@Param('id') id: string) {
+    await this.appService.remove(id);
+  }
+
   @Delete('establishments/:id/services/:serviceId')
   @HttpCode(200)
   removeService(

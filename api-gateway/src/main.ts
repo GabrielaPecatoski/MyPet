@@ -17,7 +17,9 @@ const ROUTES = [
   { prefix: '/faq',            target: process.env.FAQ_SERVICE_URL           ?? 'http://localhost:3008' },
 ];
 
-const GATEWAY_HANDLED = ['/auth/me', '/auth/refresh'];
+// Only these specific method+path combos are handled by the gateway itself;
+// all others (PATCH/DELETE /auth/me, etc.) are proxied to the downstream service.
+const GATEWAY_HANDLED = new Set(['GET:/auth/me', 'POST:/auth/refresh']);
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -40,7 +42,7 @@ async function bootstrap() {
   for (const route of ROUTES) {
     expressApp.use(route.prefix, (req: Request, res: Response, next: NextFunction) => {
       const fullPath = `${route.prefix}${req.path}`;
-      if (GATEWAY_HANDLED.includes(fullPath)) return next();
+      if (GATEWAY_HANDLED.has(`${req.method}:${fullPath}`)) return next();
 
       const proxy = createProxyMiddleware({
         target: route.target,

@@ -56,6 +56,62 @@ class EstablishmentService {
     throw Exception(data['message'] ?? 'Erro ao criar estabelecimento');
   }
 
+  static Future<EstablishmentModel> update({
+    required String token,
+    required String establishmentId,
+    required String name,
+    required String description,
+    required String address,
+    required String city,
+    required String phone,
+    required String type,
+    String? imageUrl,
+  }) async {
+    final body = <String, dynamic>{
+      'name': name,
+      'description': description,
+      'address': address,
+      'city': city,
+      'phone': phone,
+      'type': type,
+    };
+    if (imageUrl != null) body['imageUrl'] = imageUrl;
+    final res = await http
+        .patch(
+          Uri.parse(
+              '${ApiConstants.baseUrl}${ApiConstants.establishmentsEndpoint}/$establishmentId'),
+          headers: _headers(token),
+          body: jsonEncode(body),
+        )
+        .timeout(const Duration(seconds: 10));
+    final data = jsonDecode(res.body) as Map<String, dynamic>;
+    if (res.statusCode == 200) {
+      return EstablishmentModel.fromJson(data);
+    }
+    throw Exception(data['message'] ?? 'Erro ao atualizar estabelecimento');
+  }
+
+  static Future<void> delete({
+    required String token,
+    required String establishmentId,
+  }) async {
+    final res = await http
+        .delete(
+          Uri.parse(
+              '${ApiConstants.baseUrl}${ApiConstants.establishmentsEndpoint}/$establishmentId'),
+          headers: _headers(token),
+        )
+        .timeout(const Duration(seconds: 8));
+    if (res.statusCode != 204 && res.statusCode != 200) {
+      String msg = 'Erro ao remover estabelecimento';
+      try {
+        final data = jsonDecode(res.body) as Map<String, dynamic>;
+        msg = data['message'] as String? ?? msg;
+      } catch (_) {}
+      throw Exception(msg);
+    }
+  }
+
   static Future<EstablishmentModel> addService({
     required String token,
     required String establishmentId,
