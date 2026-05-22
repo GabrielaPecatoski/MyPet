@@ -6,7 +6,7 @@ import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { SharedMessagingService } from "@shared/infra/messaging/shared-messaging.service";
 import { ReviewExchangeName, ReviewRoutingKey } from "@shared/contracts/events/review-events.enum";
 
-export interface CreateReviewDto { establishmentId: string; userName: string; rating: number; comment?: string; }
+export interface CreateReviewDto { establishmentId: string; userName: string; bookingId?: string; rating: number; comment?: string; }
 export interface CreateComplaintDto { establishmentId: string; bookingId?: string; subject: string; description: string; category?: string; }
 
 @Injectable()
@@ -24,20 +24,45 @@ export class ReviewService {
       userId,
       establishmentId: dto.establishmentId,
       userName: dto.userName,
+      bookingId: dto.bookingId,
       rating: dto.rating,
       comment: dto.comment ?? "",
     })!;
     await this.reviewRepo.create(review);
+    const stats = await this.reviewRepo.getStats(dto.establishmentId);
     await this.safePublish(ReviewExchangeName.CREATED, ReviewRoutingKey.CREATED, {
       reviewId: review.id!,
       establishmentId: dto.establishmentId,
       userId,
       rating: dto.rating,
+      newAverage: stats.average,
+      newCount: stats.count,
     });
   }
 
+  async getReviewsByUser(userId: string) {
+    const reviews = await this.reviewRepo.findByUserId(userId);
+    return reviews.map((r) => ({
+      id: r.id,
+      establishmentId: r.establishmentId,
+      bookingId: r.bookingId ?? null,
+      rating: r.rating,
+      comment: r.comment,
+      createdAt: r.createdAt,
+    }));
+  }
+
   async getReviews(establishmentId: string) {
-    return this.reviewRepo.findByEstablishmentId(establishmentId);
+    const reviews = await this.reviewRepo.findByEstablishmentId(establishmentId);
+    return reviews.map((r) => ({
+      id: r.id,
+      establishmentId: r.establishmentId,
+      userId: r.userId,
+      userName: r.userName,
+      rating: r.rating,
+      comment: r.comment,
+      createdAt: r.createdAt,
+    }));
   }
 
   async getStats(establishmentId: string) {
@@ -68,32 +93,54 @@ export class ReviewService {
   }
 
   async getComplaints(status?: string) {
-    return this.complaintRepo.findAll(status);
+    const complaints = await this.complaintRepo.findAll(status);
+    return complaints.map(this._toComplaintDto);
   }
 
   async getComplaintsByEstablishment(establishmentId: string) {
-    return this.complaintRepo.findByEstablishmentId(establishmentId);
+    const complaints = await this.complaintRepo.findByEstablishmentId(establishmentId);
+    return complaints.map(this._toComplaintDto);
   }
 
-  async resolveComplaint(id: string): Promise<void> {
+  private _toComplaintDto(c: Complaint) {
+    return {
+      id: c.id,
+      establishmentId: c.establishmentId,
+      userId: c.userId,
+      userName: c.userName,
+      bookingId: c.bookingId,
+      subject: c.subject,
+      description: c.description,
+      category: c.category,
+      status: c.status,
+      response: c.response,
+      createdAt: c.createdAt,
+      updatedAt: c.updatedAt,
+    };
+  }
+
+  async resolveComplaint(id: string): Promise<object> {
     const c = await this.complaintRepo.findById(id);
     if (!c) throw new NotFoundException("Reclamação não encontrada");
     c.withStatus("RESOLVIDA");
     await this.complaintRepo.update(c);
+    return this._toComplaintDto(c);
   }
 
-  async rejectComplaint(id: string): Promise<void> {
+  async rejectComplaint(id: string): Promise<object> {
     const c = await this.complaintRepo.findById(id);
     if (!c) throw new NotFoundException("Reclamação não encontrada");
     c.withStatus("REJEITADA");
     await this.complaintRepo.update(c);
+    return this._toComplaintDto(c);
   }
 
-  async respondToComplaint(id: string, response: string): Promise<void> {
+  async respondToComplaint(id: string, response: string): Promise<object> {
     const c = await this.complaintRepo.findById(id);
     if (!c) throw new NotFoundException("Reclamação não encontrada");
     c.withResponse(response).withStatus("EM_ANALISE");
     await this.complaintRepo.update(c);
+    return this._toComplaintDto(c);
   }
 
   async deleteComplaint(id: string): Promise<void> {

@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/colors.dart';
+import '../models/availability.dart';
 import '../models/establishment.dart';
 import '../models/review.dart';
 import '../providers/auth_provider.dart';
+import '../services/availability_service.dart';
+import '../services/establishment_service.dart';
 import '../services/review_service.dart';
 import '../widgets/app_bottom_nav.dart';
 import '../widgets/mypet_app_bar.dart';
@@ -20,55 +23,40 @@ class _EstablishmentDetailScreenState
     extends State<EstablishmentDetailScreen> {
   List<ReviewModel> _reviews = [];
   bool _reviewsLoading = true;
+  List<ServiceModel> _services = [];
+  ScheduleModel? _schedule;
+  bool _servicesLoaded = false;
 
-  static final List<ReviewModel> _mockReviews = [
-    ReviewModel(
-      id: '1',
-      userId: 'u1',
-      userName: 'João Santos',
-      establishmentId: '',
-      bookingId: '',
-      rating: 5,
-      comment: 'Excelente atendimento! Meu cachorro ficou muito bem cuidado.',
-      createdAt: DateTime(2026, 3, 12),
-    ),
-    ReviewModel(
-      id: '2',
-      userId: 'u2',
-      userName: 'Ana Costa',
-      establishmentId: '',
-      bookingId: '',
-      rating: 4,
-      comment: 'Bom serviço, mas o preço poderia ser melhor.',
-      createdAt: DateTime(2026, 3, 10),
-    ),
-    ReviewModel(
-      id: '3',
-      userId: 'u3',
-      userName: 'Pedro Almeida',
-      establishmentId: '',
-      bookingId: '',
-      rating: 4,
-      comment: 'Melhor pet shop da região! Sempre volto com meus pets.',
-      createdAt: DateTime(2026, 3, 10),
-    ),
-    ReviewModel(
-      id: '4',
-      userId: 'u4',
-      userName: 'Fernanda Souza',
-      establishmentId: '',
-      bookingId: '',
-      rating: 4,
-      comment: 'Atendimento excelente, apenas o tempo de espera poderia ser menor.',
-      createdAt: DateTime(2026, 3, 10),
-    ),
-  ];
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final e = ModalRoute.of(context)!.settings.arguments as EstablishmentModel;
-    _loadReviews(e.id);
+    if (!_servicesLoaded) {
+      _servicesLoaded = true;
+      _loadServices(e.id);
+      _loadReviews(e.id);
+      _loadSchedule(e.id);
+    }
+  }
+
+  Future<void> _loadServices(String establishmentId) async {
+    try {
+      final services = await EstablishmentService.fetchServices(establishmentId);
+      if (mounted) setState(() => _services = services);
+    } catch (_) {}
+  }
+
+  Future<void> _loadSchedule(String establishmentId) async {
+    final token = context.read<AuthProvider>().token;
+    if (token == null) return;
+    try {
+      final schedule = await AvailabilityService.getSchedule(
+        token: token,
+        estabId: establishmentId,
+      );
+      if (mounted) setState(() => _schedule = schedule);
+    } catch (_) {}
   }
 
   Future<void> _loadReviews(String establishmentId) async {
@@ -80,10 +68,46 @@ class _EstablishmentDetailScreenState
       );
       if (mounted) setState(() => _reviews = reviews);
     } catch (_) {
-      if (mounted) setState(() => _reviews = _mockReviews);
     } finally {
       if (mounted) setState(() => _reviewsLoading = false);
     }
+  }
+
+  double get _liveRating {
+    if (_reviews.isEmpty) return 0.0;
+    return _reviews.fold<int>(0, (s, r) => s + r.rating) / _reviews.length;
+  }
+
+  int get _liveReviewCount => _reviews.length;
+
+  String _fmtTime(String t) {
+    final parts = t.split(':');
+    final h = int.parse(parts[0]);
+    final m = int.parse(parts[1]);
+    return m == 0 ? '${h}h' : '${h}h${parts[1]}';
+  }
+
+  String _formatScheduleHours(ScheduleModel schedule) {
+    final byDay = {for (final d in schedule.days) d.dayOfWeek: d};
+    final parts = <String>[];
+
+    final mon = byDay[1];
+    final fri = byDay[5];
+    if (mon != null && mon.isOpen) {
+      final sameAsFri = fri != null &&
+          fri.isOpen &&
+          fri.startTime == mon.startTime &&
+          fri.endTime == mon.endTime;
+      final label = sameAsFri ? 'Seg–Sex' : 'Seg';
+      parts.add('$label: ${_fmtTime(mon.startTime)}–${_fmtTime(mon.endTime)}');
+    }
+
+    final sat = byDay[6];
+    if (sat != null && sat.isOpen) {
+      parts.add('Sáb: ${_fmtTime(sat.startTime)}–${_fmtTime(sat.endTime)}');
+    }
+
+    return parts.isEmpty ? 'Fechado' : parts.join('  •  ');
   }
 
   @override
@@ -139,13 +163,13 @@ class _EstablishmentDetailScreenState
                           const Icon(Icons.star,
                               color: Color(0xFFFFC107), size: 18),
                           const SizedBox(width: 4),
-                          Text('${e.rating}',
+                          Text(_liveRating > 0 ? _liveRating.toStringAsFixed(1) : '–',
                               style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 14,
                                   color: AppColors.dark)),
                           Flexible(
-                            child: Text(' (${e.reviewCount} avaliações)',
+                            child: Text(' ($_liveReviewCount avaliações)',
                                 style: const TextStyle(
                                     color: AppColors.grey, fontSize: 13),
                                 overflow: TextOverflow.ellipsis),
@@ -172,7 +196,7 @@ class _EstablishmentDetailScreenState
                       _infoRow(Icons.phone_outlined, e.phone),
                       const SizedBox(height: 8),
                       _infoRow(Icons.access_time_outlined,
-                          'Seg–Sex: 8h–18h  •  Sáb: 8h–13h'),
+                          _schedule != null ? _formatScheduleHours(_schedule!) : '...'),
                     ],
                   ),
                 ),
@@ -191,7 +215,7 @@ class _EstablishmentDetailScreenState
                 ),
               ),
 
-              if (e.services.isEmpty)
+              if (_services.isEmpty)
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -211,7 +235,7 @@ class _EstablishmentDetailScreenState
               SliverList(
                 delegate: SliverChildBuilderDelegate(
                   (ctx, i) {
-                    final service = e.services[i];
+                    final service = _services[i];
                     return Padding(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
                       child: Container(
@@ -273,7 +297,7 @@ class _EstablishmentDetailScreenState
                       ),
                     );
                   },
-                  childCount: e.services.length,
+                  childCount: _services.length,
                 ),
               ),
 
@@ -291,7 +315,7 @@ class _EstablishmentDetailScreenState
                             color: AppColors.dark),
                       ),
                       const SizedBox(height: 12),
-                      if (e.rating > 0)
+                      if (_liveRating > 0)
                         Container(
                           width: double.infinity,
                           padding: const EdgeInsets.symmetric(
@@ -303,17 +327,17 @@ class _EstablishmentDetailScreenState
                           child: Column(
                             children: [
                               Text(
-                                e.rating.toStringAsFixed(1),
+                                _liveRating.toStringAsFixed(1),
                                 style: const TextStyle(
                                     fontSize: 40,
                                     fontWeight: FontWeight.bold,
                                     color: AppColors.primary),
                               ),
                               const SizedBox(height: 6),
-                              _StarRow(rating: e.rating),
+                              _StarRow(rating: _liveRating),
                               const SizedBox(height: 4),
                               Text(
-                                '${e.reviewCount} avaliações',
+                                '$_liveReviewCount avaliações',
                                 style: const TextStyle(
                                     color: AppColors.grey, fontSize: 13),
                               ),

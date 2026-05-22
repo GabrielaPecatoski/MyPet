@@ -70,11 +70,13 @@ export class AuthService {
   }
 
   private generateToken(user: User): string {
+    const permissions = ROLE_PERMISSIONS[user.role] ?? user.permissions;
     return this.jwtService.sign({
       sub: user.id,
       email: user.email,
+      name: user.name,
       role: user.role,
-      permissions: user.permissions,
+      permissions,
     });
   }
 }

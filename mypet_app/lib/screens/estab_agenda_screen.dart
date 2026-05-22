@@ -5,7 +5,6 @@ import '../models/appointment.dart';
 import '../providers/auth_provider.dart';
 import '../providers/booking_provider.dart';
 import '../providers/establishment_provider.dart';
-import '../services/review_service.dart';
 import '../widgets/mypet_app_bar.dart';
 import 'estab_horarios_screen.dart';
 
@@ -84,13 +83,27 @@ class _EstabAgendaScreenState extends State<EstabAgendaScreen> {
           status: status,
         );
     if (!mounted) return;
+    String msg;
+    Color color;
+    if (!ok) {
+      msg = 'Erro ao atualizar agendamento';
+      color = AppColors.danger;
+    } else {
+      switch (status) {
+        case 'CONFIRMADO':
+          msg = 'Agendamento confirmado!';
+          color = AppColors.success;
+        case 'CONCLUIDO':
+          msg = 'Serviço concluído!';
+          color = AppColors.primary;
+        default:
+          msg = 'Agendamento recusado';
+          color = AppColors.danger;
+      }
+    }
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(ok
-          ? (status == 'CONFIRMADO' ? 'Agendamento confirmado!' : 'Agendamento recusado')
-          : 'Erro ao atualizar agendamento'),
-      backgroundColor: ok
-          ? (status == 'CONFIRMADO' ? AppColors.success : AppColors.danger)
-          : AppColors.danger,
+      content: Text(msg),
+      backgroundColor: color,
     ));
   }
 
@@ -522,8 +535,6 @@ class _ApptCard extends StatelessWidget {
   Future<void> _showAvaliarClienteDialog(BuildContext context, AppointmentModel ap) async {
     int selectedRating = 0;
     final commentCtrl = TextEditingController();
-    final estabProvider = context.read<EstablishmentProvider>();
-    final auth = context.read<AuthProvider>();
 
     await showDialog(
       context: context,
@@ -639,22 +650,6 @@ class _ApptCard extends StatelessWidget {
                         ? null
                         : () async {
                             Navigator.pop(ctx);
-                            try {
-                              await ReviewService.submitClientReview(
-                                establishmentId:
-                                    estabProvider.establishmentId ?? '',
-                                establishmentName:
-                                    estabProvider.establishment?.name ?? '',
-                                clientId: ap.userId,
-                                clientName: ap.userName,
-                                bookingId: ap.id,
-                                rating: selectedRating,
-                                comment: commentCtrl.text.trim().isEmpty
-                                    ? null
-                                    : commentCtrl.text.trim(),
-                                token: auth.token,
-                              );
-                            } catch (_) {}
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(

@@ -14,6 +14,7 @@ export class DrizzleReviewRepository implements ReviewRepository {
       establishmentId: r.establishmentId,
       userId: r.userId,
       userName: r.userName,
+      bookingId: r.bookingId ?? null,
       rating: r.rating,
       comment: r.comment,
       createdAt: new Date(),
@@ -25,6 +26,14 @@ export class DrizzleReviewRepository implements ReviewRepository {
       .select()
       .from(reviewsSchema)
       .where(eq(reviewsSchema.establishmentId, establishmentId));
+    return rows.map((r) => Review.restore(r)!);
+  }
+
+  async findByUserId(userId: string): Promise<Review[]> {
+    const rows = await this.drizzleService.db
+      .select()
+      .from(reviewsSchema)
+      .where(eq(reviewsSchema.userId, userId));
     return rows.map((r) => Review.restore(r)!);
   }
 

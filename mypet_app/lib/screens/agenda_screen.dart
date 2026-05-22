@@ -4,6 +4,7 @@ import '../core/colors.dart';
 import '../models/appointment.dart';
 import '../providers/auth_provider.dart';
 import '../providers/booking_provider.dart';
+import '../services/review_service.dart';
 import '../widgets/mypet_app_bar.dart';
 
 class AgendaScreen extends StatefulWidget {
@@ -16,6 +17,7 @@ class AgendaScreen extends StatefulWidget {
 class _AgendaScreenState extends State<AgendaScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  final Set<String> _reviewedBookingIds = {};
 
   @override
   void initState() {
@@ -31,6 +33,20 @@ class _AgendaScreenState extends State<AgendaScreen>
           token: auth.token!,
           userId: auth.user!.id,
         );
+    _loadReviewed(auth.token!);
+  }
+
+  Future<void> _loadReviewed(String token) async {
+    try {
+      final reviews = await ReviewService.getMyReviews(token: token);
+      if (mounted) {
+        setState(() {
+          _reviewedBookingIds.addAll(
+            reviews.where((r) => r.bookingId.isNotEmpty).map((r) => r.bookingId),
+          );
+        });
+      }
+    } catch (_) {}
   }
 
   @override
@@ -78,8 +94,8 @@ class _AgendaScreenState extends State<AgendaScreen>
   @override
   Widget build(BuildContext context) {
     final booking = context.watch<BookingProvider>();
-    final proximos = booking.confirmados;
-    final pendentes = booking.pendentes;
+    final proximos = booking.ativos;
+    final historico = booking.historico;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -105,13 +121,12 @@ class _AgendaScreenState extends State<AgendaScreen>
               labelStyle:
                   const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
               tabs: [
-                const Tab(text: 'Próximos'),
                 Tab(
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text('Pendentes'),
-                      if (pendentes.isNotEmpty) ...[
+                      const Text('Próximos'),
+                      if (booking.pendentes.isNotEmpty) ...[
                         const SizedBox(width: 6),
                         Container(
                           padding: const EdgeInsets.symmetric(
@@ -120,7 +135,7 @@ class _AgendaScreenState extends State<AgendaScreen>
                             color: AppColors.warning,
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child: Text('${pendentes.length}',
+                          child: Text('${booking.pendentes.length}',
                               style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 11,
@@ -130,6 +145,7 @@ class _AgendaScreenState extends State<AgendaScreen>
                     ],
                   ),
                 ),
+                const Tab(text: 'Histórico'),
               ],
             ),
           ),
@@ -138,6 +154,35 @@ class _AgendaScreenState extends State<AgendaScreen>
             const Expanded(
                 child: Center(
                     child: CircularProgressIndicator(color: AppColors.primary)))
+          else if (booking.error != null)
+            Expanded(
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.wifi_off, size: 48, color: AppColors.greyLight),
+                      const SizedBox(height: 12),
+                      Text(
+                        booking.error!,
+                        style: const TextStyle(color: AppColors.grey),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: _load,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        child: const Text('Tentar novamente', style: TextStyle(color: Colors.white)),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            )
           else
             Expanded(
               child: RefreshIndicator(
@@ -147,9 +192,16 @@ class _AgendaScreenState extends State<AgendaScreen>
                   controller: _tabController,
                   children: [
                     _BookingList(
-                        appointments: proximos, onCancel: _cancel),
+                        appointments: proximos,
+                        onCancel: _cancel,
+                        reviewedBookingIds: _reviewedBookingIds,
+                        onReviewed: (bookingId) => setState(() => _reviewedBookingIds.add(bookingId))),
                     _BookingList(
-                        appointments: pendentes, onCancel: _cancel),
+                        appointments: historico,
+                        onCancel: _cancel,
+                        isHistory: true,
+                        reviewedBookingIds: _reviewedBookingIds,
+                        onReviewed: (bookingId) => setState(() => _reviewedBookingIds.add(bookingId))),
                   ],
                 ),
               ),
@@ -163,9 +215,17 @@ class _AgendaScreenState extends State<AgendaScreen>
 class _BookingList extends StatelessWidget {
   final List<AppointmentModel> appointments;
   final Future<void> Function(AppointmentModel) onCancel;
+  final bool isHistory;
+  final Set<String> reviewedBookingIds;
+  final void Function(String bookingId) onReviewed;
 
-  const _BookingList(
-      {required this.appointments, required this.onCancel});
+  const _BookingList({
+    required this.appointments,
+    required this.onCancel,
+    required this.reviewedBookingIds,
+    required this.onReviewed,
+    this.isHistory = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -185,14 +245,19 @@ class _BookingList extends StatelessWidget {
                   size: 34, color: AppColors.primary),
             ),
             const SizedBox(height: 16),
-            const Text('Nenhum agendamento',
-                style: TextStyle(
+            Text(
+                isHistory ? 'Nenhum histórico' : 'Nenhum agendamento',
+                style: const TextStyle(
                     color: AppColors.dark,
                     fontSize: 16,
                     fontWeight: FontWeight.w600)),
             const SizedBox(height: 6),
-            const Text('Seus agendamentos aparecerão aqui',
-                style: TextStyle(color: AppColors.grey, fontSize: 13)),
+            Text(
+                isHistory
+                    ? 'Agendamentos concluídos ou cancelados aparecerão aqui'
+                    : 'Agende um serviço e ele aparecerá aqui',
+                style: const TextStyle(color: AppColors.grey, fontSize: 13),
+                textAlign: TextAlign.center),
           ],
         ),
       );
@@ -201,8 +266,12 @@ class _BookingList extends StatelessWidget {
     return ListView.builder(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
       itemCount: appointments.length,
-      itemBuilder: (_, i) =>
-          _BookingCard(appointment: appointments[i], onCancel: onCancel),
+      itemBuilder: (_, i) => _BookingCard(
+        appointment: appointments[i],
+        onCancel: onCancel,
+        isReviewed: reviewedBookingIds.contains(appointments[i].id),
+        onReviewed: () => onReviewed(appointments[i].id),
+      ),
     );
   }
 }
@@ -210,9 +279,15 @@ class _BookingList extends StatelessWidget {
 class _BookingCard extends StatelessWidget {
   final AppointmentModel appointment;
   final Future<void> Function(AppointmentModel) onCancel;
+  final bool isReviewed;
+  final VoidCallback onReviewed;
 
-  const _BookingCard(
-      {required this.appointment, required this.onCancel});
+  const _BookingCard({
+    required this.appointment,
+    required this.onCancel,
+    required this.isReviewed,
+    required this.onReviewed,
+  });
 
   Color get _statusColor {
     switch (appointment.status) {
@@ -223,6 +298,8 @@ class _BookingCard extends StatelessWidget {
       case 'CANCELADO':
       case 'RECUSADO':
         return AppColors.danger;
+      case 'CONCLUIDO':
+        return AppColors.grey;
       default:
         return AppColors.grey;
     }
@@ -236,9 +313,136 @@ class _BookingCard extends StatelessWidget {
     return '${d.day} de ${months[d.month - 1]} de ${d.year}';
   }
 
+  void _showAvaliarDialog(BuildContext context) {
+    int selectedRating = 0;
+    final commentCtrl = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Avaliar Estabelecimento',
+              style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.dark)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                appointment.establishmentName,
+                style: const TextStyle(
+                    color: AppColors.primary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Como foi sua experiência?',
+                style: TextStyle(
+                    color: AppColors.dark,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(5, (i) {
+                  final star = i + 1;
+                  return IconButton(
+                    onPressed: () =>
+                        setDialogState(() => selectedRating = star),
+                    icon: Icon(
+                      star <= selectedRating ? Icons.star : Icons.star_border,
+                      color: star <= selectedRating
+                          ? const Color(0xFFFFC107)
+                          : AppColors.grey,
+                      size: 34,
+                    ),
+                    padding: EdgeInsets.zero,
+                    constraints:
+                        const BoxConstraints(minWidth: 40, minHeight: 40),
+                  );
+                }),
+              ),
+              const SizedBox(height: 14),
+              const Text('Deixe seu comentário (opcional)',
+                  style: TextStyle(fontSize: 13, color: AppColors.grey)),
+              const SizedBox(height: 6),
+              TextField(
+                controller: commentCtrl,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: AppColors.background,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: AppColors.greyLight),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: AppColors.greyLight),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: AppColors.primary),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: selectedRating == 0
+                    ? null
+                    : () async {
+                        Navigator.pop(ctx);
+                        final auth = context.read<AuthProvider>();
+                        try {
+                          await ReviewService.submitReview(
+                            establishmentId: appointment.establishmentId,
+                            bookingId: appointment.id,
+                            rating: selectedRating,
+                            comment: commentCtrl.text.trim().isEmpty
+                                ? null
+                                : commentCtrl.text.trim(),
+                            token: auth.token,
+                          );
+                        } catch (_) {}
+                        onReviewed();
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Avaliação enviada!'),
+                              backgroundColor: AppColors.success,
+                            ),
+                          );
+                        }
+                      },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  disabledBackgroundColor: AppColors.greyLight,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  elevation: 0,
+                ),
+                child: const Text('Enviar Avaliação',
+                    style: TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.w600)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final ap = appointment;
+    final isConcluido = ap.status == 'CONCLUIDO';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
@@ -336,6 +540,33 @@ class _BookingCard extends StatelessWidget {
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10)),
                     padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+              ),
+            ],
+
+            if (isConcluido) ...[
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: isReviewed ? null : () => _showAvaliarDialog(context),
+                  icon: Icon(
+                    isReviewed ? Icons.star : Icons.star_outline,
+                    size: 16,
+                    color: isReviewed ? AppColors.greyLight : AppColors.warning,
+                  ),
+                  label: Text(
+                    isReviewed ? 'Avaliado' : 'Avaliar estabelecimento',
+                    style: TextStyle(
+                        color: isReviewed ? AppColors.greyLight : AppColors.warning),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(
+                        color: isReviewed ? AppColors.greyLight : AppColors.warning),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
                   ),
                 ),
               ),

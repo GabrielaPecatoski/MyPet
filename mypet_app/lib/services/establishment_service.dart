@@ -23,7 +23,8 @@ class EstablishmentService {
     if (res.statusCode == 200) {
       final list = jsonDecode(res.body) as List;
       if (list.isEmpty) return null;
-      return EstablishmentModel.fromJson(list.first as Map<String, dynamic>);
+      final estab = list.first as Map<String, dynamic>;
+      return _fetchWithServices(token, estab['id'] as String, base: estab);
     }
     throw Exception('Erro ao buscar estabelecimento');
   }
@@ -42,18 +43,24 @@ class EstablishmentService {
           body: jsonEncode({
             'name': name,
             'phone': phone,
-            'description': '',
-            'address': '',
-            'city': '',
+            'description': 'Estabelecimento pet',
+            'address': 'A definir',
+            'city': 'A definir',
             'type': 'PET_SHOP',
           }),
         )
         .timeout(const Duration(seconds: 8));
-    final data = jsonDecode(res.body) as Map<String, dynamic>;
     if (res.statusCode == 200 || res.statusCode == 201) {
-      return EstablishmentModel.fromJson(data);
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      return _fetchWithServices(token, data['id'] as String, base: data);
     }
-    throw Exception(data['message'] ?? 'Erro ao criar estabelecimento');
+    String msg = 'Erro ao criar estabelecimento';
+    try {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      final m = data['message'];
+      msg = (m is List ? m.join(', ') : m?.toString()) ?? msg;
+    } catch (_) {}
+    throw Exception(msg);
   }
 
   static Future<EstablishmentModel> update({
@@ -84,11 +91,15 @@ class EstablishmentService {
           body: jsonEncode(body),
         )
         .timeout(const Duration(seconds: 10));
-    final data = jsonDecode(res.body) as Map<String, dynamic>;
-    if (res.statusCode == 200) {
-      return EstablishmentModel.fromJson(data);
+    if (res.statusCode == 200 || res.statusCode == 204) {
+      return _fetchWithServices(token, establishmentId);
     }
-    throw Exception(data['message'] ?? 'Erro ao atualizar estabelecimento');
+    String msg = 'Erro ao atualizar estabelecimento';
+    try {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      msg = data['message'] as String? ?? msg;
+    } catch (_) {}
+    throw Exception(msg);
   }
 
   static Future<void> delete({
@@ -129,16 +140,20 @@ class EstablishmentService {
             'name': name,
             'price': price,
             'durationMinutes': durationMinutes,
-            if (description != null && description.isNotEmpty)
-              'description': description,
+            if (description != null && description.isNotEmpty) 'description': description,
           }),
         )
         .timeout(const Duration(seconds: 8));
-    final data = jsonDecode(res.body) as Map<String, dynamic>;
     if (res.statusCode == 200 || res.statusCode == 201) {
-      return EstablishmentModel.fromJson(data);
+      return _fetchWithServices(token, establishmentId);
     }
-    throw Exception(data['message'] ?? 'Erro ao adicionar serviço');
+    String msg = 'Erro ao adicionar serviço';
+    try {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      final m = data['message'];
+      msg = (m is List ? m.join(', ') : m?.toString()) ?? msg;
+    } catch (_) {}
+    throw Exception(msg);
   }
 
   static Future<EstablishmentModel> removeService({
@@ -153,10 +168,68 @@ class EstablishmentService {
           headers: _headers(token),
         )
         .timeout(const Duration(seconds: 8));
-    final data = jsonDecode(res.body) as Map<String, dynamic>;
-    if (res.statusCode == 200) {
-      return EstablishmentModel.fromJson(data);
+    if (res.statusCode == 200 || res.statusCode == 204) {
+      return _fetchWithServices(token, establishmentId);
     }
-    throw Exception(data['message'] ?? 'Erro ao remover serviço');
+    String msg = 'Erro ao remover serviço';
+    try {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      final m = data['message'];
+      msg = (m is List ? m.join(', ') : m?.toString()) ?? msg;
+    } catch (_) {}
+    throw Exception(msg);
+  }
+
+  static Future<List<ServiceModel>> fetchServices(
+    String establishmentId,
+  ) async {
+    final res = await http
+        .get(
+          Uri.parse(
+              '${ApiConstants.baseUrl}${ApiConstants.establishmentsEndpoint}/$establishmentId/services'),
+        )
+        .timeout(const Duration(seconds: 8));
+    if (res.statusCode == 200) {
+      final list = jsonDecode(res.body) as List;
+      return list
+          .map((s) => ServiceModel.fromJson(s as Map<String, dynamic>))
+          .toList();
+    }
+    return [];
+  }
+
+  /// Fetches establishment + services and returns a combined model.
+  static Future<EstablishmentModel> _fetchWithServices(
+    String token,
+    String establishmentId, {
+    Map<String, dynamic>? base,
+  }) async {
+    Map<String, dynamic> estabData;
+    if (base != null) {
+      estabData = base;
+    } else {
+      final res = await http
+          .get(
+            Uri.parse(
+                '${ApiConstants.baseUrl}${ApiConstants.establishmentsEndpoint}/$establishmentId'),
+            headers: _headers(token),
+          )
+          .timeout(const Duration(seconds: 8));
+      if (res.statusCode != 200) throw Exception('Erro ao buscar estabelecimento');
+      estabData = jsonDecode(res.body) as Map<String, dynamic>;
+    }
+
+    final svcRes = await http
+        .get(
+          Uri.parse(
+              '${ApiConstants.baseUrl}${ApiConstants.establishmentsEndpoint}/$establishmentId/services'),
+          headers: _headers(token),
+        )
+        .timeout(const Duration(seconds: 8));
+    final services = svcRes.statusCode == 200
+        ? jsonDecode(svcRes.body) as List
+        : [];
+    estabData['services'] = services;
+    return EstablishmentModel.fromJson(estabData);
   }
 }

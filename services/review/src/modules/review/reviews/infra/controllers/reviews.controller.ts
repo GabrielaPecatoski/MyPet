@@ -33,14 +33,23 @@ export class ReviewsController {
   async createReview(
     @Param("id") establishmentId: string,
     @CurrentUser() user: AuthenticatedUser,
-    @Body() body: { rating: number; comment?: string },
+    @Body() body: { rating: number; comment?: string; bookingId?: string },
   ) {
     return this.reviewService.createReview(user.sub, {
       establishmentId,
-      userName: user.email,
+      userName: user.name,
+      bookingId: body.bookingId,
       rating: body.rating,
       comment: body.comment,
     });
+  }
+
+  @Get("user/me")
+  @ApiBearerAuth()
+  @RequirePermissions(Permission.REVIEWS_WRITE)
+  @ApiOperation({ summary: "Avaliações do usuário autenticado" })
+  async getMyReviews(@CurrentUser() user: AuthenticatedUser) {
+    return this.reviewService.getReviewsByUser(user.sub);
   }
 
   @Get("admin/stats")
@@ -60,21 +69,17 @@ export class ReviewsController {
   }
 
   @Patch("admin/complaints/:id/resolve")
-  @HttpCode(HttpStatus.NO_CONTENT)
   @ApiBearerAuth()
   @RequirePermissions(Permission.ADMIN_WRITE)
   @ApiOperation({ summary: "Resolver reclamação (admin)" })
-  @ApiNoContentResponse({ description: "Reclamação resolvida" })
   async resolve(@Param("id") id: string) {
     return this.reviewService.resolveComplaint(id);
   }
 
   @Patch("admin/complaints/:id/reject")
-  @HttpCode(HttpStatus.NO_CONTENT)
   @ApiBearerAuth()
   @RequirePermissions(Permission.ADMIN_WRITE)
   @ApiOperation({ summary: "Rejeitar reclamação (admin)" })
-  @ApiNoContentResponse({ description: "Reclamação rejeitada" })
   async reject(@Param("id") id: string) {
     return this.reviewService.rejectComplaint(id);
   }
@@ -109,11 +114,9 @@ export class ReviewsController {
   }
 
   @Patch("complaints/:id/respond")
-  @HttpCode(HttpStatus.NO_CONTENT)
   @ApiBearerAuth()
   @RequirePermissions(Permission.COMPLAINTS_WRITE)
   @ApiOperation({ summary: "Responder reclamação" })
-  @ApiNoContentResponse({ description: "Resposta enviada" })
   async respond(
     @Param("id") id: string,
     @Body() body: { response: string },
