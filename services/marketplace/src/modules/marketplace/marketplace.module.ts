@@ -8,7 +8,9 @@ import { ORDER_REPOSITORY } from "@market/orders/domain/repositories/order-repos
 import { DrizzleProductRepository } from "@market/products/infra/repositories/drizzle-product.repository";
 import { DrizzleCartRepository } from "@market/cart/infra/repositories/drizzle-cart.repository";
 import { DrizzleOrderRepository } from "@market/orders/infra/repositories/drizzle-order.repository";
-import { ProductsController, CartController, OrdersController } from "@market/products/infra/controllers/products.controller";
+import { ProductsController } from "@market/products/infra/controllers/products.controller";
+import { CartController } from "@market/cart/infra/controllers/cart.controller";
+import { OrdersController } from "@market/orders/infra/controllers/orders.controller";
 
 @Module({
   controllers: [ProductsController, CartController, OrdersController],
