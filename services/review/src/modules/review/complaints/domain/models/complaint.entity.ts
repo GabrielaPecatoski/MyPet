@@ -36,6 +36,23 @@ export class Complaint {
   withStatus(status: ComplaintStatus) { this._status = status; return this; }
   withResponse(response: string) { this._response = response; return this; }
 
+  toJSON() {
+    return {
+      id: this._id,
+      establishmentId: this._establishmentId,
+      userId: this._userId,
+      userName: this._userName,
+      bookingId: this._bookingId,
+      subject: this._subject,
+      description: this._description,
+      category: this._category,
+      status: this._status,
+      response: this._response,
+      createdAt: this._createdAt,
+      updatedAt: this._updatedAt,
+    };
+  }
+
   static restore(props?: {
     id?: string;
     establishmentId: string;

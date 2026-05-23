@@ -26,6 +26,7 @@ import { RequirePermissions } from "@shared/infra/decorators/permissions.decorat
 import { CurrentUser } from "@shared/infra/decorators/current-user.decorator";
 import type { AuthenticatedUser } from "@shared/infra/auth/interfaces/authenticated-user.interface";
 import { HateoasItem } from "@shared/infra/hateoas";
+import { Public } from "@shared/infra/decorators/public.decorator";
 
 @ApiTags("bookings")
 @ApiBearerAuth()
@@ -34,12 +35,13 @@ export class BookingsController {
   constructor(private readonly bookingService: BookingService) {}
 
   @Post()
+  @HttpCode(HttpStatus.CREATED)
   @RequirePermissions(Permission.BOOKINGS_WRITE)
   @ApiOperation({ summary: "Criar agendamento" })
   async create(
     @CurrentUser() user: AuthenticatedUser,
     @Body() body: CreateBookingDto,
-  ) {
+  ): Promise<BookingDto> {
     return this.bookingService.create(user.sub, user.email, body);
   }
 
@@ -55,6 +57,13 @@ export class BookingsController {
   @ApiOperation({ summary: "Listar agendamentos do estabelecimento" })
   async findByEstablishment(@Param("establishmentId") id: string): Promise<BookingDto[]> {
     return this.bookingService.findByEstablishment(id);
+  }
+
+  @Get("establishment/:establishmentId/stats")
+  @RequirePermissions(Permission.BOOKINGS_READ)
+  @ApiOperation({ summary: "Estatísticas de agendamentos do estabelecimento" })
+  async getStats(@Param("establishmentId") id: string) {
+    return this.bookingService.getStats(id);
   }
 
   @Get(":id")
@@ -73,32 +82,26 @@ export class BookingsController {
   }
 
   @Patch(":id/status")
-  @HttpCode(HttpStatus.NO_CONTENT)
   @RequirePermissions(Permission.BOOKINGS_WRITE)
   @ApiOperation({ summary: "Atualizar status do agendamento" })
-  @ApiNoContentResponse({ description: "Status atualizado" })
   async updateStatus(
     @Param("id") id: string,
     @Body() body: { status: BookingStatus },
-  ) {
+  ): Promise<BookingDto> {
     return this.bookingService.updateStatus(id, body.status);
   }
 
   @Patch(":id/cancel")
-  @HttpCode(HttpStatus.NO_CONTENT)
   @RequirePermissions(Permission.BOOKINGS_WRITE)
   @ApiOperation({ summary: "Cancelar agendamento" })
-  @ApiNoContentResponse({ description: "Agendamento cancelado" })
-  async cancel(@Param("id") id: string) {
+  async cancel(@Param("id") id: string): Promise<BookingDto> {
     return this.bookingService.cancel(id);
   }
 
   @Patch(":id/complete")
-  @HttpCode(HttpStatus.NO_CONTENT)
   @RequirePermissions(Permission.BOOKINGS_WRITE)
   @ApiOperation({ summary: "Concluir agendamento" })
-  @ApiNoContentResponse({ description: "Agendamento concluído" })
-  async complete(@Param("id") id: string) {
+  async complete(@Param("id") id: string): Promise<BookingDto> {
     return this.bookingService.complete(id);
   }
 
@@ -122,14 +125,19 @@ export class AvailabilityController {
   @RequirePermissions(Permission.AVAILABILITY_READ)
   @ApiOperation({ summary: "Buscar horários do estabelecimento" })
   async getSchedule(@Param("estabId") estabId: string) {
-    return this.availabilityService.getSchedule(estabId);
+    return this.availabilityService.getFullSchedule(estabId);
   }
 
   @Post("schedule")
   @RequirePermissions(Permission.AVAILABILITY_WRITE)
-  @ApiOperation({ summary: "Definir horário do estabelecimento" })
-  async setSchedule(@Body() body: { establishmentId: string; dayOfWeek: number; openTime: string; closeTime: string; slotDuration?: number }) {
-    return this.availabilityService.setSchedule(body);
+  @ApiOperation({ summary: "Definir horário completo do estabelecimento" })
+  async setSchedule(@Body() body: {
+    establishmentId: string;
+    slotDurationMinutes: number;
+    capacity?: number;
+    days: { dayOfWeek: number; startTime: string; endTime: string; isOpen: boolean }[];
+  }) {
+    return this.availabilityService.setFullSchedule(body);
   }
 
   @Get("blocked/:estabId")
@@ -156,7 +164,7 @@ export class AvailabilityController {
   }
 
   @Get(":estabId")
-  @RequirePermissions(Permission.AVAILABILITY_READ)
+  @Public()
   @ApiOperation({ summary: "Listar slots disponíveis para uma data" })
   async getAvailability(
     @Param("estabId") estabId: string,

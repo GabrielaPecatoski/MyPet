@@ -19,16 +19,33 @@ export class DrizzleScheduleRepository implements ScheduleRepository {
         openTime: schedule.openTime,
         closeTime: schedule.closeTime,
         slotDuration: schedule.slotDuration,
+        isOpen: schedule.isOpen,
+        capacity: schedule.capacity,
       })
       .onConflictDoUpdate({
         target: [schedulesSchema.establishmentId, schedulesSchema.dayOfWeek],
-        set: { openTime: schedule.openTime, closeTime: schedule.closeTime, slotDuration: schedule.slotDuration },
+        set: {
+          openTime: schedule.openTime,
+          closeTime: schedule.closeTime,
+          slotDuration: schedule.slotDuration,
+          isOpen: schedule.isOpen,
+          capacity: schedule.capacity,
+        },
       });
   }
 
   async findByEstablishmentId(establishmentId: string): Promise<Schedule[]> {
-    const rows = await this.drizzleService.db.select().from(schedulesSchema).where(eq(schedulesSchema.establishmentId, establishmentId));
-    return rows.map((r) => Schedule.restore(r)!);
+    const rows = await this.drizzleService.db
+      .select()
+      .from(schedulesSchema)
+      .where(eq(schedulesSchema.establishmentId, establishmentId));
+    return rows.map((r) =>
+      Schedule.restore({
+        ...r,
+        isOpen: r.isOpen ?? true,
+        capacity: r.capacity ?? 1,
+      })!,
+    );
   }
 }
 
@@ -52,6 +69,6 @@ export class DrizzleBlockedSlotRepository implements BlockedSlotRepository {
 
   async findByEstablishmentId(establishmentId: string): Promise<BlockedSlot[]> {
     const rows = await this.drizzleService.db.select().from(blockedSlotsSchema).where(eq(blockedSlotsSchema.establishmentId, establishmentId));
-    return rows.map((r) => BlockedSlot.restore(r)!);
+    return rows.map((r) => BlockedSlot.restore({ ...r, reason: r.reason ?? undefined })!);
   }
 }

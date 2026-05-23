@@ -21,6 +21,7 @@ class _EstabHorariosScreenState extends State<EstabHorariosScreen>
   bool _loadingSchedule = false;
   bool _savingSchedule = false;
   int _slotDuration = 60;
+  int _capacity = 1;
 
   DateTime _selectedDay = DateTime.now();
   List<TimeSlotModel> _slots = [];
@@ -71,6 +72,7 @@ class _EstabHorariosScreenState extends State<EstabHorariosScreen>
       setState(() {
         _schedule = s;
         _slotDuration = s.slotDurationMinutes;
+        _capacity = s.capacity;
       });
     } catch (_) {
       setState(() => _schedule = _defaultSchedule(id ?? 'local'));
@@ -91,6 +93,7 @@ class _EstabHorariosScreenState extends State<EstabHorariosScreen>
         schedule: ScheduleModel(
           establishmentId: id,
           slotDurationMinutes: _slotDuration,
+          capacity: _capacity,
           days: s.days,
         ),
       );
@@ -151,7 +154,8 @@ class _EstabHorariosScreenState extends State<EstabHorariosScreen>
           token: token,
           estabId: id,
           date: _formatDateKey(_selectedDay),
-          time: slot.time,
+          startTime: slot.time,
+          endTime: AvailabilityService.addMinutes(slot.time, _slotDuration),
         );
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -190,6 +194,7 @@ class _EstabHorariosScreenState extends State<EstabHorariosScreen>
       _schedule = ScheduleModel(
         establishmentId: _schedule!.establishmentId,
         slotDurationMinutes: _slotDuration,
+        capacity: _capacity,
         days: days,
       );
     });
@@ -306,6 +311,44 @@ class _EstabHorariosScreenState extends State<EstabHorariosScreen>
                                 : AppColors.primary,
                             fontWeight: FontWeight.w600,
                             fontSize: 13),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 16),
+              const Text('Atendimentos simultâneos por horário',
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: AppColors.dark)),
+              const SizedBox(height: 4),
+              const Text(
+                'Quantos clientes podem agendar no mesmo horário',
+                style: TextStyle(fontSize: 11, color: AppColors.grey),
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                children: [1, 2, 3, 4, 5].map((n) {
+                  final selected = _capacity == n;
+                  return GestureDetector(
+                    onTap: () => setState(() => _capacity = n),
+                    child: Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: selected ? AppColors.primary : AppColors.primaryLight,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Center(
+                        child: Text(
+                          '$n',
+                          style: TextStyle(
+                              color: selected ? Colors.white : AppColors.primary,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16),
+                        ),
                       ),
                     ),
                   );

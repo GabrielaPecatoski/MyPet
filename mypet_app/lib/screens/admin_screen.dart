@@ -53,8 +53,9 @@ class _AdminScreenState extends State<AdminScreen> {
   }
 
   Future<void> _loadUsers() async {
-    final data = await ApiService.get('/auth/admin/users', token: _token);
-    setState(() => _users = (data as List).map((e) => AdminUserModel.fromJson(e as Map<String, dynamic>)).toList());
+    final data = await ApiService.get('/users', token: _token);
+    final list = data is Map ? (data['data'] as List? ?? []) : (data as List? ?? []);
+    setState(() => _users = list.map((e) => AdminUserModel.fromJson(e as Map<String, dynamic>)).toList());
   }
 
   Future<void> _loadEstabs() async {
@@ -252,12 +253,8 @@ class _AdminScreenState extends State<AdminScreen> {
           ? null
           : MypetAppBar(
               showBack: false,
-              actions: [
-                IconButton(
-                  icon: const Icon(Icons.logout, size: 22, color: AppColors.grey),
-                  onPressed: _logout,
-                ),
-              ],
+              purple: _selectedIndex == 5,
+              actions: [_AdminSairButton(onPressed: _logout, onPurple: _selectedIndex == 5)],
             ),
       body: pages[_selectedIndex],
       bottomNavigationBar: AppBottomNav(
@@ -273,9 +270,36 @@ class _AdminScreenState extends State<AdminScreen> {
   }
 }
 
-// ──────────────────────────────────────────────
-// PAINEL
-// ──────────────────────────────────────────────
+class _AdminSairButton extends StatelessWidget {
+  final VoidCallback onPressed;
+  final bool onPurple;
+
+  const _AdminSairButton({required this.onPressed, required this.onPurple});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 12),
+      child: GestureDetector(
+        onTap: onPressed,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          decoration: BoxDecoration(
+            color: onPurple ? Colors.white.withValues(alpha: 0.15) : AppColors.primary,
+            borderRadius: BorderRadius.circular(20),
+            border: onPurple ? Border.all(color: Colors.white.withValues(alpha: 0.3)) : null,
+          ),
+          child: const Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(Icons.logout, size: 16, color: Colors.white),
+            SizedBox(width: 6),
+            Text('Sair', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
 
 class _PainelPage extends StatelessWidget {
   final List<AdminUserModel> users;
@@ -345,34 +369,38 @@ class _PainelPage extends StatelessWidget {
             ),
             padding: EdgeInsets.fromLTRB(20, topPad + 12, 20, 24),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
-                Expanded(
-                  child: Image.asset('assets/images/logo branca.png', height: 36, fit: BoxFit.contain, alignment: Alignment.centerLeft),
-                ),
-                GestureDetector(
-                  onTap: onLogout,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  Image.asset('assets/images/logo branca.png', height: 36, fit: BoxFit.contain),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: GestureDetector(
+                      onTap: onLogout,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+                        ),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: const [
+                          Icon(Icons.logout, size: 16, color: Colors.white),
+                          SizedBox(width: 6),
+                          Text('Sair', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+                        ]),
+                      ),
                     ),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: const [
-                      Icon(Icons.logout, size: 16, color: Colors.white),
-                      SizedBox(width: 6),
-                      Text('Sair', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
-                    ]),
                   ),
-                ),
-              ]),
+                ],
+              ),
               const SizedBox(height: 16),
               Text(
                 'SISTEMA · MY PET ADMIN',
                 style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 11, letterSpacing: 1),
               ),
               const SizedBox(height: 4),
-              Text('Olá, $userName 👋', style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+              Text('Olá, $userName', style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
               Text(
                 'Você tem $pendingComplaints ${pendingComplaints == 1 ? 'reclamação' : 'reclamações'} e $newUsers novos cadastros aguardando.',
@@ -536,9 +564,6 @@ class _MovCard extends StatelessWidget {
   }
 }
 
-// ──────────────────────────────────────────────
-// RECLAMAÇÕES
-// ──────────────────────────────────────────────
 
 class _ReclamacoesPage extends StatefulWidget {
   final List<ComplaintModel> complaints;
@@ -972,9 +997,6 @@ class _CategoryBadge extends StatelessWidget {
   }
 }
 
-// ──────────────────────────────────────────────
-// USUÁRIOS
-// ──────────────────────────────────────────────
 
 class _UsuariosPage extends StatefulWidget {
   final List<AdminUserModel> users;
@@ -1180,9 +1202,6 @@ class _UserList extends StatelessWidget {
   }
 }
 
-// ──────────────────────────────────────────────
-// LOJAS
-// ──────────────────────────────────────────────
 
 class _LojasPage extends StatefulWidget {
   final List<AdminEstabModel> estabs;
@@ -1323,9 +1342,6 @@ class _EstabCard extends StatelessWidget {
   }
 }
 
-// ──────────────────────────────────────────────
-// FAQ
-// ──────────────────────────────────────────────
 
 class _FaqPage extends StatefulWidget {
   final List<dynamic> faqItems;
@@ -1690,9 +1706,6 @@ class _FaqCard extends StatelessWidget {
   }
 }
 
-// ──────────────────────────────────────────────
-// PERGUNTAS ENVIADAS POR USUÁRIOS
-// ──────────────────────────────────────────────
 
 class _UserQuestionsList extends StatelessWidget {
   final List<dynamic> questions;
@@ -2082,9 +2095,6 @@ class _ToggleRow extends StatelessWidget {
   }
 }
 
-// ──────────────────────────────────────────────
-// ESTATÍSTICAS
-// ──────────────────────────────────────────────
 
 class _EstatisticasPage extends StatelessWidget {
   final List<AdminUserModel> users;

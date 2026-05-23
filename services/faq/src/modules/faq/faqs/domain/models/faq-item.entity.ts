@@ -32,6 +32,20 @@ export class FaqItem {
   withActive(v: boolean) { this._active = v; return this; }
   incrementViewCount() { this._viewCount += 1; return this; }
 
+  toJSON() {
+    return {
+      id: this._id,
+      question: this._question,
+      answer: this._answer,
+      category: this._category,
+      targetRole: this._targetRole,
+      order: this._order,
+      active: this._active,
+      viewCount: this._viewCount,
+      createdAt: this._createdAt,
+    };
+  }
+
   static restore(props?: {
     id?: string;
     question: string;

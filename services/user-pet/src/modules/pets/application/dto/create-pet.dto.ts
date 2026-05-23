@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { IsNotEmpty, IsNumber, IsOptional, IsString, Min } from "class-validator";
+// weight is optional — defaults to 0 when not provided
 
 export class CreatePetDto {
   @ApiProperty({ example: "Rex" })
@@ -22,10 +23,11 @@ export class CreatePetDto {
   @Min(0)
   age!: number;
 
-  @ApiProperty({ example: 12.5 })
+  @ApiPropertyOptional({ example: 12.5 })
+  @IsOptional()
   @IsNumber()
   @Min(0)
-  weight!: number;
+  weight?: number;
 
   @ApiPropertyOptional({ example: "https://..." })
   @IsOptional()

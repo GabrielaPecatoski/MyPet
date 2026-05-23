@@ -198,7 +198,6 @@ class EstablishmentService {
     return [];
   }
 
-  /// Fetches establishment + services and returns a combined model.
   static Future<EstablishmentModel> _fetchWithServices(
     String token,
     String establishmentId, {

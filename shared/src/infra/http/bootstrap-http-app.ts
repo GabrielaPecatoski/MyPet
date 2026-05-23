@@ -1,6 +1,7 @@
 import { ValidationPipe, type Type } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
+import * as express from "express";
 
 type BootstrapHttpAppOptions = {
   title: string;
@@ -8,13 +9,18 @@ type BootstrapHttpAppOptions = {
   version?: string;
   globalPrefix?: string;
   port?: number | string;
+  bodyLimit?: string;
 };
 
 export async function bootstrapHttpApp(
   rootModule: Type<unknown>,
   options: BootstrapHttpAppOptions,
 ): Promise<void> {
-  const app = await NestFactory.create(rootModule);
+  const limit = options.bodyLimit ?? "10mb";
+  const app = await NestFactory.create(rootModule, { bodyParser: false });
+
+  app.use(express.json({ limit }));
+  app.use(express.urlencoded({ extended: true, limit }));
 
   app.enableCors({ origin: "*" });
   app.setGlobalPrefix(options.globalPrefix ?? "v1");

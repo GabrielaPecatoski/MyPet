@@ -46,8 +46,8 @@ export class Pet {
     breed: string;
     age: number;
     weight: number;
-    imageUrl?: string;
-    notes?: string;
+    imageUrl?: string | null;
+    notes?: string | null;
     createdAt?: Date;
     updatedAt?: Date;
   }): Pet | null {
@@ -59,8 +59,8 @@ export class Pet {
     pet._breed = props.breed;
     pet._age = props.age;
     pet._weight = props.weight;
-    pet._imageUrl = props.imageUrl;
-    pet._notes = props.notes;
+    pet._imageUrl = props.imageUrl ?? undefined;
+    pet._notes = props.notes ?? undefined;
     return pet;
   }
 }

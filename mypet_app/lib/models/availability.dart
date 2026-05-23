@@ -37,25 +37,29 @@ class WorkingDayModel {
 class ScheduleModel {
   final String establishmentId;
   final int slotDurationMinutes;
+  final int capacity;
   final List<WorkingDayModel> days;
 
   const ScheduleModel({
     required this.establishmentId,
     required this.slotDurationMinutes,
+    this.capacity = 1,
     required this.days,
   });
 
   factory ScheduleModel.fromJson(Map<String, dynamic> j) => ScheduleModel(
         establishmentId: j['establishmentId'] as String,
-        slotDurationMinutes: j['slotDurationMinutes'] as int,
+        slotDurationMinutes: (j['slotDurationMinutes'] as num).toInt(),
+        capacity: (j['capacity'] as num?)?.toInt() ?? 1,
         days: (j['days'] as List)
-            .map((d) => WorkingDayModel.fromJson(d))
+            .map((d) => WorkingDayModel.fromJson(d as Map<String, dynamic>))
             .toList(),
       );
 
   Map<String, dynamic> toJson() => {
         'establishmentId': establishmentId,
         'slotDurationMinutes': slotDurationMinutes,
+        'capacity': capacity,
         'days': days.map((d) => d.toJson()).toList(),
       };
 }

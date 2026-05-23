@@ -4,7 +4,7 @@ import { productsSchema } from "@market/products/infra/database/schemas/product.
 import { Injectable } from "@nestjs/common";
 import { DrizzleService } from "@shared/infra/database/drizzle.service";
 import type { PaginationParams } from "@shared/infra/hateoas";
-import { eq, ilike, or, sql } from "drizzle-orm";
+import { and, eq, ilike, or, sql } from "drizzle-orm";
 
 @Injectable()
 export class DrizzleProductRepository implements ProductRepository {
@@ -47,6 +47,14 @@ export class DrizzleProductRepository implements ProductRepository {
     const rows = search
       ? await baseQuery.where(or(ilike(productsSchema.name, `%${search}%`), ilike(productsSchema.category, `%${search}%`), ilike(productsSchema.brand, `%${search}%`)))
       : await baseQuery.where(eq(productsSchema.active, true));
+    return rows.map((r) => Product.restore(r)!);
+  }
+
+  async findByEstablishment(establishmentId: string): Promise<Product[]> {
+    const rows = await this.drizzleService.db
+      .select()
+      .from(productsSchema)
+      .where(and(eq(productsSchema.establishmentId, establishmentId), eq(productsSchema.active, true)));
     return rows.map((r) => Product.restore(r)!);
   }
 

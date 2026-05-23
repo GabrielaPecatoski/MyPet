@@ -36,6 +36,11 @@ export class ProductService {
     return rows.map((p) => ProductDto.fromProduct(p)!);
   }
 
+  async findByEstablishment(establishmentId: string): Promise<ProductDto[]> {
+    const rows = await this.repo.findByEstablishment(establishmentId);
+    return rows.map((p) => ProductDto.fromProduct(p)!);
+  }
+
   async listPaginated(params: PaginationParams, search?: string): Promise<PaginatedResult<ProductDto>> {
     const { rows, total } = await this.repo.findAllPaginated(params, search);
     return { data: rows.map((p) => ProductDto.fromProduct(p)!), total, page: params.page, limit: params.limit };
@@ -56,6 +61,7 @@ export class ProductService {
     if (dto.description !== undefined) product.withDescription(dto.description);
     if (dto.stock !== undefined) product.withStock(dto.stock);
     if (dto.imageUrl !== undefined) product.withImageUrl(dto.imageUrl);
+    if (dto.active !== undefined) product.withActive(dto.active);
     await this.repo.update(product);
   }
 

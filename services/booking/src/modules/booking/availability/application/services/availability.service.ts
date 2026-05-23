@@ -14,13 +14,13 @@ import { Inject, Injectable } from "@nestjs/common";
 
 const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
 const DEFAULT_TIMES: Record<number, { open: string; close: string }> = {
-  0: { open: "08:00", close: "12:00" }, // Sun
+  0: { open: "08:00", close: "12:00" },
   1: { open: "08:00", close: "18:00" },
   2: { open: "08:00", close: "18:00" },
   3: { open: "08:00", close: "18:00" },
   4: { open: "08:00", close: "18:00" },
   5: { open: "08:00", close: "18:00" },
-  6: { open: "08:00", close: "14:00" }, // Sat
+  6: { open: "08:00", close: "14:00" },
 };
 
 @Injectable()

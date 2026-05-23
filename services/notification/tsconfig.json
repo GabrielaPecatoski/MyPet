@@ -4,6 +4,7 @@
     "rootDir": "../..",
     "outDir": "../../dist",
     "baseUrl": ".",
+    "ignoreDeprecations": "5.0",
     "paths": {
       "@shared/*": ["../../shared/src/*"],
       "@notification/*": ["./src/modules/notification/*"]

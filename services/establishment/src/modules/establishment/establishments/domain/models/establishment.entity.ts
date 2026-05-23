@@ -55,7 +55,7 @@ export class Establishment {
     type: string;
     rating: number;
     reviewCount: number;
-    imageUrl?: string;
+    imageUrl?: string | null;
     createdAt?: Date;
     updatedAt?: Date;
   }): Establishment | null {
@@ -70,7 +70,7 @@ export class Establishment {
     e._type = props.type;
     e._rating = props.rating;
     e._reviewCount = props.reviewCount;
-    e._imageUrl = props.imageUrl;
+    e._imageUrl = props.imageUrl ?? undefined;
     return e;
   }
 }

@@ -1,5 +1,12 @@
 export type BookingStatus = "PENDENTE" | "CONFIRMADO" | "RECUSADO" | "CANCELADO" | "CONCLUIDO";
 
+export interface BookingServiceItem {
+  id: string;
+  name: string;
+  price: number;
+  durationMinutes: number;
+}
+
 export class Booking {
   private readonly _id?: string;
   private _userId!: string;
@@ -7,6 +14,7 @@ export class Booking {
   private _petId!: string;
   private _petName!: string;
   private _serviceName!: string;
+  private _servicesJson?: string;
   private _establishmentId!: string;
   private _establishmentName!: string;
   private _scheduledAt!: Date;
@@ -27,6 +35,11 @@ export class Booking {
   get petId(): string { return this._petId; }
   get petName(): string { return this._petName; }
   get serviceName(): string { return this._serviceName; }
+  get servicesJson(): string | undefined { return this._servicesJson; }
+  get services(): BookingServiceItem[] {
+    if (!this._servicesJson) return [];
+    try { return JSON.parse(this._servicesJson); } catch { return []; }
+  }
   get establishmentId(): string { return this._establishmentId; }
   get establishmentName(): string { return this._establishmentName; }
   get scheduledAt(): Date { return this._scheduledAt; }
@@ -44,6 +57,7 @@ export class Booking {
     petId: string;
     petName: string;
     serviceName: string;
+    servicesJson?: string | null;
     establishmentId: string;
     establishmentName: string;
     scheduledAt: Date;
@@ -59,11 +73,12 @@ export class Booking {
     b._petId = props.petId;
     b._petName = props.petName;
     b._serviceName = props.serviceName;
+    b._servicesJson = props.servicesJson ?? undefined;
     b._establishmentId = props.establishmentId;
     b._establishmentName = props.establishmentName;
     b._scheduledAt = props.scheduledAt;
     b._price = props.price;
-    b._status = props.status;
+    b._status = props.status as BookingStatus;
     return b;
   }
 }

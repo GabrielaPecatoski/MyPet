@@ -38,18 +38,18 @@ export class DrizzleComplaintRepository implements ComplaintRepository {
 
   async findById(id: string): Promise<Complaint | null> {
     const [row] = await this.drizzleService.db.select().from(complaintsSchema).where(eq(complaintsSchema.id, id)).limit(1);
-    return row ? Complaint.restore({ ...row, status: row.status as ComplaintStatus }) : null;
+    return row ? Complaint.restore({ ...row, status: row.status as ComplaintStatus, bookingId: row.bookingId ?? undefined, response: row.response ?? undefined }) : null;
   }
 
   async findAll(status?: string): Promise<Complaint[]> {
     const rows = status
       ? await this.drizzleService.db.select().from(complaintsSchema).where(eq(complaintsSchema.status, status))
       : await this.drizzleService.db.select().from(complaintsSchema);
-    return rows.map((r) => Complaint.restore({ ...r, status: r.status as ComplaintStatus })!);
+    return rows.map((r) => Complaint.restore({ ...r, status: r.status as ComplaintStatus, bookingId: r.bookingId ?? undefined, response: r.response ?? undefined })!);
   }
 
   async findByEstablishmentId(establishmentId: string): Promise<Complaint[]> {
     const rows = await this.drizzleService.db.select().from(complaintsSchema).where(eq(complaintsSchema.establishmentId, establishmentId));
-    return rows.map((r) => Complaint.restore({ ...r, status: r.status as ComplaintStatus })!);
+    return rows.map((r) => Complaint.restore({ ...r, status: r.status as ComplaintStatus, bookingId: r.bookingId ?? undefined, response: r.response ?? undefined })!);
   }
 }

@@ -1,5 +1,5 @@
-import type { Booking } from "@booking/bookings/domain/models/booking.entity";
-import { ApiProperty } from "@nestjs/swagger";
+import type { Booking, BookingServiceItem } from "@booking/bookings/domain/models/booking.entity";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 
 export class BookingDto {
   @ApiProperty() id: string | undefined;
@@ -8,6 +8,7 @@ export class BookingDto {
   @ApiProperty() petId: string;
   @ApiProperty() petName: string;
   @ApiProperty() serviceName: string;
+  @ApiPropertyOptional() services?: BookingServiceItem[];
   @ApiProperty() establishmentId: string;
   @ApiProperty() establishmentName: string;
   @ApiProperty() scheduledAt: Date;
@@ -22,6 +23,7 @@ export class BookingDto {
     this.petId = b.petId;
     this.petName = b.petName;
     this.serviceName = b.serviceName;
+    this.services = b.services.length > 0 ? b.services : undefined;
     this.establishmentId = b.establishmentId;
     this.establishmentName = b.establishmentName;
     this.scheduledAt = b.scheduledAt;

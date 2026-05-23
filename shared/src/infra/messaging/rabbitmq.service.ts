@@ -19,9 +19,20 @@ export class RabbitMQService implements OnModuleInit, OnModuleDestroy {
       return;
     }
 
-    this.connection = await amqplib.connect(url);
-    this.channel = await this.connection.createChannel();
-    this.logger.log("RabbitMQ connection established");
+    const maxRetries = 10;
+    const delayMs = 3000;
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        this.connection = await amqplib.connect(url);
+        this.channel = await this.connection.createChannel();
+        this.logger.log("RabbitMQ connection established");
+        return;
+      } catch (err) {
+        this.logger.warn(`RabbitMQ not ready (attempt ${attempt}/${maxRetries}), retrying in ${delayMs}ms...`);
+        if (attempt === maxRetries) throw err;
+        await new Promise((r) => setTimeout(r, delayMs));
+      }
+    }
   }
 
   async onModuleDestroy(): Promise<void> {

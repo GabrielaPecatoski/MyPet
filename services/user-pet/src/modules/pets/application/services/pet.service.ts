@@ -20,18 +20,19 @@ export class PetService {
     private readonly petRepository: PetRepository,
   ) {}
 
-  async create(userId: string, dto: CreatePetDto): Promise<void> {
+  async create(userId: string, dto: CreatePetDto): Promise<PetDto> {
     const pet = Pet.restore({
       userId,
       name: dto.name,
       type: dto.type,
       breed: dto.breed,
       age: dto.age,
-      weight: dto.weight,
+      weight: dto.weight ?? 0,
       imageUrl: dto.imageUrl,
       notes: dto.notes,
     })!;
-    await this.petRepository.create(pet);
+    const created = await this.petRepository.create(pet);
+    return PetDto.fromPet(created)!;
   }
 
   async findByUserId(userId: string): Promise<PetDto[]> {

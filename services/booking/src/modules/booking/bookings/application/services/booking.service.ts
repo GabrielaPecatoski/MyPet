@@ -19,17 +19,24 @@ export class BookingService {
     private readonly messaging: SharedMessagingService,
   ) {}
 
-  async create(userId: string, userName: string, dto: CreateBookingDto): Promise<void> {
+  async create(userId: string, userName: string, dto: CreateBookingDto): Promise<BookingDto> {
+    const services = dto.services && dto.services.length > 0 ? dto.services : undefined;
+    const totalPrice = services ? services.reduce((s, svc) => s + svc.price, 0) : (dto.price ?? 0);
+    const displayName = services && services.length > 1
+      ? services.map((s) => s.name).join(", ")
+      : (dto.serviceName ?? services?.[0]?.name ?? "");
+
     const booking = Booking.restore({
       userId,
       userName: dto.userName ?? userName,
       petId: dto.petId,
       petName: dto.petName,
-      serviceName: dto.serviceName,
+      serviceName: displayName,
+      servicesJson: services ? JSON.stringify(services) : undefined,
       establishmentId: dto.establishmentId,
       establishmentName: dto.establishmentName,
       scheduledAt: new Date(dto.scheduledAt),
-      price: dto.price ?? 0,
+      price: totalPrice,
       status: "PENDENTE",
     })!;
     await this.repo.create(booking);
@@ -40,6 +47,7 @@ export class BookingService {
       serviceName: booking.serviceName,
       scheduledAt: booking.scheduledAt.toISOString(),
     });
+    return BookingDto.fromBooking(booking)!;
   }
 
   async findByUser(userId: string): Promise<BookingDto[]> {
@@ -56,7 +64,7 @@ export class BookingService {
     return BookingDto.fromBooking(await this.repo.findById(id));
   }
 
-  async updateStatus(id: string, status: BookingStatus): Promise<void> {
+  async updateStatus(id: string, status: BookingStatus): Promise<BookingDto> {
     const booking = await this.repo.findById(id);
     if (!booking) throw new NotFoundException("Agendamento não encontrado");
     booking.withStatus(status);
@@ -82,13 +90,14 @@ export class BookingService {
         userId: booking.userId,
       });
     }
+    return BookingDto.fromBooking(booking)!;
   }
 
-  async cancel(id: string): Promise<void> {
+  async cancel(id: string): Promise<BookingDto> {
     return this.updateStatus(id, "CANCELADO");
   }
 
-  async complete(id: string): Promise<void> {
+  async complete(id: string): Promise<BookingDto> {
     return this.updateStatus(id, "CONCLUIDO");
   }
 
@@ -96,6 +105,49 @@ export class BookingService {
     const booking = await this.repo.findById(id);
     if (!booking) throw new NotFoundException("Agendamento não encontrado");
     await this.repo.delete(id);
+  }
+
+  async getStats(establishmentId: string) {
+    const rows = await this.repo.findByEstablishmentId(establishmentId);
+    const now = new Date();
+    const thisMonth = now.getMonth();
+    const thisYear = now.getFullYear();
+
+    const totalBookings = rows.length;
+    const monthBookings = rows.filter((b) => {
+      const d = b.scheduledAt;
+      return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
+    }).length;
+
+    const completed = rows.filter((b) => b.status === "CONCLUIDO");
+    const totalRevenue = completed.reduce((s, b) => s + b.price, 0);
+    const monthCompleted = completed.filter((b) => {
+      const d = b.scheduledAt;
+      return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
+    });
+    const monthRevenue = monthCompleted.reduce((s, b) => s + b.price, 0);
+    const avgTicket = completed.length > 0 ? totalRevenue / completed.length : 0;
+
+    const ptMonths = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+    const last6Months = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(thisYear, thisMonth - i, 1);
+      const m = d.getMonth();
+      const y = d.getFullYear();
+      const monthRows = completed.filter((b) => b.scheduledAt.getMonth() === m && b.scheduledAt.getFullYear() === y);
+      last6Months.push({ month: ptMonths[m], value: monthRows.reduce((s, b) => s + b.price, 0) });
+    }
+
+    const serviceCount: Record<string, number> = {};
+    for (const b of rows) {
+      serviceCount[b.serviceName] = (serviceCount[b.serviceName] ?? 0) + 1;
+    }
+    const topServices = Object.entries(serviceCount)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 5)
+      .map(([name, count]) => ({ name, count }));
+
+    return { totalRevenue, monthRevenue, avgTicket, totalBookings, monthBookings, last6Months, topServices };
   }
 
   private async safePublish(exchange: string, routingKey: string, payload: unknown): Promise<void> {

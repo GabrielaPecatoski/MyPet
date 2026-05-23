@@ -51,7 +51,7 @@ export class FaqController {
   @RequirePermissions(Permission.FAQ_WRITE)
   @ApiOperation({ summary: "Atualizar FAQ (admin)" })
   @ApiNoContentResponse({ description: "FAQ atualizado" })
-  async updateFaq(@Param("id") id: string, @Body() body: { question?: string; answer?: string; category?: string; targetRole?: string; order?: number }) {
+  async updateFaq(@Param("id") id: string, @Body() body: { question?: string; answer?: string; category?: string; targetRole?: string; order?: number; active?: boolean }) {
     return this.faqService.updateFaq(id, body);
   }
 

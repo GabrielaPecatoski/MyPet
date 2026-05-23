@@ -34,9 +34,12 @@ async function bootstrap() {
 
   const expressApp = app.getHttpAdapter().getInstance();
 
-  expressApp.options("*", (_req: Request, res: Response) => {
-    Object.entries(CORS_HEADERS).forEach(([k, v]) => res.setHeader(k, v));
-    res.sendStatus(204);
+  expressApp.use((req: Request, res: Response, next: NextFunction) => {
+    if (req.method === "OPTIONS") {
+      Object.entries(CORS_HEADERS).forEach(([k, v]) => res.setHeader(k, v));
+      return res.sendStatus(204);
+    }
+    next();
   });
 
   for (const route of ROUTES) {
@@ -47,7 +50,7 @@ async function bootstrap() {
       const proxy = createProxyMiddleware({
         target: route.target,
         changeOrigin: true,
-        pathRewrite: (path) => `/v1${route.prefix}${path}`,
+        pathRewrite: (path: string) => `/v1${route.prefix}${path}`,
         on: {
           proxyRes: (_proxyRes: unknown, _req: unknown, res: Response) => {
             Object.entries(CORS_HEADERS).forEach(([k, v]) => res.setHeader(k, v));

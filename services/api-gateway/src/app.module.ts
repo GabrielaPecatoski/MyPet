@@ -26,15 +26,17 @@ export class AppModule implements NestModule {
     consumer
       .apply(AuthGuardMiddleware)
       .exclude(
-        { path: "auth(.*)", method: RequestMethod.ALL },
+        { path: "auth", method: RequestMethod.ALL },
+        { path: "auth/*path", method: RequestMethod.ALL },
         { path: "establishments", method: RequestMethod.GET },
-        { path: "establishments/(.*)", method: RequestMethod.GET },
+        { path: "establishments/*path", method: RequestMethod.GET },
+        { path: "availability/*path", method: RequestMethod.GET },
         { path: "marketplace", method: RequestMethod.GET },
-        { path: "marketplace/(.*)", method: RequestMethod.GET },
+        { path: "marketplace/*path", method: RequestMethod.GET },
         { path: "faq", method: RequestMethod.ALL },
-        { path: "faq/(.*)", method: RequestMethod.ALL },
+        { path: "faq/*path", method: RequestMethod.ALL },
         { path: "health", method: RequestMethod.GET },
       )
-      .forRoutes("*");
+      .forRoutes("*path");
   }
 }

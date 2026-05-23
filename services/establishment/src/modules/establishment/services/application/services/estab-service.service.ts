@@ -20,7 +20,7 @@ export class EstabServiceService {
       name: dto.name,
       price: dto.price,
       durationMinutes: dto.durationMinutes,
-      description: dto.description,
+      description: dto.description ?? "",
     })!;
     await this.repo.create(service);
   }

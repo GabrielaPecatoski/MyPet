@@ -7,6 +7,7 @@ export const bookingsSchema = pgTable("bookings", {
   petId: uuid("pet_id").notNull(),
   petName: text("pet_name").notNull(),
   serviceName: text("service_name").notNull(),
+  servicesJson: text("services_json"),
   establishmentId: uuid("establishment_id").notNull(),
   establishmentName: text("establishment_name").notNull(),
   scheduledAt: timestamp("scheduled_at", { withTimezone: true }).notNull(),

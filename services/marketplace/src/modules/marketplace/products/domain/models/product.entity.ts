@@ -42,7 +42,7 @@ export class Product {
 
   static restore(props?: {
     id?: string;
-    establishmentId?: string;
+    establishmentId?: string | null;
     name: string;
     brand: string;
     price: number;
@@ -50,13 +50,13 @@ export class Product {
     category: string;
     description: string;
     stock: number;
-    imageUrl?: string;
+    imageUrl?: string | null;
     active: boolean;
     createdAt?: Date;
   }): Product | null {
     if (!props) return null;
     const p = new Product(props.id, props.createdAt);
-    p._establishmentId = props.establishmentId;
+    p._establishmentId = props.establishmentId ?? undefined;
     p._name = props.name;
     p._brand = props.brand;
     p._price = props.price;
@@ -64,7 +64,7 @@ export class Product {
     p._category = props.category;
     p._description = props.description;
     p._stock = props.stock;
-    p._imageUrl = props.imageUrl;
+    p._imageUrl = props.imageUrl ?? undefined;
     p._active = props.active;
     return p;
   }

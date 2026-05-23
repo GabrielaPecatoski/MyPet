@@ -47,6 +47,14 @@ export class EstablishmentsController {
     return this.establishmentService.findAll(search);
   }
 
+  @Get("admin/all")
+  @ApiBearerAuth()
+  @RequirePermissions(Permission.ADMIN_READ)
+  @ApiOperation({ summary: "Listar estabelecimentos com contagem de serviços (admin)" })
+  async findAllAdmin() {
+    return this.establishmentService.findAllAdmin();
+  }
+
   @Get("owner/:ownerId")
   @ApiBearerAuth()
   @RequirePermissions(Permission.ESTABLISHMENTS_READ)

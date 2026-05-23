@@ -42,6 +42,14 @@ export class ProductsController {
     return this.productService.findAll(search);
   }
 
+  @Get("establishment/:id")
+  @ApiBearerAuth()
+  @RequirePermissions(Permission.PRODUCTS_READ)
+  @ApiOperation({ summary: "Listar produtos do estabelecimento" })
+  async findByEstablishment(@Param("id") id: string): Promise<ProductDto[]> {
+    return this.productService.findByEstablishment(id);
+  }
+
   @Get(":id")
   @Public()
   @ApiOperation({ summary: "Buscar produto por ID" })

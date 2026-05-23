@@ -11,4 +11,5 @@ export class CreateProductDto {
   @ApiPropertyOptional() @IsOptional() @IsString() description?: string;
   @ApiPropertyOptional() @IsOptional() @IsNumber() @Min(0) stock?: number;
   @ApiPropertyOptional() @IsOptional() @IsString() imageUrl?: string;
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() active?: boolean;
 }

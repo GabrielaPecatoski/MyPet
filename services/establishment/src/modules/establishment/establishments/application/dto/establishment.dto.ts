@@ -12,6 +12,7 @@ export class EstablishmentDto {
   @ApiProperty() type: string;
   @ApiProperty() rating: number;
   @ApiProperty() reviewCount: number;
+  @ApiProperty() serviceCount: number;
   @ApiPropertyOptional() imageUrl?: string;
 
   private constructor(
@@ -25,6 +26,7 @@ export class EstablishmentDto {
     type: string,
     rating: number,
     reviewCount: number,
+    serviceCount: number,
     imageUrl: string | undefined,
   ) {
     this.id = id;
@@ -37,11 +39,12 @@ export class EstablishmentDto {
     this.type = type;
     this.rating = rating;
     this.reviewCount = reviewCount;
+    this.serviceCount = serviceCount;
     this.imageUrl = imageUrl;
   }
 
-  static fromEstablishment(e: Establishment | null): EstablishmentDto | null {
+  static fromEstablishment(e: (Establishment & { serviceCount?: number }) | null): EstablishmentDto | null {
     if (!e) return null;
-    return new EstablishmentDto(e.id, e.ownerId, e.name, e.description, e.address, e.city, e.phone, e.type, e.rating, e.reviewCount, e.imageUrl);
+    return new EstablishmentDto(e.id, e.ownerId, e.name, e.description, e.address, e.city, e.phone, e.type, e.rating, e.reviewCount, e.serviceCount ?? 0, e.imageUrl);
   }
 }

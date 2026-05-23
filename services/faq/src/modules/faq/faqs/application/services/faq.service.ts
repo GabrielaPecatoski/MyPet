@@ -4,7 +4,7 @@ import { QUESTION_REPOSITORY, type QuestionRepository } from "@faq/questions/dom
 import { UserQuestion } from "@faq/questions/domain/models/user-question.entity";
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 
-export interface CreateFaqDto { question: string; answer: string; category?: string; targetRole?: string; order?: number; }
+export interface CreateFaqDto { question: string; answer: string; category?: string; targetRole?: string; order?: number; active?: boolean; }
 export interface CreateQuestionDto { question: string; userName: string; userRole?: string; }
 
 @Injectable()
@@ -47,6 +47,7 @@ export class FaqService {
     if (dto.category !== undefined) item.withCategory(dto.category);
     if (dto.targetRole) item.withTargetRole(dto.targetRole);
     if (dto.order !== undefined) item.withOrder(dto.order);
+    if (dto.active !== undefined) item.withActive(dto.active);
     await this.faqRepo.update(item);
   }
 

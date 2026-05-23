@@ -1,10 +1,13 @@
-
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "rootDir": "src",
-    "outDir": "../../dist/services/api-gateway",
-    "baseUrl": "."
+    "rootDir": "../..",
+    "outDir": "../../dist",
+    "baseUrl": ".",
+    "ignoreDeprecations": "5.0",
+    "paths": {
+      "@gateway/*": ["./src/*"]
+    }
   },
-  "include": ["src"]
+  "include": ["src/**/*.ts"]
 }

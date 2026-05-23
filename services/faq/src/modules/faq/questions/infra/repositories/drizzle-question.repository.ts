@@ -31,18 +31,18 @@ export class DrizzleQuestionRepository implements QuestionRepository {
 
   async findById(id: string): Promise<UserQuestion | null> {
     const [row] = await this.drizzleService.db.select().from(userQuestionsSchema).where(eq(userQuestionsSchema.id, id)).limit(1);
-    return row ? UserQuestion.restore({ ...row, status: row.status as QuestionStatus }) : null;
+    return row ? UserQuestion.restore({ ...row, status: row.status as QuestionStatus, answer: row.answer ?? undefined, answeredAt: row.answeredAt ?? undefined }) : null;
   }
 
   async findByUserId(userId: string): Promise<UserQuestion[]> {
     const rows = await this.drizzleService.db.select().from(userQuestionsSchema).where(eq(userQuestionsSchema.userId, userId));
-    return rows.map((r) => UserQuestion.restore({ ...r, status: r.status as QuestionStatus })!);
+    return rows.map((r) => UserQuestion.restore({ ...r, status: r.status as QuestionStatus, answer: r.answer ?? undefined, answeredAt: r.answeredAt ?? undefined })!);
   }
 
   async findAll(status?: string): Promise<UserQuestion[]> {
     const rows = status
       ? await this.drizzleService.db.select().from(userQuestionsSchema).where(eq(userQuestionsSchema.status, status))
       : await this.drizzleService.db.select().from(userQuestionsSchema);
-    return rows.map((r) => UserQuestion.restore({ ...r, status: r.status as QuestionStatus })!);
+    return rows.map((r) => UserQuestion.restore({ ...r, status: r.status as QuestionStatus, answer: r.answer ?? undefined, answeredAt: r.answeredAt ?? undefined })!);
   }
 }

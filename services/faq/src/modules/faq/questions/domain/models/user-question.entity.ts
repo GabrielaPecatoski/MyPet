@@ -29,6 +29,20 @@ export class UserQuestion {
   withAnswer(answer: string) { this._answer = answer; this._status = "RESPONDIDA"; this._answeredAt = new Date(); return this; }
   close() { this._status = "FECHADA"; return this; }
 
+  toJSON() {
+    return {
+      id: this._id,
+      userId: this._userId,
+      userName: this._userName,
+      userRole: this._userRole,
+      question: this._question,
+      answer: this._answer,
+      status: this._status,
+      createdAt: this._createdAt,
+      answeredAt: this._answeredAt,
+    };
+  }
+
   static restore(props?: {
     id?: string;
     userId: string;

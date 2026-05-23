@@ -10,19 +10,23 @@ import { eq, sql } from "drizzle-orm";
 export class DrizzlePetRepository implements PetRepository {
   constructor(private readonly drizzleService: DrizzleService) {}
 
-  async create(pet: Pet): Promise<void> {
-    await this.drizzleService.db.insert(petsSchema).values({
-      userId: pet.userId,
-      name: pet.name,
-      type: pet.type,
-      breed: pet.breed,
-      age: pet.age,
-      weight: pet.weight,
-      imageUrl: pet.imageUrl,
-      notes: pet.notes,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
+  async create(pet: Pet): Promise<Pet> {
+    const [row] = await this.drizzleService.db
+      .insert(petsSchema)
+      .values({
+        userId: pet.userId,
+        name: pet.name,
+        type: pet.type,
+        breed: pet.breed,
+        age: pet.age,
+        weight: pet.weight,
+        imageUrl: pet.imageUrl,
+        notes: pet.notes,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
+    return Pet.restore(row)!;
   }
 
   async update(pet: Pet): Promise<void> {
