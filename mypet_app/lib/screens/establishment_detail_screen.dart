@@ -21,49 +21,6 @@ class _EstablishmentDetailScreenState
   List<ReviewModel> _reviews = [];
   bool _reviewsLoading = true;
 
-  static final List<ReviewModel> _mockReviews = [
-    ReviewModel(
-      id: '1',
-      userId: 'u1',
-      userName: 'João Santos',
-      establishmentId: '',
-      bookingId: '',
-      rating: 5,
-      comment: 'Excelente atendimento! Meu cachorro ficou muito bem cuidado.',
-      createdAt: DateTime(2026, 3, 12),
-    ),
-    ReviewModel(
-      id: '2',
-      userId: 'u2',
-      userName: 'Ana Costa',
-      establishmentId: '',
-      bookingId: '',
-      rating: 4,
-      comment: 'Bom serviço, mas o preço poderia ser melhor.',
-      createdAt: DateTime(2026, 3, 10),
-    ),
-    ReviewModel(
-      id: '3',
-      userId: 'u3',
-      userName: 'Pedro Almeida',
-      establishmentId: '',
-      bookingId: '',
-      rating: 4,
-      comment: 'Melhor pet shop da região! Sempre volto com meus pets.',
-      createdAt: DateTime(2026, 3, 10),
-    ),
-    ReviewModel(
-      id: '4',
-      userId: 'u4',
-      userName: 'Fernanda Souza',
-      establishmentId: '',
-      bookingId: '',
-      rating: 4,
-      comment: 'Atendimento excelente, apenas o tempo de espera poderia ser menor.',
-      createdAt: DateTime(2026, 3, 10),
-    ),
-  ];
-
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -80,7 +37,7 @@ class _EstablishmentDetailScreenState
       );
       if (mounted) setState(() => _reviews = reviews);
     } catch (_) {
-      if (mounted) setState(() => _reviews = _mockReviews);
+      if (mounted) setState(() => _reviews = []);
     } finally {
       if (mounted) setState(() => _reviewsLoading = false);
     }

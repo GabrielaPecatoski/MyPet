@@ -39,14 +39,37 @@ model CartItem {
 }
 
 model Order {
-  id        String      @id @default(uuid())
-  userId    String
-  total     Float
-  status    String      @default("PENDING")
-  createdAt DateTime    @default(now())
-  items     OrderItem[]
+  id             String      @id @default(uuid())
+  userId         String
+  total          Float
+  status         String      @default("PENDING")
+  deliveryStatus String      @default("PENDING")
+  createdAt      DateTime    @default(now())
+  items          OrderItem[]
+  payments       Payment[]
 
   @@map("orders")
+}
+
+model Payment {
+  id              String    @id @default(uuid())
+  orderId         String
+  userId          String
+  amount          Float
+  method          String
+  status          String    @default("PENDING")
+  pixKey          String?
+  boletoCode      String?
+  cardLastFour    String?
+  installments    Int?      @default(1)
+  deliveryMethod  String    @default("PICKUP")
+  deliveryAddress String?
+  rejectionReason String?
+  processedAt     DateTime?
+  createdAt       DateTime  @default(now())
+  order           Order     @relation(fields: [orderId], references: [id])
+
+  @@map("payments")
 }
 
 model OrderItem {

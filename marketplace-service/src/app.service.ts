@@ -5,18 +5,21 @@ import { PrismaService } from './prisma.service';
 export class AppService {
   constructor(private readonly prisma: PrismaService) {}
 
-  findAllProducts(search?: string) {
+  findAllProducts(search?: string, establishmentId?: string) {
+    const baseWhere = establishmentId
+      ? { establishmentId }
+      : { active: true };
     return this.prisma.product.findMany({
       where: search
         ? {
-            active: true,
+            ...baseWhere,
             OR: [
               { name: { contains: search, mode: 'insensitive' } },
               { brand: { contains: search, mode: 'insensitive' } },
               { category: { contains: search, mode: 'insensitive' } },
             ],
           }
-        : { active: true },
+        : baseWhere,
       orderBy: { name: 'asc' },
     });
   }
@@ -36,6 +39,7 @@ export class AppService {
     description?: string;
     stock?: number;
     imageUrl?: string;
+    establishmentId?: string;
   }) {
     return this.prisma.product.create({ data: { ...data } });
   }
@@ -120,7 +124,7 @@ export class AppService {
       data: {
         userId,
         total,
-        status: 'CONFIRMED',
+        status: 'AWAITING_PAYMENT',
         items: {
           create: cartItems.map((i) => ({
             productId: i.productId,
@@ -133,6 +137,42 @@ export class AppService {
     });
 
     await this.prisma.cartItem.deleteMany({ where: { userId } });
+    return order;
+  }
+
+  getOrdersByEstablishment(establishmentId: string) {
+    return this.prisma.order.findMany({
+      where: {
+        status: { in: ['CONFIRMED', 'AWAITING_PAYMENT'] },
+        items: { some: { product: { establishmentId } } },
+      },
+      include: {
+        items: {
+          where: { product: { establishmentId } },
+          include: { product: true },
+        },
+        payments: { orderBy: { createdAt: 'desc' }, take: 1 },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async updateDeliveryStatus(orderId: string, deliveryStatus: string) {
+    const order = await this.prisma.order.update({
+      where: { id: orderId },
+      data: { deliveryStatus },
+    });
+
+    if (deliveryStatus === 'DELIVERED') {
+      const items = await this.prisma.orderItem.findMany({ where: { orderId } });
+      for (const item of items) {
+        await this.prisma.product.update({
+          where: { id: item.productId },
+          data: { stock: { decrement: item.quantity } },
+        });
+      }
+    }
+
     return order;
   }
 

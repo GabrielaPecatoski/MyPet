@@ -3,8 +3,7 @@ import 'package:provider/provider.dart';
 import '../core/colors.dart';
 import '../models/appointment.dart';
 import '../providers/auth_provider.dart';
-import '../services/api_service.dart';
-import '../services/booking_service.dart';
+import '../providers/history_provider.dart';
 import '../services/review_service.dart';
 import '../widgets/app_bottom_nav.dart';
 import '../widgets/mypet_app_bar.dart';
@@ -16,9 +15,7 @@ class HistoryScreen extends StatefulWidget {
 }
 
 class _HistoryScreenState extends State<HistoryScreen> {
-  List<AppointmentModel> _history = [];
   final Set<String> _reviewed = {};
-  bool _loading = false;
 
   @override
   void initState() {
@@ -29,44 +26,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   Future<void> _load() async {
     final auth = context.read<AuthProvider>();
     if (auth.token == null || auth.user == null) return;
-    setState(() => _loading = true);
-    try {
-      final data = await ApiService.get(
-        '/bookings/user/${auth.user!.id}',
-        token: auth.token,
-      );
-      final list = data as List;
-      final all = list.map((e) => AppointmentModel.fromJson(e)).toList();
-
-      final now = DateTime.now();
-      for (final b in all) {
-        if (b.status == 'CONFIRMADO' &&
-            now.difference(b.date).inHours >= 4) {
-          try {
-            await BookingService.updateStatus(
-              token: auth.token!,
-              bookingId: b.id,
-              status: 'CONCLUIDO',
-            );
-          } catch (_) {}
-        }
-      }
-
-      final data2 = await ApiService.get(
-        '/bookings/user/${auth.user!.id}',
-        token: auth.token,
-      );
-      final all2 =
-          (data2 as List).map((e) => AppointmentModel.fromJson(e)).toList();
-
-      setState(() {
-        _history = all2.where((b) => b.status == 'CONCLUIDO').toList()
-          ..sort((a, b) => b.date.compareTo(a.date));
-      });
-    } catch (_) {
-    } finally {
-      setState(() => _loading = false);
-    }
+    await context.read<HistoryProvider>().load(auth.user!.id, token: auth.token);
   }
 
   @override
@@ -87,54 +47,47 @@ class _HistoryScreenState extends State<HistoryScreen> {
           }
         },
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
-          : RefreshIndicator(
-              onRefresh: _load,
-              color: AppColors.primary,
-              child: _history.isEmpty
-                  ? ListView(
-                      children: [
-                        const SizedBox(height: 80),
-                        Center(
-                          child: Column(
-                            children: [
-                              Container(
-                                width: 72,
-                                height: 72,
-                                decoration: BoxDecoration(
-                                  color: AppColors.primaryLight,
-                                  borderRadius: BorderRadius.circular(36),
-                                ),
-                                child: const Icon(Icons.history,
-                                    size: 36, color: AppColors.primary),
-                              ),
-                              const SizedBox(height: 16),
-                              const Text('Nenhum histórico encontrado',
-                                  style: TextStyle(
-                                      color: AppColors.dark,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600)),
-                              const SizedBox(height: 6),
-                              const Text('Seus serviços concluídos aparecerão aqui',
-                                  style: TextStyle(
-                                      color: AppColors.grey, fontSize: 13)),
-                            ],
-                          ),
+      body: Builder(builder: (context) {
+        final provider = context.watch<HistoryProvider>();
+        if (provider.isLoading) {
+          return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+        }
+        return RefreshIndicator(
+          onRefresh: _load,
+          color: AppColors.primary,
+          child: provider.history.isEmpty
+              ? ListView(children: [
+                  const SizedBox(height: 80),
+                  Center(
+                    child: Column(children: [
+                      Container(
+                        width: 72, height: 72,
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryLight,
+                          borderRadius: BorderRadius.circular(36),
                         ),
-                      ],
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: _history.length,
-                      itemBuilder: (ctx, i) => _HistoryCard(
-                        appointment: _history[i],
-                        reviewed: _reviewed.contains(_history[i].id),
-                        onReviewed: () =>
-                            setState(() => _reviewed.add(_history[i].id)),
+                        child: const Icon(Icons.history, size: 36, color: AppColors.primary),
                       ),
-                    ),
-            ),
+                      const SizedBox(height: 16),
+                      const Text('Nenhum histórico encontrado',
+                          style: TextStyle(color: AppColors.dark, fontSize: 16, fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 6),
+                      const Text('Seus serviços concluídos aparecerão aqui',
+                          style: TextStyle(color: AppColors.grey, fontSize: 13)),
+                    ]),
+                  ),
+                ])
+              : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: provider.history.length,
+                  itemBuilder: (ctx, i) => _HistoryCard(
+                    appointment: provider.history[i],
+                    reviewed: _reviewed.contains(provider.history[i].id),
+                    onReviewed: () => setState(() => _reviewed.add(provider.history[i].id)),
+                  ),
+                ),
+        );
+      }),
     );
   }
 }

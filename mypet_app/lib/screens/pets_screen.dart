@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../core/colors.dart';
 import '../models/pet.dart';
 import '../providers/auth_provider.dart';
-import '../services/api_service.dart';
+import '../providers/pet_provider.dart';
 import '../widgets/mypet_app_bar.dart';
 import 'add_pet_screen.dart';
 
@@ -15,37 +15,15 @@ class PetsScreen extends StatefulWidget {
 }
 
 class _PetsScreenState extends State<PetsScreen> {
-  List<PetModel> _pets = [];
-  bool _loading = true;
-
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
-  }
-
-  Future<void> _load() async {
-    final auth = context.read<AuthProvider>();
-    if (auth.user == null) {
-      setState(() => _loading = false);
-      return;
-    }
-    setState(() => _loading = true);
-    try {
-      final data = await ApiService.get(
-        '/pets/user/${auth.user!.id}',
-        token: auth.token,
-      );
-      final list = data as List;
-      setState(() {
-        _pets = list
-            .map((e) => PetModel.fromJson(e as Map<String, dynamic>))
-            .toList();
-      });
-    } catch (_) {
-    } finally {
-      setState(() => _loading = false);
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final auth = context.read<AuthProvider>();
+      if (auth.user != null) {
+        context.read<PetProvider>().load(auth.user!.id, token: auth.token);
+      }
+    });
   }
 
   Future<void> _addPet() async {
@@ -58,23 +36,19 @@ class _PetsScreenState extends State<PetsScreen> {
     final auth = context.read<AuthProvider>();
     if (auth.user == null) return;
 
-    try {
-      final result = await ApiService.post(
-        '/pets/user/${auth.user!.id}',
-        {
-          'name': formData.name,
-          'type': formData.type,
-          'breed': formData.breed,
-          'age': formData.age,
-          if (formData.weight != null) 'weight': formData.weight,
-          if (formData.imageUrl != null) 'imageUrl': formData.imageUrl,
-        },
-        token: auth.token,
-      );
-      final saved = PetModel.fromJson(result as Map<String, dynamic>);
-      setState(() => _pets.add(saved));
-    } catch (_) {
-      if (!mounted) return;
+    final ok = await context.read<PetProvider>().create(
+      auth.user!.id,
+      {
+        'name': formData.name,
+        'type': formData.type,
+        'breed': formData.breed,
+        'age': formData.age,
+        if (formData.weight != null) 'weight': formData.weight,
+        if (formData.imageUrl != null) 'imageUrl': formData.imageUrl,
+      },
+      token: auth.token,
+    );
+    if (ok == null && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Erro ao cadastrar pet. Tente novamente.'),
@@ -92,28 +66,19 @@ class _PetsScreenState extends State<PetsScreen> {
     if (formData == null || !mounted) return;
 
     final auth = context.read<AuthProvider>();
-    if (auth.user == null) return;
-
-    try {
-      final result = await ApiService.patch(
-        '/pets/${pet.id}',
-        {
-          'name': formData.name,
-          'type': formData.type,
-          'breed': formData.breed,
-          'age': formData.age,
-          if (formData.weight != null) 'weight': formData.weight,
-          'imageUrl': formData.imageUrl,
-        },
-        token: auth.token,
-      );
-      final updated = PetModel.fromJson(result as Map<String, dynamic>);
-      setState(() {
-        final idx = _pets.indexWhere((p) => p.id == pet.id);
-        if (idx != -1) _pets[idx] = updated;
-      });
-    } catch (_) {
-      if (!mounted) return;
+    final ok = await context.read<PetProvider>().update(
+      pet.id,
+      {
+        'name': formData.name,
+        'type': formData.type,
+        'breed': formData.breed,
+        'age': formData.age,
+        if (formData.weight != null) 'weight': formData.weight,
+        'imageUrl': formData.imageUrl,
+      },
+      token: auth.token,
+    );
+    if (!ok && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Erro ao atualizar pet. Tente novamente.'),
@@ -127,11 +92,9 @@ class _PetsScreenState extends State<PetsScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Remover pet',
-            style: TextStyle(
-                fontWeight: FontWeight.bold, color: AppColors.dark)),
+            style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.dark)),
         content: Text(
           'Tem certeza que deseja remover ${pet.name}?',
           style: const TextStyle(color: AppColors.grey),
@@ -139,18 +102,15 @@ class _PetsScreenState extends State<PetsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancelar',
-                style: TextStyle(color: AppColors.grey)),
+            child: const Text('Cancelar', style: TextStyle(color: AppColors.grey)),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.danger,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
-            child: const Text('Remover',
-                style: TextStyle(color: Colors.white)),
+            child: const Text('Remover', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -158,11 +118,8 @@ class _PetsScreenState extends State<PetsScreen> {
     if (confirmed != true || !mounted) return;
 
     final auth = context.read<AuthProvider>();
-    try {
-      await ApiService.delete('/pets/${pet.id}', token: auth.token);
-      setState(() => _pets.removeWhere((p) => p.id == pet.id));
-    } catch (_) {
-      if (!mounted) return;
+    final ok = await context.read<PetProvider>().remove(pet.id, token: auth.token);
+    if (!ok && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Erro ao remover pet. Tente novamente.'),
@@ -196,55 +153,49 @@ class _PetsScreenState extends State<PetsScreen> {
           ),
         ],
       ),
-      body: _loading
-          ? const Center(
-              child: CircularProgressIndicator(color: AppColors.primary))
-          : RefreshIndicator(
-              onRefresh: _load,
-              color: AppColors.primary,
-              child: _pets.isEmpty
-                  ? ListView(
-                      children: [
-                        const SizedBox(height: 80),
-                        Center(
-                          child: Column(
-                            children: [
-                              Container(
-                                width: 80,
-                                height: 80,
-                                decoration: BoxDecoration(
-                                  color: AppColors.primaryLight,
-                                  borderRadius: BorderRadius.circular(40),
-                                ),
-                                child: const Icon(Icons.pets,
-                                    size: 40, color: AppColors.primary),
-                              ),
-                              const SizedBox(height: 16),
-                              const Text('Nenhum pet cadastrado',
-                                  style: TextStyle(
-                                      color: AppColors.dark,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600)),
-                              const SizedBox(height: 6),
-                              const Text('Toque no + para adicionar um pet',
-                                  style: TextStyle(
-                                      color: AppColors.grey, fontSize: 13)),
-                            ],
-                          ),
+      body: Builder(builder: (context) {
+        final provider = context.watch<PetProvider>();
+        final auth = context.read<AuthProvider>();
+        if (provider.isLoading) {
+          return const Center(
+              child: CircularProgressIndicator(color: AppColors.primary));
+        }
+        return RefreshIndicator(
+          onRefresh: () => provider.load(auth.user?.id ?? '', token: auth.token),
+          color: AppColors.primary,
+          child: provider.pets.isEmpty
+              ? ListView(children: [
+                  const SizedBox(height: 80),
+                  Center(
+                    child: Column(children: [
+                      Container(
+                        width: 80, height: 80,
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryLight,
+                          borderRadius: BorderRadius.circular(40),
                         ),
-                      ],
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 16),
-                      itemCount: _pets.length,
-                      itemBuilder: (ctx, i) => _PetCard(
-                        pet: _pets[i],
-                        onEdit: () => _editPet(_pets[i]),
-                        onDelete: () => _deletePet(_pets[i]),
+                        child: const Icon(Icons.pets, size: 40, color: AppColors.primary),
                       ),
-                    ),
-            ),
+                      const SizedBox(height: 16),
+                      const Text('Nenhum pet cadastrado',
+                          style: TextStyle(color: AppColors.dark, fontSize: 16, fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 6),
+                      const Text('Toque no + para adicionar um pet',
+                          style: TextStyle(color: AppColors.grey, fontSize: 13)),
+                    ]),
+                  ),
+                ])
+              : ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  itemCount: provider.pets.length,
+                  itemBuilder: (ctx, i) => _PetCard(
+                    pet: provider.pets[i],
+                    onEdit: () => _editPet(provider.pets[i]),
+                    onDelete: () => _deletePet(provider.pets[i]),
+                  ),
+                ),
+        );
+      }),
     );
   }
 }

@@ -26,7 +26,7 @@ const estabNavItems = [
   BottomNavItemData(icon: Icons.calendar_today_outlined, activeIcon: Icons.calendar_today,  label: 'Agenda'),
   BottomNavItemData(icon: Icons.shopping_bag_outlined,   activeIcon: Icons.shopping_bag,    label: 'Produtos'),
   BottomNavItemData(icon: Icons.star_outline,            activeIcon: Icons.star,            label: 'Avaliações'),
-  BottomNavItemData(icon: Icons.bar_chart_outlined,      activeIcon: Icons.bar_chart,       label: 'Estatísticas'),
+  BottomNavItemData(icon: Icons.storefront_outlined,     activeIcon: Icons.storefront,      label: 'Vendas'),
   BottomNavItemData(icon: Icons.person_outline,          activeIcon: Icons.person,          label: 'Perfil'),
 ];
 
@@ -73,11 +73,11 @@ class AppBottomNav extends StatelessWidget {
             children: List.generate(items.length, (i) {
               final item = items[i];
               final isActive = i == currentIndex;
-              return GestureDetector(
+              return Expanded(
+                child: GestureDetector(
                 onTap: () => onTap(i),
                 behavior: HitTestBehavior.opaque,
-                child: Expanded(
-                  child: Column(
+                child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Stack(

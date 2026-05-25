@@ -27,12 +27,9 @@ class EstablishmentModel {
   final String ownerId;
   final String name;
   final String description;
-  final String type; // PET_SHOP, VETERINARIA
-  /// Combined display string: "address — city" (kept for backward compat)
+  final String type;
   final String address;
-  /// Raw address field (for editing)
   final String rawAddress;
-  /// Raw city field (for editing)
   final String city;
   final String phone;
   final double rating;

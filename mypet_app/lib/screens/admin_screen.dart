@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/colors.dart';
+import '../providers/admin_provider.dart';
 import '../providers/auth_provider.dart';
-import '../services/api_service.dart';
+import '../repositories/admin_repository.dart';
 import '../widgets/app_bottom_nav.dart';
 import '../widgets/mypet_app_bar.dart';
-
-const _adminSecret = 'mypet_admin_secret';
-const _adminHeaders = {'x-admin-secret': _adminSecret};
 
 class AdminScreen extends StatefulWidget {
   const AdminScreen({super.key});
@@ -17,67 +15,28 @@ class AdminScreen extends StatefulWidget {
 
 class _AdminScreenState extends State<AdminScreen> {
   int _selectedIndex = 0;
-
-  List<dynamic> _users = [];
-  List<dynamic> _faqItems = [];
-  List<dynamic> _userQuestions = [];
-  bool _loading = true;
-  String? _error;
+  AdminProvider? _provider;
 
   @override
   void initState() {
     super.initState();
-    _loadAll();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final auth = context.read<AuthProvider>();
+      final p = AdminProvider(AdminRepository(token: auth.token ?? ''));
+      p.addListener(_rebuild);
+      setState(() => _provider = p);
+      p.loadAll();
+    });
   }
 
-  Future<void> _loadAll() async {
-    setState(() { _loading = true; _error = null; });
-    try {
-      await Future.wait([_loadUsers(), _loadFaq(), _loadQuestions()]);
-    } catch (e) {
-      setState(() => _error = e.toString());
-    }
-    setState(() => _loading = false);
-  }
+  void _rebuild() { if (mounted) setState(() {}); }
 
-  Future<void> _loadUsers() async {
-    final data = await ApiService.get('/auth/admin/users', headers: _adminHeaders);
-    setState(() => _users = data as List<dynamic>);
-  }
-
-  Future<void> _loadFaq() async {
-    final data = await ApiService.get('/faq/admin/all', headers: _adminHeaders);
-    setState(() => _faqItems = data as List<dynamic>);
-  }
-
-  Future<void> _loadQuestions() async {
-    final data = await ApiService.get('/faq/questions/admin/all', headers: _adminHeaders);
-    setState(() => _userQuestions = data as List<dynamic>);
-  }
-
-  Future<void> _answerQuestion(String id, String answer) async {
-    await ApiService.put('/faq/questions/admin/$id/answer', {'answer': answer}, headers: _adminHeaders);
-    await _loadQuestions();
-  }
-
-  Future<void> _closeQuestion(String id) async {
-    await ApiService.put('/faq/questions/admin/$id/close', {}, headers: _adminHeaders);
-    await _loadQuestions();
-  }
-
-  Future<void> _createFaq(String question, String answer, String category) async {
-    await ApiService.post('/faq/admin', {'question': question, 'answer': answer, 'category': category}, headers: _adminHeaders);
-    await _loadFaq();
-  }
-
-  Future<void> _updateFaq(String id, Map<String, dynamic> data) async {
-    await ApiService.put('/faq/admin/$id', data, headers: _adminHeaders);
-    await _loadFaq();
-  }
-
-  Future<void> _deleteFaq(String id) async {
-    await ApiService.delete('/faq/admin/$id', headers: _adminHeaders);
-    await _loadFaq();
+  @override
+  void dispose() {
+    _provider?.removeListener(_rebuild);
+    _provider?.dispose();
+    super.dispose();
   }
 
   Future<void> _logout() async {
@@ -107,29 +66,36 @@ class _AdminScreenState extends State<AdminScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final p = _provider;
+    if (p == null) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+      );
+    }
+
     final pages = [
       _DashboardPage(
-        users: _users,
-        faqItems: _faqItems,
-        userQuestions: _userQuestions,
-        loading: _loading,
-        error: _error,
-        onRetry: _loadAll,
+        users: p.users,
+        faqItems: p.faqItems,
+        userQuestions: p.userQuestions,
+        loading: p.isLoading,
+        error: p.error,
+        onRetry: p.loadAll,
         onGoToFaq: () => setState(() => _selectedIndex = 2),
         onGoToUsers: () => setState(() => _selectedIndex = 1),
       ),
-      _UsuariosPage(users: _users, loading: _loading),
+      _UsuariosPage(users: p.users, loading: p.isLoading),
       _FaqPage(
-        faqItems: _faqItems,
-        userQuestions: _userQuestions,
-        loading: _loading,
-        onCreateFaq: _createFaq,
-        onUpdateFaq: _updateFaq,
-        onDeleteFaq: _deleteFaq,
-        onAnswer: _answerQuestion,
-        onClose: _closeQuestion,
+        faqItems: p.faqItems,
+        userQuestions: p.userQuestions,
+        loading: p.isLoading,
+        onCreateFaq: p.createFaq,
+        onUpdateFaq: p.updateFaq,
+        onDeleteFaq: p.deleteFaq,
+        onAnswer: p.answerQuestion,
+        onClose: p.closeQuestion,
       ),
-      _EstatisticasPage(users: _users, loading: _loading),
+      _EstatisticasPage(users: p.users, loading: p.isLoading),
     ];
 
     return Scaffold(
@@ -144,7 +110,7 @@ class _AdminScreenState extends State<AdminScreen> {
           setState(() => _selectedIndex = i);
         },
         badges: {
-          2: _userQuestions.where((q) => q['status'] == 'PENDENTE').length,
+          2: p.userQuestions.where((q) => q['status'] == 'PENDENTE').length,
         },
       ),
     );
@@ -152,9 +118,9 @@ class _AdminScreenState extends State<AdminScreen> {
 }
 
 class _DashboardPage extends StatelessWidget {
-  final List<dynamic> users;
-  final List<dynamic> faqItems;
-  final List<dynamic> userQuestions;
+  final List<Map<String, dynamic>> users;
+  final List<Map<String, dynamic>> faqItems;
+  final List<Map<String, dynamic>> userQuestions;
   final bool loading;
   final String? error;
   final VoidCallback onRetry;
@@ -450,7 +416,7 @@ class _ActionCard extends StatelessWidget {
 }
 
 class _UsuariosPage extends StatelessWidget {
-  final List<dynamic> users;
+  final List<Map<String, dynamic>> users;
   final bool loading;
   const _UsuariosPage({required this.users, required this.loading});
 
@@ -479,7 +445,7 @@ class _UsuariosPage extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       itemCount: users.length,
       itemBuilder: (ctx, i) {
-        final u = users[i] as Map<String, dynamic>;
+        final u = users[i];
         final role = u['role'] as String? ?? 'CLIENTE';
         return Container(
           margin: const EdgeInsets.only(bottom: 10),
@@ -534,8 +500,8 @@ class _UsuariosPage extends StatelessWidget {
 }
 
 class _FaqPage extends StatefulWidget {
-  final List<dynamic> faqItems;
-  final List<dynamic> userQuestions;
+  final List<Map<String, dynamic>> faqItems;
+  final List<Map<String, dynamic>> userQuestions;
   final bool loading;
   final Future<void> Function(String q, String a, String cat) onCreateFaq;
   final Future<void> Function(String id, Map<String, dynamic> data) onUpdateFaq;
@@ -696,7 +662,7 @@ class _FaqPageState extends State<_FaqPage> with SingleTickerProviderStateMixin 
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
                     itemCount: widget.faqItems.length,
                     itemBuilder: (ctx, i) {
-                      final f = widget.faqItems[i] as Map<String, dynamic>;
+                      final f = widget.faqItems[i];
                       final active = f['active'] as bool? ?? true;
                       return Container(
                         margin: const EdgeInsets.only(bottom: 10),
@@ -766,7 +732,7 @@ class _FaqPageState extends State<_FaqPage> with SingleTickerProviderStateMixin 
                   padding: const EdgeInsets.all(16),
                   itemCount: widget.userQuestions.length,
                   itemBuilder: (ctx, i) {
-                    final q = widget.userQuestions[i] as Map<String, dynamic>;
+                    final q = widget.userQuestions[i];
                     final status = q['status'] as String? ?? '';
                     final isPendente = status == 'PENDENTE';
                     final role = q['userRole'] as String? ?? 'CLIENTE';
@@ -863,7 +829,7 @@ class _StatusBadge extends StatelessWidget {
 }
 
 class _EstatisticasPage extends StatefulWidget {
-  final List<dynamic> users;
+  final List<Map<String, dynamic>> users;
   final bool loading;
   const _EstatisticasPage({required this.users, required this.loading});
 
@@ -924,7 +890,7 @@ class _EstatisticasPageState extends State<_EstatisticasPage> with SingleTickerP
 }
 
 class _StatsView extends StatelessWidget {
-  final List<dynamic> users;
+  final List<Map<String, dynamic>> users;
   final String label;
   final Color color;
   final bool showBreakdown;

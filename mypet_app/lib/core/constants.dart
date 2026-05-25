@@ -13,6 +13,7 @@ class ApiConstants {
   static const productsEndpoint = '/marketplace/products';
   static const cartEndpoint = '/marketplace/cart';
   static const ordersEndpoint = '/marketplace/orders';
+  static const paymentsEndpoint = '/marketplace/payments';
 
   static const petsEndpoint = '/pets/user';
   static const bookingsEndpoint = '/bookings';

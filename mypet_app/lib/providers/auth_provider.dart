@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../models/user.dart';
-import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../services/storage_service.dart';
 
@@ -41,8 +40,8 @@ class AuthProvider extends ChangeNotifier {
   Future<bool> validateToken() async {
     if (_token == null) return false;
     try {
-      final data = await ApiService.get('/auth/me', token: _token);
-      _user = UserModel.fromJson(data as Map<String, dynamic>);
+      final data = await AuthService.getMe(token: _token!);
+      _user = UserModel.fromJson(data);
       await StorageService.saveUser(_user!);
       notifyListeners();
       return true;
@@ -125,12 +124,12 @@ class AuthProvider extends ChangeNotifier {
     _error = null;
     notifyListeners();
     try {
-      final data = await ApiService.patch(
-        '/auth/me',
-        {'name': name, 'phone': phone},
-        token: _token,
+      final data = await AuthService.updateMe(
+        token: _token!,
+        name: name,
+        phone: phone,
       );
-      _user = UserModel.fromJson(data as Map<String, dynamic>);
+      _user = UserModel.fromJson(data);
       await StorageService.saveUser(_user!);
       _loading = false;
       notifyListeners();
@@ -146,7 +145,7 @@ class AuthProvider extends ChangeNotifier {
   Future<bool> deleteAccount() async {
     if (_user == null || _token == null) return false;
     try {
-      await ApiService.delete('/auth/me', token: _token);
+      await AuthService.deleteMe(token: _token!);
       await logout();
       return true;
     } catch (e) {

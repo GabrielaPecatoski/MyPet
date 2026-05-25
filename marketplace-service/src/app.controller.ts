@@ -10,14 +10,21 @@ import {
   HttpCode,
 } from '@nestjs/common';
 import { AppService } from './app.service';
+import { PaymentService, type CreatePaymentDto } from './payment.service';
 
 @Controller()
 export class AppController {
-  constructor(private readonly appService: AppService) {}
+  constructor(
+    private readonly appService: AppService,
+    private readonly paymentService: PaymentService,
+  ) {}
 
   @Get('marketplace/products')
-  listProducts(@Query('search') search?: string) {
-    return this.appService.findAllProducts(search);
+  listProducts(
+    @Query('search') search?: string,
+    @Query('establishmentId') establishmentId?: string,
+  ) {
+    return this.appService.findAllProducts(search, establishmentId);
   }
 
   @Get('marketplace/products/:id')
@@ -81,6 +88,20 @@ export class AppController {
     return this.appService.clearCart(userId);
   }
 
+  @Get('marketplace/orders/establishment/:establishmentId')
+  getOrdersByEstablishment(@Param('establishmentId') establishmentId: string) {
+    return this.appService.getOrdersByEstablishment(establishmentId);
+  }
+
+  @Patch('marketplace/orders/:orderId/delivery')
+  @HttpCode(200)
+  updateDelivery(
+    @Param('orderId') orderId: string,
+    @Body() body: { deliveryStatus: string },
+  ) {
+    return this.appService.updateDeliveryStatus(orderId, body.deliveryStatus);
+  }
+
   @Post('marketplace/orders/:userId')
   checkout(@Param('userId') userId: string) {
     return this.appService.checkout(userId);
@@ -89,5 +110,37 @@ export class AppController {
   @Get('marketplace/orders/:userId')
   getUserOrders(@Param('userId') userId: string) {
     return this.appService.getUserOrders(userId);
+  }
+
+  @Post('marketplace/payments')
+  createPayment(@Body() body: CreatePaymentDto) {
+    return this.paymentService.processPayment(body);
+  }
+
+  @Get('marketplace/payments/user/:userId')
+  getPaymentsByUser(@Param('userId') userId: string) {
+    return this.paymentService.findByUser(userId);
+  }
+
+  @Get('marketplace/payments/order/:orderId')
+  getPaymentsByOrder(@Param('orderId') orderId: string) {
+    return this.paymentService.findByOrder(orderId);
+  }
+
+  @Get('marketplace/payments/:id')
+  getPayment(@Param('id') id: string) {
+    return this.paymentService.findById(id);
+  }
+
+  @Patch('marketplace/payments/:id/cancel')
+  @HttpCode(200)
+  cancelPayment(@Param('id') id: string) {
+    return this.paymentService.cancel(id);
+  }
+
+  @Patch('marketplace/payments/:id/refund')
+  @HttpCode(200)
+  refundPayment(@Param('id') id: string) {
+    return this.paymentService.refund(id);
   }
 }

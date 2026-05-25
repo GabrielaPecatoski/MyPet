@@ -6,9 +6,12 @@
     "dev": "docker stop mypet-gateway mypet-auth mypet-user-pet mypet-establishment mypet-marketplace mypet-booking mypet-notification mypet-review mypet-faq >nul 2>&1 & npm start",
     "start": "concurrently --kill-others-on-fail --prefix \"[{name}]\" --names \"gateway,auth,users,estab,market,booking,notif,review\" --prefix-colors \"blue,magenta,cyan,green,yellow,red,white,gray\" \"npm run start:dev --prefix api-gateway\" \"npm run start:dev --prefix auth-service\" \"npm run start:dev --prefix user-pet-service\" \"npm run start:dev --prefix establishment-service\" \"npm run start:dev --prefix marketplace-service\" \"npm run start:dev --prefix booking-service\" \"npm run start:dev --prefix notification-service\" \"npm run start:dev --prefix review-service\"",
     "install:all": "node install-all.js",
-    "setup": "node install-all.js && cd auth-service && npx prisma generate && npx prisma migrate dev --name init && npx ts-node prisma/seed.ts && cd .."
+    "setup": "node install-all.js && cd auth-service && npx prisma generate && npx prisma migrate dev --name init && npx ts-node prisma/seed.ts && cd ..",
+    "test": "playwright test",
+    "test:report": "playwright show-report"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "concurrently": "^9.1.2"
   }
 }
