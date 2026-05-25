@@ -16,7 +16,7 @@ class BottomNavItemData {
 const clientNavItems = [
   BottomNavItemData(icon: Icons.home_outlined,           activeIcon: Icons.home,            label: 'Home'),
   BottomNavItemData(icon: Icons.calendar_today_outlined, activeIcon: Icons.calendar_today,  label: 'Agenda'),
-  BottomNavItemData(icon: Icons.shopping_bag_outlined,   activeIcon: Icons.shopping_bag,    label: 'Carrinho'),
+  BottomNavItemData(icon: Icons.store_outlined,           activeIcon: Icons.store,           label: 'Loja'),
   BottomNavItemData(icon: Icons.favorite_outline,        activeIcon: Icons.favorite,        label: 'Pets'),
   BottomNavItemData(icon: Icons.person_outline,          activeIcon: Icons.person,          label: 'Perfil'),
 ];

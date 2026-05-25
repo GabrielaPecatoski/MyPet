@@ -1,8 +1,6 @@
 import { CreateProductDto } from "@market/products/application/dto/create-product.dto";
 import { ProductDto } from "@market/products/application/dto/product.dto";
 import { ProductService } from "@market/products/application/services/product.service";
-import { CartService } from "@market/cart/application/services/cart.service";
-import { OrderService } from "@market/orders/application/services/order.service";
 import {
   Body,
   Controller,
@@ -25,8 +23,6 @@ import {
 import { Permission } from "@shared/domain/enums/permission.enum";
 import { RequirePermissions } from "@shared/infra/decorators/permissions.decorator";
 import { Public } from "@shared/infra/decorators/public.decorator";
-import { CurrentUser } from "@shared/infra/decorators/current-user.decorator";
-import type { AuthenticatedUser } from "@shared/infra/auth/interfaces/authenticated-user.interface";
 import { HateoasItem } from "@shared/infra/hateoas";
 
 @ApiTags("marketplace/products")
@@ -90,84 +86,5 @@ export class ProductsController {
   @ApiNoContentResponse({ description: "Produto removido" })
   async remove(@Param("id") id: string) {
     return this.productService.remove(id);
-  }
-}
-
-@ApiTags("marketplace/cart")
-@ApiBearerAuth()
-@Controller("marketplace/cart")
-export class CartController {
-  constructor(
-    private readonly cartService: CartService,
-    private readonly orderService: OrderService,
-  ) {}
-
-  @Get(":userId")
-  @RequirePermissions(Permission.CART_READ)
-  @ApiOperation({ summary: "Listar itens do carrinho" })
-  async getCart(@Param("userId") userId: string) {
-    return this.cartService.findByUser(userId);
-  }
-
-  @Post(":userId")
-  @RequirePermissions(Permission.CART_WRITE)
-  @ApiOperation({ summary: "Adicionar item ao carrinho" })
-  async addItem(
-    @Param("userId") userId: string,
-    @Body() body: { productId: string; quantity: number },
-  ) {
-    return this.cartService.addItem(userId, body.productId, body.quantity);
-  }
-
-  @Patch(":userId/:productId")
-  @HttpCode(HttpStatus.NO_CONTENT)
-  @RequirePermissions(Permission.CART_WRITE)
-  @ApiOperation({ summary: "Atualizar quantidade de item no carrinho" })
-  async updateItem(
-    @Param("userId") userId: string,
-    @Param("productId") productId: string,
-    @Body() body: { quantity: number },
-  ) {
-    return this.cartService.updateItem(userId, productId, body.quantity);
-  }
-
-  @Delete(":userId/:productId")
-  @HttpCode(HttpStatus.NO_CONTENT)
-  @RequirePermissions(Permission.CART_WRITE)
-  @ApiOperation({ summary: "Remover item do carrinho" })
-  async removeItem(
-    @Param("userId") userId: string,
-    @Param("productId") productId: string,
-  ) {
-    return this.cartService.removeItem(userId, productId);
-  }
-
-  @Delete(":userId")
-  @HttpCode(HttpStatus.NO_CONTENT)
-  @RequirePermissions(Permission.CART_WRITE)
-  @ApiOperation({ summary: "Limpar carrinho" })
-  async clearCart(@Param("userId") userId: string) {
-    return this.cartService.clearCart(userId);
-  }
-}
-
-@ApiTags("marketplace/orders")
-@ApiBearerAuth()
-@Controller("marketplace/orders")
-export class OrdersController {
-  constructor(private readonly orderService: OrderService) {}
-
-  @Post(":userId")
-  @RequirePermissions(Permission.ORDERS_WRITE)
-  @ApiOperation({ summary: "Finalizar compra (checkout)" })
-  async checkout(@Param("userId") userId: string) {
-    return this.orderService.checkout(userId);
-  }
-
-  @Get(":userId")
-  @RequirePermissions(Permission.ORDERS_READ)
-  @ApiOperation({ summary: "Listar pedidos do usuário" })
-  async findByUser(@Param("userId") userId: string) {
-    return this.orderService.findByUserId(userId);
   }
 }

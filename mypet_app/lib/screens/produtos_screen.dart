@@ -191,18 +191,12 @@ class _ProdutosScreenState extends State<ProdutosScreen> {
                               context
                                   .read<CartProvider>()
                                   .add(p);
-                              ScaffoldMessenger.of(context)
-                                  .showSnackBar(SnackBar(
-                                content:
-                                    Text('${p['name']} adicionado!'),
+                              final messenger = ScaffoldMessenger.of(context);
+                              messenger.clearSnackBars();
+                              messenger.showSnackBar(SnackBar(
+                                content: Text('${p['name']} adicionado!'),
                                 backgroundColor: AppColors.success,
-                                duration: const Duration(seconds: 1),
-                                action: SnackBarAction(
-                                  label: 'Carrinho',
-                                  textColor: Colors.white,
-                                  onPressed: () => Navigator.pushNamed(
-                                      context, '/cart'),
-                                ),
+                                duration: const Duration(milliseconds: 800),
                               ));
                             },
                           );

@@ -1,5 +1,7 @@
-import type { CartItem, CartRepository } from "@market/cart/domain/repositories/cart-repository.interface";
+import type { CartItemEnriched } from "@market/cart/application/dto/cart-item.dto";
+import type { CartItemInput, CartRepository } from "@market/cart/domain/repositories/cart-repository.interface";
 import { cartItemsSchema } from "@market/cart/infra/database/schemas/cart-item.schema";
+import { productsSchema } from "@market/products/infra/database/schemas/product.schema";
 import { Injectable } from "@nestjs/common";
 import { DrizzleService } from "@shared/infra/database/drizzle.service";
 import { and, eq } from "drizzle-orm";
@@ -8,7 +10,7 @@ import { and, eq } from "drizzle-orm";
 export class DrizzleCartRepository implements CartRepository {
   constructor(private readonly drizzleService: DrizzleService) {}
 
-  async addItem(item: CartItem): Promise<void> {
+  async addItem(item: CartItemInput): Promise<void> {
     await this.drizzleService.db
       .insert(cartItemsSchema)
       .values({ userId: item.userId, productId: item.productId, quantity: item.quantity })
@@ -35,7 +37,19 @@ export class DrizzleCartRepository implements CartRepository {
     await this.drizzleService.db.delete(cartItemsSchema).where(eq(cartItemsSchema.userId, userId));
   }
 
-  async findByUserId(userId: string): Promise<CartItem[]> {
-    return this.drizzleService.db.select().from(cartItemsSchema).where(eq(cartItemsSchema.userId, userId));
+  async findByUserId(userId: string): Promise<CartItemEnriched[]> {
+    return this.drizzleService.db
+      .select({
+        id: cartItemsSchema.id,
+        userId: cartItemsSchema.userId,
+        productId: cartItemsSchema.productId,
+        quantity: cartItemsSchema.quantity,
+        productName: productsSchema.name,
+        price: productsSchema.price,
+        imageUrl: productsSchema.imageUrl,
+      })
+      .from(cartItemsSchema)
+      .innerJoin(productsSchema, eq(cartItemsSchema.productId, productsSchema.id))
+      .where(eq(cartItemsSchema.userId, userId));
   }
 }
