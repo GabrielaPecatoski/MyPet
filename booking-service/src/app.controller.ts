@@ -58,9 +58,15 @@ export class AppController {
   @Patch('bookings/:id/status')
   updateStatus(
     @Param('id') id: string,
-    @Body() body: { status: 'CONFIRMADO' | 'RECUSADO' },
+    @Body() body: { status: string },
   ) {
-    return this.appService.updateStatus(id, body.status);
+    return this.appService.updateStatus(id, body.status as any);
+  }
+
+  @Patch('bookings/:id/pay')
+  @HttpCode(200)
+  payBooking(@Param('id') id: string) {
+    return this.appService.markAsPaid(id);
   }
 
   @Patch('bookings/:id/cancel')

@@ -9,6 +9,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { PrismaService } from './prisma.service';
 
+export type BookingStatus = 'PENDENTE' | 'CONFIRMADO' | 'A_CAMINHO' | 'RECUSADO' | 'CANCELADO' | 'CONCLUIDO';
+
 export interface Booking {
   id: string;
   userId: string;
@@ -20,7 +22,8 @@ export interface Booking {
   establishmentName: string;
   scheduledAt: string;
   price: number;
-  status: 'PENDENTE' | 'CONFIRMADO' | 'RECUSADO' | 'CANCELADO' | 'CONCLUIDO';
+  status: BookingStatus;
+  pago: boolean;
   createdAt: string;
 }
 
@@ -139,7 +142,8 @@ export class AppService {
           ? b.scheduledAt.toISOString()
           : b.scheduledAt,
       price: b.price,
-      status: b.status as Booking['status'],
+      status: b.status as BookingStatus,
+      pago: b.pago ?? false,
       createdAt:
         b.createdAt instanceof Date ? b.createdAt.toISOString() : b.createdAt,
     };
@@ -243,14 +247,19 @@ export class AppService {
     return this.toBooking(booking);
   }
 
-  async updateStatus(
-    id: string,
-    status: 'CONFIRMADO' | 'RECUSADO',
-  ): Promise<Booking> {
+  async updateStatus(id: string, status: BookingStatus): Promise<Booking> {
     const booking = await this.findById(id);
-    if (booking.status !== 'PENDENTE') {
+
+    const validTransitions: Record<string, BookingStatus[]> = {
+      PENDENTE: ['CONFIRMADO', 'RECUSADO'],
+      CONFIRMADO: ['A_CAMINHO', 'CONCLUIDO', 'CANCELADO'],
+      A_CAMINHO: ['CONCLUIDO', 'CANCELADO'],
+    };
+
+    const allowed = validTransitions[booking.status] ?? [];
+    if (!allowed.includes(status)) {
       throw new BadRequestException(
-        'Apenas agendamentos pendentes podem ser confirmados ou recusados',
+        `Não é possível mudar de ${booking.status} para ${status}`,
       );
     }
 
@@ -259,17 +268,63 @@ export class AppService {
       data: { status },
     });
 
+    const notifMap: Record<string, { title: string; body: string; type: string }> = {
+      CONFIRMADO: {
+        title: 'Agendamento Confirmado!',
+        body: `Seu agendamento de ${booking.serviceName} foi confirmado para ${new Date(booking.scheduledAt).toLocaleDateString('pt-BR')}.`,
+        type: 'BOOKING_CONFIRMED',
+      },
+      RECUSADO: {
+        title: 'Agendamento Recusado',
+        body: `Seu agendamento de ${booking.serviceName} foi recusado pelo estabelecimento.`,
+        type: 'BOOKING_REJECTED',
+      },
+      A_CAMINHO: {
+        title: 'Estabelecimento a caminho!',
+        body: `O estabelecimento está a caminho para buscar ${booking.petName}.`,
+        type: 'ESTAB_ON_THE_WAY',
+      },
+      CONCLUIDO: {
+        title: 'Atendimento Concluído!',
+        body: 'Seu pet foi atendido! Que tal deixar uma avaliação?',
+        type: 'BOOKING_COMPLETED',
+      },
+    };
+
+    if (notifMap[status]) {
+      postNotification({ userId: booking.userId, ...notifMap[status] });
+    }
+
+    return this.toBooking(updated);
+  }
+
+  async markAsPaid(id: string): Promise<Booking> {
+    const booking = await this.findById(id);
+    if (booking.pago) {
+      throw new BadRequestException('Agendamento já foi pago');
+    }
+    if (!['PENDENTE', 'CONFIRMADO', 'A_CAMINHO'].includes(booking.status)) {
+      throw new BadRequestException('Agendamento não pode ser pago neste status');
+    }
+
+    const scheduledAt = new Date(booking.scheduledAt);
+    const oneHourBefore = new Date(scheduledAt.getTime() - 60 * 60 * 1000);
+    if (new Date() > oneHourBefore) {
+      throw new BadRequestException(
+        'Prazo de pagamento encerrado (até 1 hora antes do serviço)',
+      );
+    }
+
+    const updated = await this.prisma.booking.update({
+      where: { id },
+      data: { pago: true },
+    });
+
     postNotification({
-      userId: booking.userId,
-      title:
-        status === 'CONFIRMADO'
-          ? 'Agendamento Confirmado!'
-          : 'Agendamento Recusado',
-      body:
-        status === 'CONFIRMADO'
-          ? `Seu agendamento de ${booking.serviceName} foi confirmado para ${new Date(booking.scheduledAt).toLocaleDateString('pt-BR')}.`
-          : `Seu agendamento de ${booking.serviceName} foi recusado pelo estabelecimento.`,
-      type: status === 'CONFIRMADO' ? 'BOOKING_CONFIRMED' : 'BOOKING_REJECTED',
+      userId: booking.establishmentId,
+      title: 'Pagamento Recebido',
+      body: `Pagamento do serviço ${booking.serviceName} de ${booking.userName} confirmado.`,
+      type: 'BOOKING_PAID',
     });
 
     return this.toBooking(updated);
@@ -321,26 +376,7 @@ export class AppService {
   }
 
   async completeBooking(id: string): Promise<Booking> {
-    const booking = await this.findById(id);
-    if (booking.status !== 'CONFIRMADO') {
-      throw new BadRequestException(
-        'Apenas agendamentos confirmados podem ser concluídos',
-      );
-    }
-
-    const updated = await this.prisma.booking.update({
-      where: { id },
-      data: { status: 'CONCLUIDO' },
-    });
-
-    postNotification({
-      userId: booking.userId,
-      title: 'Atendimento Concluído!',
-      body: 'Seu pet foi atendido! Que tal deixar uma avaliação?',
-      type: 'BOOKING_COMPLETED',
-    });
-
-    return this.toBooking(updated);
+    return this.updateStatus(id, 'CONCLUIDO');
   }
 
   getSchedule(establishmentId: string): WorkingSchedule {

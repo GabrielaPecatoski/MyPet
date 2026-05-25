@@ -106,4 +106,19 @@ class BookingService {
     if (res.statusCode == 200) return AppointmentModel.fromJson(data);
     throw Exception(data['message'] ?? 'Erro ao atualizar agendamento');
   }
+
+  static Future<AppointmentModel> markAsPaid({
+    required String token,
+    required String bookingId,
+  }) async {
+    final res = await http
+        .patch(
+          Uri.parse('${ApiConstants.baseUrl}/bookings/$bookingId/pay'),
+          headers: _headers(token),
+        )
+        .timeout(const Duration(seconds: 8));
+    final data = jsonDecode(res.body);
+    if (res.statusCode == 200) return AppointmentModel.fromJson(data);
+    throw Exception(data['message'] ?? 'Erro ao registrar pagamento');
+  }
 }

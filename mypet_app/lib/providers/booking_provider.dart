@@ -12,14 +12,13 @@ class BookingProvider extends ChangeNotifier {
   String? get error => _error;
 
   List<AppointmentModel> get confirmados =>
-      _bookings.where((b) => b.status == 'CONFIRMADO').toList();
+      _bookings.where((b) => b.isConfirmado || b.isACaminho).toList();
 
   List<AppointmentModel> get pendentes =>
-      _bookings.where((b) => b.status == 'PENDENTE').toList();
+      _bookings.where((b) => b.isPendente).toList();
 
-  List<AppointmentModel> get ativos => _bookings
-      .where((b) => b.status == 'PENDENTE' || b.status == 'CONFIRMADO')
-      .toList();
+  List<AppointmentModel> get ativos =>
+      _bookings.where((b) => b.isActive).toList();
 
   Future<void> loadUserBookings({required String token, required String userId}) async {
     _loading = true;
@@ -93,6 +92,24 @@ class BookingProvider extends ChangeNotifier {
     _error = null;
     try {
       final updated = await BookingService.cancelBooking(token: token, bookingId: bookingId);
+      final idx = _bookings.indexWhere((b) => b.id == bookingId);
+      if (idx != -1) _bookings[idx] = updated;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _error = e.toString().replaceAll('Exception: ', '');
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> markAsPaid({
+    required String token,
+    required String bookingId,
+  }) async {
+    _error = null;
+    try {
+      final updated = await BookingService.markAsPaid(token: token, bookingId: bookingId);
       final idx = _bookings.indexWhere((b) => b.id == bookingId);
       if (idx != -1) _bookings[idx] = updated;
       notifyListeners();

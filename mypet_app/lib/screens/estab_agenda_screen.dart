@@ -84,13 +84,25 @@ class _EstabAgendaScreenState extends State<EstabAgendaScreen> {
           status: status,
         );
     if (!mounted) return;
+
+    final messages = {
+      'CONFIRMADO': 'Agendamento confirmado!',
+      'RECUSADO':   'Agendamento recusado',
+      'A_CAMINHO':  'Status atualizado: a caminho!',
+      'CONCLUIDO':  'Serviço concluído!',
+    };
+    final colors = {
+      'CONFIRMADO': AppColors.success,
+      'RECUSADO':   AppColors.danger,
+      'A_CAMINHO':  AppColors.primary,
+      'CONCLUIDO':  AppColors.success,
+    };
+
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(ok
-          ? (status == 'CONFIRMADO' ? 'Agendamento confirmado!' : 'Agendamento recusado')
+          ? (messages[status] ?? 'Atualizado')
           : 'Erro ao atualizar agendamento'),
-      backgroundColor: ok
-          ? (status == 'CONFIRMADO' ? AppColors.success : AppColors.danger)
-          : AppColors.danger,
+      backgroundColor: ok ? (colors[status] ?? AppColors.success) : AppColors.danger,
     ));
   }
 
@@ -301,13 +313,13 @@ class _ApptCard extends StatelessWidget {
       {required this.appointment, required this.onUpdateStatus});
 
   Color get _statusColor {
-    switch (appointment.status) {
-      case 'CONFIRMADO':
-        return AppColors.success;
+    switch (appointment.effectiveStatus) {
+      case 'CONFIRMADO': return AppColors.success;
+      case 'A_CAMINHO':  return AppColors.primary;
       case 'RECUSADO':
-        return AppColors.danger;
-      default:
-        return AppColors.warning;
+      case 'CANCELADO':  return AppColors.danger;
+      case 'CONCLUIDO':  return AppColors.grey;
+      default:           return AppColors.warning;
     }
   }
 
@@ -471,6 +483,56 @@ class _ApptCard extends StatelessWidget {
 
                           if (ap.isConfirmado) ...[
                             const SizedBox(height: 12),
+                            Row(children: [
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: () => onUpdateStatus(ap, 'A_CAMINHO'),
+                                  icon: const Icon(Icons.directions_car,
+                                      size: 15, color: Colors.white),
+                                  label: const Text('A caminho',
+                                      style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 13)),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.primary,
+                                    elevation: 0,
+                                    padding: const EdgeInsets.symmetric(vertical: 10),
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10)),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: () async {
+                                    await onUpdateStatus(ap, 'CONCLUIDO');
+                                    if (context.mounted) {
+                                      _showAvaliarClienteDialog(context, ap);
+                                    }
+                                  },
+                                  icon: const Icon(Icons.check_circle,
+                                      size: 15, color: Colors.white),
+                                  label: const Text('Concluir',
+                                      style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 13)),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.success,
+                                    elevation: 0,
+                                    padding: const EdgeInsets.symmetric(vertical: 10),
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10)),
+                                  ),
+                                ),
+                              ),
+                            ]),
+                          ],
+
+                          if (ap.isACaminho) ...[
+                            const SizedBox(height: 12),
                             SizedBox(
                               width: double.infinity,
                               child: ElevatedButton.icon(
@@ -487,13 +549,11 @@ class _ApptCard extends StatelessWidget {
                                         color: Colors.white,
                                         fontWeight: FontWeight.w600)),
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.primary,
+                                  backgroundColor: AppColors.success,
                                   elevation: 0,
-                                  padding: const EdgeInsets.symmetric(
-                                      vertical: 10),
+                                  padding: const EdgeInsets.symmetric(vertical: 10),
                                   shape: RoundedRectangleBorder(
-                                      borderRadius:
-                                          BorderRadius.circular(10)),
+                                      borderRadius: BorderRadius.circular(10)),
                                 ),
                               ),
                             ),
