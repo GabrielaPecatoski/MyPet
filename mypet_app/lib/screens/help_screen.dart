@@ -149,9 +149,6 @@ class _HelpScreenState extends State<HelpScreen>
               _tabs.animateTo(1);
 
               final saved = await FaqService.submitQuestion(
-                userId: auth.user?.id ?? '',
-                userName: auth.user?.name ?? 'Usuário',
-                userRole: 'CLIENTE',
                 question: text,
                 token: auth.token,
               );

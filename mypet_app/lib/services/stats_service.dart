@@ -7,7 +7,10 @@ class StatsService {
     required String estabId,
     required String token,
   }) async {
-    final data = await ApiService.get('/establishments/$estabId/stats', token: token);
+    final data = await ApiService.get(
+      '/bookings/establishment/$estabId/stats',
+      token: token,
+    );
     return EstabStatsModel.fromJson(data as Map<String, dynamic>);
   }
 

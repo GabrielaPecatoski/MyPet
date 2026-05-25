@@ -1,102 +1,74 @@
-# MyPet - Start Stack
-# Se travar na politica de execucao, rode no terminal:
-#   Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+# MyPet - inicia toda a stack
+# Se travar em politica de execucao: Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
 
 $ErrorActionPreference = 'Continue'
-
-$services = @(
-  @{ name = 'gateway';      port = 3000 },
-  @{ name = 'auth';         port = 3001 },
-  @{ name = 'user-pet';     port = 3002 },
-  @{ name = 'establishment';port = 3003 },
-  @{ name = 'marketplace';  port = 3004 },
-  @{ name = 'booking';      port = 3005 },
-  @{ name = 'notification'; port = 3006 },
-  @{ name = 'review';       port = 3007 },
-  @{ name = 'faq';          port = 3008 }
-)
+$compose = "$PSScriptRoot\docker-compose.yml"
 
 Write-Host ""
-Write-Host "Verificando Docker..." -ForegroundColor Cyan
-docker info | Out-Null
+Write-Host "===================================" -ForegroundColor Cyan
+Write-Host "  MyPet - Iniciando stack" -ForegroundColor Cyan
+Write-Host "===================================" -ForegroundColor Cyan
+Write-Host ""
+
+# 1. Verifica / aguarda Docker Desktop
+Write-Host "[1/3] Verificando Docker Desktop..." -ForegroundColor Yellow
+docker info 2>&1 | Out-Null
 if ($LASTEXITCODE -ne 0) {
-  Write-Host "Docker nao esta rodando. Abra o Docker Desktop e tente novamente." -ForegroundColor Red
-  exit 1
-}
-
-Write-Host "Parando containers anteriores..." -ForegroundColor Cyan
-docker compose down | Out-Null
-
-Write-Host "Subindo a stack (pode demorar no primeiro build)..." -ForegroundColor Cyan
-docker compose up -d --build
-if ($LASTEXITCODE -ne 0) {
-  Write-Host "Erro ao subir os containers. Verifique se o Docker Desktop esta aberto." -ForegroundColor Red
-  exit 1
-}
-
-Write-Host ""
-Write-Host "Aguardando servicos iniciarem (90s)..." -ForegroundColor Yellow
-Start-Sleep -Seconds 90
-
-Write-Host ""
-Write-Host "Status dos servicos:" -ForegroundColor Cyan
-Write-Host "--------------------"
-
-$allOk = $true
-foreach ($svc in $services) {
-  try {
-    $res = Invoke-WebRequest -Uri "http://localhost:$($svc.port)/health" -TimeoutSec 8 -UseBasicParsing -ErrorAction Stop
-    if ($res.StatusCode -eq 200) {
-      Write-Host "  $($svc.name.PadRight(15)) [OK]" -ForegroundColor Green
-    } else {
-      Write-Host "  $($svc.name.PadRight(15)) [ERRO - HTTP $($res.StatusCode)]" -ForegroundColor Red
-      $allOk = $false
-    }
-  } catch {
-    Write-Host "  $($svc.name.PadRight(15)) [ERRO - sem resposta]" -ForegroundColor Red
-    $allOk = $false
+  Write-Host "      Docker Desktop nao esta rodando. Iniciando..." -ForegroundColor Yellow
+  $dockerExe = "C:\Program Files\Docker\Docker\Docker Desktop.exe"
+  if (Test-Path $dockerExe) { Start-Process $dockerExe }
+  $elapsed = 0
+  do {
+    Start-Sleep -Seconds 4
+    $elapsed += 4
+    docker info 2>&1 | Out-Null
+  } while ($LASTEXITCODE -ne 0 -and $elapsed -lt 120)
+  if ($LASTEXITCODE -ne 0) {
+    Write-Host "      Docker Desktop nao iniciou. Abra manualmente e rode novamente." -ForegroundColor Red
+    exit 1
   }
 }
+Write-Host "      Docker pronto." -ForegroundColor Green
 
+# 2. Sobe containers (sem rebuild - usa imagens ja construidas)
 Write-Host ""
-Write-Host "Infraestrutura:" -ForegroundColor Cyan
-Write-Host "  PostgreSQL      -> localhost:5433"
-Write-Host "  RabbitMQ UI     -> http://localhost:15672  (mypet/mypet123)"
-Write-Host "  Consul UI       -> http://localhost:8500"
-Write-Host ""
-
-$wslIp = $null
-try {
-  $wslIp = (Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue |
-    Where-Object { $_.InterfaceAlias -like '*WSL*' } |
-    Select-Object -First 1 -ExpandProperty IPAddress)
-} catch { }
-
-Write-Host "Para Flutter em dispositivo fisico / emulador Android:" -ForegroundColor Cyan
-if ($wslIp) {
-  Write-Host "  Esta maquina (WSL) -> http://${wslIp}:3000"
-} else {
-  Write-Host "  Descubra seu IP:      ipconfig | findstr IPv4"
-  Write-Host "  Use o IP da maquina-> http://<SEU-IP>:3000"
+Write-Host "[2/3] Subindo containers..." -ForegroundColor Yellow
+docker compose -f $compose up -d
+if ($LASTEXITCODE -ne 0) {
+  Write-Host "      Erro ao subir containers." -ForegroundColor Red
+  exit 1
 }
-Write-Host "  Emulador Android   -> http://10.0.2.2:3000"
-Write-Host ""
-Write-Host "Comandos uteis:"
-Write-Host "  docker compose logs -f gateway   # logs do gateway"
-Write-Host "  docker compose logs -f auth      # logs de um servico"
-Write-Host "  docker compose ps                # status dos containers"
-Write-Host "  docker compose down              # parar tudo"
-Write-Host "  docker compose down -v           # parar + apagar volumes (reset DB)"
-Write-Host ""
 
-if ($allOk) {
-  Write-Host "================================================" -ForegroundColor Green
-  Write-Host "  Todos os servicos estao rodando!" -ForegroundColor Green
-  Write-Host "================================================" -ForegroundColor Green
-} else {
-  Write-Host "================================================" -ForegroundColor Yellow
-  Write-Host "  Alguns servicos falharam. Verifique com:" -ForegroundColor Yellow
-  Write-Host "  docker compose logs <nome-do-servico>" -ForegroundColor Yellow
-  Write-Host "================================================" -ForegroundColor Yellow
+# 3. Aguarda o gateway responder
+Write-Host ""
+Write-Host "[3/3] Aguardando API Gateway (http://localhost:3000/health)..." -ForegroundColor Yellow
+$maxWait = 90
+$waited  = 0
+$ready   = $false
+while ($waited -lt $maxWait) {
+  Start-Sleep -Seconds 3
+  $waited += 3
+  try {
+    $r = Invoke-WebRequest -Uri "http://localhost:3000/health" -TimeoutSec 2 -UseBasicParsing -ErrorAction Stop
+    if ($r.StatusCode -eq 200) { $ready = $true; break }
+  } catch {}
+  Write-Host "      aguardando... ($waited/$maxWait s)" -ForegroundColor DarkGray
 }
+
+# Resultado
+Write-Host ""
+Write-Host "===================================" -ForegroundColor Cyan
+docker ps --format "table {{.Names}}`t{{.Status}}"
+Write-Host ""
+if ($ready) {
+  Write-Host "  Stack pronta!" -ForegroundColor Green
+} else {
+  Write-Host "  Gateway ainda nao respondeu. Verifique:" -ForegroundColor Yellow
+  Write-Host "  docker compose logs api-gateway" -ForegroundColor DarkGray
+}
+Write-Host ""
+Write-Host "  API Gateway  -> http://localhost:3000"
+Write-Host "  RabbitMQ UI  -> http://localhost:15672  (mypet / mypet123)"
+Write-Host "  Flutter emulador Android -> http://10.0.2.2:3000"
+Write-Host "===================================" -ForegroundColor Cyan
 Write-Host ""

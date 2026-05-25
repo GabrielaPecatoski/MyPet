@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../core/colors.dart';
+import '../providers/auth_provider.dart';
+import '../services/api_service.dart';
 import '../widgets/mypet_app_bar.dart';
 
 class EstabProdutosScreen extends StatefulWidget {
@@ -12,14 +15,11 @@ class _EstabProdutosScreenState extends State<EstabProdutosScreen> {
   final _searchCtrl = TextEditingController();
   String _filter = 'Todos';
   String _searchQuery = '';
+  bool _loading = true;
+  String? _estabId;
+  String? _token;
 
-  final List<_Product> _products = [
-    _Product(id: '1', name: 'Shampoo Pet Premium', category: 'Higiene', price: 49.90, stock: 15, sold: 38, active: true),
-    _Product(id: '2', name: 'Ração Golden Adulto 15kg', category: 'Alimentação', price: 189.90, stock: 0, sold: 22, active: true),
-    _Product(id: '3', name: 'Arranhador Sisal Grande', category: 'Acessórios', price: 129.90, stock: 4, sold: 10, active: false),
-    _Product(id: '4', name: 'Brinquedo Interativo', category: 'Brinquedos', price: 34.90, stock: 20, sold: 55, active: true),
-    _Product(id: '5', name: 'Coleira Antipulgas', category: 'Saúde', price: 79.90, stock: 8, sold: 17, active: true),
-  ];
+  final List<_Product> _products = [];
 
   static const _categories = ['Higiene', 'Alimentação', 'Acessórios', 'Brinquedos', 'Saúde'];
 
@@ -39,6 +39,60 @@ class _EstabProdutosScreenState extends State<EstabProdutosScreen> {
     'Saúde': Icons.health_and_safety_outlined,
   };
 
+  @override
+  void initState() {
+    super.initState();
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    _token = auth.token;
+    _loadData(auth.user?.id);
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadData(String? userId) async {
+    if (userId == null) {
+      setState(() => _loading = false);
+      return;
+    }
+    setState(() => _loading = true);
+    try {
+      final estabData = await ApiService.get('/establishments/owner/$userId', token: _token);
+      final estabs = estabData is List ? estabData : [estabData];
+      if (estabs.isEmpty) {
+        setState(() => _loading = false);
+        return;
+      }
+      final id = (estabs.first as Map<String, dynamic>)['id'] as String? ?? '';
+      _estabId = id;
+      await _loadProducts();
+    } catch (_) {
+      setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _loadProducts() async {
+    if (_estabId == null) return;
+    setState(() => _loading = true);
+    try {
+      final data = await ApiService.get(
+        '/marketplace/products/establishment/$_estabId',
+        token: _token,
+      );
+      final list = (data as List).cast<Map<String, dynamic>>();
+      setState(() {
+        _products.clear();
+        _products.addAll(list.map((e) => _Product.fromJson(e)));
+        _loading = false;
+      });
+    } catch (_) {
+      setState(() => _loading = false);
+    }
+  }
+
   List<_Product> get _filtered {
     var list = _products.where((p) {
       if (_filter == 'Ativos') return p.active;
@@ -57,15 +111,24 @@ class _EstabProdutosScreenState extends State<EstabProdutosScreen> {
   }
 
   int get _totalAtivos => _products.where((p) => p.active).length;
-  double get _receitaTotal =>
-      _products.fold(0, (s, p) => s + p.price * p.sold);
+  double get _receitaTotal => _products.fold(0, (s, p) => s + p.price * p.stock);
 
   void _addProduct() => _showProductDialog();
   void _editProduct(_Product p) => _showProductDialog(product: p);
 
-  void _toggleActive(_Product p) => setState(() => p.active = !p.active);
+  Future<void> _toggleActive(_Product p) async {
+    if (_estabId == null) return;
+    try {
+      await ApiService.patch(
+        '/marketplace/products/${p.id}',
+        {'active': !p.active},
+        token: _token,
+      );
+      await _loadProducts();
+    } catch (_) {}
+  }
 
-  void _deleteProduct(_Product p) async {
+  Future<void> _deleteProduct(_Product p) async {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -88,16 +151,23 @@ class _EstabProdutosScreenState extends State<EstabProdutosScreen> {
         ],
       ),
     );
-    if (ok == true && mounted) setState(() => _products.remove(p));
+    if (ok == true && mounted) {
+      try {
+        await ApiService.delete('/marketplace/products/${p.id}', token: _token);
+        await _loadProducts();
+      } catch (_) {}
+    }
   }
 
   void _showProductDialog({_Product? product}) {
     final nameCtrl = TextEditingController(text: product?.name ?? '');
+    final brandCtrl = TextEditingController(text: product?.brand ?? '');
     final priceCtrl = TextEditingController(
         text: product != null ? product.price.toStringAsFixed(2) : '');
     final stockCtrl =
         TextEditingController(text: product?.stock.toString() ?? '');
     final descCtrl = TextEditingController(text: product?.description ?? '');
+    final unitCtrl = TextEditingController(text: product?.unit ?? 'Un');
     String category = product?.category ?? 'Higiene';
 
     showModalBottomSheet(
@@ -175,6 +245,14 @@ class _EstabProdutosScreenState extends State<EstabProdutosScreen> {
                 _dlgField('Nome do produto', nameCtrl,
                     hint: 'Ex: Shampoo Pet Premium'),
                 const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(child: _dlgField('Marca', brandCtrl, hint: 'Ex: PetLove')),
+                    const SizedBox(width: 12),
+                    Expanded(child: _dlgField('Unidade', unitCtrl, hint: 'Ex: Un, kg, ml')),
+                  ],
+                ),
+                const SizedBox(height: 12),
                 _dlgField('Descrição (opcional)', descCtrl,
                     hint: 'Breve descrição do produto', maxLines: 2),
                 const SizedBox(height: 12),
@@ -195,33 +273,41 @@ class _EstabProdutosScreenState extends State<EstabProdutosScreen> {
                   width: double.infinity,
                   height: 50,
                   child: ElevatedButton(
-                    onPressed: () {
+                    onPressed: () async {
                       final name = nameCtrl.text.trim();
                       if (name.isEmpty) return;
                       final price =
                           double.tryParse(priceCtrl.text.replaceAll(',', '.')) ?? 0;
                       final stock = int.tryParse(stockCtrl.text) ?? 0;
                       Navigator.pop(ctx);
-                      setState(() {
+                      try {
+                        final desc = descCtrl.text.trim();
                         if (product == null) {
-                          _products.add(_Product(
-                            id: DateTime.now().millisecondsSinceEpoch.toString(),
-                            name: name,
-                            category: category,
-                            description: descCtrl.text.trim(),
-                            price: price,
-                            stock: stock,
-                            sold: 0,
-                            active: true,
-                          ));
+                          final body = <String, dynamic>{
+                            'establishmentId': _estabId,
+                            'name': name,
+                            'brand': brandCtrl.text.trim(),
+                            'unit': unitCtrl.text.trim().isEmpty ? 'Un' : unitCtrl.text.trim(),
+                            'category': category,
+                            'price': price,
+                            'stock': stock,
+                          };
+                          if (desc.isNotEmpty) body['description'] = desc;
+                          await ApiService.post('/marketplace/products', body, token: _token);
                         } else {
-                          product.name = name;
-                          product.category = category;
-                          product.description = descCtrl.text.trim();
-                          product.price = price;
-                          product.stock = stock;
+                          final body = <String, dynamic>{
+                            'name': name,
+                            'brand': brandCtrl.text.trim(),
+                            'unit': unitCtrl.text.trim().isEmpty ? 'Un' : unitCtrl.text.trim(),
+                            'category': category,
+                            'price': price,
+                            'stock': stock,
+                          };
+                          if (desc.isNotEmpty) body['description'] = desc;
+                          await ApiService.patch('/marketplace/products/${product.id}', body, token: _token);
                         }
-                      });
+                        await _loadProducts();
+                      } catch (_) {}
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
@@ -290,202 +376,204 @@ class _EstabProdutosScreenState extends State<EstabProdutosScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: const MypetAppBar(showBack: false),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            color: Colors.white,
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-            child: Column(
+      body: _loading
+          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+          : Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                Container(
+                  color: Colors.white,
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
                         children: [
-                          Text('Meu Catálogo',
-                              style: TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.dark)),
-                          SizedBox(height: 2),
-                          Text('Gerencie seus produtos',
-                              style:
-                                  TextStyle(fontSize: 13, color: AppColors.grey)),
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Meu Catálogo',
+                                    style: TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.dark)),
+                                SizedBox(height: 2),
+                                Text('Gerencie seus produtos',
+                                    style:
+                                        TextStyle(fontSize: 13, color: AppColors.grey)),
+                              ],
+                            ),
+                          ),
+                          ElevatedButton.icon(
+                            onPressed: _estabId != null ? _addProduct : null,
+                            icon: const Icon(Icons.add, size: 18, color: Colors.white),
+                            label: const Text('Produto',
+                                style: TextStyle(color: Colors.white, fontSize: 13)),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              elevation: 0,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 10),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10)),
+                            ),
+                          ),
                         ],
                       ),
-                    ),
-                    ElevatedButton.icon(
-                      onPressed: _addProduct,
-                      icon: const Icon(Icons.add, size: 18, color: Colors.white),
-                      label: const Text('Produto',
-                          style: TextStyle(color: Colors.white, fontSize: 13)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        elevation: 0,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 10),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10)),
+                      const SizedBox(height: 16),
+
+                      Row(
+                        children: [
+                          _StatChip(
+                              label: '${_products.length} produtos',
+                              icon: Icons.inventory_2_outlined,
+                              color: AppColors.primary),
+                          const SizedBox(width: 8),
+                          _StatChip(
+                              label: '$_totalAtivos ativos',
+                              icon: Icons.check_circle_outline,
+                              color: AppColors.success),
+                          const SizedBox(width: 8),
+                          _StatChip(
+                              label: 'R\$ ${(_receitaTotal / 1000).toStringAsFixed(1)}k',
+                              icon: Icons.trending_up,
+                              color: const Color(0xFF6366F1)),
+                        ],
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
+                      const SizedBox(height: 14),
 
-                Row(
-                  children: [
-                    _StatChip(
-                        label: '${_products.length} produtos',
-                        icon: Icons.inventory_2_outlined,
-                        color: AppColors.primary),
-                    const SizedBox(width: 8),
-                    _StatChip(
-                        label: '$_totalAtivos ativos',
-                        icon: Icons.check_circle_outline,
-                        color: AppColors.success),
-                    const SizedBox(width: 8),
-                    _StatChip(
-                        label: 'R\$ ${(_receitaTotal / 1000).toStringAsFixed(1)}k',
-                        icon: Icons.trending_up,
-                        color: const Color(0xFF6366F1)),
-                  ],
-                ),
-                const SizedBox(height: 14),
-
-                TextField(
-                  controller: _searchCtrl,
-                  onChanged: (v) => setState(() => _searchQuery = v),
-                  decoration: InputDecoration(
-                    hintText: 'Buscar produto ou categoria...',
-                    hintStyle:
-                        const TextStyle(color: AppColors.grey, fontSize: 14),
-                    prefixIcon: const Icon(Icons.search,
-                        color: AppColors.grey, size: 20),
-                    suffixIcon: _searchQuery.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.close,
-                                color: AppColors.grey, size: 18),
-                            onPressed: () {
-                              _searchCtrl.clear();
-                              setState(() => _searchQuery = '');
-                            },
-                          )
-                        : null,
-                    filled: true,
-                    fillColor: AppColors.background,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none),
-                    enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none),
-                    focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(
-                            color: AppColors.primary, width: 1.5)),
+                      TextField(
+                        controller: _searchCtrl,
+                        onChanged: (v) => setState(() => _searchQuery = v),
+                        decoration: InputDecoration(
+                          hintText: 'Buscar produto ou categoria...',
+                          hintStyle:
+                              const TextStyle(color: AppColors.grey, fontSize: 14),
+                          prefixIcon: const Icon(Icons.search,
+                              color: AppColors.grey, size: 20),
+                          suffixIcon: _searchQuery.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.close,
+                                      color: AppColors.grey, size: 18),
+                                  onPressed: () {
+                                    _searchCtrl.clear();
+                                    setState(() => _searchQuery = '');
+                                  },
+                                )
+                              : null,
+                          filled: true,
+                          fillColor: AppColors.background,
+                          contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none),
+                          enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none),
+                          focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(
+                                  color: AppColors.primary, width: 1.5)),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
-          ),
 
-          Container(
-            color: Colors.white,
-            child: Column(
-              children: [
-                const Divider(height: 1, color: AppColors.greyLight),
-                SizedBox(
-                  height: 44,
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    children: ['Todos', 'Ativos', 'Inativos', 'Sem estoque']
-                        .map((f) {
-                      final sel = _filter == f;
-                      return GestureDetector(
-                        onTap: () => setState(() => _filter = f),
-                        child: Container(
-                          margin: const EdgeInsets.only(right: 20),
-                          alignment: Alignment.center,
+                Container(
+                  color: Colors.white,
+                  child: Column(
+                    children: [
+                      const Divider(height: 1, color: AppColors.greyLight),
+                      SizedBox(
+                        height: 44,
+                        child: ListView(
+                          scrollDirection: Axis.horizontal,
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          children: ['Todos', 'Ativos', 'Inativos', 'Sem estoque']
+                              .map((f) {
+                            final sel = _filter == f;
+                            return GestureDetector(
+                              onTap: () => setState(() => _filter = f),
+                              child: Container(
+                                margin: const EdgeInsets.only(right: 20),
+                                alignment: Alignment.center,
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(f,
+                                        style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: sel
+                                                ? FontWeight.bold
+                                                : FontWeight.normal,
+                                            color: sel
+                                                ? AppColors.primary
+                                                : AppColors.grey)),
+                                    const SizedBox(height: 4),
+                                    AnimatedContainer(
+                                      duration: const Duration(milliseconds: 200),
+                                      height: 2,
+                                      width: sel ? 32 : 0,
+                                      decoration: BoxDecoration(
+                                          color: AppColors.primary,
+                                          borderRadius: BorderRadius.circular(1)),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                Expanded(
+                  child: filtered.isEmpty
+                      ? Center(
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Text(f,
-                                  style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: sel
-                                          ? FontWeight.bold
-                                          : FontWeight.normal,
-                                      color: sel
-                                          ? AppColors.primary
-                                          : AppColors.grey)),
-                              const SizedBox(height: 4),
-                              AnimatedContainer(
-                                duration: const Duration(milliseconds: 200),
-                                height: 2,
-                                width: sel ? 32 : 0,
+                              Container(
+                                width: 72,
+                                height: 72,
                                 decoration: BoxDecoration(
-                                    color: AppColors.primary,
-                                    borderRadius: BorderRadius.circular(1)),
+                                    color: AppColors.primaryLight,
+                                    borderRadius: BorderRadius.circular(36)),
+                                child: const Icon(Icons.inventory_2_outlined,
+                                    size: 36, color: AppColors.primary),
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                _searchQuery.isNotEmpty
+                                    ? 'Nenhum resultado para "$_searchQuery"'
+                                    : 'Nenhum produto nesta categoria',
+                                style: const TextStyle(
+                                    color: AppColors.grey, fontSize: 14),
                               ),
                             ],
                           ),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+                          itemCount: filtered.length,
+                          itemBuilder: (ctx, i) => _ProductCard(
+                            product: filtered[i],
+                            categoryColor:
+                                _categoryColors[filtered[i].category] ?? AppColors.primary,
+                            categoryIcon:
+                                _categoryIcons[filtered[i].category] ?? Icons.shopping_bag_outlined,
+                            onEdit: () => _editProduct(filtered[i]),
+                            onToggle: () => _toggleActive(filtered[i]),
+                            onDelete: () => _deleteProduct(filtered[i]),
+                          ),
                         ),
-                      );
-                    }).toList(),
-                  ),
                 ),
               ],
             ),
-          ),
-
-          Expanded(
-            child: filtered.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          width: 72,
-                          height: 72,
-                          decoration: BoxDecoration(
-                              color: AppColors.primaryLight,
-                              borderRadius: BorderRadius.circular(36)),
-                          child: const Icon(Icons.inventory_2_outlined,
-                              size: 36, color: AppColors.primary),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          _searchQuery.isNotEmpty
-                              ? 'Nenhum resultado para "$_searchQuery"'
-                              : 'Nenhum produto nesta categoria',
-                          style: const TextStyle(
-                              color: AppColors.grey, fontSize: 14),
-                        ),
-                      ],
-                    ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-                    itemCount: filtered.length,
-                    itemBuilder: (ctx, i) => _ProductCard(
-                      product: filtered[i],
-                      categoryColor:
-                          _categoryColors[filtered[i].category] ?? AppColors.primary,
-                      categoryIcon:
-                          _categoryIcons[filtered[i].category] ?? Icons.shopping_bag_outlined,
-                      onEdit: () => _editProduct(filtered[i]),
-                      onToggle: () => _toggleActive(filtered[i]),
-                      onDelete: () => _deleteProduct(filtered[i]),
-                    ),
-                  ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -631,10 +719,7 @@ class _ProductCard extends StatelessWidget {
                                         : AppColors.primary)),
                             const Spacer(),
                             _InfoPill(Icons.inventory_2_outlined,
-                                '${product.stock} un', AppColors.grey),
-                            const SizedBox(width: 8),
-                            _InfoPill(Icons.local_offer_outlined,
-                                '${product.sold} vendas', AppColors.grey),
+                                '${product.stock} ${product.unit}', AppColors.grey),
                           ],
                         ),
                       ],
@@ -758,21 +843,35 @@ class _ActionBtn extends StatelessWidget {
 class _Product {
   final String id;
   String name;
+  String brand;
+  String unit;
   String category;
   String description;
   double price;
   int stock;
-  int sold;
   bool active;
 
   _Product({
     required this.id,
     required this.name,
+    this.brand = '',
+    this.unit = 'Un',
     required this.category,
     this.description = '',
     required this.price,
     required this.stock,
-    required this.sold,
     required this.active,
   });
+
+  factory _Product.fromJson(Map<String, dynamic> json) => _Product(
+        id: json['id'] as String? ?? '',
+        name: json['name'] as String? ?? '',
+        brand: json['brand'] as String? ?? '',
+        unit: json['unit'] as String? ?? 'Un',
+        category: json['category'] as String? ?? 'Higiene',
+        description: json['description'] as String? ?? '',
+        price: (json['price'] as num?)?.toDouble() ?? 0,
+        stock: (json['stock'] as num?)?.toInt() ?? 0,
+        active: json['active'] as bool? ?? true,
+      );
 }

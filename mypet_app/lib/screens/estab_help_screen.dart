@@ -158,9 +158,6 @@ class _EstabHelpScreenState extends State<EstabHelpScreen>
               _tabs.animateTo(1);
 
               final saved = await FaqService.submitQuestion(
-                userId: auth.user?.id ?? '',
-                userName: auth.user?.name ?? 'Estabelecimento',
-                userRole: 'ESTABELECIMENTO',
                 question: text,
                 token: auth.token,
               );

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/appointment.dart';
+import '../models/establishment.dart';
 import '../services/booking_service.dart';
 
 class BookingProvider extends ChangeNotifier {
@@ -21,10 +22,16 @@ class BookingProvider extends ChangeNotifier {
       .where((b) => b.status == 'PENDENTE' || b.status == 'CONFIRMADO')
       .toList();
 
+  List<AppointmentModel> get historico => _bookings
+      .where((b) => b.status == 'CONCLUIDO' || b.status == 'CANCELADO' || b.status == 'RECUSADO')
+      .toList();
+
   Future<void> loadUserBookings({required String token, required String userId}) async {
-    _loading = true;
     _error = null;
-    notifyListeners();
+    if (_bookings.isEmpty) {
+      _loading = true;
+      notifyListeners();
+    }
     try {
       _bookings = await BookingService.fetchUserBookings(token: token, userId: userId);
     } catch (e) {
@@ -36,9 +43,11 @@ class BookingProvider extends ChangeNotifier {
   }
 
   Future<void> loadEstabBookings({required String token, required String estabId}) async {
-    _loading = true;
     _error = null;
-    notifyListeners();
+    if (_bookings.isEmpty) {
+      _loading = true;
+      notifyListeners();
+    }
     try {
       _bookings = await BookingService.fetchEstabBookings(token: token, estabId: estabId);
     } catch (e) {
@@ -51,7 +60,6 @@ class BookingProvider extends ChangeNotifier {
 
   Future<AppointmentModel?> createBooking({
     required String token,
-    required String userId,
     required String userName,
     required String petId,
     required String petName,
@@ -60,6 +68,7 @@ class BookingProvider extends ChangeNotifier {
     required String establishmentName,
     required DateTime scheduledAt,
     double price = 0,
+    List<ServiceModel>? services,
   }) async {
     _loading = true;
     _error = null;
@@ -67,7 +76,6 @@ class BookingProvider extends ChangeNotifier {
     try {
       final booking = await BookingService.createBooking(
         token: token,
-        userId: userId,
         userName: userName,
         petId: petId,
         petName: petName,
@@ -76,6 +84,7 @@ class BookingProvider extends ChangeNotifier {
         establishmentName: establishmentName,
         scheduledAt: scheduledAt,
         price: price,
+        services: services,
       );
       _bookings.add(booking);
       _loading = false;

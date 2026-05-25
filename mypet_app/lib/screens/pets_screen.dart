@@ -95,7 +95,7 @@ class _PetsScreenState extends State<PetsScreen> {
     if (auth.user == null) return;
 
     try {
-      final result = await ApiService.patch(
+      await ApiService.patch(
         '/pets/${pet.id}',
         {
           'name': formData.name,
@@ -107,7 +107,15 @@ class _PetsScreenState extends State<PetsScreen> {
         },
         token: auth.token,
       );
-      final updated = PetModel.fromJson(result as Map<String, dynamic>);
+      final updated = PetModel(
+        id: pet.id,
+        name: formData.name,
+        type: formData.type,
+        breed: formData.breed,
+        age: formData.age,
+        weight: formData.weight,
+        imageUrl: formData.imageUrl,
+      );
       setState(() {
         final idx = _pets.indexWhere((p) => p.id == pet.id);
         if (idx != -1) _pets[idx] = updated;

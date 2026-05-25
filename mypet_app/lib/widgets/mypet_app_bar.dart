@@ -8,56 +8,72 @@ class MypetAppBar extends StatelessWidget implements PreferredSizeWidget {
   final bool showBack;
   final VoidCallback? onBack;
   final List<Widget>? actions;
+  final bool purple;
 
   const MypetAppBar({
     super.key,
     this.showBack = false,
     this.onBack,
     this.actions,
+    this.purple = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final isPurple = purple;
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.dark,
+      value: isPurple ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
       child: Material(
-        color: Colors.white,
-        elevation: 0.5,
+        color: Colors.transparent,
+        elevation: isPurple ? 0 : 0.5,
         shadowColor: Colors.black12,
-        child: SafeArea(
-          bottom: false,
-          child: SizedBox(
-            height: kToolbarHeight,
-            child: Row(
-              children: [
-                SizedBox(
-                  width: 48,
-                  child: showBack
-                      ? IconButton(
-                          icon: const Icon(Icons.chevron_left,
-                              size: 28, color: AppColors.dark),
-                          onPressed: onBack ?? () => Navigator.pop(context),
-                        )
-                      : null,
-                ),
-
-                Expanded(
-                  child: Center(
+        child: Container(
+          decoration: isPurple
+              ? const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xFF7B3FF2), Color(0xFF5B2FBF)],
+                  ),
+                )
+              : const BoxDecoration(color: Colors.white, boxShadow: [
+                  BoxShadow(color: Colors.black12, blurRadius: 1, offset: Offset(0, 0.5)),
+                ]),
+          child: SafeArea(
+            bottom: false,
+            child: SizedBox(
+              height: kToolbarHeight,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  if (showBack)
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: IconButton(
+                        icon: Icon(Icons.chevron_left,
+                            size: 28, color: isPurple ? Colors.white : AppColors.dark),
+                        onPressed: onBack ?? () => Navigator.pop(context),
+                      ),
+                    ),
+                  Center(
                     child: Image.asset(
-                      'assets/images/logo.png',
+                      isPurple ? 'assets/images/logo branca.png' : 'assets/images/logo.png',
                       height: 40,
                       fit: BoxFit.contain,
                     ),
                   ),
-                ),
-
-                actions != null
-                    ? Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
+                  if (actions != null)
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: actions!,
-                      )
-                    : SizedBox(
+                      ),
+                    )
+                  else if (!showBack)
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: SizedBox(
                         width: 48,
                         child: Builder(builder: (ctx) {
                           final user = ctx.watch<AuthProvider>().user;
@@ -68,17 +84,22 @@ class MypetAppBar extends StatelessWidget implements PreferredSizeWidget {
                                 user != null ? '/home' : '/login',
                                 arguments: user != null ? 4 : null,
                               ),
-                              child: const CircleAvatar(
+                              child: CircleAvatar(
                                 radius: 16,
-                                backgroundColor: AppColors.primaryLight,
+                                backgroundColor: isPurple
+                                    ? Colors.white.withValues(alpha: 0.2)
+                                    : AppColors.primaryLight,
                                 child: Icon(Icons.person,
-                                    size: 18, color: AppColors.primary),
+                                    size: 18,
+                                    color: isPurple ? Colors.white : AppColors.primary),
                               ),
                             ),
                           );
                         }),
-                ),
-              ],
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
         ),
