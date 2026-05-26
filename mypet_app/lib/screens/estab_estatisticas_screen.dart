@@ -16,7 +16,7 @@ class EstabEstatisticasScreen extends StatefulWidget {
 
 class _EstabEstatisticasScreenState extends State<EstabEstatisticasScreen> {
   EstabStatsModel? _stats;
-  bool _loading = true;
+  bool _loading = false;
   String? _error;
 
   @override
@@ -26,17 +26,15 @@ class _EstabEstatisticasScreenState extends State<EstabEstatisticasScreen> {
   }
 
   Future<void> _load() async {
+    if (_loading || _stats != null) return;
     if (!mounted) return;
+
     final auth = context.read<AuthProvider>();
     final estabProvider = context.read<EstablishmentProvider>();
-
     final token = auth.token;
     final estabId = estabProvider.establishmentId;
 
-    if (token == null || estabId == null) {
-      setState(() { _loading = false; });
-      return;
-    }
+    if (token == null || estabId == null) return;
 
     setState(() { _loading = true; _error = null; });
 
@@ -92,8 +90,10 @@ class _EstabEstatisticasScreenState extends State<EstabEstatisticasScreen> {
             return const Center(child: CircularProgressIndicator());
           }
           if (_stats == null && estabProv.establishmentId != null && _error == null) {
-            WidgetsBinding.instance.addPostFrameCallback((_) => _load());
-            return const Center(child: CircularProgressIndicator());
+            if (!_loading) {
+              WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+            }
+            return const Center(child: CircularProgressIndicator(color: AppColors.primary));
           }
           if (_error != null) {
             return Center(
@@ -113,8 +113,7 @@ class _EstabEstatisticasScreenState extends State<EstabEstatisticasScreen> {
           }
           if (_stats == null) {
             return const Center(
-              child: Text('Carregando estatísticas...',
-                  style: TextStyle(color: AppColors.grey)),
+              child: CircularProgressIndicator(color: AppColors.primary),
             );
           }
           return RefreshIndicator(
@@ -128,6 +127,9 @@ class _EstabEstatisticasScreenState extends State<EstabEstatisticasScreen> {
 
   Widget _buildContent() {
     final stats = _stats!;
+    final estab = context.read<EstablishmentProvider>().establishment;
+    final avgRating = estab?.rating ?? 0.0;
+    final totalReviews = estab?.reviewCount ?? 0;
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
@@ -230,19 +232,22 @@ class _EstabEstatisticasScreenState extends State<EstabEstatisticasScreen> {
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Text(
-                            stats.avgRating.toStringAsFixed(1),
+                            avgRating.toStringAsFixed(1),
                             style: const TextStyle(
                                 fontSize: 24,
                                 fontWeight: FontWeight.bold,
                                 color: AppColors.dark),
                           ),
                           const SizedBox(width: 6),
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 3),
-                            child: Text(
-                              '/ 5.0  •  ${stats.totalReviews} avaliações',
-                              style: const TextStyle(
-                                  fontSize: 12, color: AppColors.grey),
+                          Flexible(
+                            child: Padding(
+                              padding: const EdgeInsets.only(bottom: 3),
+                              child: Text(
+                                '/ 5.0  •  $totalReviews avaliações',
+                                style: const TextStyle(
+                                    fontSize: 12, color: AppColors.grey),
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
                           ),
                         ],
@@ -252,7 +257,7 @@ class _EstabEstatisticasScreenState extends State<EstabEstatisticasScreen> {
                 ),
                 Row(
                   children: List.generate(5, (i) {
-                    final full = i < stats.avgRating.floor();
+                    final full = i < avgRating.floor();
                     return Icon(
                       full ? Icons.star : Icons.star_border,
                       color: const Color(0xFFFFC107),
@@ -468,7 +473,7 @@ class _EstabEstatisticasScreenState extends State<EstabEstatisticasScreen> {
                         Text(
                           'R\$ ${_fmt(stats.monthRevenue * 1.12)}',
                           style: const TextStyle(
-                              fontSize: 22,
+                              fontSize: 18,
                               fontWeight: FontWeight.bold,
                               color: Colors.white),
                         ),
@@ -550,16 +555,22 @@ class _KpiCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                   fontWeight: FontWeight.bold, fontSize: 17, color: color)),
           const SizedBox(height: 2),
           Text(label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
                   color: AppColors.dark)),
           const SizedBox(height: 1),
           Text(sub,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style:
                   const TextStyle(fontSize: 10, color: AppColors.grey)),
         ],

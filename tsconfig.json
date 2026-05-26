@@ -1,0 +1,24 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "baseUrl": ".",
+    "paths": {
+      "@shared/*": ["./shared/src/*"],
+      "@auth/*": ["./services/user-auth/src/modules/auth/*"],
+      "@pets/*": ["./services/user-pet/src/modules/*"],
+      "@estab/*": ["./services/establishment/src/modules/establishment/*"],
+      "@market/*": ["./services/marketplace/src/modules/marketplace/*"],
+      "@booking/*": ["./services/booking/src/modules/booking/*"],
+      "@notification/*": ["./services/notification/src/modules/notification/*"],
+      "@review/*": ["./services/review/src/modules/review/*"],
+      "@faq/*": ["./services/faq/src/modules/faq/*"]
+    }
+  },
+  "include": [
+    "shared/src/**/*.ts",
+    "services/*/src/**/*.ts"
+  ]
+}

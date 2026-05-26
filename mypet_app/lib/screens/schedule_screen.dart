@@ -2,14 +2,15 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/colors.dart';
+import '../core/constants.dart';
 import '../models/availability.dart';
 import '../models/establishment.dart';
 import '../models/pet.dart';
 import '../providers/auth_provider.dart';
 import '../providers/booking_provider.dart';
-import '../providers/pagamento_provider.dart';
-import '../providers/pet_provider.dart';
+import '../services/api_service.dart';
 import '../services/availability_service.dart';
+import '../services/establishment_service.dart';
 import '../widgets/mypet_app_bar.dart';
 
 class ScheduleScreen extends StatefulWidget {
@@ -21,13 +22,16 @@ class ScheduleScreen extends StatefulWidget {
 
 class _ScheduleScreenState extends State<ScheduleScreen> {
   PetModel? _selectedPet;
-  ServiceModel? _selectedService;
+  List<ServiceModel> _selectedServices = [];
   DateTime? _selectedDate;
   String? _selectedTime;
   List<PetModel> _pets = [];
   bool _loadingPets = false;
+  List<ServiceModel> _services = [];
+  bool _loadingServices = false;
   List<TimeSlotModel> _slots = [];
   bool _loadingSlots = false;
+  bool _servicesLoaded = false;
 
   static const _weekdays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
   static const _months = [
@@ -41,15 +45,43 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadPets());
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_servicesLoaded) {
+      _servicesLoaded = true;
+      final establishment =
+          ModalRoute.of(context)?.settings.arguments as EstablishmentModel?;
+      if (establishment != null) _loadServices(establishment.id);
+    }
+  }
+
+  Future<void> _loadServices(String estabId) async {
+    setState(() => _loadingServices = true);
+    try {
+      final svcs = await EstablishmentService.fetchServices(estabId);
+      if (mounted) setState(() => _services = svcs);
+    } catch (_) {
+    } finally {
+      if (mounted) setState(() => _loadingServices = false);
+    }
+  }
+
   Future<void> _loadPets() async {
     final auth = context.read<AuthProvider>();
-    if (auth.token == null || auth.user == null) return;
+    if (auth.token == null) return;
     setState(() => _loadingPets = true);
-    await context.read<PetProvider>().load(auth.user!.id, token: auth.token);
-    setState(() {
-      _pets = context.read<PetProvider>().pets.toList();
-      _loadingPets = false;
-    });
+    try {
+      final data = await ApiService.get(
+        '${ApiConstants.petsEndpoint}/${auth.user!.id}',
+        token: auth.token,
+      );
+      final list = data as List;
+      setState(() => _pets = list.map((e) => PetModel.fromJson(e)).toList());
+    } catch (_) {
+    } finally {
+      setState(() => _loadingPets = false);
+    }
   }
 
   Future<void> _loadSlots(EstablishmentModel? establishment) async {
@@ -69,8 +101,17 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         estabId: establishment.id,
         date: dateStr,
       );
-    } catch (_) {
+    } catch (e) {
       _slots = [];
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erro ao buscar horários: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 6),
+          ),
+        );
+      }
     } finally {
       setState(() => _loadingSlots = false);
     }
@@ -88,12 +129,12 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
   Future<void> _confirmar(EstablishmentModel? establishment) async {
     if (_selectedPet == null ||
-        _selectedService == null ||
+        _selectedServices.isEmpty ||
         _selectedDate == null ||
         _selectedTime == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Selecione o pet, serviço, data e horário'),
+          content: Text('Selecione o pet, pelo menos um serviço, data e horário'),
           backgroundColor: AppColors.warning,
           behavior: SnackBarBehavior.floating,
         ),
@@ -113,37 +154,36 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       int.parse(timeParts[1]),
     );
 
-    final dateFormatted =
-        '${_weekdays[_selectedDate!.weekday % 7]}, ${_selectedDate!.day} ${_months[_selectedDate!.month - 1]}';
+    final totalPrice = _selectedServices.fold<double>(0, (s, svc) => s + svc.price);
+    final serviceNameDisplay = _selectedServices.map((s) => s.name).join(', ');
 
-    final result = await showModalBottomSheet<Map<String, dynamic>>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _BookingPaymentSheet(
-        pet: _selectedPet!,
-        service: _selectedService!,
-        scheduledAt: scheduledAt,
-        selectedTime: _selectedTime!,
-        formattedDate: dateFormatted,
-        establishment: establishment,
-      ),
-    );
+    final booking = await context.read<BookingProvider>().createBooking(
+          token: auth.token!,
+          userName: auth.user!.name,
+          petId: _selectedPet!.id,
+          petName: _selectedPet!.name,
+          serviceName: serviceNameDisplay,
+          establishmentId: establishment?.id ?? '',
+          establishmentName: establishment?.name ?? '',
+          scheduledAt: scheduledAt,
+          price: totalPrice,
+          services: _selectedServices,
+        );
 
-    if (!mounted || result == null) return;
+    if (!mounted) return;
 
-    final payStatus = result['status'] as String? ?? '';
-
-    if (payStatus == 'APPROVED') {
+    if (booking != null) {
       showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: const Row(
             children: [
               Icon(Icons.check_circle, color: AppColors.success),
               SizedBox(width: 8),
-              Text('Agendado!', style: TextStyle(fontWeight: FontWeight.bold)),
+              Text('Solicitado!',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
             ],
           ),
           content: Column(
@@ -151,13 +191,18 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _confirmRow('Pet:', _selectedPet!.name),
-              _confirmRow('Serviço:', _selectedService!.name),
-              _confirmRow('Data:', dateFormatted),
+              _confirmRow('Serviço(s):', _selectedServices.map((s) => s.name).join(', ')),
+              _confirmRow(
+                'Data:',
+                '${_weekdays[_selectedDate!.weekday % 7]}, ${_selectedDate!.day} ${_months[_selectedDate!.month - 1]}',
+              ),
               _confirmRow('Horário:', _selectedTime!),
-              _confirmRow('Valor:', 'R\$ ${_selectedService!.price.toStringAsFixed(2)}'),
+              _confirmRow(
+                  'Valor:',
+                  'R\$ ${_selectedServices.fold<double>(0, (s, svc) => s + svc.price).toStringAsFixed(2)}'),
               const SizedBox(height: 8),
               const Text(
-                'Pagamento aprovado! Aguarde a confirmação do estabelecimento.',
+                'Aguarde a confirmação do estabelecimento.',
                 style: TextStyle(fontSize: 12, color: AppColors.grey),
               ),
             ],
@@ -169,82 +214,27 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                 onPressed: () {
                   Navigator.pop(ctx);
                   Navigator.pushNamedAndRemoveUntil(
-                      context, '/home', (r) => false, arguments: 1);
+                      context, '/home', (r) => false,
+                      arguments: 1);
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
                 ),
-                child: const Text('Ver Agenda', style: TextStyle(color: Colors.white)),
+                child: const Text('Ver Agenda',
+                    style: TextStyle(color: Colors.white)),
               ),
             ),
           ],
         ),
       );
-    } else if (payStatus == 'PENDING') {
-      final pixKey = result['pixKey'] as String?;
-      final boletoCode = result['boletoCode'] as String?;
-      showDialog(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Row(
-            children: [
-              Icon(Icons.schedule, color: AppColors.warning),
-              SizedBox(width: 8),
-              Expanded(
-                child: Text('Aguardando Pagamento',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-              ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _confirmRow('Pet:', _selectedPet!.name),
-              _confirmRow('Serviço:', _selectedService!.name),
-              _confirmRow('Data:', dateFormatted),
-              _confirmRow('Horário:', _selectedTime!),
-              _confirmRow('Valor:', 'R\$ ${_selectedService!.price.toStringAsFixed(2)}'),
-              if (pixKey != null) ...[
-                const SizedBox(height: 10),
-                const Text('Chave Pix:', style: TextStyle(fontSize: 12, color: AppColors.grey)),
-                const SizedBox(height: 2),
-                SelectableText(pixKey,
-                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.dark)),
-              ],
-              if (boletoCode != null) ...[
-                const SizedBox(height: 10),
-                const Text('Código do Boleto:', style: TextStyle(fontSize: 12, color: AppColors.grey)),
-                const SizedBox(height: 2),
-                SelectableText(boletoCode,
-                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.dark)),
-              ],
-              const SizedBox(height: 8),
-              const Text(
-                'Agendamento criado. Pague para confirmar o serviço.',
-                style: TextStyle(fontSize: 12, color: AppColors.grey),
-              ),
-            ],
-          ),
-          actions: [
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  Navigator.pushNamedAndRemoveUntil(
-                      context, '/home', (r) => false, arguments: 1);
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-                child: const Text('Ok, entendi', style: TextStyle(color: Colors.white)),
-              ),
-            ),
-          ],
+    } else {
+      final err = context.read<BookingProvider>().error;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(err ?? 'Erro ao agendar'),
+          backgroundColor: AppColors.danger,
         ),
       );
     }
@@ -342,14 +332,30 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
                 const SizedBox(height: 24),
 
-                _sectionTitle('Selecione o serviço'),
+                _sectionTitle('Selecione os serviços'),
                 const SizedBox(height: 10),
-                if (establishment != null && establishment.services.isNotEmpty)
-                  ...establishment.services.map((s) => _ServiceSelectCard(
-                        service: s,
-                        selected: _selectedService?.id == s.id,
-                        onTap: () => setState(() => _selectedService = s),
-                      ))
+                if (_loadingServices)
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(16),
+                      child: CircularProgressIndicator(color: AppColors.primary),
+                    ),
+                  )
+                else if (_services.isNotEmpty)
+                  ..._services.map((s) {
+                    final sel = _selectedServices.any((x) => x.id == s.id);
+                    return _ServiceSelectCard(
+                      service: s,
+                      selected: sel,
+                      onTap: () => setState(() {
+                        if (sel) {
+                          _selectedServices.removeWhere((x) => x.id == s.id);
+                        } else {
+                          _selectedServices.add(s);
+                        }
+                      }),
+                    );
+                  })
                 else
                   Container(
                     padding: const EdgeInsets.all(16),
@@ -361,6 +367,30 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                     child: const Text(
                       'Nenhum serviço disponível.',
                       style: TextStyle(color: AppColors.grey),
+                    ),
+                  ),
+                if (_selectedServices.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryLight,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Total: ${_selectedServices.length} serviço(s)',
+                            style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600),
+                          ),
+                          Text(
+                            'R\$ ${_selectedServices.fold<double>(0, (s, svc) => s + svc.price).toStringAsFixed(2)}',
+                            style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 15),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
 
@@ -535,7 +565,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                               color: Colors.white, strokeWidth: 2),
                         )
                       : const Text(
-                          'Ir para Pagamento',
+                          'Confirmar Agendamento',
                           style: TextStyle(
                               color: Colors.white,
                               fontSize: 16,
@@ -852,476 +882,5 @@ class _ServiceSelectCard extends StatelessWidget {
         ),
       ),
     );
-  }
-}
-
-class _BookingPaymentSheet extends StatefulWidget {
-  final PetModel pet;
-  final ServiceModel service;
-  final DateTime scheduledAt;
-  final String selectedTime;
-  final String formattedDate;
-  final EstablishmentModel? establishment;
-
-  const _BookingPaymentSheet({
-    required this.pet,
-    required this.service,
-    required this.scheduledAt,
-    required this.selectedTime,
-    required this.formattedDate,
-    required this.establishment,
-  });
-
-  @override
-  State<_BookingPaymentSheet> createState() => _BookingPaymentSheetState();
-}
-
-class _BookingPaymentSheetState extends State<_BookingPaymentSheet> {
-  int _metodoIdx = 0;
-  final _cardNumCtrl = TextEditingController();
-  final _cardNameCtrl = TextEditingController();
-  final _cardExpCtrl = TextEditingController();
-  final _cardCvvCtrl = TextEditingController();
-  int _parcelas = 1;
-
-  static const _metodos = [
-    ('PIX',         Icons.qr_code_2,           'Pix'),
-    ('CREDIT_CARD', Icons.credit_card,          'Crédito'),
-    ('DEBIT_CARD',  Icons.credit_card_outlined, 'Débito'),
-    ('CASH',        Icons.money,                'Dinheiro'),
-    ('BOLETO',      Icons.receipt_long,         'Boleto'),
-  ];
-
-  @override
-  void dispose() {
-    _cardNumCtrl.dispose();
-    _cardNameCtrl.dispose();
-    _cardExpCtrl.dispose();
-    _cardCvvCtrl.dispose();
-    super.dispose();
-  }
-
-  String get _selectedMethod => _metodos[_metodoIdx].$1;
-  bool get _isCard => _selectedMethod == 'CREDIT_CARD' || _selectedMethod == 'DEBIT_CARD';
-
-  Future<void> _pay() async {
-    if (_isCard && _cardNumCtrl.text.replaceAll(' ', '').length < 16) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Informe o número do cartão completo'),
-          backgroundColor: AppColors.danger,
-        ),
-      );
-      return;
-    }
-
-    final auth = context.read<AuthProvider>();
-    final pagamento = context.read<PagamentoProvider>();
-
-    await pagamento.confirmar(
-      userId: auth.user?.id ?? 'guest',
-      amount: widget.service.price,
-      method: _selectedMethod,
-      deliveryMethod: 'PICKUP',
-      cardNumber: _isCard ? _cardNumCtrl.text.replaceAll(' ', '') : null,
-      installments: _selectedMethod == 'CREDIT_CARD' ? _parcelas : null,
-    );
-
-    if (!mounted) return;
-
-    if (pagamento.status == PagamentoStatus.error) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(pagamento.errorMessage ?? 'Erro ao processar pagamento'),
-          backgroundColor: AppColors.danger,
-        ),
-      );
-      return;
-    }
-
-    final payment = pagamento.paymentResult!;
-    final payStatus = payment['status'] as String? ?? '';
-
-    if (payStatus == 'REJECTED') {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(payment['rejectionReason'] ?? 'Pagamento recusado'),
-          backgroundColor: AppColors.danger,
-        ),
-      );
-      return;
-    }
-
-    final booking = await context.read<BookingProvider>().createBooking(
-      token: auth.token!,
-      userId: auth.user!.id,
-      userName: auth.user!.name,
-      petId: widget.pet.id,
-      petName: widget.pet.name,
-      serviceName: widget.service.name,
-      establishmentId: widget.establishment?.id ?? '',
-      establishmentName: widget.establishment?.name ?? '',
-      scheduledAt: widget.scheduledAt,
-      price: widget.service.price,
-    );
-
-    if (!mounted) return;
-
-    if (booking == null) {
-      final err = context.read<BookingProvider>().error;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(err ?? 'Erro ao criar agendamento'),
-          backgroundColor: AppColors.danger,
-        ),
-      );
-      return;
-    }
-
-    if (widget.establishment != null) {
-      final dateStr =
-          '${widget.scheduledAt.year}-${widget.scheduledAt.month.toString().padLeft(2, '0')}-${widget.scheduledAt.day.toString().padLeft(2, '0')}';
-      try {
-        await AvailabilityService.blockSlot(
-          token: auth.token!,
-          estabId: widget.establishment!.id,
-          date: dateStr,
-          time: widget.selectedTime,
-          reason: 'Agendado',
-        );
-      } catch (_) {}
-    }
-
-    if (!mounted) return;
-    Navigator.of(context).pop(payment);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isLoading = context.watch<PagamentoProvider>().isLoading ||
-        context.watch<BookingProvider>().isLoading;
-
-    return DraggableScrollableSheet(
-      initialChildSize: 0.92,
-      minChildSize: 0.5,
-      maxChildSize: 0.97,
-      expand: false,
-      builder: (_, controller) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(
-          children: [
-            Container(
-              margin: const EdgeInsets.symmetric(vertical: 12),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.greyLight,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const Text(
-              'Pagamento do Serviço',
-              style: TextStyle(
-                  fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.dark),
-            ),
-            const SizedBox(height: 4),
-            Expanded(
-              child: SingleChildScrollView(
-                controller: controller,
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryLight,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                            color: AppColors.primary.withValues(alpha: 0.3)),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _summaryRow('Serviço:', widget.service.name),
-                          _summaryRow('Pet:', widget.pet.name),
-                          _summaryRow('Data:', widget.formattedDate),
-                          _summaryRow('Horário:', widget.selectedTime),
-                          if (widget.establishment != null)
-                            _summaryRow('Local:', widget.establishment!.name),
-                          const Divider(height: 20),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Text('Total',
-                                  style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 15,
-                                      color: AppColors.dark)),
-                              Text(
-                                'R\$ ${widget.service.price.toStringAsFixed(2)}',
-                                style: const TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.primary),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-
-                    const Text('Forma de pagamento',
-                        style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.dark)),
-                    const SizedBox(height: 12),
-                    ...List.generate(
-                      _metodos.length,
-                      (i) => _SheetPayTile(
-                        icon: _metodos[i].$2,
-                        label: _metodos[i].$3,
-                        selected: _metodoIdx == i,
-                        onTap: () => setState(() => _metodoIdx = i),
-                      ),
-                    ),
-
-                    if (_isCard) ...[
-                      const SizedBox(height: 16),
-                      Text(
-                        'Dados do cartão de ${_selectedMethod == 'CREDIT_CARD' ? 'crédito' : 'débito'}',
-                        style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.dark),
-                      ),
-                      const SizedBox(height: 12),
-                      _cardField(_cardNumCtrl, 'Número do cartão',
-                          maxLen: 19, fmt: [_BookingCardNumFmt()]),
-                      const SizedBox(height: 10),
-                      _cardField(_cardNameCtrl, 'Nome no cartão',
-                          type: TextInputType.text,
-                          caps: TextCapitalization.characters),
-                      const SizedBox(height: 10),
-                      Row(children: [
-                        Expanded(
-                            child: _cardField(_cardExpCtrl, 'MM/AA',
-                                maxLen: 5, fmt: [_BookingExpiryFmt()])),
-                        const SizedBox(width: 12),
-                        Expanded(
-                            child: _cardField(_cardCvvCtrl, 'CVV',
-                                maxLen: 3, obscure: true)),
-                      ]),
-                      if (_selectedMethod == 'CREDIT_CARD') ...[
-                        const SizedBox(height: 12),
-                        const Text('Parcelas',
-                            style: TextStyle(
-                                fontSize: 13, color: AppColors.grey)),
-                        const SizedBox(height: 6),
-                        DropdownButtonFormField<int>(
-                          value: _parcelas,
-                          decoration: InputDecoration(
-                            filled: true,
-                            fillColor: AppColors.background,
-                            border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10),
-                                borderSide: BorderSide.none),
-                            contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 12),
-                          ),
-                          items: List.generate(12, (i) => i + 1).map((n) {
-                            final val =
-                                (widget.service.price / n).toStringAsFixed(2);
-                            return DropdownMenuItem(
-                                value: n,
-                                child: Text('${n}x de R\$ $val'));
-                          }).toList(),
-                          onChanged: (v) => setState(() => _parcelas = v ?? 1),
-                        ),
-                      ],
-                    ],
-                    const SizedBox(height: 24),
-                  ],
-                ),
-              ),
-            ),
-            Padding(
-              padding: EdgeInsets.fromLTRB(
-                  16, 8, 16, MediaQuery.of(context).viewInsets.bottom + 16),
-              child: SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: ElevatedButton(
-                  onPressed: isLoading ? null : _pay,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                    elevation: 0,
-                  ),
-                  child: isLoading
-                      ? const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(
-                              color: Colors.white, strokeWidth: 2),
-                        )
-                      : const Text(
-                          'Confirmar Pagamento',
-                          style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600),
-                        ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _summaryRow(String label, String value) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 3),
-        child: Row(
-          children: [
-            Text(label,
-                style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.grey,
-                    fontSize: 13)),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(value,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.dark,
-                      fontSize: 13),
-                  overflow: TextOverflow.ellipsis),
-            ),
-          ],
-        ),
-      );
-
-  Widget _cardField(
-    TextEditingController ctrl,
-    String hint, {
-    int? maxLen,
-    List<TextInputFormatter>? fmt,
-    TextInputType type = TextInputType.number,
-    TextCapitalization caps = TextCapitalization.none,
-    bool obscure = false,
-  }) {
-    return TextFormField(
-      controller: ctrl,
-      keyboardType: type,
-      textCapitalization: caps,
-      obscureText: obscure,
-      maxLength: maxLen,
-      inputFormatters: fmt,
-      decoration: InputDecoration(
-        counterText: '',
-        hintText: hint,
-        hintStyle: const TextStyle(color: AppColors.grey),
-        filled: true,
-        fillColor: AppColors.background,
-        border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: BorderSide.none),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      ),
-    );
-  }
-}
-
-class _SheetPayTile extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _SheetPayTile({
-    required this.icon,
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) => GestureDetector(
-        onTap: onTap,
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          padding:
-              const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          decoration: BoxDecoration(
-            color: selected ? AppColors.primaryLight : AppColors.background,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color:
-                  selected ? AppColors.primary : AppColors.greyLight,
-              width: selected ? 2 : 1,
-            ),
-          ),
-          child: Row(children: [
-            Icon(icon,
-                size: 22,
-                color:
-                    selected ? AppColors.primary : AppColors.grey),
-            const SizedBox(width: 12),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight:
-                    selected ? FontWeight.w600 : FontWeight.normal,
-                color: selected ? AppColors.primary : AppColors.dark,
-              ),
-            ),
-            const Spacer(),
-            if (selected)
-              const Icon(Icons.check_circle,
-                  color: AppColors.primary, size: 20),
-          ]),
-        ),
-      );
-}
-
-class _BookingCardNumFmt extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(
-      TextEditingValue old, TextEditingValue next) {
-    final digits = next.text.replaceAll(RegExp(r'\D'), '');
-    final buffer = StringBuffer();
-    for (int i = 0; i < digits.length && i < 16; i++) {
-      if (i > 0 && i % 4 == 0) buffer.write(' ');
-      buffer.write(digits[i]);
-    }
-    final str = buffer.toString();
-    return TextEditingValue(
-        text: str, selection: TextSelection.collapsed(offset: str.length));
-  }
-}
-
-class _BookingExpiryFmt extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(
-      TextEditingValue old, TextEditingValue next) {
-    final digits = next.text.replaceAll(RegExp(r'\D'), '');
-    String str = digits;
-    if (digits.length >= 3) {
-      str = '${digits.substring(0, 2)}/${digits.substring(2)}';
-    }
-    if (str.length > 5) str = str.substring(0, 5);
-    return TextEditingValue(
-        text: str, selection: TextSelection.collapsed(offset: str.length));
   }
 }

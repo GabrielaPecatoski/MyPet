@@ -4,8 +4,6 @@ class EstabStatsModel {
   final double avgTicket;
   final int totalBookings;
   final int monthBookings;
-  final double avgRating;
-  final int totalReviews;
   final List<MonthRevenue> last6Months;
   final List<ServiceStat> topServices;
 
@@ -15,8 +13,6 @@ class EstabStatsModel {
     required this.avgTicket,
     required this.totalBookings,
     required this.monthBookings,
-    required this.avgRating,
-    required this.totalReviews,
     required this.last6Months,
     required this.topServices,
   });
@@ -34,8 +30,6 @@ class EstabStatsModel {
       avgTicket: (json['avgTicket'] as num?)?.toDouble() ?? 0,
       totalBookings: (json['totalBookings'] as num?)?.toInt() ?? 0,
       monthBookings: (json['monthBookings'] as num?)?.toInt() ?? 0,
-      avgRating: (json['avgRating'] as num?)?.toDouble() ?? 0,
-      totalReviews: (json['totalReviews'] as num?)?.toInt() ?? 0,
       last6Months: months,
       topServices: services,
     );

@@ -124,21 +124,13 @@ class FaqService {
   }
 
   static Future<UserQuestion?> submitQuestion({
-    required String userId,
-    required String userName,
-    required String userRole,
     required String question,
     String? token,
   }) async {
     try {
       final data = await ApiService.post(
         '/faq/questions',
-        {
-          'userId': userId,
-          'userName': userName,
-          'userRole': userRole,
-          'question': question,
-        },
+        {'question': question},
         token: token,
       );
       return UserQuestion.fromJson(data as Map<String, dynamic>);

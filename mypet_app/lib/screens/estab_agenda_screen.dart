@@ -5,7 +5,6 @@ import '../models/appointment.dart';
 import '../providers/auth_provider.dart';
 import '../providers/booking_provider.dart';
 import '../providers/establishment_provider.dart';
-import '../services/review_service.dart';
 import '../widgets/mypet_app_bar.dart';
 import 'estab_horarios_screen.dart';
 
@@ -84,25 +83,27 @@ class _EstabAgendaScreenState extends State<EstabAgendaScreen> {
           status: status,
         );
     if (!mounted) return;
-
-    final messages = {
-      'CONFIRMADO': 'Agendamento confirmado!',
-      'RECUSADO':   'Agendamento recusado',
-      'A_CAMINHO':  'Status atualizado: a caminho!',
-      'CONCLUIDO':  'Serviço concluído!',
-    };
-    final colors = {
-      'CONFIRMADO': AppColors.success,
-      'RECUSADO':   AppColors.danger,
-      'A_CAMINHO':  AppColors.primary,
-      'CONCLUIDO':  AppColors.success,
-    };
-
+    String msg;
+    Color color;
+    if (!ok) {
+      msg = 'Erro ao atualizar agendamento';
+      color = AppColors.danger;
+    } else {
+      switch (status) {
+        case 'CONFIRMADO':
+          msg = 'Agendamento confirmado!';
+          color = AppColors.success;
+        case 'CONCLUIDO':
+          msg = 'Serviço concluído!';
+          color = AppColors.primary;
+        default:
+          msg = 'Agendamento recusado';
+          color = AppColors.danger;
+      }
+    }
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(ok
-          ? (messages[status] ?? 'Atualizado')
-          : 'Erro ao atualizar agendamento'),
-      backgroundColor: ok ? (colors[status] ?? AppColors.success) : AppColors.danger,
+      content: Text(msg),
+      backgroundColor: color,
     ));
   }
 
@@ -313,13 +314,13 @@ class _ApptCard extends StatelessWidget {
       {required this.appointment, required this.onUpdateStatus});
 
   Color get _statusColor {
-    switch (appointment.effectiveStatus) {
-      case 'CONFIRMADO': return AppColors.success;
-      case 'A_CAMINHO':  return AppColors.primary;
+    switch (appointment.status) {
+      case 'CONFIRMADO':
+        return AppColors.success;
       case 'RECUSADO':
-      case 'CANCELADO':  return AppColors.danger;
-      case 'CONCLUIDO':  return AppColors.grey;
-      default:           return AppColors.warning;
+        return AppColors.danger;
+      default:
+        return AppColors.warning;
     }
   }
 
@@ -483,56 +484,6 @@ class _ApptCard extends StatelessWidget {
 
                           if (ap.isConfirmado) ...[
                             const SizedBox(height: 12),
-                            Row(children: [
-                              Expanded(
-                                child: ElevatedButton.icon(
-                                  onPressed: () => onUpdateStatus(ap, 'A_CAMINHO'),
-                                  icon: const Icon(Icons.directions_car,
-                                      size: 15, color: Colors.white),
-                                  label: const Text('A caminho',
-                                      style: TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 13)),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppColors.primary,
-                                    elevation: 0,
-                                    padding: const EdgeInsets.symmetric(vertical: 10),
-                                    shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(10)),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: ElevatedButton.icon(
-                                  onPressed: () async {
-                                    await onUpdateStatus(ap, 'CONCLUIDO');
-                                    if (context.mounted) {
-                                      _showAvaliarClienteDialog(context, ap);
-                                    }
-                                  },
-                                  icon: const Icon(Icons.check_circle,
-                                      size: 15, color: Colors.white),
-                                  label: const Text('Concluir',
-                                      style: TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 13)),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppColors.success,
-                                    elevation: 0,
-                                    padding: const EdgeInsets.symmetric(vertical: 10),
-                                    shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(10)),
-                                  ),
-                                ),
-                              ),
-                            ]),
-                          ],
-
-                          if (ap.isACaminho) ...[
-                            const SizedBox(height: 12),
                             SizedBox(
                               width: double.infinity,
                               child: ElevatedButton.icon(
@@ -549,11 +500,13 @@ class _ApptCard extends StatelessWidget {
                                         color: Colors.white,
                                         fontWeight: FontWeight.w600)),
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.success,
+                                  backgroundColor: AppColors.primary,
                                   elevation: 0,
-                                  padding: const EdgeInsets.symmetric(vertical: 10),
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 10),
                                   shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10)),
+                                      borderRadius:
+                                          BorderRadius.circular(10)),
                                 ),
                               ),
                             ),
@@ -582,8 +535,6 @@ class _ApptCard extends StatelessWidget {
   Future<void> _showAvaliarClienteDialog(BuildContext context, AppointmentModel ap) async {
     int selectedRating = 0;
     final commentCtrl = TextEditingController();
-    final estabProvider = context.read<EstablishmentProvider>();
-    final auth = context.read<AuthProvider>();
 
     await showDialog(
       context: context,
@@ -699,22 +650,6 @@ class _ApptCard extends StatelessWidget {
                         ? null
                         : () async {
                             Navigator.pop(ctx);
-                            try {
-                              await ReviewService.submitClientReview(
-                                establishmentId:
-                                    estabProvider.establishmentId ?? '',
-                                establishmentName:
-                                    estabProvider.establishment?.name ?? '',
-                                clientId: ap.userId,
-                                clientName: ap.userName,
-                                bookingId: ap.id,
-                                rating: selectedRating,
-                                comment: commentCtrl.text.trim().isEmpty
-                                    ? null
-                                    : commentCtrl.text.trim(),
-                                token: auth.token,
-                              );
-                            } catch (_) {}
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(

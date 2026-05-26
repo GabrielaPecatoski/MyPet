@@ -39,6 +39,8 @@ import 'screens/estab_edit_screen.dart';
 import 'screens/admin_screen.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+
   runApp(
     MultiProvider(
       providers: [

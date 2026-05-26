@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
+import '../providers/booking_provider.dart';
 import '../widgets/app_bottom_nav.dart';
 import 'home_screen.dart';
 import 'agenda_screen.dart';
@@ -32,6 +35,19 @@ class _MainNavigationState extends State<MainNavigation> {
     ProfileScreen(),
   ];
 
+  void _onTabTap(int i) {
+    setState(() => _currentIndex = i);
+    if (i == 1) {
+      final auth = context.read<AuthProvider>();
+      if (auth.token != null && auth.user != null) {
+        context.read<BookingProvider>().loadUserBookings(
+              token: auth.token!,
+              userId: auth.user!.id,
+            );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -42,7 +58,7 @@ class _MainNavigationState extends State<MainNavigation> {
       bottomNavigationBar: AppBottomNav(
         currentIndex: _currentIndex,
         items: clientNavItems,
-        onTap: (i) => setState(() => _currentIndex = i),
+        onTap: _onTabTap,
       ),
     );
   }

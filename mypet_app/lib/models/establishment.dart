@@ -34,6 +34,7 @@ class EstablishmentModel {
   final String phone;
   final double rating;
   final int reviewCount;
+  final int serviceCount;
   final String? imageUrl;
   final List<ServiceModel> services;
 
@@ -49,6 +50,7 @@ class EstablishmentModel {
     required this.phone,
     required this.rating,
     required this.reviewCount,
+    this.serviceCount = 0,
     this.imageUrl,
     this.services = const [],
   });
@@ -74,6 +76,7 @@ class EstablishmentModel {
       phone: json['phone'] as String? ?? '',
       rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
       reviewCount: (json['reviewCount'] as num?)?.toInt() ?? 0,
+      serviceCount: (json['serviceCount'] as num?)?.toInt() ?? servicesList.length,
       imageUrl: json['imageUrl'] as String?,
       services: servicesList,
     );

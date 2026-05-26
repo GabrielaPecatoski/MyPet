@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../core/colors.dart';
 import '../models/appointment.dart';
 import '../providers/auth_provider.dart';
 import '../providers/booking_provider.dart';
-import '../providers/pagamento_provider.dart';
+import '../services/review_service.dart';
 import '../widgets/mypet_app_bar.dart';
 
 class AgendaScreen extends StatefulWidget {
@@ -18,6 +17,7 @@ class AgendaScreen extends StatefulWidget {
 class _AgendaScreenState extends State<AgendaScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  final Set<String> _reviewedBookingIds = {};
 
   @override
   void initState() {
@@ -33,27 +33,26 @@ class _AgendaScreenState extends State<AgendaScreen>
           token: auth.token!,
           userId: auth.user!.id,
         );
+    _loadReviewed(auth.token!);
+  }
+
+  Future<void> _loadReviewed(String token) async {
+    try {
+      final reviews = await ReviewService.getMyReviews(token: token);
+      if (mounted) {
+        setState(() {
+          _reviewedBookingIds.addAll(
+            reviews.where((r) => r.bookingId.isNotEmpty).map((r) => r.bookingId),
+          );
+        });
+      }
+    } catch (_) {}
   }
 
   @override
   void dispose() {
     _tabController.dispose();
     super.dispose();
-  }
-
-  Future<void> _pay(AppointmentModel booking) async {
-    final auth = context.read<AuthProvider>();
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _PayBookingSheet(booking: booking, token: auth.token!),
-    );
-    if (!mounted) return;
-    context.read<BookingProvider>().loadUserBookings(
-          token: auth.token!,
-          userId: auth.user!.id,
-        );
   }
 
   Future<void> _cancel(AppointmentModel booking) async {
@@ -95,8 +94,8 @@ class _AgendaScreenState extends State<AgendaScreen>
   @override
   Widget build(BuildContext context) {
     final booking = context.watch<BookingProvider>();
-    final proximos = booking.confirmados;
-    final pendentes = booking.pendentes;
+    final proximos = booking.ativos;
+    final historico = booking.historico;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -122,13 +121,12 @@ class _AgendaScreenState extends State<AgendaScreen>
               labelStyle:
                   const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
               tabs: [
-                const Tab(text: 'Próximos'),
                 Tab(
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text('Pendentes'),
-                      if (pendentes.isNotEmpty) ...[
+                      const Text('Próximos'),
+                      if (booking.pendentes.isNotEmpty) ...[
                         const SizedBox(width: 6),
                         Container(
                           padding: const EdgeInsets.symmetric(
@@ -137,7 +135,7 @@ class _AgendaScreenState extends State<AgendaScreen>
                             color: AppColors.warning,
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child: Text('${pendentes.length}',
+                          child: Text('${booking.pendentes.length}',
                               style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 11,
@@ -147,6 +145,7 @@ class _AgendaScreenState extends State<AgendaScreen>
                     ],
                   ),
                 ),
+                const Tab(text: 'Histórico'),
               ],
             ),
           ),
@@ -155,6 +154,35 @@ class _AgendaScreenState extends State<AgendaScreen>
             const Expanded(
                 child: Center(
                     child: CircularProgressIndicator(color: AppColors.primary)))
+          else if (booking.error != null)
+            Expanded(
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.wifi_off, size: 48, color: AppColors.greyLight),
+                      const SizedBox(height: 12),
+                      Text(
+                        booking.error!,
+                        style: const TextStyle(color: AppColors.grey),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: _load,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        child: const Text('Tentar novamente', style: TextStyle(color: Colors.white)),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            )
           else
             Expanded(
               child: RefreshIndicator(
@@ -164,9 +192,16 @@ class _AgendaScreenState extends State<AgendaScreen>
                   controller: _tabController,
                   children: [
                     _BookingList(
-                        appointments: proximos, onCancel: _cancel, onPay: _pay),
+                        appointments: proximos,
+                        onCancel: _cancel,
+                        reviewedBookingIds: _reviewedBookingIds,
+                        onReviewed: (bookingId) => setState(() => _reviewedBookingIds.add(bookingId))),
                     _BookingList(
-                        appointments: pendentes, onCancel: _cancel, onPay: _pay),
+                        appointments: historico,
+                        onCancel: _cancel,
+                        isHistory: true,
+                        reviewedBookingIds: _reviewedBookingIds,
+                        onReviewed: (bookingId) => setState(() => _reviewedBookingIds.add(bookingId))),
                   ],
                 ),
               ),
@@ -180,12 +215,16 @@ class _AgendaScreenState extends State<AgendaScreen>
 class _BookingList extends StatelessWidget {
   final List<AppointmentModel> appointments;
   final Future<void> Function(AppointmentModel) onCancel;
-  final Future<void> Function(AppointmentModel) onPay;
+  final bool isHistory;
+  final Set<String> reviewedBookingIds;
+  final void Function(String bookingId) onReviewed;
 
   const _BookingList({
     required this.appointments,
     required this.onCancel,
-    required this.onPay,
+    required this.reviewedBookingIds,
+    required this.onReviewed,
+    this.isHistory = false,
   });
 
   @override
@@ -206,14 +245,19 @@ class _BookingList extends StatelessWidget {
                   size: 34, color: AppColors.primary),
             ),
             const SizedBox(height: 16),
-            const Text('Nenhum agendamento',
-                style: TextStyle(
+            Text(
+                isHistory ? 'Nenhum histórico' : 'Nenhum agendamento',
+                style: const TextStyle(
                     color: AppColors.dark,
                     fontSize: 16,
                     fontWeight: FontWeight.w600)),
             const SizedBox(height: 6),
-            const Text('Seus agendamentos aparecerão aqui',
-                style: TextStyle(color: AppColors.grey, fontSize: 13)),
+            Text(
+                isHistory
+                    ? 'Agendamentos concluídos ou cancelados aparecerão aqui'
+                    : 'Agende um serviço e ele aparecerá aqui',
+                style: const TextStyle(color: AppColors.grey, fontSize: 13),
+                textAlign: TextAlign.center),
           ],
         ),
       );
@@ -225,7 +269,8 @@ class _BookingList extends StatelessWidget {
       itemBuilder: (_, i) => _BookingCard(
         appointment: appointments[i],
         onCancel: onCancel,
-        onPay: onPay,
+        isReviewed: reviewedBookingIds.contains(appointments[i].id),
+        onReviewed: () => onReviewed(appointments[i].id),
       ),
     );
   }
@@ -234,22 +279,29 @@ class _BookingList extends StatelessWidget {
 class _BookingCard extends StatelessWidget {
   final AppointmentModel appointment;
   final Future<void> Function(AppointmentModel) onCancel;
-  final Future<void> Function(AppointmentModel) onPay;
+  final bool isReviewed;
+  final VoidCallback onReviewed;
 
   const _BookingCard({
     required this.appointment,
     required this.onCancel,
-    required this.onPay,
+    required this.isReviewed,
+    required this.onReviewed,
   });
 
   Color get _statusColor {
-    switch (appointment.effectiveStatus) {
-      case 'CONFIRMADO': return AppColors.success;
-      case 'A_CAMINHO':  return AppColors.primary;
-      case 'PENDENTE':   return AppColors.warning;
+    switch (appointment.status) {
+      case 'CONFIRMADO':
+        return AppColors.success;
+      case 'PENDENTE':
+        return AppColors.warning;
       case 'CANCELADO':
-      case 'RECUSADO':   return AppColors.danger;
-      default:           return AppColors.grey;
+      case 'RECUSADO':
+        return AppColors.danger;
+      case 'CONCLUIDO':
+        return AppColors.grey;
+      default:
+        return AppColors.grey;
     }
   }
 
@@ -261,9 +313,136 @@ class _BookingCard extends StatelessWidget {
     return '${d.day} de ${months[d.month - 1]} de ${d.year}';
   }
 
+  void _showAvaliarDialog(BuildContext context) {
+    int selectedRating = 0;
+    final commentCtrl = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Avaliar Estabelecimento',
+              style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.dark)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                appointment.establishmentName,
+                style: const TextStyle(
+                    color: AppColors.primary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Como foi sua experiência?',
+                style: TextStyle(
+                    color: AppColors.dark,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(5, (i) {
+                  final star = i + 1;
+                  return IconButton(
+                    onPressed: () =>
+                        setDialogState(() => selectedRating = star),
+                    icon: Icon(
+                      star <= selectedRating ? Icons.star : Icons.star_border,
+                      color: star <= selectedRating
+                          ? const Color(0xFFFFC107)
+                          : AppColors.grey,
+                      size: 34,
+                    ),
+                    padding: EdgeInsets.zero,
+                    constraints:
+                        const BoxConstraints(minWidth: 40, minHeight: 40),
+                  );
+                }),
+              ),
+              const SizedBox(height: 14),
+              const Text('Deixe seu comentário (opcional)',
+                  style: TextStyle(fontSize: 13, color: AppColors.grey)),
+              const SizedBox(height: 6),
+              TextField(
+                controller: commentCtrl,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: AppColors.background,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: AppColors.greyLight),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: AppColors.greyLight),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: AppColors.primary),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: selectedRating == 0
+                    ? null
+                    : () async {
+                        Navigator.pop(ctx);
+                        final auth = context.read<AuthProvider>();
+                        try {
+                          await ReviewService.submitReview(
+                            establishmentId: appointment.establishmentId,
+                            bookingId: appointment.id,
+                            rating: selectedRating,
+                            comment: commentCtrl.text.trim().isEmpty
+                                ? null
+                                : commentCtrl.text.trim(),
+                            token: auth.token,
+                          );
+                        } catch (_) {}
+                        onReviewed();
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Avaliação enviada!'),
+                              backgroundColor: AppColors.success,
+                            ),
+                          );
+                        }
+                      },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  disabledBackgroundColor: AppColors.greyLight,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  elevation: 0,
+                ),
+                child: const Text('Enviar Avaliação',
+                    style: TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.w600)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final ap = appointment;
+    final isConcluido = ap.status == 'CONCLUIDO';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
@@ -344,89 +523,50 @@ class _BookingCard extends StatelessWidget {
               ),
             ],
 
-            if (ap.isActive) ...[
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: ap.pago
-                          ? AppColors.success.withValues(alpha: 0.12)
-                          : AppColors.warning.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          ap.pago ? Icons.check_circle_outline : Icons.payment_outlined,
-                          size: 13,
-                          color: ap.pago ? AppColors.success : AppColors.warning,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          ap.pago ? 'Pagamento realizado' : 'Aguardando pagamento',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: ap.pago ? AppColors.success : AppColors.warning,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              if (!ap.pago)
-                Padding(
-                  padding: const EdgeInsets.only(top: 2),
-                  child: Text(
-                    'O valor só é creditado ao estabelecimento após o serviço concluído.',
-                    style: const TextStyle(fontSize: 10, color: AppColors.grey),
-                  ),
-                ),
-            ],
-
-            if (ap.canPay) ...[
-              const SizedBox(height: 10),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () => onPay(ap),
-                  icon: const Icon(Icons.payment, size: 16, color: Colors.white),
-                  label: const Text('Realizar pagamento',
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.success,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    padding: const EdgeInsets.symmetric(vertical: 11),
-                  ),
-                ),
-              ),
-            ],
-
-            if (ap.isConfirmado || ap.isACaminho) ...[
-              const SizedBox(height: 8),
+            if (ap.isConfirmado) ...[
+              const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
                   onPressed: () =>
                       Navigator.pushNamed(context, '/tracking', arguments: ap),
+                  icon: const Icon(Icons.location_on_outlined,
+                      size: 16, color: Colors.white),
+                  label: const Text('Acompanhar serviço',
+                      style: TextStyle(color: Colors.white)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+              ),
+            ],
+
+            if (isConcluido) ...[
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: isReviewed ? null : () => _showAvaliarDialog(context),
                   icon: Icon(
-                    ap.isACaminho ? Icons.directions_car : Icons.location_on_outlined,
-                    size: 16, color: Colors.white,
+                    isReviewed ? Icons.star : Icons.star_outline,
+                    size: 16,
+                    color: isReviewed ? AppColors.greyLight : AppColors.warning,
                   ),
                   label: Text(
-                    ap.isACaminho ? 'Estabelecimento a caminho!' : 'Acompanhar serviço',
-                    style: const TextStyle(color: Colors.white),
+                    isReviewed ? 'Avaliado' : 'Avaliar estabelecimento',
+                    style: TextStyle(
+                        color: isReviewed ? AppColors.greyLight : AppColors.warning),
                   ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: ap.isACaminho ? AppColors.primary : AppColors.primary,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(
+                        color: isReviewed ? AppColors.greyLight : AppColors.warning),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
                   ),
                 ),
               ),
@@ -466,400 +606,4 @@ class _BookingCard extends StatelessWidget {
                       const TextStyle(fontSize: 13, color: AppColors.grey))),
         ],
       );
-}
-
-class _PayBookingSheet extends StatefulWidget {
-  final AppointmentModel booking;
-  final String token;
-
-  const _PayBookingSheet({required this.booking, required this.token});
-
-  @override
-  State<_PayBookingSheet> createState() => _PayBookingSheetState();
-}
-
-class _PayBookingSheetState extends State<_PayBookingSheet> {
-  int _metodoIdx = 0;
-  final _cardNumCtrl = TextEditingController();
-  final _cardNameCtrl = TextEditingController();
-  final _cardExpCtrl = TextEditingController();
-  final _cardCvvCtrl = TextEditingController();
-
-  static const _metodos = [
-    ('PIX',         Icons.qr_code_2,           'Pix'),
-    ('CREDIT_CARD', Icons.credit_card,          'Crédito'),
-    ('DEBIT_CARD',  Icons.credit_card_outlined, 'Débito'),
-    ('CASH',        Icons.money,                'Dinheiro'),
-    ('BOLETO',      Icons.receipt_long,         'Boleto'),
-  ];
-
-  @override
-  void dispose() {
-    _cardNumCtrl.dispose();
-    _cardNameCtrl.dispose();
-    _cardExpCtrl.dispose();
-    _cardCvvCtrl.dispose();
-    super.dispose();
-  }
-
-  String get _selectedMethod => _metodos[_metodoIdx].$1;
-  bool get _isCard =>
-      _selectedMethod == 'CREDIT_CARD' || _selectedMethod == 'DEBIT_CARD';
-
-  Future<void> _confirmar() async {
-    if (_isCard && _cardNumCtrl.text.replaceAll(' ', '').length < 16) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Informe o número do cartão completo'),
-          backgroundColor: AppColors.danger,
-        ),
-      );
-      return;
-    }
-
-    final auth = context.read<AuthProvider>();
-    final pagamento = context.read<PagamentoProvider>();
-
-    await pagamento.confirmar(
-      userId: auth.user?.id ?? 'guest',
-      amount: widget.booking.price,
-      method: _selectedMethod,
-      deliveryMethod: 'PICKUP',
-      cardNumber: _isCard ? _cardNumCtrl.text.replaceAll(' ', '') : null,
-    );
-
-    if (!mounted) return;
-
-    if (pagamento.status == PagamentoStatus.error) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(pagamento.errorMessage ?? 'Erro ao processar pagamento'),
-          backgroundColor: AppColors.danger,
-        ),
-      );
-      return;
-    }
-
-    final payment = pagamento.paymentResult!;
-    final payStatus = payment['status'] as String? ?? '';
-
-    if (payStatus == 'REJECTED') {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(payment['rejectionReason'] ?? 'Pagamento recusado'),
-          backgroundColor: AppColors.danger,
-        ),
-      );
-      return;
-    }
-
-    final ok = await context.read<BookingProvider>().markAsPaid(
-          token: widget.token,
-          bookingId: widget.booking.id,
-        );
-
-    if (!mounted) return;
-
-    if (!ok) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(context.read<BookingProvider>().error ?? 'Erro'),
-          backgroundColor: AppColors.danger,
-        ),
-      );
-      return;
-    }
-
-    Navigator.of(context).pop();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Pagamento realizado com sucesso!'),
-        backgroundColor: AppColors.success,
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isLoading = context.watch<PagamentoProvider>().isLoading ||
-        context.watch<BookingProvider>().isLoading;
-    final ap = widget.booking;
-
-    return DraggableScrollableSheet(
-      initialChildSize: 0.88,
-      minChildSize: 0.5,
-      maxChildSize: 0.95,
-      expand: false,
-      builder: (_, controller) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(
-          children: [
-            Container(
-              margin: const EdgeInsets.symmetric(vertical: 12),
-              width: 40, height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.greyLight,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const Text('Realizar Pagamento',
-                style: TextStyle(
-                    fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.dark)),
-            const SizedBox(height: 4),
-            Expanded(
-              child: SingleChildScrollView(
-                controller: controller,
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryLight,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                            color: AppColors.primary.withValues(alpha: 0.3)),
-                      ),
-                      child: Column(
-                        children: [
-                          _sumRow('Serviço:', ap.serviceName),
-                          _sumRow('Pet:', ap.petName),
-                          _sumRow('Local:', ap.establishmentName),
-                          _sumRow('Horário:', ap.time),
-                          const Divider(height: 20),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Text('Total',
-                                  style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 15,
-                                      color: AppColors.dark)),
-                              Text(
-                                'R\$ ${ap.price.toStringAsFixed(2)}',
-                                style: const TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.primary),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          const Text(
-                            'O valor será creditado ao estabelecimento após o serviço ser concluído.',
-                            style: TextStyle(fontSize: 11, color: AppColors.grey),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-
-                    const Text('Forma de pagamento',
-                        style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.dark)),
-                    const SizedBox(height: 12),
-                    ...List.generate(
-                      _metodos.length,
-                      (i) => _PayTile(
-                        icon: _metodos[i].$2,
-                        label: _metodos[i].$3,
-                        selected: _metodoIdx == i,
-                        onTap: () => setState(() => _metodoIdx = i),
-                      ),
-                    ),
-
-                    if (_isCard) ...[
-                      const SizedBox(height: 16),
-                      const Text('Dados do cartão',
-                          style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.dark)),
-                      const SizedBox(height: 12),
-                      _field(_cardNumCtrl, 'Número do cartão',
-                          maxLen: 19, fmt: [_AgendaCardNumFmt()]),
-                      const SizedBox(height: 10),
-                      _field(_cardNameCtrl, 'Nome no cartão',
-                          type: TextInputType.text,
-                          caps: TextCapitalization.characters),
-                      const SizedBox(height: 10),
-                      Row(children: [
-                        Expanded(
-                            child: _field(_cardExpCtrl, 'MM/AA',
-                                maxLen: 5, fmt: [_AgendaExpiryFmt()])),
-                        const SizedBox(width: 12),
-                        Expanded(
-                            child: _field(_cardCvvCtrl, 'CVV',
-                                maxLen: 3, obscure: true)),
-                      ]),
-                    ],
-                    const SizedBox(height: 24),
-                  ],
-                ),
-              ),
-            ),
-            Padding(
-              padding: EdgeInsets.fromLTRB(
-                  16, 8, 16, MediaQuery.of(context).viewInsets.bottom + 16),
-              child: SizedBox(
-                width: double.infinity, height: 52,
-                child: ElevatedButton(
-                  onPressed: isLoading ? null : _confirmar,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                    elevation: 0,
-                  ),
-                  child: isLoading
-                      ? const SizedBox(
-                          width: 24, height: 24,
-                          child: CircularProgressIndicator(
-                              color: Colors.white, strokeWidth: 2))
-                      : const Text('Confirmar Pagamento',
-                          style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600)),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _sumRow(String label, String value) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 3),
-        child: Row(
-          children: [
-            Text(label,
-                style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.grey,
-                    fontSize: 13)),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(value,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.dark,
-                      fontSize: 13),
-                  overflow: TextOverflow.ellipsis),
-            ),
-          ],
-        ),
-      );
-
-  Widget _field(TextEditingController ctrl, String hint,
-      {int? maxLen,
-      List<TextInputFormatter>? fmt,
-      TextInputType type = TextInputType.number,
-      TextCapitalization caps = TextCapitalization.none,
-      bool obscure = false}) {
-    return TextFormField(
-      controller: ctrl,
-      keyboardType: type,
-      textCapitalization: caps,
-      obscureText: obscure,
-      maxLength: maxLen,
-      inputFormatters: fmt,
-      decoration: InputDecoration(
-        counterText: '',
-        hintText: hint,
-        hintStyle: const TextStyle(color: AppColors.grey),
-        filled: true,
-        fillColor: AppColors.background,
-        border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: BorderSide.none),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      ),
-    );
-  }
-}
-
-class _PayTile extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _PayTile(
-      {required this.icon,
-      required this.label,
-      required this.selected,
-      required this.onTap});
-
-  @override
-  Widget build(BuildContext context) => GestureDetector(
-        onTap: onTap,
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          decoration: BoxDecoration(
-            color: selected ? AppColors.primaryLight : AppColors.background,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: selected ? AppColors.primary : AppColors.greyLight,
-              width: selected ? 2 : 1,
-            ),
-          ),
-          child: Row(children: [
-            Icon(icon,
-                size: 22,
-                color: selected ? AppColors.primary : AppColors.grey),
-            const SizedBox(width: 12),
-            Text(label,
-                style: TextStyle(
-                    fontSize: 14,
-                    fontWeight:
-                        selected ? FontWeight.w600 : FontWeight.normal,
-                    color: selected ? AppColors.primary : AppColors.dark)),
-            const Spacer(),
-            if (selected)
-              const Icon(Icons.check_circle,
-                  color: AppColors.primary, size: 20),
-          ]),
-        ),
-      );
-}
-
-class _AgendaCardNumFmt extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(
-      TextEditingValue old, TextEditingValue next) {
-    final digits = next.text.replaceAll(RegExp(r'\D'), '');
-    final buf = StringBuffer();
-    for (int i = 0; i < digits.length && i < 16; i++) {
-      if (i > 0 && i % 4 == 0) buf.write(' ');
-      buf.write(digits[i]);
-    }
-    final str = buf.toString();
-    return TextEditingValue(
-        text: str, selection: TextSelection.collapsed(offset: str.length));
-  }
-}
-
-class _AgendaExpiryFmt extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(
-      TextEditingValue old, TextEditingValue next) {
-    final digits = next.text.replaceAll(RegExp(r'\D'), '');
-    String str = digits;
-    if (digits.length >= 3) str = '${digits.substring(0, 2)}/${digits.substring(2)}';
-    if (str.length > 5) str = str.substring(0, 5);
-    return TextEditingValue(
-        text: str, selection: TextSelection.collapsed(offset: str.length));
-  }
 }

@@ -57,8 +57,9 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
     try {
       final data = await AuthService.login(email: email, password: password);
-      _token = data['access_token'];
-      _user = UserModel.fromJson(data['user']);
+      _token = data['accessToken'] as String?;
+      _user = data['user'] != null ? UserModel.fromJson(data['user'] as Map<String, dynamic>) : null;
+      if (_token == null || _user == null) throw Exception('Resposta inválida do servidor');
       await StorageService.saveToken(_token!);
       await StorageService.saveUser(_user!);
       _loading = false;
@@ -94,8 +95,9 @@ class AuthProvider extends ChangeNotifier {
         role: role,
         businessName: businessName,
       );
-      _token = data['access_token'];
-      _user = UserModel.fromJson(data['user']);
+      _token = data['accessToken'] as String?;
+      _user = data['user'] != null ? UserModel.fromJson(data['user'] as Map<String, dynamic>) : null;
+      if (_token == null || _user == null) throw Exception('Resposta inválida do servidor');
       await StorageService.saveToken(_token!);
       await StorageService.saveUser(_user!);
       _loading = false;

@@ -19,6 +19,7 @@ class _AddPetScreenState extends State<AddPetScreen> {
   final _racaCtrl = TextEditingController();
   final _idadeCtrl = TextEditingController();
   final _pesoCtrl = TextEditingController();
+  final _outroCtrl = TextEditingController();
   String _tipoSelecionado = 'Cachorro';
   Uint8List? _imageBytes;
   String? _existingImageUrl;
@@ -40,8 +41,13 @@ class _AddPetScreenState extends State<AddPetScreen> {
       _racaCtrl.text = pet.breed;
       _idadeCtrl.text = pet.age.toString();
       _pesoCtrl.text = pet.weight != null ? pet.weight.toString() : '';
-      _tipoSelecionado = pet.type;
       _existingImageUrl = pet.imageUrl;
+      if (pet.type == 'Cachorro' || pet.type == 'Gato') {
+        _tipoSelecionado = pet.type;
+      } else {
+        _tipoSelecionado = 'Outro';
+        _outroCtrl.text = pet.type;
+      }
     }
   }
 
@@ -51,6 +57,7 @@ class _AddPetScreenState extends State<AddPetScreen> {
     _racaCtrl.dispose();
     _idadeCtrl.dispose();
     _pesoCtrl.dispose();
+    _outroCtrl.dispose();
     super.dispose();
   }
 
@@ -133,6 +140,12 @@ class _AddPetScreenState extends State<AddPetScreen> {
 
   void _salvar() {
     if (!_formKey.currentState!.validate()) return;
+    if (_tipoSelecionado == 'Outro' && _outroCtrl.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Informe o tipo do animal')),
+      );
+      return;
+    }
     String? imageUrl;
     if (_imageBytes != null) {
       imageUrl = 'data:image/jpeg;base64,${base64Encode(_imageBytes!)}';
@@ -140,10 +153,13 @@ class _AddPetScreenState extends State<AddPetScreen> {
       imageUrl = _existingImageUrl;
     }
     final peso = double.tryParse(_pesoCtrl.text.trim().replaceAll(',', '.'));
+    final tipo = _tipoSelecionado == 'Outro'
+        ? _outroCtrl.text.trim()
+        : _tipoSelecionado;
     final pet = PetModel(
       id: widget.initialPet?.id ?? '',
       name: _nomeCtrl.text.trim(),
-      type: _tipoSelecionado,
+      type: tipo,
       breed: _racaCtrl.text.trim(),
       age: int.tryParse(_idadeCtrl.text.trim()) ?? 0,
       weight: peso,
@@ -263,6 +279,16 @@ class _AddPetScreenState extends State<AddPetScreen> {
                   );
                 }).toList(),
               ),
+              if (_tipoSelecionado == 'Outro') ...[
+                const SizedBox(height: 14),
+                _sectionTitle('Qual é o animal?'),
+                const SizedBox(height: 8),
+                _field(
+                  controller: _outroCtrl,
+                  hint: 'Ex: Coelho, Hamster, Pássaro...',
+                  icon: Icons.emoji_nature_outlined,
+                ),
+              ],
               const SizedBox(height: 20),
 
               _sectionTitle('Nome do Pet'),
