@@ -15,8 +15,8 @@ export class ProductService {
     private readonly repo: ProductRepository,
   ) {}
 
-  async create(dto: CreateProductDto): Promise<void> {
-    const product = Product.restore({
+async create(dto: CreateProductDto): Promise<ProductDto> {
+  const product = Product.restore({ 
       establishmentId: dto.establishmentId,
       name: dto.name,
       brand: dto.brand ?? "",
@@ -26,10 +26,10 @@ export class ProductService {
       description: dto.description ?? "",
       stock: dto.stock ?? 0,
       imageUrl: dto.imageUrl,
-      active: true,
-    })!;
-    await this.repo.create(product);
-  }
+      active: true, })!;
+  const created = await this.repo.create(product);
+  return ProductDto.fromProduct(created)!;
+}
 
   async findAll(search?: string): Promise<ProductDto[]> {
     const rows = await this.repo.findAll(search);

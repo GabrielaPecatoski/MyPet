@@ -61,12 +61,14 @@ export class ProductsController {
   }
 
   @Post()
-  @ApiBearerAuth()
-  @RequirePermissions(Permission.PRODUCTS_WRITE)
-  @ApiOperation({ summary: "Criar produto" })
-  async create(@Body() body: CreateProductDto) {
-    return this.productService.create(body);
-  }
+@ApiBearerAuth()
+@HttpCode(HttpStatus.CREATED)
+@RequirePermissions(Permission.PRODUCTS_WRITE)
+@ApiOperation({ summary: "Criar produto" })
+@ApiCreatedResponse({ description: "Produto criado", type: ProductDto })
+async create(@Body() body: CreateProductDto): Promise<ProductDto> {
+  return this.productService.create(body);
+}
 
   @Patch(":id")
   @HttpCode(HttpStatus.NO_CONTENT)

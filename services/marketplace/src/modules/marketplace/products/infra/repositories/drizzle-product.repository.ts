@@ -10,9 +10,10 @@ import { and, eq, ilike, or, sql } from "drizzle-orm";
 export class DrizzleProductRepository implements ProductRepository {
   constructor(private readonly drizzleService: DrizzleService) {}
 
-  async create(p: Product): Promise<void> {
-    await this.drizzleService.db.insert(productsSchema).values({
-      establishmentId: p.establishmentId,
+ async create(p: Product): Promise<Product> {
+  const [row] = await this.drizzleService.db
+    .insert(productsSchema)
+    .values({establishmentId: p.establishmentId,
       name: p.name,
       brand: p.brand,
       price: p.price,
@@ -22,9 +23,10 @@ export class DrizzleProductRepository implements ProductRepository {
       stock: p.stock,
       imageUrl: p.imageUrl,
       active: p.active,
-      createdAt: new Date(),
-    });
-  }
+      createdAt: new Date(),})
+    .returning();
+  return Product.restore(row)!;
+}
 
   async update(p: Product): Promise<void> {
     await this.drizzleService.db
