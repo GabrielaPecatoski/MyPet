@@ -34,6 +34,6 @@ documentos/
 mypet_app/build/
 
 # Artefatos de teste Playwright
-test-results/
-playwright-report/
-playwright-report-front/
+**/test-results/
+**/playwright-report/
+**/playwright-report-front/

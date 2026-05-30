@@ -9,7 +9,8 @@ export default defineConfig({
   expect: { timeout: 20_000 },
   retries: 0,
   workers: 1,
-  reporter: [['list'], ['html', { open: 'never', outputFolder: 'playwright-report-front' }]],
+  reporter: [['list'], ['html', { open: 'never', outputFolder: 'services/tests/playwright-report-front' }]],
+  outputDir: 'services/tests/test-results',
   use: {
     baseURL: `http://localhost:${WEB_PORT}`,
     headless: false,

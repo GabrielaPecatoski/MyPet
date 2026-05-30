@@ -1,9 +1,3 @@
-/**
- * Seed: cria usuários e estabelecimentos de exemplo.
- * Uso: node scripts/seed.mjs
- * Requer a API rodando em http://localhost:3000
- */
-
 const BASE = 'http://localhost:3000';
 
 async function post(path, body, token) {
@@ -55,12 +49,9 @@ async function addService(token, estabId, svc) {
   throw new Error(`Serviço falhou [${status}]: ${JSON.stringify(data)}`);
 }
 
-// ────────────────────────────────────────────────────────────────
-
 async function main() {
   console.log('\n🌱 Iniciando seed...\n');
 
-  // ── Admin
   console.log('👤 Admin');
   await register({
     name: 'Administrador',
@@ -71,7 +62,6 @@ async function main() {
     role: 'ADMIN',
   });
 
-  // ── Vendedor 1 — Pet Shop
   console.log('\n🏪 Vendedor 1 — Pet Shop Patinhas');
   const v1 = await register({
     name: 'Carlos Mendes',
@@ -93,7 +83,6 @@ async function main() {
   await addService(v1.accessToken, e1.id, { name: 'Tosa', price: 80, durationMinutes: 90, description: 'Tosa higiênica ou completa' });
   await addService(v1.accessToken, e1.id, { name: 'Banho + Tosa', price: 120, durationMinutes: 120, description: 'Pacote completo banho e tosa' });
 
-  // ── Vendedor 2 — Clínica Vet
   console.log('\n🏥 Vendedor 2 — Clínica VetCare');
   const v2 = await register({
     name: 'Dra. Ana Lima',
@@ -115,7 +104,6 @@ async function main() {
   await addService(v2.accessToken, e2.id, { name: 'Vacinação', price: 80, durationMinutes: 20, description: 'Aplicação de vacinas' });
   await addService(v2.accessToken, e2.id, { name: 'Exame de Sangue', price: 120, durationMinutes: 15, description: 'Hemograma completo' });
 
-  // ── Vendedor 3 — Pet Shop
   console.log('\n🐾 Vendedor 3 — Mundo Animal');
   const v3 = await register({
     name: 'Fernanda Costa',
@@ -137,7 +125,6 @@ async function main() {
   await addService(v3.accessToken, e3.id, { name: 'Banho Grande Porte', price: 90, durationMinutes: 90, description: 'Para pets acima de 8kg' });
   await addService(v3.accessToken, e3.id, { name: 'Hospedagem Diária', price: 80, durationMinutes: 1440, description: 'Hospedagem por dia' });
 
-  // ── Cliente de teste
   console.log('\n👥 Cliente de teste');
   await register({
     name: 'Maria Souza',
