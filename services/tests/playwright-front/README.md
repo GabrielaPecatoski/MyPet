@@ -45,15 +45,12 @@ npx playwright show-report playwright-report-front
 | `02-pets` | cadastrar, editar e remover pet |
 | `03-loja` | buscar produto → carrinho → pagamento (PIX) |
 | `04-agendamento` | abrir estabelecimento → agendar serviço → pagar (dinheiro) |
-| `05-perfil` | ver perfil, abrir edição, logout |
+| `05-perfil` | editar perfil, excluir conta, logout |
 | `06-estabelecimento` | login de vendedor → painel → aba Produtos |
+| `07-estab-agenda` | estabelecimento vê e confirma um agendamento pago |
 
-## Bugs reais encontrados
-
-Ver `_BUGS-ENCONTRADOS.md`. Resumo:
-1. **Pagamento da loja sem token** (401) — corrigido no app.
-2. **Editar/Excluir perfil** dependem de `PATCH/DELETE /auth/me`, que não existem
-   no backend — não corrigido (exige mudança no backend).
+Localização: `services/tests/playwright-front`. As configs (`playwright.front.config.ts`)
+ficam na raiz do projeto.
 
 ## Mudanças de acessibilidade no app
 

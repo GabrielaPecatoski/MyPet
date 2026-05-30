@@ -4,7 +4,7 @@ const WEB_DIR = 'mypet_app/build/web';
 const WEB_PORT = 8080;
 
 export default defineConfig({
-  testDir: './playwright-front',
+  testDir: './services/tests/playwright-front',
   timeout: 120_000,
   expect: { timeout: 20_000 },
   retries: 0,
