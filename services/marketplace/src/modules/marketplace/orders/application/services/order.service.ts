@@ -1,5 +1,5 @@
 import { OrderDto } from "@market/orders/application/dto/order.dto";
-import { Order } from "@market/orders/domain/models/order.entity";
+import { type DeliveryMethod, Order, type OrderStatus } from "@market/orders/domain/models/order.entity";
 import {
   ORDER_REPOSITORY,
   type OrderRepository,
@@ -9,6 +9,8 @@ import { PRODUCT_REPOSITORY, type ProductRepository } from "@market/products/dom
 import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { SharedMessagingService } from "@shared/infra/messaging/shared-messaging.service";
 import { MarketplaceExchangeName, MarketplaceRoutingKey } from "@shared/contracts/events/marketplace-events.enum";
+
+const STATUS_FLOW: OrderStatus[] = ["AGUARDANDO_PAGAMENTO", "ENVIANDO", "A_CAMINHO", "FINALIZADO"];
 
 @Injectable()
 export class OrderService {
@@ -26,38 +28,52 @@ export class OrderService {
     if (cartItems.length === 0) throw new BadRequestException("Carrinho vazio");
 
     let total = 0;
+    let establishmentId: string | undefined;
     const orderItems = [];
 
     for (const item of cartItems) {
       const product = await this.productRepo.findById(item.productId);
       if (!product) continue;
-      const price = product.price * item.quantity;
-      total += price;
+      establishmentId ??= product.establishmentId;
+      total += product.price * item.quantity;
       orderItems.push({ productId: item.productId, quantity: item.quantity, price: product.price });
     }
 
     const order = Order.restore({
       userId,
+      establishmentId,
       total,
       status: "AGUARDANDO_PAGAMENTO",
+      deliveryMethod: "PICKUP",
       items: orderItems,
     })!;
 
-    await this.orderRepo.create(order);
+    const orderId = await this.orderRepo.create(order);
     await this.cartRepo.clearCart(userId);
 
-    const created = (await this.orderRepo.findByUserId(userId)).pop();
+    const created = await this.orderRepo.findById(orderId);
     return OrderDto.fromOrder(created!)!;
   }
 
-  async processPayment(orderId: string, method: string, cardNumber?: string, installments?: number): Promise<{ order: OrderDto; payment: Record<string, unknown> }> {
+  async processPayment(
+    orderId: string,
+    method: string,
+    cardNumber?: string,
+    installments?: number,
+    deliveryMethod?: string,
+    deliveryAddress?: string,
+  ): Promise<{ order: OrderDto; payment: Record<string, unknown> }> {
     const order = await this.orderRepo.findById(orderId);
     if (!order) throw new NotFoundException("Pedido não encontrado");
 
     const payment = this.simulatePayment(method, order.total, cardNumber, installments);
 
+    if (deliveryMethod) {
+      await this.orderRepo.updateDelivery(orderId, deliveryMethod as DeliveryMethod, deliveryAddress);
+    }
+
     if (payment["status"] === "APPROVED") {
-      await this.orderRepo.updateStatus(orderId, "CONFIRMED");
+      await this.orderRepo.updateStatus(orderId, "ENVIANDO");
       await this.safePublish(MarketplaceExchangeName.ORDER_CREATED, MarketplaceRoutingKey.ORDER_CREATED, {
         orderId,
         userId: order.userId,
@@ -73,6 +89,32 @@ export class OrderService {
   async findByUserId(userId: string): Promise<OrderDto[]> {
     const orders = await this.orderRepo.findByUserId(userId);
     return orders.map((o) => OrderDto.fromOrder(o)!);
+  }
+
+  async findByEstablishmentId(establishmentId: string): Promise<OrderDto[]> {
+    const orders = await this.orderRepo.findByEstablishmentId(establishmentId);
+    return orders.map((o) => OrderDto.fromOrder(o)!);
+  }
+
+  async updateStatus(orderId: string, status: OrderStatus): Promise<OrderDto> {
+    const order = await this.orderRepo.findById(orderId);
+    if (!order) throw new NotFoundException("Pedido não encontrado");
+    if (!STATUS_FLOW.includes(status) && status !== "CANCELLED") {
+      throw new BadRequestException("Status inválido");
+    }
+    await this.orderRepo.updateStatus(orderId, status);
+    const updated = await this.orderRepo.findById(orderId);
+    return OrderDto.fromOrder(updated!)!;
+  }
+
+  async advanceStatus(orderId: string): Promise<OrderDto> {
+    const order = await this.orderRepo.findById(orderId);
+    if (!order) throw new NotFoundException("Pedido não encontrado");
+    const idx = STATUS_FLOW.indexOf(order.status);
+    if (idx < 0 || idx >= STATUS_FLOW.length - 1) {
+      throw new BadRequestException("Pedido não pode avançar de status");
+    }
+    return this.updateStatus(orderId, STATUS_FLOW[idx + 1]);
   }
 
   private simulatePayment(method: string, amount: number, cardNumber?: string, installments?: number): Record<string, unknown> {

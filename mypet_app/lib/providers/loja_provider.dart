@@ -30,11 +30,11 @@ class LojaProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> loadOrders(String userId) async {
+  Future<void> loadOrders(String userId, {String? token}) async {
     _loadingOrders = true;
     notifyListeners();
     try {
-      _orders = await _ordersRepo.getByUser(userId);
+      _orders = await _ordersRepo.getByUser(userId, token: token);
     } catch (_) {
       _orders = [];
     }

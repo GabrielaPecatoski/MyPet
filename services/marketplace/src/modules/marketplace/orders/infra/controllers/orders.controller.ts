@@ -1,5 +1,5 @@
 import { OrderService } from "@market/orders/application/services/order.service";
-import { Controller, Get, HttpCode, HttpStatus, Param, Post } from "@nestjs/common";
+import { Body, Controller, Get, Param, Patch, Post } from "@nestjs/common";
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -7,6 +7,7 @@ import {
 } from "@nestjs/swagger";
 import { Permission } from "@shared/domain/enums/permission.enum";
 import { RequirePermissions } from "@shared/infra/decorators/permissions.decorator";
+import type { OrderStatus } from "@market/orders/domain/models/order.entity";
 
 @ApiTags("marketplace/orders")
 @ApiBearerAuth()
@@ -21,10 +22,31 @@ export class OrdersController {
     return this.orderService.checkout(userId);
   }
 
+  @Get("establishment/:establishmentId")
+  @RequirePermissions(Permission.ORDERS_READ)
+  @ApiOperation({ summary: "Listar pedidos de um estabelecimento" })
+  async findByEstablishment(@Param("establishmentId") establishmentId: string) {
+    return this.orderService.findByEstablishmentId(establishmentId);
+  }
+
   @Get(":userId")
   @RequirePermissions(Permission.ORDERS_READ)
   @ApiOperation({ summary: "Listar pedidos do usuário" })
   async findByUser(@Param("userId") userId: string) {
     return this.orderService.findByUserId(userId);
+  }
+
+  @Patch(":id/status")
+  @RequirePermissions(Permission.ORDERS_WRITE)
+  @ApiOperation({ summary: "Atualizar status do pedido (acompanhamento)" })
+  async updateStatus(@Param("id") id: string, @Body() body: { status: OrderStatus }) {
+    return this.orderService.updateStatus(id, body.status);
+  }
+
+  @Patch(":id/advance")
+  @RequirePermissions(Permission.ORDERS_WRITE)
+  @ApiOperation({ summary: "Avançar o pedido para o próximo status" })
+  async advance(@Param("id") id: string) {
+    return this.orderService.advanceStatus(id);
   }
 }

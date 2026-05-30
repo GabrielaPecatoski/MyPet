@@ -73,6 +73,11 @@ export async function tapText(page: Page, text: string | RegExp): Promise<void> 
     await btn.first().click({ timeout: 20_000 });
     return;
   }
+  const tab = page.getByRole('tab', { name: text, exact: false });
+  if (await tab.count()) {
+    await tab.first().click({ timeout: 20_000 });
+    return;
+  }
   const el = leafByText(page, text).first();
   await el.scrollIntoViewIfNeeded().catch(() => {});
   await el.waitFor({ state: 'visible', timeout: 20_000 });

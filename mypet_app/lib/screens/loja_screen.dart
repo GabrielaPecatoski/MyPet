@@ -5,7 +5,9 @@ import '../models/product.dart';
 import '../providers/auth_provider.dart';
 import '../providers/cart_provider.dart';
 import '../providers/loja_provider.dart';
+import '../core/order_status.dart';
 import '../widgets/mypet_app_bar.dart';
+import '../widgets/order_progress_bar.dart';
 import 'product_detail_screen.dart';
 
 class LojaScreen extends StatefulWidget {
@@ -259,29 +261,26 @@ class _PedidosTab extends StatefulWidget {
 class _PedidosTabState extends State<_PedidosTab> {
   int _filterIdx = 0;
 
-  static const _filters = ['Histórico', 'Aguardando', 'Cancelados'];
+  static const _filters = ['Todos', 'Em andamento', 'Finalizados'];
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final auth = context.read<AuthProvider>();
-      context.read<LojaProvider>().loadOrders(auth.user?.id ?? '');
+      context.read<LojaProvider>().loadOrders(auth.user?.id ?? '', token: auth.token);
     });
   }
 
   List<Map<String, dynamic>> _filterOrders(List<Map<String, dynamic>> orders) {
     if (_filterIdx == 1) {
-      return orders.where((p) {
-        final s = (p['status'] as String).toUpperCase();
-        return s == 'PENDING' || s == 'PROCESSING';
+      return orders.where((o) {
+        final s = o['status'] as String? ?? '';
+        return s == 'AGUARDANDO_PAGAMENTO' || s == 'ENVIANDO' || s == 'A_CAMINHO';
       }).toList();
     }
     if (_filterIdx == 2) {
-      return orders.where((p) {
-        final s = (p['status'] as String).toUpperCase();
-        return s == 'CANCELLED' || s == 'REJECTED' || s == 'REFUNDED';
-      }).toList();
+      return orders.where((o) => (o['status'] as String? ?? '') == 'FINALIZADO').toList();
     }
     return orders;
   }
@@ -319,85 +318,51 @@ class _PedidosTabState extends State<_PedidosTab> {
           : filtered.isEmpty
               ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                   Icon(
-                    _filterIdx == 1 ? Icons.schedule : _filterIdx == 2 ? Icons.cancel_outlined : Icons.receipt_long_outlined,
+                    _filterIdx == 1 ? Icons.local_shipping_outlined : _filterIdx == 2 ? Icons.verified_outlined : Icons.receipt_long_outlined,
                     size: 48, color: AppColors.greyLight,
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    _filterIdx == 1 ? 'Nenhum pedido aguardando' : _filterIdx == 2 ? 'Nenhum pedido cancelado' : 'Nenhum pedido encontrado',
+                    _filterIdx == 1 ? 'Nenhum pedido em andamento' : _filterIdx == 2 ? 'Nenhum pedido finalizado' : 'Nenhum pedido encontrado',
                     style: const TextStyle(color: AppColors.grey),
                   ),
                 ]))
               : RefreshIndicator(
                   onRefresh: () {
                     final auth = context.read<AuthProvider>();
-                    return context.read<LojaProvider>().loadOrders(auth.user?.id ?? '');
+                    return context.read<LojaProvider>().loadOrders(auth.user?.id ?? '', token: auth.token);
                   },
                   color: AppColors.primary,
                   child: ListView.builder(
                     padding: const EdgeInsets.all(16),
                     itemCount: filtered.length,
-                    itemBuilder: (_, i) => _PedidoCard(payment: filtered[i]),
+                    itemBuilder: (_, i) => _OrderCard(order: filtered[i]),
                   ),
                 )),
     ]);
   }
 }
 
-class _PedidoCard extends StatelessWidget {
-  final Map<String, dynamic> payment;
-  const _PedidoCard({required this.payment});
-
-  static const _statusLabel = {
-    'APPROVED': 'Aprovado',
-    'PENDING': 'Aguardando',
-    'PROCESSING': 'Processando',
-    'REJECTED': 'Recusado',
-    'CANCELLED': 'Cancelado',
-    'REFUNDED': 'Estornado',
-  };
-
-  static const _statusColor = {
-    'APPROVED': AppColors.success,
-    'PENDING': AppColors.warning,
-    'PROCESSING': AppColors.warning,
-    'REJECTED': AppColors.danger,
-    'CANCELLED': AppColors.danger,
-    'REFUNDED': AppColors.grey,
-  };
-
-  static const _methodLabel = {
-    'PIX': 'Pix',
-    'CREDIT_CARD': 'Cartão de Crédito',
-    'DEBIT_CARD': 'Cartão de Débito',
-    'CASH': 'Dinheiro',
-    'BOLETO': 'Boleto',
-  };
-
-  static const _methodIcon = {
-    'PIX': Icons.qr_code_2,
-    'CREDIT_CARD': Icons.credit_card,
-    'DEBIT_CARD': Icons.credit_card_outlined,
-    'CASH': Icons.money,
-    'BOLETO': Icons.barcode_reader,
-  };
+class _OrderCard extends StatelessWidget {
+  final Map<String, dynamic> order;
+  const _OrderCard({required this.order});
 
   @override
   Widget build(BuildContext context) {
-    final status = payment['status'] as String? ?? 'PENDING';
-    final method = payment['method'] as String? ?? '';
-    final amount = (payment['amount'] as num?)?.toDouble() ?? 0.0;
-    final createdAt = payment['createdAt'] as String? ?? '';
-    final order = payment['order'] as Map<String, dynamic>?;
-    final items = (order?['items'] as List<dynamic>?) ?? [];
-    final installments = payment['installments'] as int? ?? 1;
-
-    final date = createdAt.isNotEmpty ? _formatDate(createdAt) : '';
+    final status = order['status'] as String? ?? 'AGUARDANDO_PAGAMENTO';
+    final pickup = (order['deliveryMethod'] as String? ?? 'PICKUP') == 'PICKUP';
+    final address = order['deliveryAddress'] as String?;
+    final total = (order['total'] as num?)?.toDouble() ?? 0.0;
+    final items = (order['items'] as List? ?? []);
+    final qty = items.fold<int>(0, (s, it) => s + ((it as Map)['quantity'] as int? ?? 0));
+    final createdAt = order['createdAt'] as String? ?? '';
+    final cancelled = OrderTracking.isCancelled(status);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
-        color: Colors.white, borderRadius: BorderRadius.circular(14),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
         boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 2))],
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -407,84 +372,66 @@ class _PedidoCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(color: AppColors.primaryLight, borderRadius: BorderRadius.circular(8)),
-              child: Icon(_methodIcon[method] ?? Icons.payment, size: 20, color: AppColors.primary),
+              child: Icon(pickup ? Icons.store_outlined : Icons.delivery_dining, color: AppColors.primary, size: 20),
             ),
             const SizedBox(width: 10),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(_methodLabel[method] ?? method,
+              Text(pickup ? 'Retirada no local' : 'Entrega',
                   style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.dark)),
-              if (date.isNotEmpty)
-                Text(date, style: const TextStyle(fontSize: 11, color: AppColors.grey)),
+              if (createdAt.isNotEmpty)
+                Text(_fmt(createdAt), style: const TextStyle(fontSize: 11, color: AppColors.grey)),
             ])),
-            _StatusBadge(status: status, label: _statusLabel[status] ?? status, color: _statusColor[status] ?? AppColors.grey),
+            _StatusBadge(label: OrderTracking.label(status, pickup: pickup), color: OrderTracking.color(status)),
           ]),
         ),
 
-        if (items.isNotEmpty) ...[
-          const Divider(height: 1, color: AppColors.greyLight),
+        if (!pickup && address != null && address.isNotEmpty)
           Padding(
-            padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
-            child: Column(children: items.take(3).map((item) {
-              final it = item as Map<String, dynamic>;
-              final product = it['product'] as Map<String, dynamic>?;
-              final qty = it['quantity'] as int? ?? 1;
-              final name = product?['name'] as String? ?? 'Produto';
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Row(children: [
-                  const Icon(Icons.circle, size: 5, color: AppColors.grey),
-                  const SizedBox(width: 6),
-                  Expanded(child: Text('${qty}x $name',
-                      style: const TextStyle(fontSize: 12, color: AppColors.grey),
-                      overflow: TextOverflow.ellipsis)),
-                ]),
-              );
-            }).toList()),
+            padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
+            child: Row(children: [
+              const Icon(Icons.location_on_outlined, size: 13, color: AppColors.grey),
+              const SizedBox(width: 4),
+              Expanded(child: Text(address,
+                  style: const TextStyle(fontSize: 12, color: AppColors.grey),
+                  maxLines: 1, overflow: TextOverflow.ellipsis)),
+            ]),
           ),
-          if (items.length > 3)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 2, 14, 0),
-              child: Text('+ ${items.length - 3} item(s)',
-                  style: const TextStyle(fontSize: 11, color: AppColors.grey)),
-            ),
-        ],
+
+        const Divider(height: 1, color: AppColors.greyLight),
 
         Padding(
-          padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
+          padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
           child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            Text(
-              installments > 1 ? '${installments}x de R\$ ${(amount / installments).toStringAsFixed(2)}' : '',
-              style: const TextStyle(fontSize: 11, color: AppColors.grey),
-            ),
-            Text('Total: R\$ ${amount.toStringAsFixed(2)}',
+            Text('$qty item(s)', style: const TextStyle(fontSize: 13, color: AppColors.grey)),
+            Text('Total: R\$ ${total.toStringAsFixed(2)}',
                 style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.dark)),
           ]),
         ),
 
-        if (payment['boletoCode'] != null) ...[
-          const Divider(height: 1, color: AppColors.greyLight),
+        if (cancelled)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            decoration: BoxDecoration(
+              color: AppColors.danger.withValues(alpha: 0.08),
+              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(14)),
+            ),
+            child: const Center(child: Text('Pedido cancelado',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.danger))),
+          )
+        else
           Padding(
-            padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
-            child: Row(children: [
-              Expanded(child: Text(payment['boletoCode'] as String,
-                  style: const TextStyle(fontSize: 10, color: AppColors.grey),
-                  overflow: TextOverflow.ellipsis)),
-              const SizedBox(width: 8),
-              GestureDetector(
-                onTap: () {},
-                child: const Icon(Icons.copy, size: 16, color: AppColors.primary),
-              ),
-            ]),
+            padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+            child: OrderProgressBar(status: status, pickup: pickup),
           ),
-        ],
       ]),
     );
   }
 
-  String _formatDate(String iso) {
+  String _fmt(String iso) {
     try {
       final dt = DateTime.parse(iso).toLocal();
-      return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
+      return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
     } catch (_) {
       return iso;
     }
@@ -492,10 +439,9 @@ class _PedidoCard extends StatelessWidget {
 }
 
 class _StatusBadge extends StatelessWidget {
-  final String status;
   final String label;
   final Color color;
-  const _StatusBadge({required this.status, required this.label, required this.color});
+  const _StatusBadge({required this.label, required this.color});
 
   @override
   Widget build(BuildContext context) => Container(

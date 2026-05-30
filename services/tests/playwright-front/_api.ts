@@ -199,6 +199,57 @@ export async function payBooking(
   );
 }
 
+export async function addToCart(
+  api: APIRequestContext,
+  cliente: SeededUser,
+  productId: string,
+  quantity = 1,
+): Promise<any> {
+  return ok(
+    await api.post(`/marketplace/cart/${cliente.id}`, {
+      headers: auth(cliente),
+      data: { productId, quantity },
+    }),
+    'addToCart',
+  );
+}
+
+export async function checkoutOrder(api: APIRequestContext, cliente: SeededUser): Promise<any> {
+  return ok(
+    await api.post(`/marketplace/orders/${cliente.id}`, { headers: auth(cliente), data: {} }),
+    'checkoutOrder',
+  );
+}
+
+export async function payOrder(
+  api: APIRequestContext,
+  cliente: SeededUser,
+  orderId: string,
+  opts: { method?: string; deliveryMethod?: string; deliveryAddress?: string } = {},
+): Promise<any> {
+  return ok(
+    await api.post('/marketplace/payments', {
+      headers: auth(cliente),
+      data: {
+        orderId,
+        method: opts.method ?? 'PIX',
+        deliveryMethod: opts.deliveryMethod ?? 'DELIVERY',
+        deliveryAddress: opts.deliveryAddress ?? 'Rua dos Testes, 100',
+      },
+    }),
+    'payOrder',
+  );
+}
+
+export async function seedPaidOrder(api: APIRequestContext, owner: SeededUser, estabId: string) {
+  const product = await createProduct(api, owner, estabId, { name: `Pedido E2E ${Date.now()}` });
+  const cliente = await registerUser(api, { role: 'CLIENTE' });
+  await addToCart(api, cliente, product.id, 2);
+  const order = await checkoutOrder(api, cliente);
+  await payOrder(api, cliente, order.id, { method: 'PIX', deliveryMethod: 'DELIVERY' });
+  return { cliente, product, orderId: order.id };
+}
+
 export async function seedFullEstablishment(api: APIRequestContext, serviceName = 'Banho E2E') {
   const owner = await registerUser(api, { role: 'VENDEDOR', businessName: 'Estab E2E' });
   const estab = await createEstablishment(api, owner, { name: `Pet Shop E2E ${Date.now()}` });

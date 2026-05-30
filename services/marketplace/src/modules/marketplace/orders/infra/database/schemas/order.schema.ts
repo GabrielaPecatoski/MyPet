@@ -3,8 +3,11 @@ import { doublePrecision, integer, pgTable, text, timestamp, uuid } from "drizzl
 export const ordersSchema = pgTable("orders", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: uuid("user_id").notNull(),
+  establishmentId: uuid("establishment_id"),
   total: doublePrecision("total").notNull(),
-  status: text("status").notNull().default("PENDING"),
+  status: text("status").notNull().default("AGUARDANDO_PAGAMENTO"),
+  deliveryMethod: text("delivery_method").notNull().default("PICKUP"),
+  deliveryAddress: text("delivery_address"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
 });
 

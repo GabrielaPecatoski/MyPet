@@ -4,6 +4,7 @@ import '../core/colors.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
 import '../widgets/mypet_app_bar.dart';
+import 'estab_pedidos_view.dart';
 
 class EstabProdutosScreen extends StatefulWidget {
   const EstabProdutosScreen({super.key});
@@ -373,14 +374,34 @@ class _EstabProdutosScreenState extends State<EstabProdutosScreen> {
   Widget build(BuildContext context) {
     final filtered = _filtered;
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: const MypetAppBar(showBack: false),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: const MypetAppBar(showBack: false),
+        body: Column(
+          children: [
+            Material(
+              color: Colors.white,
+              elevation: 0.5,
+              shadowColor: Colors.black12,
+              child: const TabBar(
+                labelColor: AppColors.primary,
+                unselectedLabelColor: AppColors.grey,
+                indicatorColor: AppColors.primary,
+                indicatorWeight: 2.5,
+                labelStyle: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                tabs: [Tab(text: 'Produtos'), Tab(text: 'Pedidos')],
+              ),
+            ),
+            Expanded(
+              child: TabBarView(
+                children: [
+                  _loading
+                      ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
                 Container(
                   color: Colors.white,
                   padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
@@ -574,6 +595,13 @@ class _EstabProdutosScreenState extends State<EstabProdutosScreen> {
                 ),
               ],
             ),
+                  const EstabPedidosView(),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
