@@ -33,6 +33,7 @@ import 'screens/help_screen.dart';
 import 'screens/estab_help_screen.dart';
 import 'screens/carrinho_screen.dart';
 import 'screens/pagamento_screen.dart';
+import 'screens/pagamento_agendamento_screen.dart';
 import 'screens/main_navigation.dart';
 import 'screens/estab_navigation.dart';
 import 'screens/estab_edit_screen.dart';
@@ -104,8 +105,9 @@ class MyPetApp extends StatelessWidget {
         '/tracking':      (_) => const TrackingScreen(),
         '/help':          (_) => const HelpScreen(),
         '/estab-help':    (_) => const EstabHelpScreen(),
-        '/cart':          (_) => const CarrinhoScreen(),
-        '/payment':       (_) => const PagamentoScreen(),
+        '/cart':                    (_) => const CarrinhoScreen(),
+        '/payment':                 (_) => const PagamentoScreen(),
+        '/pagamento-agendamento':   (_) => const PagamentoAgendamentoScreen(),
       },
     );
   }

@@ -23,6 +23,7 @@ class PagamentoProvider extends ChangeNotifier {
     String? deliveryAddress,
     String? cardNumber,
     int? installments,
+    String? token,
   }) async {
     _status = PagamentoStatus.loading;
     paymentResult = null;
@@ -30,7 +31,7 @@ class PagamentoProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final orderId = await _repository.createOrder(userId);
+      final orderId = await _repository.createOrder(userId, token: token);
       final result = await _repository.processPayment({
         'orderId': orderId,
         'userId': userId,
@@ -40,11 +41,44 @@ class PagamentoProvider extends ChangeNotifier {
         if (deliveryAddress != null) 'deliveryAddress': deliveryAddress,
         if (cardNumber != null) 'cardNumber': cardNumber,
         if (installments != null) 'installments': installments,
-      });
-      paymentResult = result;
+      }, token: token);
+      // result has { order, payment } — extract payment
+      final payment = result['payment'] as Map<String, dynamic>? ?? result;
+      paymentResult = payment;
       _status = PagamentoStatus.success;
     } catch (_) {
       errorMessage = 'Erro ao processar pedido. Tente novamente.';
+      _status = PagamentoStatus.error;
+    }
+    notifyListeners();
+  }
+
+  Future<void> confirmarAgendamento({
+    required String bookingId,
+    required double amount,
+    required String method,
+    required String token,
+    String? cardNumber,
+    int? installments,
+  }) async {
+    _status = PagamentoStatus.loading;
+    paymentResult = null;
+    errorMessage = null;
+    notifyListeners();
+
+    try {
+      final result = await _repository.processBookingPayment(
+        bookingId: bookingId,
+        method: method,
+        cardNumber: cardNumber,
+        installments: installments,
+        token: token,
+      );
+      final payment = result['payment'] as Map<String, dynamic>? ?? result;
+      paymentResult = payment;
+      _status = PagamentoStatus.success;
+    } catch (_) {
+      errorMessage = 'Erro ao processar pagamento. Tente novamente.';
       _status = PagamentoStatus.error;
     }
     notifyListeners();

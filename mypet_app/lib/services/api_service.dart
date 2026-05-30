@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import '../core/constants.dart';
 
 class ApiService {
-  static const _timeout = Duration(seconds: 6);
+  static const _timeout = Duration(seconds: 15);
 
   static Map<String, String> _headers({
     String? token,

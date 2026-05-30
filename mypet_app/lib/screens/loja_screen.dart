@@ -41,6 +41,7 @@ class _LojaScreenState extends State<LojaScreen> with SingleTickerProviderStateM
           Stack(
             children: [
               IconButton(
+                tooltip: 'Carrinho',
                 icon: const Icon(Icons.shopping_cart_outlined, color: AppColors.dark),
                 onPressed: () => Navigator.pushNamed(context, '/cart'),
               ),

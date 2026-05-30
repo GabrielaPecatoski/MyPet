@@ -16,7 +16,7 @@ class BookingProvider extends ChangeNotifier {
       _bookings.where((b) => b.isConfirmado || b.isACaminho).toList();
 
   List<AppointmentModel> get pendentes =>
-      _bookings.where((b) => b.isPendente).toList();
+      _bookings.where((b) => b.isPendente || b.isAguardandoPagamento).toList();
 
   List<AppointmentModel> get ativos =>
       _bookings.where((b) => b.isActive).toList();

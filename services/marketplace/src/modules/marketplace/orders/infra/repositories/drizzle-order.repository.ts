@@ -55,4 +55,11 @@ export class DrizzleOrderRepository implements OrderRepository {
     const items = await this.drizzleService.db.select().from(orderItemsSchema).where(eq(orderItemsSchema.orderId, o.id));
     return Order.restore({ ...o, status: o.status as OrderStatus, items });
   }
+
+  async updateStatus(id: string, status: OrderStatus): Promise<void> {
+    await this.drizzleService.db
+      .update(ordersSchema)
+      .set({ status })
+      .where(eq(ordersSchema.id, id));
+  }
 }
