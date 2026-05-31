@@ -122,6 +122,73 @@ export async function scrollToText(page: Page, text: string | RegExp, maxScrolls
   await byText(page, text).first().waitFor({ state: 'visible', timeout: 10_000 });
 }
 
+export async function openClientTab(
+  page: Page,
+  tabLabel: string,
+  probe: string | RegExp,
+  timeout = 45_000,
+): Promise<void> {
+  const target = button(page, tabLabel).first();
+  await expect
+    .poll(
+      async () => {
+        await target.click({ force: true }).catch(() => {});
+        return byText(page, probe).first().isVisible().catch(() => false);
+      },
+      { timeout, intervals: [800] },
+    )
+    .toBe(true);
+}
+
+export async function pollTap(
+  page: Page,
+  label: string | RegExp,
+  probe: string | RegExp,
+  timeout = 60_000,
+): Promise<void> {
+  await expect
+    .poll(
+      async () => {
+        const btn = page.getByRole('button', { name: label, exact: false }).first();
+        if (await btn.count()) {
+          await btn.click({ force: true }).catch(() => {});
+        } else {
+          const tab = page.getByRole('tab', { name: label, exact: false }).first();
+          if (await tab.count()) {
+            await tab.click({ force: true }).catch(() => {});
+          } else {
+            await leafByText(page, label).first().click({ force: true }).catch(() => {});
+          }
+        }
+        return byText(page, probe).first().isVisible().catch(() => false);
+      },
+      { timeout, intervals: [800] },
+    )
+    .toBe(true);
+}
+
+export async function openLojaSearch(page: Page): Promise<Locator> {
+  const field = fieldByHint(page, 'Buscar produtos');
+  const loja = button(page, 'Loja').first();
+  await expect
+    .poll(
+      async () => {
+        await loja.click({ force: true }).catch(() => {});
+        return field.isVisible().catch(() => false);
+      },
+      { timeout: 45_000, intervals: [800] },
+    )
+    .toBe(true);
+  return field;
+}
+
+export async function searchProduct(page: Page, nome: string): Promise<void> {
+  const field = await openLojaSearch(page);
+  await fill(field, nome);
+  await page.keyboard.press('Enter');
+  await byText(page, nome).first().waitFor({ state: 'visible', timeout: 45_000 });
+}
+
 export async function login(page: Page, email: string, senha: string): Promise<void> {
   await fill(emailField(page), email);
   await fill(passwordField(page), senha);

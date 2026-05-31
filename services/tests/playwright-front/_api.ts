@@ -199,6 +199,31 @@ export async function payBooking(
   );
 }
 
+export async function updateBookingStatus(
+  api: APIRequestContext,
+  actor: SeededUser,
+  bookingId: string,
+  status: 'CONFIRMADO' | 'RECUSADO' | 'CONCLUIDO' | 'CANCELADO',
+): Promise<any> {
+  return ok(
+    await api.patch(`/bookings/${bookingId}/status`, {
+      headers: auth(actor),
+      data: { status },
+    }),
+    'updateBookingStatus',
+  );
+}
+
+export async function getEstablishmentReviews(
+  api: APIRequestContext,
+  establishmentId: string,
+): Promise<any[]> {
+  return ok(
+    await api.get(`/reviews/establishment/${establishmentId}`),
+    'getEstablishmentReviews',
+  );
+}
+
 export async function addToCart(
   api: APIRequestContext,
   cliente: SeededUser,
@@ -257,4 +282,40 @@ export async function seedFullEstablishment(api: APIRequestContext, serviceName 
   await setSchedule(api, owner, estab.id);
   const product = await createProduct(api, owner, estab.id, { name: `Racao E2E ${Date.now()}` });
   return { owner, estab, service, product };
+}
+
+export async function seedBooking(
+  api: APIRequestContext,
+  owner: SeededUser,
+  estab: { id: string; name: string },
+  opts: { serviceName?: string; pay?: boolean; finalStatus?: 'CONFIRMADO' | 'CONCLUIDO'; price?: number } = {},
+) {
+  const cliente = await registerUser(api, { role: 'CLIENTE' });
+  const pet = await createPet(api, cliente, { name: `Pet ${Date.now().toString().slice(-5)}` });
+  const scheduledAt = new Date();
+  scheduledAt.setHours(12, 0, 0, 0);
+  const serviceName = opts.serviceName ?? 'Banho E2E';
+  let booking = await createBooking(api, cliente, {
+    petId: pet.id,
+    petName: pet.name,
+    serviceName,
+    establishmentId: estab.id,
+    establishmentName: estab.name,
+    price: opts.price ?? 80,
+    scheduledAt,
+  });
+  if (opts.pay || opts.finalStatus) {
+    await payBooking(api, cliente, booking.id);
+  }
+  if (opts.finalStatus === 'CONFIRMADO' || opts.finalStatus === 'CONCLUIDO') {
+    await updateBookingStatus(api, owner, booking.id, 'CONFIRMADO');
+  }
+  if (opts.finalStatus === 'CONCLUIDO') {
+    await updateBookingStatus(api, owner, booking.id, 'CONCLUIDO');
+  }
+  booking = (await ok(
+    await api.get(`/bookings/${booking.id}`, { headers: { Authorization: `Bearer ${cliente.token}` } }),
+    'getBooking',
+  ));
+  return { cliente, pet, booking, serviceName };
 }

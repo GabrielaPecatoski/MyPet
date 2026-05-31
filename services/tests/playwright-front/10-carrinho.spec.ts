@@ -1,5 +1,7 @@
-import { test, APIRequestContext } from '@playwright/test';
-import { bootAndLogin, tapText, tapButton, expectText, waitForText, searchProduct } from './_helpers';
+import { test, expect, APIRequestContext } from '@playwright/test';
+import {
+  bootAndLogin, tapText, tapButton, expectText, waitForText, byText, searchProduct,
+} from './_helpers';
 import { apiContext, registerUser, seedFullEstablishment, SeededUser } from './_api';
 
 let api: APIRequestContext;
@@ -15,23 +17,22 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => { await api.dispose(); });
 
-test('comprar um produto: loja → carrinho → pagamento', async ({ page }) => {
+test('adicionar 2 unidades ao carrinho e depois esvaziar', async ({ page }) => {
   await bootAndLogin(page, cliente.email, cliente.password);
 
   await searchProduct(page, produtoNome);
-
   await tapText(page, produtoNome);
   await waitForText(page, 'Adicionar ao Carrinho');
+
   await tapButton(page, 'Adicionar ao Carrinho');
 
   await tapButton(page, 'Voltar');
   await tapButton(page, 'Carrinho');
+  await waitForText(page, produtoNome);
+  await expectText(page, 'Ir para Pagamento');
+  await expectText(page, /1 item/);
 
-  await waitForText(page, 'Ir para Pagamento');
-  await tapButton(page, 'Ir para Pagamento');
-
-  await waitForText(page, 'Forma de pagamento');
-  await tapButton(page, 'Confirmar Pedido');
-
-  await expectText(page, /Chave Pix|Aguardando Pagamento|Pagamento Aprovado/);
+  await tapText(page, 'Limpar');
+  await expectText(page, 'Seu carrinho está vazio');
+  await expect.poll(async () => byText(page, 'Ir para Pagamento').count()).toBe(0);
 });

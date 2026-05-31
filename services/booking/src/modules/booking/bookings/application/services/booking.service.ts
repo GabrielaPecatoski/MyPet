@@ -61,7 +61,7 @@ export class BookingService {
   async findByEstablishment(establishmentId: string): Promise<BookingDto[]> {
     const rows = await this.repo.findByEstablishmentId(establishmentId);
     return rows
-      .filter((b) => b.status !== "AGUARDANDO_PAGAMENTO")
+      .filter((b) => b.status !== "AGUARDANDO_PAGAMENTO" && b.paymentStatus !== "NONE")
       .map((b) => BookingDto.fromBooking(b)!);
   }
 

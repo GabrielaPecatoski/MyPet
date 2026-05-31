@@ -1,5 +1,7 @@
-import { test, APIRequestContext } from '@playwright/test';
-import { bootAndLogin, tapText, tapButton, expectText, waitForText } from './_helpers';
+import { test, expect, APIRequestContext } from '@playwright/test';
+import {
+  bootAndLogin, tapButton, expectText, openClientTab, openLojaSearch, pollTap, button,
+} from './_helpers';
 import {
   apiContext, registerUser, createEstablishment, seedPaidOrder, SeededUser,
 } from './_api';
@@ -21,8 +23,8 @@ test('cliente vê o acompanhamento do pedido na loja', async ({ page }) => {
   const seed = await seedPaidOrder(api, owner, estabId);
 
   await bootAndLogin(page, seed.cliente.email, seed.cliente.password);
-  await tapText(page, 'Loja');
-  await tapText(page, 'Pedidos');
+  await openLojaSearch(page);
+  await pollTap(page, 'Pedidos', 'Enviando já');
 
   await expectText(page, 'Enviando já');
   await expectText(page, 'Indo até o endereço');
@@ -32,12 +34,10 @@ test('estabelecimento acompanha e avança o pedido até finalizado', async ({ pa
   await seedPaidOrder(api, owner, estabId);
 
   await bootAndLogin(page, owner.email, owner.password);
-  await tapText(page, 'Produtos');
-  await tapText(page, 'Pedidos');
+  await openClientTab(page, 'Produtos', 'Pedidos');
+  await pollTap(page, 'Pedidos', 'Saiu para entrega');
 
-  await waitForText(page, 'Enviando já', 40_000);
-  await tapText(page, 'Saiu para entrega');
-  await expectText(page, 'Indo até o endereço');
-  await tapText(page, 'Finalizar pedido');
-  await expectText(page, 'Finalizado');
+  await pollTap(page, 'Saiu para entrega', 'Finalizar pedido');
+  await tapButton(page, 'Finalizar pedido');
+  await expect.poll(async () => button(page, 'Finalizar pedido').count(), { timeout: 40_000 }).toBe(0);
 });

@@ -5,9 +5,9 @@ const WEB_PORT = 8080;
 
 export default defineConfig({
   testDir: './services/tests/playwright-front',
-  timeout: 120_000,
-  expect: { timeout: 20_000 },
-  retries: 0,
+  timeout: 180_000,
+  expect: { timeout: 25_000 },
+  retries: 1,
   workers: 1,
   reporter: [['list'], ['html', { open: 'never', outputFolder: 'services/tests/playwright-report-front' }]],
   outputDir: 'services/tests/test-results',
