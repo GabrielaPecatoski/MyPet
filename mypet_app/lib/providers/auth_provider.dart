@@ -19,6 +19,7 @@ class AuthProvider extends ChangeNotifier {
   bool get isAdmin => role == 'ADMIN';
   bool get isVendedor => role == 'VENDEDOR';
   bool get isCliente => role == 'CLIENTE';
+  bool get isMotorista => role == 'MOTORISTA';
 
   String get homeRoute {
     switch (role) {
@@ -26,6 +27,8 @@ class AuthProvider extends ChangeNotifier {
         return '/admin';
       case 'VENDEDOR':
         return '/estab-home';
+       case 'MOTORISTA':
+      return '/driver-home';
       default:
         return '/home';
     }
