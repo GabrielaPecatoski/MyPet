@@ -1,4 +1,4 @@
-import { doublePrecision, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { boolean, doublePrecision, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 export const bookingsSchema = pgTable("bookings", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -12,6 +12,7 @@ export const bookingsSchema = pgTable("bookings", {
   establishmentName: text("establishment_name").notNull(),
   scheduledAt: timestamp("scheduled_at", { withTimezone: true }).notNull(),
   price: doublePrecision("price").notNull().default(0),
+  priceVariable: boolean("price_variable").notNull().default(false),
   status: text("status").notNull().default("PENDENTE"),
   paymentStatus: text("payment_status").notNull().default("NONE"),
   paymentMethod: text("payment_method"),

@@ -67,6 +67,7 @@ class BookingProvider extends ChangeNotifier {
     required String establishmentName,
     required DateTime scheduledAt,
     double price = 0,
+    bool priceVariable = false,
     List<ServiceModel>? services,
   }) async {
     _loading = true;
@@ -83,6 +84,7 @@ class BookingProvider extends ChangeNotifier {
         establishmentName: establishmentName,
         scheduledAt: scheduledAt,
         price: price,
+        priceVariable: priceVariable,
         services: services,
       );
       _bookings.add(booking);

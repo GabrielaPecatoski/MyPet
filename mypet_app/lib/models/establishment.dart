@@ -2,6 +2,7 @@ class ServiceModel {
   final String id;
   final String name;
   final double price;
+  final bool priceVariable;
   final int durationMinutes;
   final String? description;
 
@@ -9,14 +10,18 @@ class ServiceModel {
     required this.id,
     required this.name,
     required this.price,
+    this.priceVariable = false,
     required this.durationMinutes,
     this.description,
   });
+
+  String get priceLabel => priceVariable ? 'Sob consulta' : 'R\$ ${price.toStringAsFixed(2)}';
 
   factory ServiceModel.fromJson(Map<String, dynamic> json) => ServiceModel(
         id: json['id'] as String,
         name: json['name'] as String,
         price: (json['price'] as num).toDouble(),
+        priceVariable: json['priceVariable'] as bool? ?? false,
         durationMinutes: (json['durationMinutes'] as num).toInt(),
         description: json['description'] as String?,
       );

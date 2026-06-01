@@ -6,6 +6,7 @@ export class EstabServiceDto {
   @ApiProperty() establishmentId: string;
   @ApiProperty() name: string;
   @ApiProperty() price: number;
+  @ApiProperty() priceVariable: boolean;
   @ApiProperty() durationMinutes: number;
   @ApiProperty() description: string;
 
@@ -14,6 +15,7 @@ export class EstabServiceDto {
     establishmentId: string,
     name: string,
     price: number,
+    priceVariable: boolean,
     durationMinutes: number,
     description: string,
   ) {
@@ -21,12 +23,13 @@ export class EstabServiceDto {
     this.establishmentId = establishmentId;
     this.name = name;
     this.price = price;
+    this.priceVariable = priceVariable;
     this.durationMinutes = durationMinutes;
     this.description = description;
   }
 
   static fromService(s: EstabService | null): EstabServiceDto | null {
     if (!s) return null;
-    return new EstabServiceDto(s.id, s.establishmentId, s.name, s.price, s.durationMinutes, s.description);
+    return new EstabServiceDto(s.id, s.establishmentId, s.name, s.price, s.priceVariable, s.durationMinutes, s.description);
   }
 }

@@ -14,6 +14,7 @@ class AppointmentModel {
   final String time;
   final String status;
   final double price;
+  final bool priceVariable;
   final String paymentStatus;
   final String? paymentMethod;
   final DateTime? expiresAt;
@@ -34,6 +35,7 @@ class AppointmentModel {
     required this.time,
     required this.status,
     required this.price,
+    this.priceVariable = false,
     this.paymentStatus = 'NONE',
     this.paymentMethod,
     this.expiresAt,
@@ -59,6 +61,7 @@ class AppointmentModel {
       time: '$hour:$min',
       status: json['status'] ?? 'PENDENTE',
       price: (json['price'] ?? 0).toDouble(),
+      priceVariable: json['priceVariable'] as bool? ?? false,
       paymentStatus: json['paymentStatus'] as String? ?? 'NONE',
       paymentMethod: json['paymentMethod'] as String?,
       expiresAt: json['expiresAt'] != null
@@ -82,9 +85,10 @@ class AppointmentModel {
   bool get isCapturado => paymentStatus == 'CAPTURED';
 
   bool get isAguardandoPagamento =>
+      !priceVariable &&
       !isPago &&
       !isEstornado &&
-      (status == 'AGUARDANDO_PAGAMENTO' || status == 'PENDENTE');
+      status == 'AGUARDANDO_PAGAMENTO';
 
   String get statusLabel {
     if (isAguardandoPagamento) return 'Aguardando Pagamento';

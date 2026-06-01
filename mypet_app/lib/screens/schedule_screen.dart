@@ -154,7 +154,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       int.parse(timeParts[1]),
     );
 
-    final totalPrice = _selectedServices.fold<double>(0, (s, svc) => s + svc.price);
+    final allVariable = _selectedServices.every((s) => s.priceVariable);
+    final totalPrice = allVariable ? 0.0 : _selectedServices.fold<double>(0, (s, svc) => s + svc.price);
     final serviceNameDisplay = _selectedServices.map((s) => s.name).join(', ');
 
     final booking = await context.read<BookingProvider>().createBooking(
@@ -167,6 +168,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           establishmentName: establishment?.name ?? '',
           scheduledAt: scheduledAt,
           price: totalPrice,
+          priceVariable: allVariable,
           services: _selectedServices,
         );
 
@@ -198,50 +200,75 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               ),
               _confirmRow('Horário:', _selectedTime!),
               _confirmRow(
-                  'Valor:',
-                  'R\$ ${_selectedServices.fold<double>(0, (s, svc) => s + svc.price).toStringAsFixed(2)}'),
+                'Valor:',
+                allVariable
+                    ? 'Sob consulta'
+                    : 'R\$ ${totalPrice.toStringAsFixed(2)}',
+              ),
               const SizedBox(height: 8),
-              const Text(
-                'Realize o pagamento para confirmar o agendamento.',
-                style: TextStyle(fontSize: 12, color: AppColors.grey),
+              Text(
+                allVariable
+                    ? 'O valor será definido pelo estabelecimento após o atendimento.'
+                    : 'Realize o pagamento para confirmar o agendamento.',
+                style: const TextStyle(fontSize: 12, color: AppColors.grey),
               ),
             ],
           ),
           actions: [
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  Navigator.pushNamed(
-                    context,
-                    '/pagamento-agendamento',
-                    arguments: booking,
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10)),
+            if (!allVariable) ...[
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    Navigator.pushNamed(
+                      context,
+                      '/pagamento-agendamento',
+                      arguments: booking,
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: const Text('Pagar Agora',
+                      style: TextStyle(color: Colors.white)),
                 ),
-                child: const Text('Pagar Agora',
-                    style: TextStyle(color: Colors.white)),
               ),
-            ),
-            const SizedBox(height: 8),
-            SizedBox(
-              width: double.infinity,
-              child: TextButton(
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  Navigator.pushNamedAndRemoveUntil(
-                      context, '/home', (r) => false,
-                      arguments: 1);
-                },
-                child: const Text('Pagar depois',
-                    style: TextStyle(color: AppColors.grey)),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: TextButton(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    Navigator.pushNamedAndRemoveUntil(
+                        context, '/home', (r) => false,
+                        arguments: 1);
+                  },
+                  child: const Text('Pagar depois',
+                      style: TextStyle(color: AppColors.grey)),
+                ),
               ),
-            ),
+            ] else
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    Navigator.pushNamedAndRemoveUntil(
+                        context, '/home', (r) => false,
+                        arguments: 1);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: const Text('Ver Minha Agenda',
+                      style: TextStyle(color: Colors.white)),
+                ),
+              ),
           ],
         ),
       );
@@ -402,7 +429,9 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                             style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600),
                           ),
                           Text(
-                            'R\$ ${_selectedServices.fold<double>(0, (s, svc) => s + svc.price).toStringAsFixed(2)}',
+                            _selectedServices.every((s) => s.priceVariable)
+                                ? 'Sob consulta'
+                                : 'R\$ ${_selectedServices.where((s) => !s.priceVariable).fold<double>(0, (acc, svc) => acc + svc.price).toStringAsFixed(2)}',
                             style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 15),
                           ),
                         ],
@@ -880,11 +909,11 @@ class _ServiceSelectCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  'R\$ ${service.price.toStringAsFixed(2)}',
-                  style: const TextStyle(
+                  service.priceLabel,
+                  style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      color: AppColors.primary,
-                      fontSize: 15),
+                      color: service.priceVariable ? AppColors.grey : AppColors.primary,
+                      fontSize: service.priceVariable ? 13 : 15),
                 ),
                 if (selected)
                   const Padding(

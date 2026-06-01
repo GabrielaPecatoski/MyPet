@@ -15,10 +15,12 @@ export class EstabServiceService {
   ) {}
 
   async addService(establishmentId: string, dto: CreateServiceDto): Promise<void> {
+    const priceVariable = dto.priceVariable ?? false;
     const service = EstabService.restore({
       establishmentId,
       name: dto.name,
-      price: dto.price,
+      price: priceVariable ? 0 : (dto.price ?? 0),
+      priceVariable,
       durationMinutes: dto.durationMinutes,
       description: dto.description ?? "",
     })!;

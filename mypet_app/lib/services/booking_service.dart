@@ -50,6 +50,7 @@ class BookingService {
     required String establishmentName,
     required DateTime scheduledAt,
     double price = 0,
+    bool priceVariable = false,
     List<ServiceModel>? services,
   }) async {
     final body = <String, dynamic>{
@@ -61,6 +62,7 @@ class BookingService {
       'establishmentName': establishmentName,
       'scheduledAt': scheduledAt.toIso8601String(),
       'price': price,
+      'priceVariable': priceVariable,
     };
     if (services != null && services.isNotEmpty) {
       body['services'] = services

@@ -1,0 +1,29 @@
+{
+  "name": "@mypet/tests-front",
+  "private": true,
+  "scripts": {
+    "test":              "npx playwright test --config playwright.config.ts",
+    "test:auth":         "npx playwright test --config playwright.config.ts 01-auth",
+    "test:pets":         "npx playwright test --config playwright.config.ts 02-pets",
+    "test:loja":         "npx playwright test --config playwright.config.ts 03-loja",
+    "test:agendamento":  "npx playwright test --config playwright.config.ts 04-agendamento",
+    "test:perfil":       "npx playwright test --config playwright.config.ts 05-perfil",
+    "test:estab":        "npx playwright test --config playwright.config.ts 06-estabelecimento",
+    "test:estab-agenda": "npx playwright test --config playwright.config.ts 07-estab-agenda",
+    "test:pedidos":      "npx playwright test --config playwright.config.ts 08-pedidos",
+    "test:pagamentos":   "npx playwright test --config playwright.config.ts 09-loja-pagamentos",
+    "test:carrinho":     "npx playwright test --config playwright.config.ts 10-carrinho",
+    "test:cancelar":     "npx playwright test --config playwright.config.ts 11-agendamento-cancelar",
+    "test:recusa":       "npx playwright test --config playwright.config.ts 12-estab-recusa",
+    "test:avaliacao":    "npx playwright test --config playwright.config.ts 13-avaliacao",
+    "test:faq":          "npx playwright test --config playwright.config.ts 14-faq",
+    "test:notif":        "npx playwright test --config playwright.config.ts 15-notificacoes",
+    "test:produto":      "npx playwright test --config playwright.config.ts 16-estab-produto",
+    "test:vendedor":     "npx playwright test --config playwright.config.ts 17-cadastro-vendedor",
+    "test:busca":        "npx playwright test --config playwright.config.ts 18-busca-estabelecimento",
+    "test:preco-variavel": "npx playwright test --config playwright.config.ts 19-preco-variavel",
+    "test:motorista":    "npx playwright test --config playwright.config.ts 20-motorista-cadastro",
+    "test:transporte":   "npx playwright test --config playwright.config.ts 21-motorista-transporte",
+    "report":            "npx playwright show-report ../playwright-report-front"
+  }
+}

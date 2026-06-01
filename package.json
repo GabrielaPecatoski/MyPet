@@ -11,7 +11,8 @@
     "typecheck:faq": "npm run typecheck --prefix services/faq",
     "typecheck:notification": "npm run typecheck --prefix services/notification",
     "typecheck:gateway": "npm run typecheck --prefix services/api-gateway",
-    "typecheck:all": "npm run typecheck:user-auth && npm run typecheck:user-pet && npm run typecheck:establishment && npm run typecheck:marketplace && npm run typecheck:booking && npm run typecheck:review && npm run typecheck:faq && npm run typecheck:notification",
+    "typecheck:driver": "npm run typecheck --prefix services/driver",
+    "typecheck:all": "npm run typecheck:user-auth && npm run typecheck:user-pet && npm run typecheck:establishment && npm run typecheck:marketplace && npm run typecheck:booking && npm run typecheck:review && npm run typecheck:faq && npm run typecheck:notification && npm run typecheck:driver",
     "lint:all": "biome lint .",
     "check:all": "biome check .",
     "validate:all": "npm run check:all && npm run typecheck:all",
@@ -24,8 +25,9 @@
     "start:faq": "npm run start:dev --prefix services/faq",
     "start:notification": "npm run start:dev --prefix services/notification",
     "start:gateway": "npm run start:dev --prefix services/api-gateway",
-    "start": "concurrently --kill-others-on-fail --prefix \"[{name}]\" --names \"gateway,auth,pets,estab,market,booking,notif,review,faq\" --prefix-colors \"blue,magenta,cyan,green,yellow,red,white,gray,brightBlue\" \"npm run start:dev --prefix services/api-gateway\" \"npm run start:dev --prefix services/user-auth\" \"npm run start:dev --prefix services/user-pet\" \"npm run start:dev --prefix services/establishment\" \"npm run start:dev --prefix services/marketplace\" \"npm run start:dev --prefix services/booking\" \"npm run start:dev --prefix services/notification\" \"npm run start:dev --prefix services/review\" \"npm run start:dev --prefix services/faq\"",
-    "db:migrate:all": "npm run db:migrate --prefix services/user-auth && npm run db:migrate --prefix services/user-pet && npm run db:migrate --prefix services/establishment && npm run db:migrate --prefix services/marketplace && npm run db:migrate --prefix services/booking && npm run db:migrate --prefix services/review && npm run db:migrate --prefix services/faq && npm run db:migrate --prefix services/notification",
+    "start:driver": "npm run start:dev --prefix services/driver",
+    "start": "concurrently --kill-others-on-fail --prefix \"[{name}]\" --names \"gateway,auth,pets,estab,market,booking,notif,review,faq,driver\" --prefix-colors \"blue,magenta,cyan,green,yellow,red,white,gray,brightBlue,brightGreen\" \"npm run start:dev --prefix services/api-gateway\" \"npm run start:dev --prefix services/user-auth\" \"npm run start:dev --prefix services/user-pet\" \"npm run start:dev --prefix services/establishment\" \"npm run start:dev --prefix services/marketplace\" \"npm run start:dev --prefix services/booking\" \"npm run start:dev --prefix services/notification\" \"npm run start:dev --prefix services/review\" \"npm run start:dev --prefix services/faq\" \"npm run start:dev --prefix services/driver\"",
+    "db:migrate:all": "npm run db:migrate --prefix services/user-auth && npm run db:migrate --prefix services/user-pet && npm run db:migrate --prefix services/establishment && npm run db:migrate --prefix services/marketplace && npm run db:migrate --prefix services/booking && npm run db:migrate --prefix services/review && npm run db:migrate --prefix services/faq && npm run db:migrate --prefix services/notification && npm run db:migrate --prefix services/driver",
     "db:seed": "node scripts/seed.mjs"
   },
   "dependencies": {

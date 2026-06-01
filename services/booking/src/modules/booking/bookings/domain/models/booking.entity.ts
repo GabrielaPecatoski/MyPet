@@ -21,6 +21,7 @@ export class Booking {
   private _establishmentName!: string;
   private _scheduledAt!: Date;
   private _price!: number;
+  private _priceVariable!: boolean;
   private _status!: BookingStatus;
   private _paymentStatus!: PaymentStatus;
   private _paymentMethod?: string;
@@ -48,6 +49,7 @@ export class Booking {
   get establishmentName(): string { return this._establishmentName; }
   get scheduledAt(): Date { return this._scheduledAt; }
   get price(): number { return this._price; }
+  get priceVariable(): boolean { return this._priceVariable; }
   get status(): BookingStatus { return this._status; }
   get paymentStatus(): PaymentStatus { return this._paymentStatus; }
   get paymentMethod(): string | undefined { return this._paymentMethod; }
@@ -73,6 +75,7 @@ export class Booking {
     establishmentName: string;
     scheduledAt: Date;
     price: number;
+    priceVariable?: boolean | null;
     status: BookingStatus;
     paymentStatus?: PaymentStatus | null;
     paymentMethod?: string | null;
@@ -91,6 +94,7 @@ export class Booking {
     b._establishmentName = props.establishmentName;
     b._scheduledAt = props.scheduledAt;
     b._price = props.price;
+    b._priceVariable = props.priceVariable ?? false;
     b._status = props.status as BookingStatus;
     b._paymentStatus = (props.paymentStatus as PaymentStatus) ?? "NONE";
     b._paymentMethod = props.paymentMethod ?? undefined;

@@ -214,6 +214,42 @@ export async function updateBookingStatus(
   );
 }
 
+export async function getBooking(
+  api: APIRequestContext,
+  user: SeededUser,
+  bookingId: string,
+): Promise<any> {
+  return ok(
+    await api.get(`/bookings/${bookingId}`, { headers: auth(user) }),
+    'getBooking',
+  );
+}
+
+export async function listEstablishmentBookings(
+  api: APIRequestContext,
+  owner: SeededUser,
+  establishmentId: string,
+): Promise<any[]> {
+  return ok(
+    await api.get(`/bookings/establishment/${establishmentId}`, { headers: auth(owner) }),
+    'listEstablishmentBookings',
+  );
+}
+
+/**
+ * Fila de transportes que o motorista do estabelecimento enxerga:
+ * só os agendamentos já ACEITOS pelo estabelecimento (CONFIRMADO).
+ * Reflete a regra "só aparece ao motorista quando o estabelecimento aceitar".
+ */
+export async function listDriverTransports(
+  api: APIRequestContext,
+  owner: SeededUser,
+  establishmentId: string,
+): Promise<any[]> {
+  const rows = await listEstablishmentBookings(api, owner, establishmentId);
+  return rows.filter((b) => b.status === 'CONFIRMADO');
+}
+
 export async function getEstablishmentReviews(
   api: APIRequestContext,
   establishmentId: string,
@@ -273,6 +309,94 @@ export async function seedPaidOrder(api: APIRequestContext, owner: SeededUser, e
   const order = await checkoutOrder(api, cliente);
   await payOrder(api, cliente, order.id, { method: 'PIX', deliveryMethod: 'DELIVERY' });
   return { cliente, product, orderId: order.id };
+}
+
+export async function addVariableService(
+  api: APIRequestContext,
+  owner: SeededUser,
+  establishmentId: string,
+  data: { name: string; durationMinutes?: number; description?: string } = { name: 'Consulta E2E' },
+): Promise<any> {
+  return ok(
+    await api.post(`/establishments/${establishmentId}/services`, {
+      headers: { Authorization: `Bearer ${owner.token}` },
+      data: {
+        name: data.name,
+        priceVariable: true,
+        durationMinutes: data.durationMinutes ?? 60,
+        description: data.description ?? 'Consulta com preço variável',
+      },
+    }),
+    'addVariableService',
+  );
+}
+
+export async function createVariablePriceBooking(
+  api: APIRequestContext,
+  cliente: SeededUser,
+  args: {
+    petId: string; petName: string; serviceName: string;
+    establishmentId: string; establishmentName: string; scheduledAt: Date;
+  },
+): Promise<any> {
+  return ok(
+    await api.post('/bookings', {
+      headers: { Authorization: `Bearer ${cliente.token}` },
+      data: {
+        userName: cliente.name,
+        petId: args.petId,
+        petName: args.petName,
+        serviceName: args.serviceName,
+        establishmentId: args.establishmentId,
+        establishmentName: args.establishmentName,
+        scheduledAt: args.scheduledAt.toISOString(),
+        price: 0,
+        priceVariable: true,
+      },
+    }),
+    'createVariablePriceBooking',
+  );
+}
+
+export async function registerDriver(
+  api: APIRequestContext,
+  owner: SeededUser,
+  establishmentId: string,
+  data: Partial<{
+    name: string; phone: string; cpf: string; cnh: string;
+    vehicleType: string; vehicleModel: string; vehiclePlate: string;
+  }> = {},
+): Promise<any> {
+  const ts = Date.now() + counter++;
+  const cpf = String(ts).slice(-11).padStart(11, '0');
+  const plate = `E2E${String(ts).slice(-4)}`;
+  return ok(
+    await api.post('/drivers', {
+      headers: auth(owner),
+      data: {
+        establishmentId,
+        name: data.name ?? `Motorista E2E ${ts}`,
+        phone: data.phone ?? '41988880000',
+        cpf: data.cpf ?? cpf,
+        cnh: data.cnh ?? String(ts).slice(-9),
+        vehicleType: data.vehicleType ?? 'CARRO',
+        vehicleModel: data.vehicleModel ?? 'Fiat Uno',
+        vehiclePlate: data.vehiclePlate ?? plate,
+      },
+    }),
+    'registerDriver',
+  );
+}
+
+export async function deactivateDriver(
+  api: APIRequestContext,
+  owner: SeededUser,
+  driverId: string,
+): Promise<any> {
+  return ok(
+    await api.patch(`/drivers/${driverId}/deactivate`, { headers: auth(owner) }),
+    'deactivateDriver',
+  );
 }
 
 export async function seedFullEstablishment(api: APIRequestContext, serviceName = 'Banho E2E') {

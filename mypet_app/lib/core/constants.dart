@@ -20,4 +20,5 @@ class ApiConstants {
   static const bookingPaymentEndpoint = '/bookings/{id}/pay';
   static const establishmentsEndpoint = '/establishments';
   static const reviewsEndpoint = '/reviews';
+  static const driversEndpoint = '/drivers';
 }

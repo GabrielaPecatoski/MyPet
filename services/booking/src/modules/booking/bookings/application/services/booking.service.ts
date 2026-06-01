@@ -26,6 +26,7 @@ export class BookingService {
       ? services.map((s) => s.name).join(", ")
       : (dto.serviceName ?? services?.[0]?.name ?? "");
 
+    const priceVariable = dto.priceVariable ?? false;
     const booking = Booking.restore({
       userId,
       userName: dto.userName ?? userName,
@@ -36,8 +37,10 @@ export class BookingService {
       establishmentId: dto.establishmentId,
       establishmentName: dto.establishmentName,
       scheduledAt: new Date(dto.scheduledAt),
-      price: totalPrice,
-      status: "AGUARDANDO_PAGAMENTO",
+      price: priceVariable ? 0 : totalPrice,
+      priceVariable,
+      status: priceVariable ? "PENDENTE" : "AGUARDANDO_PAGAMENTO",
+      paymentStatus: priceVariable ? "NONE" : "NONE",
     })!;
     const created = await this.repo.create(booking);
     return BookingDto.fromBooking(created)!;

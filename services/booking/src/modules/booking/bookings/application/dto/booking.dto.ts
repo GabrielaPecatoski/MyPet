@@ -13,6 +13,7 @@ export class BookingDto {
   @ApiProperty() establishmentName: string;
   @ApiProperty() scheduledAt: Date;
   @ApiProperty() price: number;
+  @ApiProperty() priceVariable: boolean;
   @ApiProperty() status: string;
   @ApiProperty() paymentStatus: string;
   @ApiPropertyOptional() paymentMethod?: string;
@@ -31,6 +32,7 @@ export class BookingDto {
     this.establishmentName = b.establishmentName;
     this.scheduledAt = b.scheduledAt;
     this.price = b.price;
+    this.priceVariable = b.priceVariable;
     this.status = b.status;
     this.paymentStatus = b.paymentStatus;
     this.paymentMethod = b.paymentMethod;

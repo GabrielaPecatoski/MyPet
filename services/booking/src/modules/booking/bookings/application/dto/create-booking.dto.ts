@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { IsArray, IsDateString, IsNotEmpty, IsNumber, IsOptional, IsString, Min, ValidateNested } from "class-validator";
+import { IsArray, IsBoolean, IsDateString, IsNotEmpty, IsNumber, IsOptional, IsString, Min, ValidateNested } from "class-validator";
 import { Type } from "class-transformer";
 
 export class ServiceItemDto {
@@ -17,6 +17,7 @@ export class CreateBookingDto {
   @ApiProperty() @IsString() @IsNotEmpty() establishmentName!: string;
   @ApiProperty() @IsDateString() scheduledAt!: string;
   @ApiPropertyOptional() @IsOptional() @IsNumber() @Min(0) price?: number;
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() priceVariable?: boolean;
   @ApiPropertyOptional() @IsOptional() @IsString() userName?: string;
   @ApiPropertyOptional({ type: [ServiceItemDto] })
   @IsOptional()

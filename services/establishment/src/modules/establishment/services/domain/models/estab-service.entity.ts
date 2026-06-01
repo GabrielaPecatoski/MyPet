@@ -3,6 +3,7 @@ export class EstabService {
   private _establishmentId!: string;
   private _name!: string;
   private _price!: number;
+  private _priceVariable!: boolean;
   private _durationMinutes!: number;
   private _description!: string;
 
@@ -14,12 +15,14 @@ export class EstabService {
   get establishmentId(): string { return this._establishmentId; }
   get name(): string { return this._name; }
   get price(): number { return this._price; }
+  get priceVariable(): boolean { return this._priceVariable; }
   get durationMinutes(): number { return this._durationMinutes; }
   get description(): string { return this._description; }
 
   withEstablishmentId(id: string) { this._establishmentId = id; return this; }
   withName(name: string) { this._name = name; return this; }
   withPrice(price: number) { this._price = price; return this; }
+  withPriceVariable(v: boolean) { this._priceVariable = v; return this; }
   withDurationMinutes(duration: number) { this._durationMinutes = duration; return this; }
   withDescription(description: string) { this._description = description; return this; }
 
@@ -28,6 +31,7 @@ export class EstabService {
     establishmentId: string;
     name: string;
     price: number;
+    priceVariable?: boolean | null;
     durationMinutes: number;
     description: string;
   }): EstabService | null {
@@ -36,6 +40,7 @@ export class EstabService {
     s._establishmentId = props.establishmentId;
     s._name = props.name;
     s._price = props.price;
+    s._priceVariable = props.priceVariable ?? false;
     s._durationMinutes = props.durationMinutes;
     s._description = props.description;
     return s;

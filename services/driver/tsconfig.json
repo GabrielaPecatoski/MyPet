@@ -6,9 +6,8 @@
     "ignoreDeprecations": "5.0",
     "paths": {
       "@shared/*": ["../../shared/src/*"],
-      "@faq/*": ["./src/modules/faq/*"]
+      "@driver/*": ["./src/modules/*"]
     }
   },
   "include": ["src", "../../shared/src"]
 }
-
