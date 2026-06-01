@@ -38,6 +38,8 @@ import 'screens/main_navigation.dart';
 import 'screens/estab_navigation.dart';
 import 'screens/estab_edit_screen.dart';
 import 'screens/admin_screen.dart';
+import 'screens/motorista_register_screen.dart';
+import 'screens/estab_motoristas_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -108,6 +110,8 @@ class MyPetApp extends StatelessWidget {
         '/cart':                    (_) => const CarrinhoScreen(),
         '/payment':                 (_) => const PagamentoScreen(),
         '/pagamento-agendamento':   (_) => const PagamentoAgendamentoScreen(),
+        '/motorista-cadastro':      (_) => const MotoristaRegisterScreen(),
+        '/motoristas':              (_) => const EstabMotoristasScreen(),
       },
     );
   }
