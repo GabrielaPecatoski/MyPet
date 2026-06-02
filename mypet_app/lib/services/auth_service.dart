@@ -60,4 +60,34 @@ class AuthService {
     final message = data['message'];
     throw Exception(message is List ? message.first : message ?? 'Erro ao criar conta');
   }
+
+  static Future<Map<String, dynamic>> updateProfile({
+    required String token,
+    required String name,
+    String? photoUrl,
+  }) async {
+    final body = <String, dynamic>{
+      'name': name,
+    };
+    if (photoUrl != null) body['photoUrl'] = photoUrl;
+    final response = await http
+        .patch(
+          Uri.parse('${ApiConstants.baseUrl}${ApiConstants.usersEndpoint}/profile'),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+          body: jsonEncode(body),
+        )
+        .timeout(const Duration(seconds: 10));
+
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+
+    if (response.statusCode == 200 || response.statusCode == 204) {
+      return data.isNotEmpty ? data : {};
+    }
+
+    final message = data['message'];
+    throw Exception(message is List ? message.first : message ?? 'Erro ao atualizar perfil');
+  }
 }

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -28,7 +29,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthProvider>().user;
-    final photo = user?.photoPath;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -53,16 +53,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     children: [
                       GestureDetector(
                         onTap: _pickImage,
-                        child: CircleAvatar(
-                          radius: 34,
-                          backgroundColor: AppColors.primaryLight,
-                          backgroundImage:
-                              photo != null ? FileImage(File(photo)) : null,
-                          child: photo == null
-                              ? const Icon(Icons.person,
-                                  size: 34, color: AppColors.primary)
-                              : null,
-                        ),
+                        child: _buildAvatar(),
                       ),
                       Positioned(
                         bottom: 0,
@@ -172,6 +163,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildAvatar() {
+    final user = context.read<AuthProvider>().user;
+    final photoUrl = user?.photoUrl;
+    final photoPath = user?.photoPath;
+
+    if (photoPath != null && photoPath.isNotEmpty) {
+      return CircleAvatar(
+        radius: 34,
+        backgroundColor: AppColors.primaryLight,
+        backgroundImage: FileImage(File(photoPath)),
+      );
+    }
+    if (photoUrl != null && photoUrl.isNotEmpty) {
+      if (photoUrl.startsWith('data:image/')) {
+        final bytes = base64Decode(photoUrl.split(',').last);
+        return CircleAvatar(
+          radius: 34,
+          backgroundColor: AppColors.primaryLight,
+          backgroundImage: MemoryImage(bytes),
+        );
+      }
+      return CircleAvatar(
+        radius: 34,
+        backgroundColor: AppColors.primaryLight,
+        backgroundImage: NetworkImage(photoUrl),
+      );
+    }
+    return CircleAvatar(
+      radius: 34,
+      backgroundColor: AppColors.primaryLight,
+      child: const Icon(Icons.person, size: 34, color: AppColors.primary),
     );
   }
 

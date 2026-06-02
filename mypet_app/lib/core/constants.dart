@@ -9,6 +9,7 @@ class ApiConstants {
   static const loginEndpoint = '/auth/login';
   static const registerEndpoint = '/auth/register';
 
+  static const usersEndpoint = '/users';
   static const productsEndpoint = '/marketplace/products';
   static const cartEndpoint = '/marketplace/cart';
   static const ordersEndpoint = '/marketplace/orders';

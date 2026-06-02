@@ -101,6 +101,36 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<bool> updateProfile({
+    required String name,
+    String? photoUrl,
+  }) async {
+    if (_user == null || _token == null) return false;
+    _loading = true;
+    _error = null;
+    notifyListeners();
+    try {
+      final data = await AuthService.updateProfile(
+        token: _token!,
+        name: name,
+        photoUrl: photoUrl,
+      );
+      _user = _user!.copyWith(
+        name: name,
+        photoUrl: photoUrl ?? _user!.photoUrl,
+      );
+      await StorageService.saveUser(_user!);
+      _loading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _error = e.toString().replaceAll('Exception: ', '');
+      _loading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<void> logout() async {
     _token = null;
     _user = null;

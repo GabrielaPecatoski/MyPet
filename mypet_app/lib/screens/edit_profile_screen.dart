@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -20,7 +21,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   late TextEditingController _nomeCtrl;
   late TextEditingController _emailCtrl;
   late TextEditingController _telefoneCtrl;
-  String? _newPhotoPath;
+  Uint8List? _imageBytes;
+  String? _existingPhotoUrl;
 
   @override
   void initState() {
@@ -29,6 +31,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _nomeCtrl = TextEditingController(text: user?.name ?? '');
     _emailCtrl = TextEditingController(text: user?.email ?? '');
     _telefoneCtrl = TextEditingController(text: user?.phone ?? '');
+    _existingPhotoUrl = user?.photoUrl;
   }
 
   @override
@@ -41,35 +44,49 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   Future<void> _pickPhoto() async {
     final picker = ImagePicker();
-    final picked =
-        await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+    final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
     if (picked != null && mounted) {
-      setState(() => _newPhotoPath = picked.path);
+      final bytes = await picked.readAsBytes();
+      setState(() => _imageBytes = bytes);
     }
   }
 
-  void _salvar() {
+  Future<void> _salvar() async {
     if (!_formKey.currentState!.validate()) return;
+
     final auth = context.read<AuthProvider>();
-    final current = auth.user!;
-    final updated = UserModel(
-      id: current.id,
+    String? photoUrl;
+    if (_imageBytes != null) {
+      photoUrl = 'data:image/jpeg;base64,${base64Encode(_imageBytes!)}';
+    } else {
+      photoUrl = _existingPhotoUrl;
+    }
+
+    final ok = await auth.updateProfile(
       name: _nomeCtrl.text.trim(),
-      email: _emailCtrl.text.trim(),
-      phone: _telefoneCtrl.text.trim(),
-      cpf: current.cpf,
-      role: current.role,
-      photoPath: _newPhotoPath ?? current.photoPath,
+      photoUrl: photoUrl,
     );
-    auth.updateUser(updated);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Perfil atualizado!'),
-        backgroundColor: AppColors.success,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-    Navigator.pop(context);
+
+    if (!mounted) return;
+
+    if (ok) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Perfil atualizado com sucesso!'),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      Navigator.pop(context);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(auth.error ?? 'Erro ao atualizar perfil.'),
+          backgroundColor: AppColors.danger,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   void _onNavTap(int index) {
@@ -83,8 +100,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final user = context.watch<AuthProvider>().user;
-    final photoPath = _newPhotoPath ?? user?.photoPath;
+    final isLoading = context.watch<AuthProvider>().isLoading;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -103,16 +119,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 onTap: _pickPhoto,
                 child: Stack(
                   children: [
-                    CircleAvatar(
-                      radius: 52,
-                      backgroundColor: AppColors.primaryLight,
-                      backgroundImage:
-                          photoPath != null ? FileImage(File(photoPath)) : null,
-                      child: photoPath == null
-                          ? const Icon(Icons.person,
-                              size: 52, color: AppColors.primary)
-                          : null,
-                    ),
+                    _buildAvatar(),
                     Positioned(
                       bottom: 2,
                       right: 2,
@@ -172,20 +179,28 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               width: double.infinity,
               height: 52,
               child: ElevatedButton(
-                onPressed: _salvar,
+                onPressed: isLoading ? null : _salvar,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
+                  disabledBackgroundColor: AppColors.primaryLight,
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
                   elevation: 0,
                 ),
-                child: const Text(
-                  'Salvar Alterações',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600),
-                ),
+                child: isLoading
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                            color: Colors.white, strokeWidth: 2.5),
+                      )
+                    : const Text(
+                        'Salvar Alterações',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600),
+                      ),
               ),
             ),
             const SizedBox(height: 12),
@@ -210,6 +225,37 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildAvatar() {
+    if (_imageBytes != null) {
+      return CircleAvatar(
+        radius: 52,
+        backgroundColor: AppColors.primaryLight,
+        backgroundImage: MemoryImage(_imageBytes!),
+      );
+    }
+    final url = _existingPhotoUrl;
+    if (url != null && url.isNotEmpty) {
+      if (url.startsWith('data:image/')) {
+        final bytes = base64Decode(url.split(',').last);
+        return CircleAvatar(
+          radius: 52,
+          backgroundColor: AppColors.primaryLight,
+          backgroundImage: MemoryImage(bytes),
+        );
+      }
+      return CircleAvatar(
+        radius: 52,
+        backgroundColor: AppColors.primaryLight,
+        backgroundImage: NetworkImage(url),
+      );
+    }
+    return CircleAvatar(
+      radius: 52,
+      backgroundColor: AppColors.primaryLight,
+      child: const Icon(Icons.person, size: 52, color: AppColors.primary),
     );
   }
 

@@ -6,6 +6,7 @@ class UserModel {
   final String? cpf;
   final String role;
   final String? photoPath;
+  final String? photoUrl;
 
   UserModel({
     required this.id,
@@ -15,6 +16,7 @@ class UserModel {
     this.cpf,
     this.role = 'CLIENTE',
     this.photoPath,
+    this.photoUrl,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -26,6 +28,7 @@ class UserModel {
       cpf: json['cpf'],
       role: json['role'] ?? 'CLIENTE',
       photoPath: json['photoPath'],
+      photoUrl: json['photoUrl'],
     );
   }
 
@@ -37,6 +40,7 @@ class UserModel {
         'cpf': cpf,
         'role': role,
         'photoPath': photoPath,
+        'photoUrl': photoUrl,
       };
 
   UserModel copyWith({
@@ -45,6 +49,7 @@ class UserModel {
     String? phone,
     String? cpf,
     String? photoPath,
+    String? photoUrl,
   }) =>
       UserModel(
         id: id,
@@ -54,5 +59,6 @@ class UserModel {
         cpf: cpf ?? this.cpf,
         role: role,
         photoPath: photoPath ?? this.photoPath,
+        photoUrl: photoUrl ?? this.photoUrl,
       );
 }
