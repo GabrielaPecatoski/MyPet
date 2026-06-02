@@ -4,6 +4,7 @@ import {
   USER_REPOSITORY,
   type UserRepository,
 } from "@auth/users/domain/repositories/user-repository.interface";
+import { PasswordValidator } from "@common/validators";
 import {
   ConflictException,
   Inject,
@@ -53,6 +54,7 @@ export class UserService {
     if (dto.email) user.withEmail(dto.email.toLowerCase());
     if (dto.phone) user.withPhone(dto.phone);
     if (dto.password) {
+      PasswordValidator.validateOrThrow(dto.password);
       const hashed = await bcrypt.hash(dto.password, 10);
       user.withPassword(hashed);
     }

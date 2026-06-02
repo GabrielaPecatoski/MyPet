@@ -1,5 +1,7 @@
 import { CreateUserDto } from "@auth/users/application/dto/create-user.dto";
+import { ForgotPasswordDto } from "@auth/users/application/dto/forgot-password.dto";
 import { LoginDto } from "@auth/users/application/dto/login.dto";
+import { ResetPasswordDto } from "@auth/users/application/dto/reset-password.dto";
 import { UserDto } from "@auth/users/application/dto/user.dto";
 import { AuthService } from "@auth/users/application/services/auth.service";
 import { UserService } from "@auth/users/application/services/user.service";
@@ -43,5 +45,21 @@ export class AuthController {
   @ApiOperation({ summary: "Retornar usuário autenticado" })
   async me(@CurrentUser() user: AuthenticatedUser): Promise<UserDto | null> {
     return this.userService.findById(user.sub);
+  }
+
+  @Post("forgot-password")
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Solicitar recuperação de senha" })
+  async forgotPassword(@Body() body: ForgotPasswordDto) {
+    return this.authService.forgotPassword(body);
+  }
+
+  @Post("reset-password")
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Resetar senha com token" })
+  async resetPassword(@Body() body: ResetPasswordDto) {
+    return this.authService.resetPassword(body);
   }
 }

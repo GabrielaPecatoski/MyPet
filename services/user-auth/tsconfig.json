@@ -5,7 +5,8 @@
     "rootDir": "../..",
     "paths": {
       "@shared/*": ["../../shared/src/*"],
-      "@auth/*": ["./src/modules/auth/*"]
+      "@auth/*": ["./src/modules/auth/*"],
+      "@common/*": ["./src/common/*"]
     }
   },
   "include": ["src/**/*.ts", "../../shared/src/**/*.ts"]
