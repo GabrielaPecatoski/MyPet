@@ -92,21 +92,28 @@ class FaqService {
   }
 
   static Future<UserQuestion?> submitQuestion({
+<<<<<<< HEAD
     required String userId,
     required String userName,
     required String userRole,
+=======
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
     required String question,
     String? token,
   }) async {
     try {
       final data = await ApiService.post(
         '/faq/questions',
+<<<<<<< HEAD
         {
           'userId': userId,
           'userName': userName,
           'userRole': userRole,
           'question': question,
         },
+=======
+        {'question': question},
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
         token: token,
       );
       return UserQuestion.fromJson(data as Map<String, dynamic>);

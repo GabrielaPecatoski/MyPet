@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/colors.dart';
+import '../models/availability.dart';
 import '../models/establishment.dart';
 import '../models/review.dart';
 import '../providers/auth_provider.dart';
+<<<<<<< HEAD
+=======
+import '../services/availability_service.dart';
+import '../services/establishment_service.dart';
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
 import '../services/review_service.dart';
 import '../widgets/app_bottom_nav.dart';
 import '../widgets/mypet_app_bar.dart';
@@ -20,6 +26,7 @@ class _EstablishmentDetailScreenState
     extends State<EstablishmentDetailScreen> {
   List<ReviewModel> _reviews = [];
   bool _reviewsLoading = true;
+<<<<<<< HEAD
 
   static final List<ReviewModel> _mockReviews = [
     ReviewModel(
@@ -63,12 +70,46 @@ class _EstablishmentDetailScreenState
       createdAt: DateTime(2026, 3, 10),
     ),
   ];
+=======
+  List<ServiceModel> _services = [];
+  ScheduleModel? _schedule;
+  bool _servicesLoaded = false;
+
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final e = ModalRoute.of(context)!.settings.arguments as EstablishmentModel;
+<<<<<<< HEAD
     _loadReviews(e.id);
+=======
+    if (!_servicesLoaded) {
+      _servicesLoaded = true;
+      _loadServices(e.id);
+      _loadReviews(e.id);
+      _loadSchedule(e.id);
+    }
+  }
+
+  Future<void> _loadServices(String establishmentId) async {
+    try {
+      final services = await EstablishmentService.fetchServices(establishmentId);
+      if (mounted) setState(() => _services = services);
+    } catch (_) {}
+  }
+
+  Future<void> _loadSchedule(String establishmentId) async {
+    final token = context.read<AuthProvider>().token;
+    if (token == null) return;
+    try {
+      final schedule = await AvailabilityService.getSchedule(
+        token: token,
+        estabId: establishmentId,
+      );
+      if (mounted) setState(() => _schedule = schedule);
+    } catch (_) {}
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
   }
 
   Future<void> _loadReviews(String establishmentId) async {
@@ -80,12 +121,55 @@ class _EstablishmentDetailScreenState
       );
       if (mounted) setState(() => _reviews = reviews);
     } catch (_) {
+<<<<<<< HEAD
       if (mounted) setState(() => _reviews = _mockReviews);
+=======
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
     } finally {
       if (mounted) setState(() => _reviewsLoading = false);
     }
   }
 
+<<<<<<< HEAD
+=======
+  double get _liveRating {
+    if (_reviews.isEmpty) return 0.0;
+    return _reviews.fold<int>(0, (s, r) => s + r.rating) / _reviews.length;
+  }
+
+  int get _liveReviewCount => _reviews.length;
+
+  String _fmtTime(String t) {
+    final parts = t.split(':');
+    final h = int.parse(parts[0]);
+    final m = int.parse(parts[1]);
+    return m == 0 ? '${h}h' : '${h}h${parts[1]}';
+  }
+
+  String _formatScheduleHours(ScheduleModel schedule) {
+    final byDay = {for (final d in schedule.days) d.dayOfWeek: d};
+    final parts = <String>[];
+
+    final mon = byDay[1];
+    final fri = byDay[5];
+    if (mon != null && mon.isOpen) {
+      final sameAsFri = fri != null &&
+          fri.isOpen &&
+          fri.startTime == mon.startTime &&
+          fri.endTime == mon.endTime;
+      final label = sameAsFri ? 'Seg–Sex' : 'Seg';
+      parts.add('$label: ${_fmtTime(mon.startTime)}–${_fmtTime(mon.endTime)}');
+    }
+
+    final sat = byDay[6];
+    if (sat != null && sat.isOpen) {
+      parts.add('Sáb: ${_fmtTime(sat.startTime)}–${_fmtTime(sat.endTime)}');
+    }
+
+    return parts.isEmpty ? 'Fechado' : parts.join('  •  ');
+  }
+
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
   @override
   Widget build(BuildContext context) {
     final establishment =
@@ -139,13 +223,21 @@ class _EstablishmentDetailScreenState
                           const Icon(Icons.star,
                               color: Color(0xFFFFC107), size: 18),
                           const SizedBox(width: 4),
+<<<<<<< HEAD
                           Text('${e.rating}',
+=======
+                          Text(_liveRating > 0 ? _liveRating.toStringAsFixed(1) : '–',
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
                               style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 14,
                                   color: AppColors.dark)),
                           Flexible(
+<<<<<<< HEAD
                             child: Text(' (${e.reviewCount} avaliações)',
+=======
+                            child: Text(' ($_liveReviewCount avaliações)',
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
                                 style: const TextStyle(
                                     color: AppColors.grey, fontSize: 13),
                                 overflow: TextOverflow.ellipsis),
@@ -172,7 +264,11 @@ class _EstablishmentDetailScreenState
                       _infoRow(Icons.phone_outlined, e.phone),
                       const SizedBox(height: 8),
                       _infoRow(Icons.access_time_outlined,
+<<<<<<< HEAD
                           'Seg–Sex: 8h–18h  •  Sáb: 8h–13h'),
+=======
+                          _schedule != null ? _formatScheduleHours(_schedule!) : '...'),
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
                     ],
                   ),
                 ),
@@ -191,7 +287,11 @@ class _EstablishmentDetailScreenState
                 ),
               ),
 
+<<<<<<< HEAD
               if (e.services.isEmpty)
+=======
+              if (_services.isEmpty)
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -211,7 +311,11 @@ class _EstablishmentDetailScreenState
               SliverList(
                 delegate: SliverChildBuilderDelegate(
                   (ctx, i) {
+<<<<<<< HEAD
                     final service = e.services[i];
+=======
+                    final service = _services[i];
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
                     return Padding(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
                       child: Container(
@@ -273,7 +377,11 @@ class _EstablishmentDetailScreenState
                       ),
                     );
                   },
+<<<<<<< HEAD
                   childCount: e.services.length,
+=======
+                  childCount: _services.length,
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
                 ),
               ),
 
@@ -291,7 +399,11 @@ class _EstablishmentDetailScreenState
                             color: AppColors.dark),
                       ),
                       const SizedBox(height: 12),
+<<<<<<< HEAD
                       if (e.rating > 0)
+=======
+                      if (_liveRating > 0)
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
                         Container(
                           width: double.infinity,
                           padding: const EdgeInsets.symmetric(
@@ -303,17 +415,28 @@ class _EstablishmentDetailScreenState
                           child: Column(
                             children: [
                               Text(
+<<<<<<< HEAD
                                 e.rating.toStringAsFixed(1),
+=======
+                                _liveRating.toStringAsFixed(1),
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
                                 style: const TextStyle(
                                     fontSize: 40,
                                     fontWeight: FontWeight.bold,
                                     color: AppColors.primary),
                               ),
                               const SizedBox(height: 6),
+<<<<<<< HEAD
                               _StarRow(rating: e.rating),
                               const SizedBox(height: 4),
                               Text(
                                 '${e.reviewCount} avaliações',
+=======
+                              _StarRow(rating: _liveRating),
+                              const SizedBox(height: 4),
+                              Text(
+                                '$_liveReviewCount avaliações',
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
                                 style: const TextStyle(
                                     color: AppColors.grey, fontSize: 13),
                               ),

@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import '../models/appointment.dart';
+<<<<<<< HEAD
+=======
+import '../models/establishment.dart';
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
 import '../services/booking_service.dart';
 
 class BookingProvider extends ChangeNotifier {
@@ -21,10 +25,23 @@ class BookingProvider extends ChangeNotifier {
       .where((b) => b.status == 'PENDENTE' || b.status == 'CONFIRMADO')
       .toList();
 
+<<<<<<< HEAD
   Future<void> loadUserBookings({required String token, required String userId}) async {
     _loading = true;
     _error = null;
     notifyListeners();
+=======
+  List<AppointmentModel> get historico => _bookings
+      .where((b) => b.status == 'CONCLUIDO' || b.status == 'CANCELADO' || b.status == 'RECUSADO')
+      .toList();
+
+  Future<void> loadUserBookings({required String token, required String userId}) async {
+    _error = null;
+    if (_bookings.isEmpty) {
+      _loading = true;
+      notifyListeners();
+    }
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
     try {
       _bookings = await BookingService.fetchUserBookings(token: token, userId: userId);
     } catch (e) {
@@ -36,9 +53,17 @@ class BookingProvider extends ChangeNotifier {
   }
 
   Future<void> loadEstabBookings({required String token, required String estabId}) async {
+<<<<<<< HEAD
     _loading = true;
     _error = null;
     notifyListeners();
+=======
+    _error = null;
+    if (_bookings.isEmpty) {
+      _loading = true;
+      notifyListeners();
+    }
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
     try {
       _bookings = await BookingService.fetchEstabBookings(token: token, estabId: estabId);
     } catch (e) {
@@ -51,7 +76,10 @@ class BookingProvider extends ChangeNotifier {
 
   Future<AppointmentModel?> createBooking({
     required String token,
+<<<<<<< HEAD
     required String userId,
+=======
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
     required String userName,
     required String petId,
     required String petName,
@@ -60,6 +88,10 @@ class BookingProvider extends ChangeNotifier {
     required String establishmentName,
     required DateTime scheduledAt,
     double price = 0,
+<<<<<<< HEAD
+=======
+    List<ServiceModel>? services,
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
   }) async {
     _loading = true;
     _error = null;
@@ -67,7 +99,10 @@ class BookingProvider extends ChangeNotifier {
     try {
       final booking = await BookingService.createBooking(
         token: token,
+<<<<<<< HEAD
         userId: userId,
+=======
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
         userName: userName,
         petId: petId,
         petName: petName,
@@ -76,6 +111,10 @@ class BookingProvider extends ChangeNotifier {
         establishmentName: establishmentName,
         scheduledAt: scheduledAt,
         price: price,
+<<<<<<< HEAD
+=======
+        services: services,
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
       );
       _bookings.add(booking);
       _loading = false;

@@ -5,7 +5,10 @@ import '../models/appointment.dart';
 import '../providers/auth_provider.dart';
 import '../providers/booking_provider.dart';
 import '../providers/establishment_provider.dart';
+<<<<<<< HEAD
 import '../services/review_service.dart';
+=======
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
 import '../widgets/mypet_app_bar.dart';
 import 'estab_horarios_screen.dart';
 
@@ -84,6 +87,7 @@ class _EstabAgendaScreenState extends State<EstabAgendaScreen> {
           status: status,
         );
     if (!mounted) return;
+<<<<<<< HEAD
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(ok
           ? (status == 'CONFIRMADO' ? 'Agendamento confirmado!' : 'Agendamento recusado')
@@ -91,6 +95,29 @@ class _EstabAgendaScreenState extends State<EstabAgendaScreen> {
       backgroundColor: ok
           ? (status == 'CONFIRMADO' ? AppColors.success : AppColors.danger)
           : AppColors.danger,
+=======
+    String msg;
+    Color color;
+    if (!ok) {
+      msg = 'Erro ao atualizar agendamento';
+      color = AppColors.danger;
+    } else {
+      switch (status) {
+        case 'CONFIRMADO':
+          msg = 'Agendamento confirmado!';
+          color = AppColors.success;
+        case 'CONCLUIDO':
+          msg = 'Serviço concluído!';
+          color = AppColors.primary;
+        default:
+          msg = 'Agendamento recusado';
+          color = AppColors.danger;
+      }
+    }
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(msg),
+      backgroundColor: color,
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
     ));
   }
 
@@ -522,8 +549,11 @@ class _ApptCard extends StatelessWidget {
   Future<void> _showAvaliarClienteDialog(BuildContext context, AppointmentModel ap) async {
     int selectedRating = 0;
     final commentCtrl = TextEditingController();
+<<<<<<< HEAD
     final estabProvider = context.read<EstablishmentProvider>();
     final auth = context.read<AuthProvider>();
+=======
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
 
     await showDialog(
       context: context,
@@ -639,6 +669,7 @@ class _ApptCard extends StatelessWidget {
                         ? null
                         : () async {
                             Navigator.pop(ctx);
+<<<<<<< HEAD
                             try {
                               await ReviewService.submitClientReview(
                                 establishmentId:
@@ -655,6 +686,8 @@ class _ApptCard extends StatelessWidget {
                                 token: auth.token,
                               );
                             } catch (_) {}
+=======
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(

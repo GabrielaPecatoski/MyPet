@@ -86,15 +86,22 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Container(
                 height: 60,
                 color: AppColors.primary,
+<<<<<<< HEAD
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(
                   children: [
                     const Spacer(),
+=======
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
                     Image.asset(
                       'assets/images/logo branca.png',
                       height: 36,
                       fit: BoxFit.contain,
                     ),
+<<<<<<< HEAD
                     const Spacer(),
                     GestureDetector(
                       onTap: () {
@@ -117,6 +124,32 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ),
                               )
                             : const Icon(Icons.person, size: 20, color: Colors.white),
+=======
+                    Positioned(
+                      right: 16,
+                      child: GestureDetector(
+                        onTap: () {
+                          if (user != null) {
+                            Navigator.pushNamed(context, '/home', arguments: 4);
+                          } else {
+                            Navigator.pushNamed(context, '/login');
+                          }
+                        },
+                        child: CircleAvatar(
+                          radius: 18,
+                          backgroundColor: Colors.white24,
+                          child: user?.photoPath != null
+                              ? ClipOval(
+                                  child: Image.file(
+                                    dart_io.File(user!.photoPath!),
+                                    width: 36,
+                                    height: 36,
+                                    fit: BoxFit.cover,
+                                  ),
+                                )
+                              : const Icon(Icons.person, size: 20, color: Colors.white),
+                        ),
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
                       ),
                     ),
                   ],
@@ -510,7 +543,7 @@ class _EstabCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    '${e.services.length} serv.',
+                    '${e.serviceCount} serv.',
                     style: const TextStyle(
                         fontSize: 11,
                         color: AppColors.primary,

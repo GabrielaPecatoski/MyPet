@@ -1,0 +1,110 @@
+export enum Permission {
+  USERS_READ = "users:read",
+  USERS_WRITE = "users:write",
+  USERS_DELETE = "users:delete",
+
+  PETS_READ = "pets:read",
+  PETS_WRITE = "pets:write",
+  PETS_DELETE = "pets:delete",
+
+  ESTABLISHMENTS_READ = "establishments:read",
+  ESTABLISHMENTS_WRITE = "establishments:write",
+  ESTABLISHMENTS_DELETE = "establishments:delete",
+
+  SERVICES_READ = "services:read",
+  SERVICES_WRITE = "services:write",
+  SERVICES_DELETE = "services:delete",
+
+  PRODUCTS_READ = "products:read",
+  PRODUCTS_WRITE = "products:write",
+  PRODUCTS_DELETE = "products:delete",
+
+  CART_READ = "cart:read",
+  CART_WRITE = "cart:write",
+
+  ORDERS_READ = "orders:read",
+  ORDERS_WRITE = "orders:write",
+
+  BOOKINGS_READ = "bookings:read",
+  BOOKINGS_WRITE = "bookings:write",
+  BOOKINGS_DELETE = "bookings:delete",
+
+  AVAILABILITY_READ = "availability:read",
+  AVAILABILITY_WRITE = "availability:write",
+
+  REVIEWS_READ = "reviews:read",
+  REVIEWS_WRITE = "reviews:write",
+  REVIEWS_DELETE = "reviews:delete",
+
+  COMPLAINTS_READ = "complaints:read",
+  COMPLAINTS_WRITE = "complaints:write",
+  COMPLAINTS_DELETE = "complaints:delete",
+
+  FAQ_READ = "faq:read",
+  FAQ_WRITE = "faq:write",
+  FAQ_DELETE = "faq:delete",
+
+  QUESTIONS_READ = "questions:read",
+  QUESTIONS_WRITE = "questions:write",
+
+  NOTIFICATIONS_READ = "notifications:read",
+  NOTIFICATIONS_WRITE = "notifications:write",
+
+  ADMIN_READ = "admin:read",
+  ADMIN_WRITE = "admin:write",
+}
+
+export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
+  ADMIN: Object.values(Permission),
+  VENDEDOR: [
+    Permission.PETS_READ,
+    Permission.PETS_WRITE,
+    Permission.PETS_DELETE,
+    Permission.ESTABLISHMENTS_READ,
+    Permission.ESTABLISHMENTS_WRITE,
+    Permission.SERVICES_READ,
+    Permission.SERVICES_WRITE,
+    Permission.SERVICES_DELETE,
+    Permission.PRODUCTS_READ,
+    Permission.PRODUCTS_WRITE,
+    Permission.PRODUCTS_DELETE,
+    Permission.BOOKINGS_READ,
+    Permission.BOOKINGS_WRITE,
+    Permission.AVAILABILITY_READ,
+    Permission.AVAILABILITY_WRITE,
+    Permission.REVIEWS_READ,
+    Permission.COMPLAINTS_READ,
+    Permission.COMPLAINTS_WRITE,
+    Permission.FAQ_READ,
+    Permission.QUESTIONS_READ,
+    Permission.QUESTIONS_WRITE,
+    Permission.NOTIFICATIONS_READ,
+    Permission.NOTIFICATIONS_WRITE,
+    Permission.CART_READ,
+    Permission.CART_WRITE,
+    Permission.ORDERS_READ,
+    Permission.ORDERS_WRITE,
+  ],
+  CLIENTE: [
+    Permission.PETS_READ,
+    Permission.PETS_WRITE,
+    Permission.PETS_DELETE,
+    Permission.ESTABLISHMENTS_READ,
+    Permission.PRODUCTS_READ,
+    Permission.CART_READ,
+    Permission.CART_WRITE,
+    Permission.ORDERS_READ,
+    Permission.ORDERS_WRITE,
+    Permission.BOOKINGS_READ,
+    Permission.BOOKINGS_WRITE,
+    Permission.AVAILABILITY_READ,
+    Permission.REVIEWS_READ,
+    Permission.REVIEWS_WRITE,
+    Permission.COMPLAINTS_READ,
+    Permission.COMPLAINTS_WRITE,
+    Permission.FAQ_READ,
+    Permission.QUESTIONS_READ,
+    Permission.QUESTIONS_WRITE,
+    Permission.NOTIFICATIONS_READ,
+  ],
+};

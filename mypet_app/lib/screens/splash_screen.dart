@@ -21,8 +21,14 @@ class _SplashScreenState extends State<SplashScreen> {
     final auth = context.read<AuthProvider>();
     await auth.loadFromStorage();
     if (!mounted) return;
-    Navigator.pushReplacementNamed(
-        context, auth.isAuthenticated ? auth.homeRoute : '/login');
+
+    if (auth.isAuthenticated) {
+      final valid = await auth.validateToken();
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(context, valid ? auth.homeRoute : '/login');
+    } else {
+      Navigator.pushReplacementNamed(context, '/login');
+    }
   }
 
   @override

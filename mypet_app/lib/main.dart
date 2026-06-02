@@ -22,15 +22,28 @@ import 'screens/carrinho_screen.dart';
 import 'screens/pagamento_screen.dart';
 import 'screens/main_navigation.dart';
 import 'screens/estab_navigation.dart';
+<<<<<<< HEAD
+=======
+import 'screens/estab_edit_screen.dart';
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
 import 'screens/admin_screen.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => BookingProvider()),
+<<<<<<< HEAD
         ChangeNotifierProvider(create: (_) => CartProvider()),
+=======
+        ChangeNotifierProxyProvider<AuthProvider, CartProvider>(
+          create: (_) => CartProvider(),
+          update: (_, auth, cart) => cart!..update(auth),
+        ),
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
         ChangeNotifierProvider(create: (_) => EstablishmentProvider()),
       ],
       child: const MyPetApp(),
@@ -67,6 +80,10 @@ class MyPetApp extends StatelessWidget {
           return MainNavigation(initialIndex: idx ?? 0);
         },
         '/estab-home':    (_) => const EstabNavigation(),
+<<<<<<< HEAD
+=======
+        '/estab-edit':    (_) => const EstabEditScreen(),
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
         '/admin':         (_) => const AdminScreen(),
         '/edit-profile':  (_) => const EditProfileScreen(),
         '/history':       (_) => const HistoryScreen(),

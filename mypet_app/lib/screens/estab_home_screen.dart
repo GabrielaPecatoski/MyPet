@@ -30,12 +30,20 @@ class _EstabHomeScreenState extends State<EstabHomeScreen>
     super.dispose();
   }
 
+<<<<<<< HEAD
   Future<void> _load() async {
+=======
+  Future<void> _load({bool force = false}) async {
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
     final auth = context.read<AuthProvider>();
     if (auth.token == null || auth.user == null) return;
 
     final estabProvider = context.read<EstablishmentProvider>();
+<<<<<<< HEAD
     if (estabProvider.establishment == null) {
+=======
+    if (force || estabProvider.establishment == null) {
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
       await estabProvider.loadByOwner(
         token: auth.token!,
         ownerId: auth.user!.id,
@@ -179,7 +187,11 @@ class _EstabHomeScreenState extends State<EstabHomeScreen>
                           ),
                   ),
 
+<<<<<<< HEAD
                   const _ServicosTab(),
+=======
+                  _ServicosTab(onRetry: () => _load(force: true)),
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
                 ],
               ),
             ),
@@ -352,7 +364,12 @@ class _AgendCard extends StatelessWidget {
 }
 
 class _ServicosTab extends StatelessWidget {
+<<<<<<< HEAD
   const _ServicosTab();
+=======
+  final VoidCallback onRetry;
+  const _ServicosTab({required this.onRetry});
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
 
   Future<void> _showAddServico(BuildContext context) async {
     final nomeCtrl = TextEditingController();
@@ -535,8 +552,107 @@ class _ServicosTab extends StatelessWidget {
           const Center(
             child: Padding(
               padding: EdgeInsets.all(32),
+<<<<<<< HEAD
               child:
                   CircularProgressIndicator(color: AppColors.primary),
+            ),
+          )
+        else if (services.isEmpty)
+=======
+              child: CircularProgressIndicator(color: AppColors.primary),
+            ),
+          )
+        else if (estab.establishment == null)
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.greyLight),
+            ),
+<<<<<<< HEAD
+            child: const Center(
+              child: Column(
+                children: [
+                  Icon(Icons.content_cut, color: AppColors.greyLight, size: 36),
+                  SizedBox(height: 8),
+                  Text('Nenhum serviço cadastrado',
+                      style: TextStyle(color: AppColors.grey)),
+                  SizedBox(height: 4),
+                  Text('Toque em "Novo" para adicionar',
+                      style: TextStyle(color: AppColors.greyLight, fontSize: 12)),
+                ],
+              ),
+            ),
+          )
+        else
+          ...services.map((s) => Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: const [
+                    BoxShadow(
+                        color: Colors.black12,
+                        blurRadius: 8,
+                        offset: Offset(0, 2)),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(s.name,
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                  color: AppColors.dark)),
+                          if (s.description != null &&
+                              s.description!.isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            Text(s.description!,
+                                style: const TextStyle(
+                                    fontSize: 12, color: AppColors.grey)),
+                          ],
+                          const SizedBox(height: 3),
+                          Row(
+                            children: [
+                              const Icon(Icons.access_time,
+                                  size: 13, color: AppColors.grey),
+                              const SizedBox(width: 4),
+                              Text('${s.durationMinutes} min',
+                                  style: const TextStyle(
+                                      fontSize: 12, color: AppColors.grey)),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+=======
+            child: Center(
+              child: Column(
+                children: [
+                  const Icon(Icons.wifi_off, color: AppColors.greyLight, size: 36),
+                  const SizedBox(height: 8),
+                  const Text('Não foi possível carregar',
+                      style: TextStyle(color: AppColors.grey)),
+                  const SizedBox(height: 12),
+                  ElevatedButton.icon(
+                    onPressed: onRetry,
+                    icon: const Icon(Icons.refresh, size: 16, color: Colors.white),
+                    label: const Text('Tentar novamente', style: TextStyle(color: Colors.white, fontSize: 13)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary, elevation: 0,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                  ),
+                ],
+              ),
             ),
           )
         else if (services.isEmpty)
@@ -608,6 +724,7 @@ class _ServicosTab extends StatelessWidget {
                         ],
                       ),
                     ),
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
                     const SizedBox(width: 8),
                     Text(
                       'R\$ ${s.price.toStringAsFixed(2)}',

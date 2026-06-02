@@ -37,25 +37,44 @@ class WorkingDayModel {
 class ScheduleModel {
   final String establishmentId;
   final int slotDurationMinutes;
+<<<<<<< HEAD
+=======
+  final int capacity;
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
   final List<WorkingDayModel> days;
 
   const ScheduleModel({
     required this.establishmentId,
     required this.slotDurationMinutes,
+<<<<<<< HEAD
+=======
+    this.capacity = 1,
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
     required this.days,
   });
 
   factory ScheduleModel.fromJson(Map<String, dynamic> j) => ScheduleModel(
         establishmentId: j['establishmentId'] as String,
+<<<<<<< HEAD
         slotDurationMinutes: j['slotDurationMinutes'] as int,
         days: (j['days'] as List)
             .map((d) => WorkingDayModel.fromJson(d))
+=======
+        slotDurationMinutes: (j['slotDurationMinutes'] as num).toInt(),
+        capacity: (j['capacity'] as num?)?.toInt() ?? 1,
+        days: (j['days'] as List)
+            .map((d) => WorkingDayModel.fromJson(d as Map<String, dynamic>))
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
             .toList(),
       );
 
   Map<String, dynamic> toJson() => {
         'establishmentId': establishmentId,
         'slotDurationMinutes': slotDurationMinutes,
+<<<<<<< HEAD
+=======
+        'capacity': capacity,
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
         'days': days.map((d) => d.toJson()).toList(),
       };
 }

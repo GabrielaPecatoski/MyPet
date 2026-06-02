@@ -2,9 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/colors.dart';
 import '../core/constants.dart';
+<<<<<<< HEAD
+=======
+import '../models/product.dart';
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
 import '../providers/cart_provider.dart';
 import '../services/api_service.dart';
 import '../widgets/mypet_app_bar.dart';
+import 'product_detail_screen.dart';
 
 class ProdutosScreen extends StatefulWidget {
   const ProdutosScreen({super.key});
@@ -172,6 +177,7 @@ class _ProdutosScreenState extends State<ProdutosScreen> {
                         ),
                         itemCount: _products.length,
                         itemBuilder: (ctx, i) {
+<<<<<<< HEAD
                           final p = _products[i];
                           return _ProductCard(
                             product: p,
@@ -192,6 +198,31 @@ class _ProdutosScreenState extends State<ProdutosScreen> {
                                   onPressed: () => Navigator.pushNamed(
                                       context, '/cart'),
                                 ),
+=======
+                          final p = _products[i] as Map<String, dynamic>;
+                          return _ProductCard(
+                            product: p,
+                            cartQty: cart.quantityOf(p['id'] as String),
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const ProductDetailScreen(),
+                                settings: RouteSettings(
+                                  arguments: ProductModel.fromJson(p),
+                                ),
+                              ),
+                            ),
+                            onAdd: () {
+                              context
+                                  .read<CartProvider>()
+                                  .add(p);
+                              final messenger = ScaffoldMessenger.of(context);
+                              messenger.clearSnackBars();
+                              messenger.showSnackBar(SnackBar(
+                                content: Text('${p['name']} adicionado!'),
+                                backgroundColor: AppColors.success,
+                                duration: const Duration(milliseconds: 800),
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
                               ));
                             },
                           );
@@ -208,15 +239,23 @@ class _ProductCard extends StatelessWidget {
   final dynamic product;
   final int cartQty;
   final VoidCallback onAdd;
+  final VoidCallback onTap;
 
   const _ProductCard(
       {required this.product,
       required this.cartQty,
+<<<<<<< HEAD
       required this.onAdd});
+=======
+      required this.onAdd,
+      required this.onTap});
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -305,6 +344,7 @@ class _ProductCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }

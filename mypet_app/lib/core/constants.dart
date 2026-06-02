@@ -3,7 +3,12 @@ import 'package:flutter/foundation.dart';
 class ApiConstants {
   static String get baseUrl {
     if (kIsWeb) return 'http://localhost:3000';
+<<<<<<< HEAD
     return 'http://10.0.2.2:3000';
+=======
+    if (defaultTargetPlatform == TargetPlatform.android) return 'http://10.0.2.2:3000';
+    return 'http://localhost:3000';
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
   }
 
   static const loginEndpoint = '/auth/login';

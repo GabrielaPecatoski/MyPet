@@ -17,7 +17,11 @@ class HistoryScreen extends StatefulWidget {
 
 class _HistoryScreenState extends State<HistoryScreen> {
   List<AppointmentModel> _history = [];
+<<<<<<< HEAD
   final Set<String> _reviewed = {};
+=======
+  final Set<String> _reviewedBookingIds = {};
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
   bool _loading = false;
 
   @override
@@ -63,6 +67,18 @@ class _HistoryScreenState extends State<HistoryScreen> {
         _history = all2.where((b) => b.status == 'CONCLUIDO').toList()
           ..sort((a, b) => b.date.compareTo(a.date));
       });
+<<<<<<< HEAD
+=======
+
+      try {
+        final myReviews = await ReviewService.getMyReviews(token: auth.token!);
+        setState(() {
+          _reviewedBookingIds.addAll(
+            myReviews.where((r) => r.bookingId.isNotEmpty).map((r) => r.bookingId),
+          );
+        });
+      } catch (_) {}
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
     } catch (_) {
     } finally {
       setState(() => _loading = false);
@@ -129,9 +145,15 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       itemCount: _history.length,
                       itemBuilder: (ctx, i) => _HistoryCard(
                         appointment: _history[i],
+<<<<<<< HEAD
                         reviewed: _reviewed.contains(_history[i].id),
                         onReviewed: () =>
                             setState(() => _reviewed.add(_history[i].id)),
+=======
+                        reviewed: _reviewedBookingIds.contains(_history[i].id),
+                        onReviewed: () =>
+                            setState(() => _reviewedBookingIds.add(_history[i].id)),
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
                       ),
                     ),
             ),
@@ -393,8 +415,11 @@ class _HistoryCard extends StatelessWidget {
                         final auth = context.read<AuthProvider>();
                         try {
                           await ReviewService.submitReview(
+<<<<<<< HEAD
                             userId: auth.user?.id ?? '',
                             userName: auth.user?.name ?? 'Usuário',
+=======
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
                             establishmentId: appointment.establishmentId,
                             bookingId: appointment.id,
                             rating: selectedRating,

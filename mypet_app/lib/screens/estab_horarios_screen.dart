@@ -21,6 +21,10 @@ class _EstabHorariosScreenState extends State<EstabHorariosScreen>
   bool _loadingSchedule = false;
   bool _savingSchedule = false;
   int _slotDuration = 60;
+<<<<<<< HEAD
+=======
+  int _capacity = 1;
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
 
   DateTime _selectedDay = DateTime.now();
   List<TimeSlotModel> _slots = [];
@@ -71,6 +75,10 @@ class _EstabHorariosScreenState extends State<EstabHorariosScreen>
       setState(() {
         _schedule = s;
         _slotDuration = s.slotDurationMinutes;
+<<<<<<< HEAD
+=======
+        _capacity = s.capacity;
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
       });
     } catch (_) {
       setState(() => _schedule = _defaultSchedule(id ?? 'local'));
@@ -91,6 +99,10 @@ class _EstabHorariosScreenState extends State<EstabHorariosScreen>
         schedule: ScheduleModel(
           establishmentId: id,
           slotDurationMinutes: _slotDuration,
+<<<<<<< HEAD
+=======
+          capacity: _capacity,
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
           days: s.days,
         ),
       );
@@ -151,7 +163,12 @@ class _EstabHorariosScreenState extends State<EstabHorariosScreen>
           token: token,
           estabId: id,
           date: _formatDateKey(_selectedDay),
+<<<<<<< HEAD
           time: slot.time,
+=======
+          startTime: slot.time,
+          endTime: AvailabilityService.addMinutes(slot.time, _slotDuration),
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
         );
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -190,6 +207,10 @@ class _EstabHorariosScreenState extends State<EstabHorariosScreen>
       _schedule = ScheduleModel(
         establishmentId: _schedule!.establishmentId,
         slotDurationMinutes: _slotDuration,
+<<<<<<< HEAD
+=======
+        capacity: _capacity,
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
         days: days,
       );
     });
@@ -311,6 +332,47 @@ class _EstabHorariosScreenState extends State<EstabHorariosScreen>
                   );
                 }).toList(),
               ),
+<<<<<<< HEAD
+=======
+              const SizedBox(height: 16),
+              const Text('Atendimentos simultâneos por horário',
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: AppColors.dark)),
+              const SizedBox(height: 4),
+              const Text(
+                'Quantos clientes podem agendar no mesmo horário',
+                style: TextStyle(fontSize: 11, color: AppColors.grey),
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                children: [1, 2, 3, 4, 5].map((n) {
+                  final selected = _capacity == n;
+                  return GestureDetector(
+                    onTap: () => setState(() => _capacity = n),
+                    child: Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: selected ? AppColors.primary : AppColors.primaryLight,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Center(
+                        child: Text(
+                          '$n',
+                          style: TextStyle(
+                              color: selected ? Colors.white : AppColors.primary,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16),
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
             ],
           ),
         ),

@@ -20,10 +20,17 @@ class AvailabilityService {
           headers: _headers(token),
         )
         .timeout(const Duration(seconds: 8));
+<<<<<<< HEAD
     if (res.statusCode != 200) throw Exception('Erro ao buscar disponibilidade');
     final body = jsonDecode(res.body) as Map<String, dynamic>;
     final list = body['slots'] as List;
     return list.map((s) => TimeSlotModel.fromJson(s)).toList();
+=======
+    if (res.statusCode != 200) throw Exception('HTTP ${res.statusCode}: ${res.body}');
+    final body = jsonDecode(res.body) as Map<String, dynamic>;
+    final list = body['slots'] as List;
+    return list.map((s) => TimeSlotModel.fromJson(s as Map<String, dynamic>)).toList();
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
   }
 
   static Future<ScheduleModel> getSchedule({
@@ -37,10 +44,17 @@ class AvailabilityService {
         )
         .timeout(const Duration(seconds: 8));
     if (res.statusCode != 200) throw Exception('Erro ao buscar horários');
+<<<<<<< HEAD
     return ScheduleModel.fromJson(jsonDecode(res.body));
   }
 
   static Future<ScheduleModel> saveSchedule({
+=======
+    return ScheduleModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+  }
+
+  static Future<void> saveSchedule({
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
     required String token,
     required ScheduleModel schedule,
   }) async {
@@ -54,14 +68,22 @@ class AvailabilityService {
     if (res.statusCode != 200 && res.statusCode != 201) {
       throw Exception('Erro ao salvar horários');
     }
+<<<<<<< HEAD
     return ScheduleModel.fromJson(jsonDecode(res.body));
+=======
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
   }
 
   static Future<void> blockSlot({
     required String token,
     required String estabId,
     required String date,
+<<<<<<< HEAD
     required String time,
+=======
+    required String startTime,
+    required String endTime,
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
     String reason = 'Bloqueado',
   }) async {
     final res = await http
@@ -71,7 +93,12 @@ class AvailabilityService {
           body: jsonEncode({
             'establishmentId': estabId,
             'date': date,
+<<<<<<< HEAD
             'time': time,
+=======
+            'startTime': startTime,
+            'endTime': endTime,
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
             'reason': reason,
           }),
         )
@@ -95,4 +122,15 @@ class AvailabilityService {
       throw Exception('Erro ao desbloquear horário');
     }
   }
+<<<<<<< HEAD
+=======
+
+  static String addMinutes(String time, int minutes) {
+    final parts = time.split(':');
+    final total = int.parse(parts[0]) * 60 + int.parse(parts[1]) + minutes;
+    final h = (total ~/ 60).toString().padLeft(2, '0');
+    final m = (total % 60).toString().padLeft(2, '0');
+    return '$h:$m';
+  }
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
 }

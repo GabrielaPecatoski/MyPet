@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/colors.dart';
@@ -9,6 +10,10 @@ import '../providers/auth_provider.dart';
 import '../providers/booking_provider.dart';
 import '../services/api_service.dart';
 import '../services/availability_service.dart';
+<<<<<<< HEAD
+=======
+import '../services/establishment_service.dart';
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
 import '../widgets/mypet_app_bar.dart';
 
 class ScheduleScreen extends StatefulWidget {
@@ -20,13 +25,21 @@ class ScheduleScreen extends StatefulWidget {
 
 class _ScheduleScreenState extends State<ScheduleScreen> {
   PetModel? _selectedPet;
-  ServiceModel? _selectedService;
+  List<ServiceModel> _selectedServices = [];
   DateTime? _selectedDate;
   String? _selectedTime;
   List<PetModel> _pets = [];
   bool _loadingPets = false;
+<<<<<<< HEAD
   List<TimeSlotModel> _slots = [];
   bool _loadingSlots = false;
+=======
+  List<ServiceModel> _services = [];
+  bool _loadingServices = false;
+  List<TimeSlotModel> _slots = [];
+  bool _loadingSlots = false;
+  bool _servicesLoaded = false;
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
 
   static const _weekdays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
   static const _months = [
@@ -40,6 +53,31 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadPets());
   }
 
+<<<<<<< HEAD
+=======
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_servicesLoaded) {
+      _servicesLoaded = true;
+      final establishment =
+          ModalRoute.of(context)?.settings.arguments as EstablishmentModel?;
+      if (establishment != null) _loadServices(establishment.id);
+    }
+  }
+
+  Future<void> _loadServices(String estabId) async {
+    setState(() => _loadingServices = true);
+    try {
+      final svcs = await EstablishmentService.fetchServices(estabId);
+      if (mounted) setState(() => _services = svcs);
+    } catch (_) {
+    } finally {
+      if (mounted) setState(() => _loadingServices = false);
+    }
+  }
+
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
   Future<void> _loadPets() async {
     final auth = context.read<AuthProvider>();
     if (auth.token == null) return;
@@ -74,8 +112,22 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         estabId: establishment.id,
         date: dateStr,
       );
+<<<<<<< HEAD
     } catch (_) {
       _slots = [];
+=======
+    } catch (e) {
+      _slots = [];
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erro ao buscar horários: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 6),
+          ),
+        );
+      }
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
     } finally {
       setState(() => _loadingSlots = false);
     }
@@ -93,12 +145,20 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
   Future<void> _confirmar(EstablishmentModel? establishment) async {
     if (_selectedPet == null ||
+<<<<<<< HEAD
         _selectedService == null ||
+=======
+        _selectedServices.isEmpty ||
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
         _selectedDate == null ||
         _selectedTime == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
+<<<<<<< HEAD
           content: Text('Selecione o pet, serviço, data e horário'),
+=======
+          content: Text('Selecione o pet, pelo menos um serviço, data e horário'),
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
           backgroundColor: AppColors.warning,
           behavior: SnackBarBehavior.floating,
         ),
@@ -118,6 +178,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       int.parse(timeParts[1]),
     );
 
+<<<<<<< HEAD
     final booking = await context.read<BookingProvider>().createBooking(
           token: auth.token!,
           userId: auth.user!.id,
@@ -129,11 +190,28 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           establishmentName: establishment?.name ?? '',
           scheduledAt: scheduledAt,
           price: _selectedService!.price,
+=======
+    final totalPrice = _selectedServices.fold<double>(0, (s, svc) => s + svc.price);
+    final serviceNameDisplay = _selectedServices.map((s) => s.name).join(', ');
+
+    final booking = await context.read<BookingProvider>().createBooking(
+          token: auth.token!,
+          userName: auth.user!.name,
+          petId: _selectedPet!.id,
+          petName: _selectedPet!.name,
+          serviceName: serviceNameDisplay,
+          establishmentId: establishment?.id ?? '',
+          establishmentName: establishment?.name ?? '',
+          scheduledAt: scheduledAt,
+          price: totalPrice,
+          services: _selectedServices,
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
         );
 
     if (!mounted) return;
 
     if (booking != null) {
+<<<<<<< HEAD
       if (establishment != null) {
         final dateStr =
             '${_selectedDate!.year}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}';
@@ -149,6 +227,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         }
       }
 
+=======
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
       showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
@@ -167,7 +247,11 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _confirmRow('Pet:', _selectedPet!.name),
+<<<<<<< HEAD
               _confirmRow('Serviço:', _selectedService!.name),
+=======
+              _confirmRow('Serviço(s):', _selectedServices.map((s) => s.name).join(', ')),
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
               _confirmRow(
                 'Data:',
                 '${_weekdays[_selectedDate!.weekday % 7]}, ${_selectedDate!.day} ${_months[_selectedDate!.month - 1]}',
@@ -175,7 +259,11 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               _confirmRow('Horário:', _selectedTime!),
               _confirmRow(
                   'Valor:',
+<<<<<<< HEAD
                   'R\$ ${_selectedService!.price.toStringAsFixed(2)}'),
+=======
+                  'R\$ ${_selectedServices.fold<double>(0, (s, svc) => s + svc.price).toStringAsFixed(2)}'),
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
               const SizedBox(height: 8),
               const Text(
                 'Aguarde a confirmação do estabelecimento.',
@@ -308,6 +396,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
                 const SizedBox(height: 24),
 
+<<<<<<< HEAD
                 _sectionTitle('Selecione o serviço'),
                 const SizedBox(height: 10),
                 if (establishment != null && establishment.services.isNotEmpty)
@@ -316,6 +405,32 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                         selected: _selectedService?.id == s.id,
                         onTap: () => setState(() => _selectedService = s),
                       ))
+=======
+                _sectionTitle('Selecione os serviços'),
+                const SizedBox(height: 10),
+                if (_loadingServices)
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(16),
+                      child: CircularProgressIndicator(color: AppColors.primary),
+                    ),
+                  )
+                else if (_services.isNotEmpty)
+                  ..._services.map((s) {
+                    final sel = _selectedServices.any((x) => x.id == s.id);
+                    return _ServiceSelectCard(
+                      service: s,
+                      selected: sel,
+                      onTap: () => setState(() {
+                        if (sel) {
+                          _selectedServices.removeWhere((x) => x.id == s.id);
+                        } else {
+                          _selectedServices.add(s);
+                        }
+                      }),
+                    );
+                  })
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
                 else
                   Container(
                     padding: const EdgeInsets.all(16),
@@ -329,6 +444,33 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                       style: TextStyle(color: AppColors.grey),
                     ),
                   ),
+<<<<<<< HEAD
+=======
+                if (_selectedServices.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryLight,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Total: ${_selectedServices.length} serviço(s)',
+                            style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600),
+                          ),
+                          Text(
+                            'R\$ ${_selectedServices.fold<double>(0, (s, svc) => s + svc.price).toStringAsFixed(2)}',
+                            style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 15),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
 
                 const SizedBox(height: 24),
 
@@ -672,6 +814,22 @@ class _PetSelectCard extends StatelessWidget {
   const _PetSelectCard(
       {required this.pet, required this.selected, required this.onTap});
 
+  Widget _buildPetAvatar(PetModel pet, double radius) {
+    final url = pet.imageUrl;
+    if (url != null && url.isNotEmpty) {
+      if (url.startsWith('data:image/')) {
+        final bytes = base64Decode(url.split(',').last);
+        return CircleAvatar(radius: radius, backgroundImage: MemoryImage(bytes));
+      }
+      return CircleAvatar(radius: radius, backgroundImage: NetworkImage(url));
+    }
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: AppColors.primaryLight,
+      child: Text(pet.typeIcon, style: TextStyle(fontSize: radius * 0.9)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -702,11 +860,15 @@ class _PetSelectCard extends StatelessWidget {
         ),
         child: Row(
           children: [
+<<<<<<< HEAD
             CircleAvatar(
               radius: 22,
               backgroundColor: AppColors.primaryLight,
               child: Text(pet.typeIcon, style: const TextStyle(fontSize: 20)),
             ),
+=======
+            _buildPetAvatar(pet, 22),
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
             const SizedBox(width: 12),
             Expanded(
               child: Column(

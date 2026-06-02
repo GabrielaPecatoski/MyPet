@@ -1,5 +1,14 @@
 import 'package:flutter/material.dart';
+<<<<<<< HEAD
 import '../core/colors.dart';
+=======
+import 'package:provider/provider.dart';
+import '../core/colors.dart';
+import '../models/estab_stats.dart';
+import '../providers/auth_provider.dart';
+import '../providers/establishment_provider.dart';
+import '../services/stats_service.dart';
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
 import '../widgets/mypet_app_bar.dart';
 
 class EstabEstatisticasScreen extends StatefulWidget {
@@ -10,6 +19,7 @@ class EstabEstatisticasScreen extends StatefulWidget {
 }
 
 class _EstabEstatisticasScreenState extends State<EstabEstatisticasScreen> {
+<<<<<<< HEAD
   final double _totalReceita = 8_450.00;
   final double _receitaMes = 2_130.00;
   final double _ticketMedio = 87.50;
@@ -34,6 +44,68 @@ class _EstabEstatisticasScreenState extends State<EstabEstatisticasScreen> {
     _ServiceStat('Adestramento', 12, AppColors.warning),
     _ServiceStat('Outros', 10, AppColors.grey),
   ];
+=======
+  EstabStatsModel? _stats;
+  bool _loading = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
+  Future<void> _load() async {
+    if (_loading || _stats != null) return;
+    if (!mounted) return;
+
+    final auth = context.read<AuthProvider>();
+    final estabProvider = context.read<EstablishmentProvider>();
+    final token = auth.token;
+    final estabId = estabProvider.establishmentId;
+
+    if (token == null || estabId == null) return;
+
+    setState(() { _loading = true; _error = null; });
+
+    try {
+      final stats = await StatsService.fetchEstabStats(
+        estabId: estabId,
+        token: token,
+      );
+      if (mounted) setState(() { _stats = stats; _loading = false; });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = 'Não foi possível carregar as estatísticas';
+          _loading = false;
+        });
+      }
+    }
+  }
+
+  List<_MonthBar> get _ultimos6Meses {
+    if (_stats == null) return [];
+    return _stats!.last6Months
+        .map((m) => _MonthBar(m.month, m.value))
+        .toList();
+  }
+
+  List<_ServiceStat> get _servicos {
+    if (_stats == null) return [];
+    final colors = [
+      AppColors.primary,
+      AppColors.success,
+      const Color(0xFF6366F1),
+      AppColors.warning,
+      AppColors.grey,
+    ];
+    return _stats!.topServices.asMap().entries.map((e) {
+      final color = colors[e.key < colors.length ? e.key : colors.length - 1];
+      return _ServiceStat(e.value.name, e.value.count, color);
+    }).toList();
+  }
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
 
   double get _maxBarValue =>
       _ultimos6Meses.fold(0, (m, b) => b.value > m ? b.value : m);
@@ -43,6 +115,7 @@ class _EstabEstatisticasScreenState extends State<EstabEstatisticasScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: const MypetAppBar(showBack: false),
+<<<<<<< HEAD
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
         child: Column(
@@ -180,6 +253,196 @@ class _EstabEstatisticasScreenState extends State<EstabEstatisticasScreen> {
 
             const SizedBox(height: 20),
 
+=======
+      body: Consumer<EstablishmentProvider>(
+        builder: (context, estabProv, _) {
+          if (_loading || estabProv.isLoading) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (_stats == null && estabProv.establishmentId != null && _error == null) {
+            if (!_loading) {
+              WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+            }
+            return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+          }
+          if (_error != null) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(_error!,
+                      style: const TextStyle(color: AppColors.grey)),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: _load,
+                    child: const Text('Tentar novamente'),
+                  ),
+                ],
+              ),
+            );
+          }
+          if (_stats == null) {
+            return const Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
+            );
+          }
+          return RefreshIndicator(
+            onRefresh: _load,
+            child: _buildContent(),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildContent() {
+    final stats = _stats!;
+    final estab = context.read<EstablishmentProvider>().establishment;
+    final avgRating = estab?.rating ?? 0.0;
+    final totalReviews = estab?.reviewCount ?? 0;
+    return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 8),
+          const Text('Estatísticas',
+              style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.dark)),
+          const SizedBox(height: 4),
+          const Text('Visão geral do seu negócio',
+              style: TextStyle(fontSize: 13, color: AppColors.grey)),
+          const SizedBox(height: 20),
+
+          Row(
+            children: [
+              Expanded(
+                child: _KpiCard(
+                  label: 'Faturamento total',
+                  value: 'R\$ ${_fmt(stats.totalRevenue)}',
+                  icon: Icons.attach_money,
+                  color: AppColors.primary,
+                  sub: 'desde o início',
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _KpiCard(
+                  label: 'Este mês',
+                  value: 'R\$ ${_fmt(stats.monthRevenue)}',
+                  icon: Icons.trending_up,
+                  color: AppColors.success,
+                  sub: 'concluídos no mês',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _KpiCard(
+                  label: 'Ticket médio',
+                  value: 'R\$ ${stats.avgTicket.toStringAsFixed(2)}',
+                  icon: Icons.receipt_long_outlined,
+                  color: const Color(0xFF6366F1),
+                  sub: 'por atendimento',
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _KpiCard(
+                  label: 'Agendamentos',
+                  value: '${stats.totalBookings}',
+                  icon: Icons.calendar_today_outlined,
+                  color: AppColors.warning,
+                  sub: '${stats.monthBookings} este mês',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: const [
+                BoxShadow(
+                    color: Colors.black12,
+                    blurRadius: 6,
+                    offset: Offset(0, 2)),
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF3CD),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.star,
+                      color: Color(0xFFFFC107), size: 26),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Avaliação média',
+                          style: TextStyle(
+                              fontSize: 13, color: AppColors.grey)),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            avgRating.toStringAsFixed(1),
+                            style: const TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.dark),
+                          ),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Padding(
+                              padding: const EdgeInsets.only(bottom: 3),
+                              child: Text(
+                                '/ 5.0  •  $totalReviews avaliações',
+                                style: const TextStyle(
+                                    fontSize: 12, color: AppColors.grey),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                Row(
+                  children: List.generate(5, (i) {
+                    final full = i < avgRating.floor();
+                    return Icon(
+                      full ? Icons.star : Icons.star_border,
+                      color: const Color(0xFFFFC107),
+                      size: 16,
+                    );
+                  }),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          if (_ultimos6Meses.isNotEmpty)
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -206,7 +469,12 @@ class _EstabEstatisticasScreenState extends State<EstabEstatisticasScreen> {
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: _ultimos6Meses.map((b) {
+<<<<<<< HEAD
                         final ratio = b.value / _maxBarValue;
+=======
+                        final max = _maxBarValue > 0 ? _maxBarValue : 1;
+                        final ratio = b.value / max;
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
                         final isLast = b == _ultimos6Meses.last;
                         return Expanded(
                           child: Padding(
@@ -215,7 +483,11 @@ class _EstabEstatisticasScreenState extends State<EstabEstatisticasScreen> {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.end,
                               children: [
+<<<<<<< HEAD
                                 if (isLast)
+=======
+                                if (isLast && b.value > 0)
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
                                   Padding(
                                     padding: const EdgeInsets.only(bottom: 4),
                                     child: Text(
@@ -264,8 +536,14 @@ class _EstabEstatisticasScreenState extends State<EstabEstatisticasScreen> {
               ),
             ),
 
+<<<<<<< HEAD
             const SizedBox(height: 20),
 
+=======
+          if (_ultimos6Meses.isNotEmpty) const SizedBox(height: 20),
+
+          if (_servicos.isNotEmpty)
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -288,8 +566,14 @@ class _EstabEstatisticasScreenState extends State<EstabEstatisticasScreen> {
                           color: AppColors.dark)),
                   const SizedBox(height: 16),
                   ..._servicos.map((s) {
+<<<<<<< HEAD
                     final pct = s.count /
                         _servicos.fold(0, (sum, x) => sum + x.count);
+=======
+                    final total =
+                        _servicos.fold(0, (sum, x) => sum + x.count);
+                    final pct = total > 0 ? s.count / total : 0.0;
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 12),
                       child: Column(
@@ -323,7 +607,11 @@ class _EstabEstatisticasScreenState extends State<EstabEstatisticasScreen> {
                           ClipRRect(
                             borderRadius: BorderRadius.circular(4),
                             child: LinearProgressIndicator(
+<<<<<<< HEAD
                               value: pct,
+=======
+                              value: pct.toDouble(),
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
                               backgroundColor: AppColors.greyLight,
                               valueColor:
                                   AlwaysStoppedAnimation(s.color),
@@ -338,8 +626,14 @@ class _EstabEstatisticasScreenState extends State<EstabEstatisticasScreen> {
               ),
             ),
 
+<<<<<<< HEAD
             const SizedBox(height: 20),
 
+=======
+          if (_servicos.isNotEmpty) const SizedBox(height: 20),
+
+          if (stats.monthRevenue > 0)
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -375,9 +669,15 @@ class _EstabEstatisticasScreenState extends State<EstabEstatisticasScreen> {
                                 fontSize: 12,
                                 color: Colors.white70)),
                         Text(
+<<<<<<< HEAD
                           'R\$ ${_fmt(_receitaMes * 1.12)}',
                           style: const TextStyle(
                               fontSize: 22,
+=======
+                          'R\$ ${_fmt(stats.monthRevenue * 1.12)}',
+                          style: const TextStyle(
+                              fontSize: 18,
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
                               fontWeight: FontWeight.bold,
                               color: Colors.white),
                         ),
@@ -392,8 +692,24 @@ class _EstabEstatisticasScreenState extends State<EstabEstatisticasScreen> {
                 ],
               ),
             ),
+<<<<<<< HEAD
           ],
         ),
+=======
+
+          if (stats.totalBookings == 0)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                child: Text(
+                  'Nenhum agendamento encontrado ainda.',
+                  style:
+                      const TextStyle(fontSize: 13, color: AppColors.grey),
+                ),
+              ),
+            ),
+        ],
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
       ),
     );
   }
@@ -448,16 +764,31 @@ class _KpiCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(value,
+<<<<<<< HEAD
+=======
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
               style: TextStyle(
                   fontWeight: FontWeight.bold, fontSize: 17, color: color)),
           const SizedBox(height: 2),
           Text(label,
+<<<<<<< HEAD
+=======
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
               style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
                   color: AppColors.dark)),
           const SizedBox(height: 1),
           Text(sub,
+<<<<<<< HEAD
+=======
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
               style:
                   const TextStyle(fontSize: 10, color: AppColors.grey)),
         ],

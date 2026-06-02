@@ -8,16 +8,19 @@ class MypetAppBar extends StatelessWidget implements PreferredSizeWidget {
   final bool showBack;
   final VoidCallback? onBack;
   final List<Widget>? actions;
+  final bool purple;
 
   const MypetAppBar({
     super.key,
     this.showBack = false,
     this.onBack,
     this.actions,
+    this.purple = false,
   });
 
   @override
   Widget build(BuildContext context) {
+<<<<<<< HEAD
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.dark,
       child: Material(
@@ -45,10 +48,51 @@ class MypetAppBar extends StatelessWidget implements PreferredSizeWidget {
                   child: Center(
                     child: Image.asset(
                       'assets/images/logo.png',
+=======
+    final isPurple = purple;
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: isPurple ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
+      child: Material(
+        color: Colors.transparent,
+        elevation: isPurple ? 0 : 0.5,
+        shadowColor: Colors.black12,
+        child: Container(
+          decoration: isPurple
+              ? const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xFF7B3FF2), Color(0xFF5B2FBF)],
+                  ),
+                )
+              : const BoxDecoration(color: Colors.white, boxShadow: [
+                  BoxShadow(color: Colors.black12, blurRadius: 1, offset: Offset(0, 0.5)),
+                ]),
+          child: SafeArea(
+            bottom: false,
+            child: SizedBox(
+              height: kToolbarHeight,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  if (showBack)
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: IconButton(
+                        icon: Icon(Icons.chevron_left,
+                            size: 28, color: isPurple ? Colors.white : AppColors.dark),
+                        onPressed: onBack ?? () => Navigator.pop(context),
+                      ),
+                    ),
+                  Center(
+                    child: Image.asset(
+                      isPurple ? 'assets/images/logo branca.png' : 'assets/images/logo.png',
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
                       height: 40,
                       fit: BoxFit.contain,
                     ),
                   ),
+<<<<<<< HEAD
                 ),
 
                 SizedBox(
@@ -60,6 +104,22 @@ class MypetAppBar extends StatelessWidget implements PreferredSizeWidget {
                           children: actions!,
                         )
                       : Builder(builder: (ctx) {
+=======
+                  if (actions != null)
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: actions!,
+                      ),
+                    )
+                  else if (!showBack)
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: SizedBox(
+                        width: 48,
+                        child: Builder(builder: (ctx) {
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
                           final user = ctx.watch<AuthProvider>().user;
                           return Center(
                             child: GestureDetector(
@@ -68,17 +128,35 @@ class MypetAppBar extends StatelessWidget implements PreferredSizeWidget {
                                 user != null ? '/home' : '/login',
                                 arguments: user != null ? 4 : null,
                               ),
+<<<<<<< HEAD
                               child: const CircleAvatar(
                                 radius: 16,
                                 backgroundColor: AppColors.primaryLight,
                                 child: Icon(Icons.person,
                                     size: 18, color: AppColors.primary),
+=======
+                              child: CircleAvatar(
+                                radius: 16,
+                                backgroundColor: isPurple
+                                    ? Colors.white.withValues(alpha: 0.2)
+                                    : AppColors.primaryLight,
+                                child: Icon(Icons.person,
+                                    size: 18,
+                                    color: isPurple ? Colors.white : AppColors.primary),
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
                               ),
                             ),
                           );
                         }),
+<<<<<<< HEAD
                 ),
               ],
+=======
+                      ),
+                    ),
+                ],
+              ),
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
             ),
           ),
         ),

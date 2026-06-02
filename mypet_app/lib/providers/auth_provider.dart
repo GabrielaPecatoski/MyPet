@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/user.dart';
+import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../services/storage_service.dart';
 
@@ -37,14 +38,29 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<bool> validateToken() async {
+    if (_token == null) return false;
+    try {
+      final data = await ApiService.get('/auth/me', token: _token);
+      _user = UserModel.fromJson(data as Map<String, dynamic>);
+      await StorageService.saveUser(_user!);
+      notifyListeners();
+      return true;
+    } catch (_) {
+      await logout();
+      return false;
+    }
+  }
+
   Future<bool> login(String email, String password) async {
     _loading = true;
     _error = null;
     notifyListeners();
     try {
       final data = await AuthService.login(email: email, password: password);
-      _token = data['access_token'];
-      _user = UserModel.fromJson(data['user']);
+      _token = data['accessToken'] as String?;
+      _user = data['user'] != null ? UserModel.fromJson(data['user'] as Map<String, dynamic>) : null;
+      if (_token == null || _user == null) throw Exception('Resposta inválida do servidor');
       await StorageService.saveToken(_token!);
       await StorageService.saveUser(_user!);
       _loading = false;
@@ -80,8 +96,9 @@ class AuthProvider extends ChangeNotifier {
         role: role,
         businessName: businessName,
       );
-      _token = data['access_token'];
-      _user = UserModel.fromJson(data['user']);
+      _token = data['accessToken'] as String?;
+      _user = data['user'] != null ? UserModel.fromJson(data['user'] as Map<String, dynamic>) : null;
+      if (_token == null || _user == null) throw Exception('Resposta inválida do servidor');
       await StorageService.saveToken(_token!);
       await StorageService.saveUser(_user!);
       _loading = false;
@@ -99,6 +116,46 @@ class AuthProvider extends ChangeNotifier {
     _user = updated;
     StorageService.saveUser(updated);
     notifyListeners();
+  }
+
+  Future<bool> updateProfile({
+    required String name,
+    required String phone,
+  }) async {
+    if (_user == null || _token == null) return false;
+    _loading = true;
+    _error = null;
+    notifyListeners();
+    try {
+      final data = await ApiService.patch(
+        '/auth/me',
+        {'name': name, 'phone': phone},
+        token: _token,
+      );
+      _user = UserModel.fromJson(data as Map<String, dynamic>);
+      await StorageService.saveUser(_user!);
+      _loading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _error = e.toString().replaceAll('Exception: ', '');
+      _loading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> deleteAccount() async {
+    if (_user == null || _token == null) return false;
+    try {
+      await ApiService.delete('/auth/me', token: _token);
+      await logout();
+      return true;
+    } catch (e) {
+      _error = e.toString().replaceAll('Exception: ', '');
+      notifyListeners();
+      return false;
+    }
   }
 
   Future<void> logout() async {

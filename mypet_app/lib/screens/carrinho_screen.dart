@@ -14,6 +14,13 @@ class CarrinhoScreen extends StatelessWidget {
       appBar: const MypetAppBar(showBack: true),
       body: Consumer<CartProvider>(
         builder: (ctx, cart, _) {
+<<<<<<< HEAD
+=======
+          if (cart.isLoading) {
+            return const Center(
+                child: CircularProgressIndicator(color: AppColors.primary));
+          }
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
           if (cart.items.isEmpty) {
             return Center(
               child: Column(
@@ -115,6 +122,7 @@ class _CartTile extends StatelessWidget {
               ],
             ),
           ),
+<<<<<<< HEAD
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -134,6 +142,39 @@ class _CartTile extends StatelessWidget {
                 filled: true,
                 onTap: () =>
                     context.read<CartProvider>().increment(item.id),
+=======
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              GestureDetector(
+                onTap: () => context.read<CartProvider>().remove(item.id),
+                child: const Icon(Icons.delete_outline,
+                    color: AppColors.danger, size: 20),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _QtyBtn(
+                    icon: Icons.remove,
+                    onTap: () =>
+                        context.read<CartProvider>().decrement(item.id),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Text('${item.quantity}',
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 16)),
+                  ),
+                  _QtyBtn(
+                    icon: Icons.add,
+                    filled: true,
+                    onTap: () =>
+                        context.read<CartProvider>().increment(item.id),
+                  ),
+                ],
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
               ),
             ],
           ),
@@ -193,12 +234,31 @@ class _BottomBar extends StatelessWidget {
                 style:
                     const TextStyle(color: AppColors.grey, fontSize: 14),
               ),
+<<<<<<< HEAD
               Text(
                 'R\$ ${cart.total.toStringAsFixed(2)}',
                 style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
                     color: AppColors.dark),
+=======
+              Row(
+                children: [
+                  TextButton(
+                    onPressed: () => cart.clear(),
+                    child: const Text('Limpar',
+                        style:
+                            TextStyle(color: AppColors.danger, fontSize: 13)),
+                  ),
+                  Text(
+                    'R\$ ${cart.total.toStringAsFixed(2)}',
+                    style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.dark),
+                  ),
+                ],
+>>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
               ),
             ],
           ),
