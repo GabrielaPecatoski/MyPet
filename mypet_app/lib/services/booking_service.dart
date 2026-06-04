@@ -52,6 +52,8 @@ class BookingService {
     double price = 0,
     bool priceVariable = false,
     List<ServiceModel>? services,
+    String? driverId,
+    String? driverName,
   }) async {
     final body = <String, dynamic>{
       'userName': userName,
@@ -64,6 +66,8 @@ class BookingService {
       'price': price,
       'priceVariable': priceVariable,
     };
+    if (driverId != null) body['driverId'] = driverId;
+    if (driverName != null) body['driverName'] = driverName;
     if (services != null && services.isNotEmpty) {
       body['services'] = services
           .map((s) => {

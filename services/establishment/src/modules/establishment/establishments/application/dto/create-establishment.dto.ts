@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { IsNotEmpty, IsOptional, IsString } from "class-validator";
+import { IsBoolean, IsNotEmpty, IsOptional, IsString } from "class-validator";
 
 export class CreateEstablishmentDto {
   @ApiProperty() @IsString() @IsNotEmpty() name!: string;
@@ -7,6 +7,12 @@ export class CreateEstablishmentDto {
   @ApiProperty() @IsString() @IsNotEmpty() address!: string;
   @ApiProperty() @IsString() @IsNotEmpty() city!: string;
   @ApiProperty() @IsString() @IsNotEmpty() phone!: string;
-  @ApiProperty({ example: "pet_shop" }) @IsString() @IsNotEmpty() type!: string;
+  @ApiProperty({ example: "PET_SHOP", enum: ["PET_SHOP", "VETERINARIA", "HIBRIDO"] })
+  @IsString() @IsNotEmpty() type!: string;
   @ApiPropertyOptional() @IsOptional() @IsString() imageUrl?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() crmv?: string;
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() atendeEmergencia?: boolean;
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() atendimento24h?: boolean;
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() receberAlertaSonoro?: boolean;
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() receberPushEmergencia?: boolean;
 }

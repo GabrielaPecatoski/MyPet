@@ -69,6 +69,8 @@ class BookingProvider extends ChangeNotifier {
     double price = 0,
     bool priceVariable = false,
     List<ServiceModel>? services,
+    String? driverId,
+    String? driverName,
   }) async {
     _loading = true;
     _error = null;
@@ -86,6 +88,8 @@ class BookingProvider extends ChangeNotifier {
         price: price,
         priceVariable: priceVariable,
         services: services,
+        driverId: driverId,
+        driverName: driverName,
       );
       _bookings.add(booking);
       _loading = false;

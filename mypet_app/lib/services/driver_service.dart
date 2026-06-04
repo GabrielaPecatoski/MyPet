@@ -51,6 +51,20 @@ class DriverService {
     throw Exception(msg);
   }
 
+  static Future<List<DriverModel>> fetchAll({required String token}) async {
+    final res = await http
+        .get(
+          Uri.parse('${ApiConstants.baseUrl}${ApiConstants.driversEndpoint}'),
+          headers: _headers(token),
+        )
+        .timeout(const Duration(seconds: 8));
+    if (res.statusCode == 200) {
+      final list = jsonDecode(res.body) as List;
+      return list.map((e) => DriverModel.fromJson(e as Map<String, dynamic>)).toList();
+    }
+    return [];
+  }
+
   static Future<List<DriverModel>> fetchByEstablishment({
     required String token,
     required String establishmentId,
@@ -147,5 +161,54 @@ class DriverService {
         )
         .timeout(const Duration(seconds: 8));
     if (res.statusCode != 200) throw Exception('Erro ao desativar motorista');
+  }
+
+  static Future<List<DriverModel>> fetchPending({required String token}) async {
+    try {
+      final res = await http
+          .get(
+            Uri.parse('${ApiConstants.baseUrl}${ApiConstants.driversEndpoint}/admin/pending'),
+            headers: _headers(token),
+          )
+          .timeout(const Duration(seconds: 8));
+      if (res.statusCode == 200) {
+        final list = jsonDecode(res.body) as List;
+        return list.map((e) => DriverModel.fromJson(e as Map<String, dynamic>)).toList();
+      }
+      final all = await fetchAll(token: token);
+      return all.where((d) => d.status == 'PENDENTE').toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  static Future<void> approve({
+    required String token,
+    required String driverId,
+  }) async {
+    final res = await http
+        .patch(
+          Uri.parse('${ApiConstants.baseUrl}${ApiConstants.driversEndpoint}/$driverId/approve'),
+          headers: _headers(token),
+        )
+        .timeout(const Duration(seconds: 8));
+    if (res.statusCode != 200 && res.statusCode != 201) {
+      throw Exception('Erro ao aprovar motorista');
+    }
+  }
+
+  static Future<void> reject({
+    required String token,
+    required String driverId,
+  }) async {
+    final res = await http
+        .patch(
+          Uri.parse('${ApiConstants.baseUrl}${ApiConstants.driversEndpoint}/$driverId/reject'),
+          headers: _headers(token),
+        )
+        .timeout(const Duration(seconds: 8));
+    if (res.statusCode != 200 && res.statusCode != 201) {
+      throw Exception('Erro ao rejeitar motorista');
+    }
   }
 }

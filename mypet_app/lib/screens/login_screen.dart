@@ -15,7 +15,14 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailCtrl = TextEditingController();
   final _senhaCtrl = TextEditingController();
   bool _obscureSenha = true;
-  bool _isEstabelecimento = false;
+  int _tipoRegistro = 0;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final arg = ModalRoute.of(context)?.settings.arguments;
+    if (arg is int && arg >= 0) _tipoRegistro = arg;
+  }
 
   @override
   void dispose() {
@@ -163,10 +170,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   const Text('Não tem uma conta? ',
                       style: TextStyle(color: AppColors.grey, fontSize: 14)),
                   GestureDetector(
-                    onTap: () => Navigator.pushNamed(
+                    onTap: () => Navigator.pushReplacementNamed(
                       context,
                       '/register',
-                      arguments: _isEstabelecimento,
+                      arguments: _tipoRegistro,
                     ),
                     child: const Text(
                       'Criar Conta',
@@ -177,17 +184,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                 ],
-              ),
-              const SizedBox(height: 16),
-
-              GestureDetector(
-                onTap: () => setState(() => _isEstabelecimento = !_isEstabelecimento),
-                child: Text(
-                  _isEstabelecimento ? 'Sou um Cliente' : 'Sou um estabelecimento',
-                  style: const TextStyle(
-                      color: AppColors.grey,
-                      fontSize: 14,),
-                ),
               ),
               const SizedBox(height: 32),
             ],

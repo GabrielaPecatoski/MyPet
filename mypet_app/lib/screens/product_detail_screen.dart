@@ -371,17 +371,22 @@ class _QtyBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          color: filled ? AppColors.primary : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
+    final label = icon == Icons.remove ? 'Diminuir quantidade' : 'Aumentar quantidade';
+    return Semantics(
+      button: true,
+      label: label,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: filled ? AppColors.primary : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon,
+              size: 18, color: filled ? Colors.white : AppColors.dark),
         ),
-        child: Icon(icon,
-            size: 18, color: filled ? Colors.white : AppColors.dark),
       ),
     );
   }

@@ -6,7 +6,6 @@ import '../models/pet.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
 import '../widgets/mypet_app_bar.dart';
-import 'add_pet_screen.dart';
 
 class PetsScreen extends StatefulWidget {
   const PetsScreen({super.key});
@@ -49,10 +48,7 @@ class _PetsScreenState extends State<PetsScreen> {
   }
 
   Future<void> _addPet() async {
-    final formData = await Navigator.push<PetModel>(
-      context,
-      MaterialPageRoute(builder: (_) => const AddPetScreen()),
-    );
+    final formData = await Navigator.pushNamed<PetModel>(context, '/add-pet');
     if (formData == null || !mounted) return;
 
     final auth = context.read<AuthProvider>();
@@ -85,10 +81,8 @@ class _PetsScreenState extends State<PetsScreen> {
   }
 
   Future<void> _editPet(PetModel pet) async {
-    final formData = await Navigator.push<PetModel>(
-      context,
-      MaterialPageRoute(builder: (_) => AddPetScreen(initialPet: pet)),
-    );
+    final formData = await Navigator.pushNamed<PetModel>(
+      context, '/add-pet', arguments: pet);
     if (formData == null || !mounted) return;
 
     final auth = context.read<AuthProvider>();

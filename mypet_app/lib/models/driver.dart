@@ -24,7 +24,16 @@ class DriverModel {
   });
 
   bool get isAtivo => status == 'ATIVO';
+  bool get isPendente => status == 'PENDENTE';
   bool get isAssociado => establishmentId != null && establishmentId!.isNotEmpty;
+  String get statusLabel {
+    switch (status) {
+      case 'ATIVO': return 'Ativo';
+      case 'INATIVO': return 'Inativo';
+      case 'PENDENTE': return 'Aguardando aprovação';
+      default: return status;
+    }
+  }
 
   String get vehicleTypeLabel {
     switch (vehicleType) {

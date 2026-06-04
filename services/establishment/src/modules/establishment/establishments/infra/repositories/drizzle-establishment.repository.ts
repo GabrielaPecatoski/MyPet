@@ -25,6 +25,11 @@ export class DrizzleEstablishmentRepository implements EstablishmentRepository {
         rating: e.rating,
         reviewCount: e.reviewCount,
         imageUrl: e.imageUrl,
+        crmv: e.crmv,
+        atendeEmergencia: e.atendeEmergencia,
+        atendimento24h: e.atendimento24h,
+        receberAlertaSonoro: e.receberAlertaSonoro,
+        receberPushEmergencia: e.receberPushEmergencia,
         createdAt: new Date(),
         updatedAt: new Date(),
       })
@@ -45,6 +50,11 @@ export class DrizzleEstablishmentRepository implements EstablishmentRepository {
         rating: e.rating,
         reviewCount: e.reviewCount,
         imageUrl: e.imageUrl,
+        crmv: e.crmv,
+        atendeEmergencia: e.atendeEmergencia,
+        atendimento24h: e.atendimento24h,
+        receberAlertaSonoro: e.receberAlertaSonoro,
+        receberPushEmergencia: e.receberPushEmergencia,
         updatedAt: new Date(),
       })
       .where(eq(establishmentsSchema.id, e.id!));
@@ -78,8 +88,8 @@ export class DrizzleEstablishmentRepository implements EstablishmentRepository {
     return rows.map((r) => Establishment.restore(r)!);
   }
 
-  async findAll(search?: string): Promise<(Establishment & { serviceCount: number })[]> {
-    const baseQuery = this.drizzleService.db
+  private _baseSelectWithCount() {
+    return this.drizzleService.db
       .select({
         id: establishmentsSchema.id,
         ownerId: establishmentsSchema.ownerId,
@@ -92,6 +102,11 @@ export class DrizzleEstablishmentRepository implements EstablishmentRepository {
         rating: establishmentsSchema.rating,
         reviewCount: establishmentsSchema.reviewCount,
         imageUrl: establishmentsSchema.imageUrl,
+        crmv: establishmentsSchema.crmv,
+        atendeEmergencia: establishmentsSchema.atendeEmergencia,
+        atendimento24h: establishmentsSchema.atendimento24h,
+        receberAlertaSonoro: establishmentsSchema.receberAlertaSonoro,
+        receberPushEmergencia: establishmentsSchema.receberPushEmergencia,
         createdAt: establishmentsSchema.createdAt,
         updatedAt: establishmentsSchema.updatedAt,
         serviceCount: sql<number>`count(${estabServicesSchema.id})::int`,
@@ -99,6 +114,10 @@ export class DrizzleEstablishmentRepository implements EstablishmentRepository {
       .from(establishmentsSchema)
       .leftJoin(estabServicesSchema, eq(estabServicesSchema.establishmentId, establishmentsSchema.id))
       .groupBy(establishmentsSchema.id);
+  }
+
+  async findAll(search?: string): Promise<(Establishment & { serviceCount: number })[]> {
+    const baseQuery = this._baseSelectWithCount();
 
     const rows = search
       ? await baseQuery.where(
@@ -106,6 +125,11 @@ export class DrizzleEstablishmentRepository implements EstablishmentRepository {
         )
       : await baseQuery;
 
+    return rows.map((r) => Object.assign(Establishment.restore(r)!, { serviceCount: r.serviceCount }));
+  }
+
+  async findByEmergency(): Promise<(Establishment & { serviceCount: number })[]> {
+    const rows = await this._baseSelectWithCount().where(eq(establishmentsSchema.atendeEmergencia, true));
     return rows.map((r) => Object.assign(Establishment.restore(r)!, { serviceCount: r.serviceCount }));
   }
 

@@ -47,6 +47,13 @@ export class EstablishmentsController {
     return this.establishmentService.findAll(search);
   }
 
+  @Get("emergency")
+  @Public()
+  @ApiOperation({ summary: "Listar estabelecimentos que atendem emergências veterinárias" })
+  async findByEmergency(): Promise<EstablishmentDto[]> {
+    return this.establishmentService.findByEmergency();
+  }
+
   @Get("admin/all")
   @ApiBearerAuth()
   @RequirePermissions(Permission.ADMIN_READ)

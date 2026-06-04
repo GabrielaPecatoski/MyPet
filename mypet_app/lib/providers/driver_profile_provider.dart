@@ -1,0 +1,45 @@
+import 'package:flutter/material.dart';
+import '../models/driver.dart';
+import '../services/driver_service.dart';
+
+class DriverProfileProvider extends ChangeNotifier {
+  DriverModel? _driver;
+  bool _loading = false;
+  String? _error;
+
+  DriverModel? get driver => _driver;
+  bool get loading => _loading;
+  String? get error => _error;
+  bool get hasDriver => _driver != null;
+
+  Future<void> load({required String token, required String cpf}) async {
+    _loading = true;
+    _error = null;
+    notifyListeners();
+    try {
+      _driver = await DriverService.findByCpf(token: token, cpf: cpf);
+    } catch (_) {
+      _error = 'Erro ao carregar perfil do motorista';
+    } finally {
+      _loading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> dissociate({required String token}) async {
+    if (_driver == null) return false;
+    try {
+      await DriverService.dissociate(token: token, driverId: _driver!.id);
+      await load(token: token, cpf: _driver!.cpf);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  void clear() {
+    _driver = null;
+    _error = null;
+    notifyListeners();
+  }
+}

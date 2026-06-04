@@ -35,6 +35,7 @@ const adminNavItems = [
   BottomNavItemData(icon: Icons.warning_amber_outlined,  activeIcon: Icons.warning_amber,   label: 'Reclamações'),
   BottomNavItemData(icon: Icons.people_outlined,         activeIcon: Icons.people,          label: 'Usuários'),
   BottomNavItemData(icon: Icons.store_outlined,          activeIcon: Icons.store,           label: 'Lojas'),
+  BottomNavItemData(icon: Icons.verified_user_outlined,  activeIcon: Icons.verified_user,   label: 'Verificações'),
   BottomNavItemData(icon: Icons.help_outline,            activeIcon: Icons.help,            label: 'FAQ'),
   BottomNavItemData(icon: Icons.bar_chart_outlined,      activeIcon: Icons.bar_chart,       label: 'Estatísticas'),
 ];
@@ -44,6 +45,7 @@ class AppBottomNav extends StatelessWidget {
   final List<BottomNavItemData> items;
   final void Function(int) onTap;
   final Map<int, int> badges;
+  final Color? activeColor;
 
   const AppBottomNav({
     super.key,
@@ -51,6 +53,7 @@ class AppBottomNav extends StatelessWidget {
     required this.items,
     required this.onTap,
     this.badges = const {},
+    this.activeColor,
   });
 
   @override
@@ -73,6 +76,7 @@ class AppBottomNav extends StatelessWidget {
             children: List.generate(items.length, (i) {
               final item = items[i];
               final isActive = i == currentIndex;
+              final color = activeColor ?? AppColors.primary;
               return Expanded(
                 child: GestureDetector(
                   onTap: () => onTap(i),
@@ -85,7 +89,7 @@ class AppBottomNav extends StatelessWidget {
                         children: [
                           Icon(
                             isActive ? item.activeIcon : item.icon,
-                            color: isActive ? AppColors.primary : AppColors.grey,
+                            color: isActive ? color : AppColors.grey,
                             size: 24,
                           ),
                           if (badges.containsKey(i) && badges[i]! > 0)
@@ -110,7 +114,7 @@ class AppBottomNav extends StatelessWidget {
                         item.label,
                         style: TextStyle(
                           fontSize: 10,
-                          color: isActive ? AppColors.primary : AppColors.grey,
+                          color: isActive ? color : AppColors.grey,
                           fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
                         ),
                         maxLines: 1,

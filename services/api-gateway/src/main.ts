@@ -17,6 +17,7 @@ const ROUTES = [
   { prefix: "/reviews",        target: process.env.REVIEW_SERVICE_URL        ?? "http://localhost:3007" },
   { prefix: "/faq",            target: process.env.FAQ_SERVICE_URL           ?? "http://localhost:3008" },
   { prefix: "/drivers",        target: process.env.DRIVER_SERVICE_URL        ?? "http://localhost:3009" },
+  { prefix: "/veterinarians",  target: process.env.ESTABLISHMENT_SERVICE_URL ?? "http://localhost:3003" },
 ];
 
 const GATEWAY_HANDLED = ["GET /auth/me", "POST /auth/refresh"];
@@ -29,7 +30,7 @@ const CORS_HEADERS = {
 
 async function bootstrap() {
   const logger = new Logger("Bootstrap");
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { bodyParser: false });
 
   app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
 

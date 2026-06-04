@@ -36,6 +36,8 @@ export class BookingService {
       servicesJson: services ? JSON.stringify(services) : undefined,
       establishmentId: dto.establishmentId,
       establishmentName: dto.establishmentName,
+      driverId: dto.driverId,
+      driverName: dto.driverName,
       scheduledAt: new Date(dto.scheduledAt),
       price: priceVariable ? 0 : totalPrice,
       priceVariable,
@@ -81,8 +83,6 @@ export class BookingService {
     if (payment["status"] === "APPROVED") {
       booking.withStatus("PENDENTE").withPayment("AUTHORIZED", method);
       await this.repo.update(booking);
-      // Não aguarda o broker: a resposta do pagamento não pode ficar presa
-      // numa conexão lenta/instável com o RabbitMQ (causava timeout no app).
       void this.safePublish(BookingExchangeName.CREATED, BookingRoutingKey.CREATED, {
         bookingId: booking.id!,
         establishmentId: booking.establishmentId,
@@ -128,7 +128,6 @@ export class BookingService {
     if (!booking) throw new NotFoundException("Agendamento não encontrado");
     booking.withStatus(status);
 
-    // Escrow: estorna o valor retido ao recusar/cancelar; captura ao concluir.
     if ((status === "RECUSADO" || status === "CANCELADO") && booking.paymentStatus === "AUTHORIZED") {
       booking.withPayment("REFUNDED");
     } else if (status === "CONCLUIDO" && booking.paymentStatus === "AUTHORIZED") {

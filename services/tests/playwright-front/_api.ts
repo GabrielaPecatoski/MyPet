@@ -1,7 +1,5 @@
 import { APIRequestContext, request } from '@playwright/test';
-
 export const API_BASE = 'http://localhost';
-
 export interface SeededUser {
   id: string;
   name: string;
@@ -10,15 +8,12 @@ export interface SeededUser {
   token: string;
   role: string;
 }
-
 export async function apiContext(): Promise<APIRequestContext> {
   return request.newContext({ baseURL: API_BASE });
 }
-
 function auth(u: SeededUser) {
   return { Authorization: `Bearer ${u.token}` };
 }
-
 let counter = 0;
 function unique(prefix: string): { email: string; cpf: string } {
   const ts = Date.now() + counter++;
@@ -27,23 +22,22 @@ function unique(prefix: string): { email: string; cpf: string } {
     cpf: String(ts).slice(-11).padStart(11, '0'),
   };
 }
-
 async function ok(res: Awaited<ReturnType<APIRequestContext['post']>>, ctx: string) {
   if (!res.ok()) throw new Error(`${ctx} falhou ${res.status()}: ${await res.text()}`);
   const txt = await res.text();
   return txt ? JSON.parse(txt) : {};
 }
-
 export async function registerUser(
   api: APIRequestContext,
-  opts: { role?: 'CLIENTE' | 'VENDEDOR'; password?: string; businessName?: string; namePrefix?: string } = {},
+  opts: { role?: 'CLIENTE' | 'VENDEDOR' | 'MOTORISTA' | 'VETERINARIO'; password?: string; businessName?: string; namePrefix?: string } = {},
 ): Promise<SeededUser> {
-  const { email, cpf } = unique(opts.role === 'VENDEDOR' ? 'estab' : 'cli');
+  const prefix = opts.role === 'VENDEDOR' ? 'estab' : opts.role === 'MOTORISTA' ? 'mot' : opts.role === 'VETERINARIO' ? 'vet' : 'cli';
+  const { email, cpf } = unique(prefix);
   const password = opts.password ?? 'senha123';
   const body = await ok(
     await api.post('/auth/register', {
       data: {
-        name: opts.namePrefix ?? (opts.role === 'VENDEDOR' ? 'Estab E2E' : 'Cliente E2E'),
+        name: opts.namePrefix ?? (opts.role === 'VENDEDOR' ? 'Estab E2E' : opts.role === 'MOTORISTA' ? 'Motorista E2E' : opts.role === 'VETERINARIO' ? 'Vet E2E' : 'Cliente E2E'),
         email,
         password,
         phone: '41999990000',
@@ -56,7 +50,6 @@ export async function registerUser(
   );
   return { id: body.user.id, name: body.user.name, email, password, token: body.accessToken, role: body.user.role };
 }
-
 export async function createEstablishment(
   api: APIRequestContext,
   owner: SeededUser,
@@ -77,7 +70,6 @@ export async function createEstablishment(
     'createEstablishment',
   );
 }
-
 export async function addService(
   api: APIRequestContext,
   owner: SeededUser,
@@ -97,7 +89,6 @@ export async function addService(
     'addService',
   );
 }
-
 export async function setSchedule(
   api: APIRequestContext,
   owner: SeededUser,
@@ -117,7 +108,6 @@ export async function setSchedule(
     'setSchedule',
   );
 }
-
 export async function createProduct(
   api: APIRequestContext,
   owner: SeededUser,
@@ -139,7 +129,6 @@ export async function createProduct(
     'createProduct',
   );
 }
-
 export async function createPet(
   api: APIRequestContext,
   owner: SeededUser,
@@ -158,7 +147,6 @@ export async function createPet(
     'createPet',
   );
 }
-
 export async function createBooking(
   api: APIRequestContext,
   cliente: SeededUser,
@@ -184,7 +172,6 @@ export async function createBooking(
     'createBooking',
   );
 }
-
 export async function payBooking(
   api: APIRequestContext,
   cliente: SeededUser,
@@ -198,7 +185,6 @@ export async function payBooking(
     'payBooking',
   );
 }
-
 export async function updateBookingStatus(
   api: APIRequestContext,
   actor: SeededUser,
@@ -213,7 +199,6 @@ export async function updateBookingStatus(
     'updateBookingStatus',
   );
 }
-
 export async function getBooking(
   api: APIRequestContext,
   user: SeededUser,
@@ -224,7 +209,6 @@ export async function getBooking(
     'getBooking',
   );
 }
-
 export async function listEstablishmentBookings(
   api: APIRequestContext,
   owner: SeededUser,
@@ -235,12 +219,6 @@ export async function listEstablishmentBookings(
     'listEstablishmentBookings',
   );
 }
-
-/**
- * Fila de transportes que o motorista do estabelecimento enxerga:
- * só os agendamentos já ACEITOS pelo estabelecimento (CONFIRMADO).
- * Reflete a regra "só aparece ao motorista quando o estabelecimento aceitar".
- */
 export async function listDriverTransports(
   api: APIRequestContext,
   owner: SeededUser,
@@ -249,7 +227,6 @@ export async function listDriverTransports(
   const rows = await listEstablishmentBookings(api, owner, establishmentId);
   return rows.filter((b) => b.status === 'CONFIRMADO');
 }
-
 export async function getEstablishmentReviews(
   api: APIRequestContext,
   establishmentId: string,
@@ -259,7 +236,6 @@ export async function getEstablishmentReviews(
     'getEstablishmentReviews',
   );
 }
-
 export async function addToCart(
   api: APIRequestContext,
   cliente: SeededUser,
@@ -274,14 +250,12 @@ export async function addToCart(
     'addToCart',
   );
 }
-
 export async function checkoutOrder(api: APIRequestContext, cliente: SeededUser): Promise<any> {
   return ok(
     await api.post(`/marketplace/orders/${cliente.id}`, { headers: auth(cliente), data: {} }),
     'checkoutOrder',
   );
 }
-
 export async function payOrder(
   api: APIRequestContext,
   cliente: SeededUser,
@@ -301,7 +275,6 @@ export async function payOrder(
     'payOrder',
   );
 }
-
 export async function seedPaidOrder(api: APIRequestContext, owner: SeededUser, estabId: string) {
   const product = await createProduct(api, owner, estabId, { name: `Pedido E2E ${Date.now()}` });
   const cliente = await registerUser(api, { role: 'CLIENTE' });
@@ -310,7 +283,6 @@ export async function seedPaidOrder(api: APIRequestContext, owner: SeededUser, e
   await payOrder(api, cliente, order.id, { method: 'PIX', deliveryMethod: 'DELIVERY' });
   return { cliente, product, orderId: order.id };
 }
-
 export async function addVariableService(
   api: APIRequestContext,
   owner: SeededUser,
@@ -330,7 +302,6 @@ export async function addVariableService(
     'addVariableService',
   );
 }
-
 export async function createVariablePriceBooking(
   api: APIRequestContext,
   cliente: SeededUser,
@@ -357,7 +328,6 @@ export async function createVariablePriceBooking(
     'createVariablePriceBooking',
   );
 }
-
 export async function registerDriver(
   api: APIRequestContext,
   owner: SeededUser,
@@ -387,6 +357,128 @@ export async function registerDriver(
     'registerDriver',
   );
 }
+export async function registerIndependentDriver(
+  api: APIRequestContext,
+  user: SeededUser,
+  data: Partial<{
+    cnh: string; vehicleType: string; vehicleModel: string; vehiclePlate: string;
+  }> = {},
+): Promise<any> {
+  const ts = Date.now() + counter++;
+  const plate = `I2E${String(ts).slice(-4)}`;
+  return ok(
+    await api.post('/drivers', {
+      headers: auth(user),
+      data: {
+        name: user.name,
+        phone: '41988880001',
+        cpf: user.token.slice(-11).padStart(11, '0'),
+        cnh: data.cnh ?? String(ts).slice(-9),
+        vehicleType: data.vehicleType ?? 'CARRO',
+        vehicleModel: data.vehicleModel ?? 'Fiat Uno',
+        vehiclePlate: data.vehiclePlate ?? plate,
+      },
+    }),
+    'registerIndependentDriver',
+  );
+}
+export async function registerVet(
+  api: APIRequestContext,
+  user: SeededUser,
+  data: Partial<{ crmv: string; especialidade: string }> = {},
+): Promise<any> {
+  const ts = Date.now() + counter++;
+  return ok(
+    await api.post('/veterinarians', {
+      headers: auth(user),
+      data: {
+        name: user.name,
+        phone: '41988880002',
+        cpf: user.token.slice(-11).padStart(11, '0'),
+        crmv: data.crmv ?? `SP${ts.toString().slice(-5)}`,
+        especialidade: data.especialidade ?? 'Clínica geral',
+      },
+    }),
+    'registerVet',
+  );
+}
+export async function loginUser(
+  api: APIRequestContext,
+  email: string,
+  password: string,
+): Promise<SeededUser> {
+  const body = await ok(
+    await api.post('/auth/login', { data: { email, password } }),
+    'loginUser',
+  );
+  return {
+    id: body.user?.id ?? '',
+    name: body.user?.name ?? '',
+    email,
+    password,
+    token: body.accessToken,
+    role: body.user?.role ?? 'CLIENTE',
+  };
+}
+
+export async function approveVet(
+  api: APIRequestContext,
+  admin: SeededUser,
+  vetId: string,
+): Promise<any> {
+  return ok(
+    await api.patch(`/veterinarians/${vetId}/approve`, { headers: { Authorization: `Bearer ${admin.token}` } }),
+    'approveVet',
+  );
+}
+
+export async function rejectVet(
+  api: APIRequestContext,
+  admin: SeededUser,
+  vetId: string,
+): Promise<any> {
+  return ok(
+    await api.patch(`/veterinarians/${vetId}/reject`, { headers: { Authorization: `Bearer ${admin.token}` } }),
+    'rejectVet',
+  );
+}
+
+export async function approveDriver(
+  api: APIRequestContext,
+  admin: SeededUser,
+  driverId: string,
+): Promise<any> {
+  return ok(
+    await api.patch(`/drivers/${driverId}/approve`, { headers: { Authorization: `Bearer ${admin.token}` } }),
+    'approveDriver',
+  );
+}
+
+export async function rejectDriver(
+  api: APIRequestContext,
+  admin: SeededUser,
+  driverId: string,
+): Promise<any> {
+  return ok(
+    await api.patch(`/drivers/${driverId}/reject`, { headers: { Authorization: `Bearer ${admin.token}` } }),
+    'rejectDriver',
+  );
+}
+
+export async function updateVetAvailability(
+  api: APIRequestContext,
+  vet: SeededUser,
+  vetId: string,
+  data: { disponivel?: boolean; atendeDomicilio?: boolean },
+): Promise<any> {
+  return ok(
+    await api.patch(`/veterinarians/${vetId}/availability`, {
+      headers: { Authorization: `Bearer ${vet.token}` },
+      data,
+    }),
+    'updateVetAvailability',
+  );
+}
 
 export async function deactivateDriver(
   api: APIRequestContext,
@@ -398,7 +490,26 @@ export async function deactivateDriver(
     'deactivateDriver',
   );
 }
-
+export async function advanceOrder(
+  api: APIRequestContext,
+  owner: SeededUser,
+  orderId: string,
+): Promise<any> {
+  return ok(
+    await api.patch(`/marketplace/orders/${orderId}/advance`, { headers: auth(owner) }),
+    'advanceOrder',
+  );
+}
+export async function seedFinalizedOrder(
+  api: APIRequestContext,
+  owner: SeededUser,
+  estabId: string,
+): Promise<{ cliente: SeededUser; product: any; orderId: string }> {
+  const result = await seedPaidOrder(api, owner, estabId);
+  await advanceOrder(api, owner, result.orderId);
+  await advanceOrder(api, owner, result.orderId);
+  return result;
+}
 export async function seedFullEstablishment(api: APIRequestContext, serviceName = 'Banho E2E') {
   const owner = await registerUser(api, { role: 'VENDEDOR', businessName: 'Estab E2E' });
   const estab = await createEstablishment(api, owner, { name: `Pet Shop E2E ${Date.now()}` });
@@ -407,7 +518,6 @@ export async function seedFullEstablishment(api: APIRequestContext, serviceName 
   const product = await createProduct(api, owner, estab.id, { name: `Racao E2E ${Date.now()}` });
   return { owner, estab, service, product };
 }
-
 export async function seedBooking(
   api: APIRequestContext,
   owner: SeededUser,

@@ -29,6 +29,11 @@ export class EstablishmentService {
       rating: 0,
       reviewCount: 0,
       imageUrl: dto.imageUrl,
+      crmv: dto.crmv,
+      atendeEmergencia: dto.atendeEmergencia ?? false,
+      atendimento24h: dto.atendimento24h ?? false,
+      receberAlertaSonoro: dto.receberAlertaSonoro ?? false,
+      receberPushEmergencia: dto.receberPushEmergencia ?? false,
     })!;
     const created = await this.repo.create(establishment);
     return EstablishmentDto.fromEstablishment(created)!;
@@ -63,6 +68,11 @@ export class EstablishmentService {
     return EstablishmentDto.fromEstablishment(e);
   }
 
+  async findByEmergency(): Promise<EstablishmentDto[]> {
+    const rows = await this.repo.findByEmergency();
+    return rows.map((e) => EstablishmentDto.fromEstablishment(e)!);
+  }
+
   async update(id: string, dto: UpdateEstablishmentDto): Promise<void> {
     const e = await this.repo.findById(id);
     if (!e) throw new NotFoundException("Estabelecimento não encontrado");
@@ -73,6 +83,11 @@ export class EstablishmentService {
     if (dto.phone) e.withPhone(dto.phone);
     if (dto.type) e.withType(dto.type);
     if (dto.imageUrl !== undefined) e.withImageUrl(dto.imageUrl);
+    if (dto.crmv !== undefined) e.withCrmv(dto.crmv);
+    if (dto.atendeEmergencia !== undefined) e.withAtendeEmergencia(dto.atendeEmergencia);
+    if (dto.atendimento24h !== undefined) e.withAtendimento24h(dto.atendimento24h);
+    if (dto.receberAlertaSonoro !== undefined) e.withReceberAlertaSonoro(dto.receberAlertaSonoro);
+    if (dto.receberPushEmergencia !== undefined) e.withReceberPushEmergencia(dto.receberPushEmergencia);
     await this.repo.update(e);
   }
 

@@ -10,6 +10,11 @@ export class Establishment {
   private _rating!: number;
   private _reviewCount!: number;
   private _imageUrl?: string;
+  private _crmv?: string;
+  private _atendeEmergencia!: boolean;
+  private _atendimento24h!: boolean;
+  private _receberAlertaSonoro!: boolean;
+  private _receberPushEmergencia!: boolean;
   private readonly _createdAt?: Date;
   private readonly _updatedAt?: Date;
 
@@ -30,6 +35,11 @@ export class Establishment {
   get rating(): number { return this._rating; }
   get reviewCount(): number { return this._reviewCount; }
   get imageUrl(): string | undefined { return this._imageUrl; }
+  get crmv(): string | undefined { return this._crmv; }
+  get atendeEmergencia(): boolean { return this._atendeEmergencia; }
+  get atendimento24h(): boolean { return this._atendimento24h; }
+  get receberAlertaSonoro(): boolean { return this._receberAlertaSonoro; }
+  get receberPushEmergencia(): boolean { return this._receberPushEmergencia; }
   get createdAt(): Date | undefined { return this._createdAt; }
   get updatedAt(): Date | undefined { return this._updatedAt; }
 
@@ -43,6 +53,11 @@ export class Establishment {
   withRating(rating: number) { this._rating = rating; return this; }
   withReviewCount(reviewCount: number) { this._reviewCount = reviewCount; return this; }
   withImageUrl(imageUrl?: string) { this._imageUrl = imageUrl; return this; }
+  withCrmv(crmv?: string) { this._crmv = crmv; return this; }
+  withAtendeEmergencia(v: boolean) { this._atendeEmergencia = v; return this; }
+  withAtendimento24h(v: boolean) { this._atendimento24h = v; return this; }
+  withReceberAlertaSonoro(v: boolean) { this._receberAlertaSonoro = v; return this; }
+  withReceberPushEmergencia(v: boolean) { this._receberPushEmergencia = v; return this; }
 
   static restore(props?: {
     id?: string;
@@ -56,6 +71,11 @@ export class Establishment {
     rating: number;
     reviewCount: number;
     imageUrl?: string | null;
+    crmv?: string | null;
+    atendeEmergencia?: boolean | null;
+    atendimento24h?: boolean | null;
+    receberAlertaSonoro?: boolean | null;
+    receberPushEmergencia?: boolean | null;
     createdAt?: Date;
     updatedAt?: Date;
   }): Establishment | null {
@@ -71,6 +91,11 @@ export class Establishment {
     e._rating = props.rating;
     e._reviewCount = props.reviewCount;
     e._imageUrl = props.imageUrl ?? undefined;
+    e._crmv = props.crmv ?? undefined;
+    e._atendeEmergencia = props.atendeEmergencia ?? false;
+    e._atendimento24h = props.atendimento24h ?? false;
+    e._receberAlertaSonoro = props.receberAlertaSonoro ?? false;
+    e._receberPushEmergencia = props.receberPushEmergencia ?? false;
     return e;
   }
 }

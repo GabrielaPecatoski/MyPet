@@ -4,12 +4,14 @@ import 'package:provider/provider.dart';
 import '../core/colors.dart';
 import '../core/constants.dart';
 import '../models/availability.dart';
+import '../models/driver.dart';
 import '../models/establishment.dart';
 import '../models/pet.dart';
 import '../providers/auth_provider.dart';
 import '../providers/booking_provider.dart';
 import '../services/api_service.dart';
 import '../services/availability_service.dart';
+import '../services/driver_service.dart';
 import '../services/establishment_service.dart';
 import '../widgets/mypet_app_bar.dart';
 
@@ -32,6 +34,9 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   List<TimeSlotModel> _slots = [];
   bool _loadingSlots = false;
   bool _servicesLoaded = false;
+  List<DriverModel> _drivers = [];
+  DriverModel? _selectedDriver;
+  bool _loadingDrivers = false;
 
   static const _weekdays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
   static const _months = [
@@ -64,6 +69,25 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     } catch (_) {
     } finally {
       if (mounted) setState(() => _loadingServices = false);
+    }
+    await _loadDrivers(estabId);
+  }
+
+  Future<void> _loadDrivers(String estabId) async {
+    final auth = context.read<AuthProvider>();
+    if (auth.token == null) return;
+    setState(() => _loadingDrivers = true);
+    try {
+      final byEstab = await DriverService.fetchByEstablishment(
+        token: auth.token!,
+        establishmentId: estabId,
+      );
+      final independent = await DriverService.fetchUnassociated(token: auth.token!);
+      final all = [...byEstab, ...independent];
+      if (mounted) setState(() => _drivers = all.where((d) => d.isAtivo).toList());
+    } catch (_) {
+    } finally {
+      if (mounted) setState(() => _loadingDrivers = false);
     }
   }
 
@@ -170,6 +194,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           price: totalPrice,
           priceVariable: allVariable,
           services: _selectedServices,
+          driverId: _selectedDriver?.id,
+          driverName: _selectedDriver?.name,
         );
 
     if (!mounted) return;
@@ -438,6 +464,48 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                       ),
                     ),
                   ),
+
+                const SizedBox(height: 24),
+
+                _sectionTitle('Motorista (opcional)'),
+                const SizedBox(height: 4),
+                const Text(
+                  'Escolha um motorista para o transporte do seu pet.',
+                  style: TextStyle(fontSize: 12, color: AppColors.grey),
+                ),
+                const SizedBox(height: 10),
+                if (_loadingDrivers)
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(12),
+                      child: CircularProgressIndicator(color: AppColors.primary),
+                    ),
+                  )
+                else if (_drivers.isEmpty)
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.greyLight),
+                    ),
+                    child: const Text(
+                      'Nenhum motorista disponível para este estabelecimento.',
+                      style: TextStyle(color: AppColors.grey, fontSize: 13),
+                    ),
+                  )
+                else ...[
+                  _DriverSelectCard(
+                    driver: null,
+                    selected: _selectedDriver == null,
+                    onTap: () => setState(() => _selectedDriver = null),
+                  ),
+                  ..._drivers.map((d) => _DriverSelectCard(
+                        driver: d,
+                        selected: _selectedDriver?.id == d.id,
+                        onTap: () => setState(() => _selectedDriver = d),
+                      )),
+                ],
 
                 const SizedBox(height: 24),
 
@@ -847,6 +915,84 @@ class _PetSelectCard extends StatelessWidget {
             if (selected)
               const Icon(Icons.check_circle,
                   color: AppColors.primary, size: 22),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DriverSelectCard extends StatelessWidget {
+  final DriverModel? driver;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _DriverSelectCard(
+      {required this.driver, required this.selected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final isNone = driver == null;
+    final vehicleIcon = switch (driver?.vehicleType) {
+      'MOTO' => Icons.two_wheeler,
+      'VAN' => Icons.airport_shuttle,
+      _ => Icons.directions_car,
+    };
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: selected ? AppColors.primary : AppColors.greyLight,
+            width: selected ? 2 : 1,
+          ),
+          boxShadow: const [
+            BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 1)),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: selected ? AppColors.primaryLight : AppColors.greyLight.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                isNone ? Icons.do_not_disturb_alt_outlined : vehicleIcon,
+                color: selected ? AppColors.primary : AppColors.grey,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    isNone ? 'Sem motorista' : driver!.name,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      color: selected ? AppColors.primary : AppColors.dark,
+                    ),
+                  ),
+                  Text(
+                    isNone
+                        ? 'O estabelecimento definirá o transporte'
+                        : '${driver!.vehicleTypeLabel} • ${driver!.vehicleModel} • ${driver!.vehiclePlate}',
+                    style: const TextStyle(fontSize: 12, color: AppColors.grey),
+                  ),
+                ],
+              ),
+            ),
+            if (selected)
+              const Icon(Icons.check_circle, color: AppColors.primary, size: 20),
           ],
         ),
       ),

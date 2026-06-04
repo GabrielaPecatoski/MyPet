@@ -21,4 +21,5 @@ class ApiConstants {
   static const establishmentsEndpoint = '/establishments';
   static const reviewsEndpoint = '/reviews';
   static const driversEndpoint = '/drivers';
+  static const veterinariansEndpoint = '/veterinarians';
 }

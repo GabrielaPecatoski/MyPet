@@ -11,4 +11,7 @@ export const estabServicesSchema = pgTable("estab_services", {
   priceVariable: boolean("price_variable").notNull().default(false),
   durationMinutes: integer("duration_minutes").notNull(),
   description: text("description").notNull().default(""),
+  categoria: text("categoria").notNull().default("outros"),
+  imagemUrl: text("imagem_url"),
+  ativo: boolean("ativo").notNull().default(true),
 });

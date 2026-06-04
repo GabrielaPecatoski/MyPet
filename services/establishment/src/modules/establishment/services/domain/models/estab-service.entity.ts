@@ -6,6 +6,9 @@ export class EstabService {
   private _priceVariable!: boolean;
   private _durationMinutes!: number;
   private _description!: string;
+  private _categoria!: string;
+  private _imagemUrl?: string;
+  private _ativo!: boolean;
 
   private constructor(id?: string) {
     this._id = id;
@@ -18,6 +21,9 @@ export class EstabService {
   get priceVariable(): boolean { return this._priceVariable; }
   get durationMinutes(): number { return this._durationMinutes; }
   get description(): string { return this._description; }
+  get categoria(): string { return this._categoria; }
+  get imagemUrl(): string | undefined { return this._imagemUrl; }
+  get ativo(): boolean { return this._ativo; }
 
   withEstablishmentId(id: string) { this._establishmentId = id; return this; }
   withName(name: string) { this._name = name; return this; }
@@ -25,6 +31,9 @@ export class EstabService {
   withPriceVariable(v: boolean) { this._priceVariable = v; return this; }
   withDurationMinutes(duration: number) { this._durationMinutes = duration; return this; }
   withDescription(description: string) { this._description = description; return this; }
+  withCategoria(categoria: string) { this._categoria = categoria; return this; }
+  withImagemUrl(imagemUrl?: string) { this._imagemUrl = imagemUrl; return this; }
+  withAtivo(ativo: boolean) { this._ativo = ativo; return this; }
 
   static restore(props?: {
     id?: string;
@@ -34,6 +43,9 @@ export class EstabService {
     priceVariable?: boolean | null;
     durationMinutes: number;
     description: string;
+    categoria?: string | null;
+    imagemUrl?: string | null;
+    ativo?: boolean | null;
   }): EstabService | null {
     if (!props) return null;
     const s = new EstabService(props.id);
@@ -43,6 +55,9 @@ export class EstabService {
     s._priceVariable = props.priceVariable ?? false;
     s._durationMinutes = props.durationMinutes;
     s._description = props.description;
+    s._categoria = props.categoria ?? "outros";
+    s._imagemUrl = props.imagemUrl ?? undefined;
+    s._ativo = props.ativo ?? true;
     return s;
   }
 }

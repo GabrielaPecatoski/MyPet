@@ -1,10 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 import path from 'path';
-
 const ROOT = path.resolve(__dirname, '../../..');
 const WEB_DIR = path.join(ROOT, 'mypet_app/build/web');
 const WEB_PORT = 8080;
-
 export default defineConfig({
   testDir: __dirname,
   timeout: 180_000,
@@ -32,7 +30,7 @@ export default defineConfig({
   ],
   webServer: {
     command: `python -m http.server ${WEB_PORT} --directory "${WEB_DIR}"`,
-    url: `http://localhost:${WEB_PORT}/index.html`,
+    url: `http://localhost:${WEB_PORT}`,
     reuseExistingServer: true,
     timeout: 30_000,
   },

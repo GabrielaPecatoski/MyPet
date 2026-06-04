@@ -19,6 +19,8 @@ export class Booking {
   private _servicesJson?: string;
   private _establishmentId!: string;
   private _establishmentName!: string;
+  private _driverId?: string;
+  private _driverName?: string;
   private _scheduledAt!: Date;
   private _price!: number;
   private _priceVariable!: boolean;
@@ -47,6 +49,8 @@ export class Booking {
   }
   get establishmentId(): string { return this._establishmentId; }
   get establishmentName(): string { return this._establishmentName; }
+  get driverId(): string | undefined { return this._driverId; }
+  get driverName(): string | undefined { return this._driverName; }
   get scheduledAt(): Date { return this._scheduledAt; }
   get price(): number { return this._price; }
   get priceVariable(): boolean { return this._priceVariable; }
@@ -73,6 +77,8 @@ export class Booking {
     servicesJson?: string | null;
     establishmentId: string;
     establishmentName: string;
+    driverId?: string | null;
+    driverName?: string | null;
     scheduledAt: Date;
     price: number;
     priceVariable?: boolean | null;
@@ -92,6 +98,8 @@ export class Booking {
     b._servicesJson = props.servicesJson ?? undefined;
     b._establishmentId = props.establishmentId;
     b._establishmentName = props.establishmentName;
+    b._driverId = props.driverId ?? undefined;
+    b._driverName = props.driverName ?? undefined;
     b._scheduledAt = props.scheduledAt;
     b._price = props.price;
     b._priceVariable = props.priceVariable ?? false;

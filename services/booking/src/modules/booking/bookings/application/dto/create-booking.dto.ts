@@ -19,6 +19,8 @@ export class CreateBookingDto {
   @ApiPropertyOptional() @IsOptional() @IsNumber() @Min(0) price?: number;
   @ApiPropertyOptional() @IsOptional() @IsBoolean() priceVariable?: boolean;
   @ApiPropertyOptional() @IsOptional() @IsString() userName?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() driverId?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() driverName?: string;
   @ApiPropertyOptional({ type: [ServiceItemDto] })
   @IsOptional()
   @IsArray()

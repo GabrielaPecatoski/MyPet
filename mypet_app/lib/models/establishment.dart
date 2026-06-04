@@ -5,6 +5,9 @@ class ServiceModel {
   final bool priceVariable;
   final int durationMinutes;
   final String? description;
+  final String categoria;
+  final String? imagemUrl;
+  final bool ativo;
 
   ServiceModel({
     required this.id,
@@ -13,9 +16,40 @@ class ServiceModel {
     this.priceVariable = false,
     required this.durationMinutes,
     this.description,
+    this.categoria = 'outros',
+    this.imagemUrl,
+    this.ativo = true,
   });
 
   String get priceLabel => priceVariable ? 'Sob consulta' : 'R\$ ${price.toStringAsFixed(2)}';
+
+  bool get isVeterinary => const {
+        'consulta_veterinaria',
+        'vacinacao',
+        'exames',
+        'cirurgias',
+        'internacao',
+        'emergencia',
+        'medicamentos',
+        'atendimento_domiciliar',
+      }.contains(categoria);
+
+  String get categoriaLabel {
+    const labels = {
+      'banho': 'Banho',
+      'tosa': 'Tosa',
+      'consulta_veterinaria': 'Consulta Veterinária',
+      'vacinacao': 'Vacinação',
+      'exames': 'Exames',
+      'cirurgias': 'Cirurgias',
+      'internacao': 'Internação',
+      'emergencia': 'Emergência',
+      'medicamentos': 'Medicamentos',
+      'atendimento_domiciliar': 'Atendimento Domiciliar',
+      'outros': 'Outros',
+    };
+    return labels[categoria] ?? categoria;
+  }
 
   factory ServiceModel.fromJson(Map<String, dynamic> json) => ServiceModel(
         id: json['id'] as String,
@@ -24,6 +58,9 @@ class ServiceModel {
         priceVariable: json['priceVariable'] as bool? ?? false,
         durationMinutes: (json['durationMinutes'] as num).toInt(),
         description: json['description'] as String?,
+        categoria: json['categoria'] as String? ?? 'outros',
+        imagemUrl: json['imagemUrl'] as String?,
+        ativo: json['ativo'] as bool? ?? true,
       );
 }
 
@@ -42,6 +79,11 @@ class EstablishmentModel {
   final int serviceCount;
   final String? imageUrl;
   final List<ServiceModel> services;
+  final String? crmv;
+  final bool atendeEmergencia;
+  final bool atendimento24h;
+  final bool receberAlertaSonoro;
+  final bool receberPushEmergencia;
 
   EstablishmentModel({
     required this.id,
@@ -58,7 +100,28 @@ class EstablishmentModel {
     this.serviceCount = 0,
     this.imageUrl,
     this.services = const [],
+    this.crmv,
+    this.atendeEmergencia = false,
+    this.atendimento24h = false,
+    this.receberAlertaSonoro = false,
+    this.receberPushEmergencia = false,
   });
+
+  bool get isVeterinario => type == 'VETERINARIA' || type == 'HIBRIDO';
+  bool get isPetShop => type == 'PET_SHOP' || type == 'HIBRIDO';
+
+  String get typeLabel {
+    switch (type) {
+      case 'PET_SHOP':
+        return 'Pet Shop';
+      case 'VETERINARIA':
+        return 'Clínica Veterinária';
+      case 'HIBRIDO':
+        return 'Pet Shop + Clínica';
+      default:
+        return 'Pet Shop';
+    }
+  }
 
   factory EstablishmentModel.fromJson(Map<String, dynamic> json) {
     final servicesList = (json['services'] as List? ?? [])
@@ -84,6 +147,11 @@ class EstablishmentModel {
       serviceCount: (json['serviceCount'] as num?)?.toInt() ?? servicesList.length,
       imageUrl: json['imageUrl'] as String?,
       services: servicesList,
+      crmv: json['crmv'] as String?,
+      atendeEmergencia: json['atendeEmergencia'] as bool? ?? false,
+      atendimento24h: json['atendimento24h'] as bool? ?? false,
+      receberAlertaSonoro: json['receberAlertaSonoro'] as bool? ?? false,
+      receberPushEmergencia: json['receberPushEmergencia'] as bool? ?? false,
     );
   }
 
@@ -97,6 +165,11 @@ class EstablishmentModel {
     String? imageUrl,
     bool clearImage = false,
     List<ServiceModel>? services,
+    String? crmv,
+    bool? atendeEmergencia,
+    bool? atendimento24h,
+    bool? receberAlertaSonoro,
+    bool? receberPushEmergencia,
   }) {
     final newRawAddress = rawAddress ?? this.rawAddress;
     final newCity = city ?? this.city;
@@ -117,9 +190,11 @@ class EstablishmentModel {
       reviewCount: reviewCount,
       imageUrl: clearImage ? null : (imageUrl ?? this.imageUrl),
       services: services ?? this.services,
+      crmv: crmv ?? this.crmv,
+      atendeEmergencia: atendeEmergencia ?? this.atendeEmergencia,
+      atendimento24h: atendimento24h ?? this.atendimento24h,
+      receberAlertaSonoro: receberAlertaSonoro ?? this.receberAlertaSonoro,
+      receberPushEmergencia: receberPushEmergencia ?? this.receberPushEmergencia,
     );
   }
-
-  String get typeLabel =>
-      type == 'PET_SHOP' ? 'Pet Shop' : 'Clínica Veterinária';
 }

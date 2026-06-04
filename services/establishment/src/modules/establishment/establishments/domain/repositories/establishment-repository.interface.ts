@@ -28,4 +28,5 @@ export interface EstablishmentRepository {
   findAll(search?: string): Promise<(Establishment & { serviceCount: number })[]>;
   findAllPaginated(params: PaginationParams, search?: string): Promise<{ rows: Establishment[]; total: number }>;
   findAllAdmin(): Promise<EstablishmentAdminItem[]>;
+  findByEmergency(): Promise<(Establishment & { serviceCount: number })[]>;
 }

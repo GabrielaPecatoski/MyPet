@@ -27,7 +27,6 @@ class _EstablishmentDetailScreenState
   ScheduleModel? _schedule;
   bool _servicesLoaded = false;
 
-
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -137,7 +136,7 @@ class _EstablishmentDetailScreenState
                   color: AppColors.primary,
                   child: Center(
                     child: Icon(
-                      e.type == 'PET_SHOP' ? Icons.pets : Icons.local_hospital,
+                      e.isPetShop && !e.isVeterinario ? Icons.pets : Icons.local_hospital,
                       size: 72,
                       color: Colors.white.withValues(alpha: 0.6),
                     ),
@@ -197,10 +196,23 @@ class _EstablishmentDetailScreenState
                       const SizedBox(height: 8),
                       _infoRow(Icons.access_time_outlined,
                           _schedule != null ? _formatScheduleHours(_schedule!) : '...'),
+
+                      if (e.isVeterinario) ...[
+                        const SizedBox(height: 14),
+                        _vetInfoSection(e),
+                      ],
                     ],
                   ),
                 ),
               ),
+
+              if (e.isVeterinario && e.atendeEmergencia)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    child: _EmergencyBanner(establishment: e),
+                  ),
+                ),
 
               SliverToBoxAdapter(
                 child: Padding(
@@ -256,11 +268,32 @@ class _EstablishmentDetailScreenState
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(service.name,
-                                      style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 14,
-                                          color: AppColors.dark)),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(service.name,
+                                            style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 14,
+                                                color: AppColors.dark)),
+                                      ),
+                                      if (service.isVeterinary)
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFE8F5E9),
+                                            borderRadius:
+                                                BorderRadius.circular(4),
+                                          ),
+                                          child: const Text('VET',
+                                              style: TextStyle(
+                                                  fontSize: 10,
+                                                  color: Color(0xFF2E7D32),
+                                                  fontWeight: FontWeight.bold)),
+                                        ),
+                                    ],
+                                  ),
                                   if (service.description != null &&
                                       service.description!.isNotEmpty) ...[
                                     const SizedBox(height: 3),
@@ -280,13 +313,27 @@ class _EstablishmentDetailScreenState
                                           style: const TextStyle(
                                               fontSize: 12,
                                               color: AppColors.grey)),
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 6, vertical: 1),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.primaryLight,
+                                          borderRadius:
+                                              BorderRadius.circular(4),
+                                        ),
+                                        child: Text(service.categoriaLabel,
+                                            style: const TextStyle(
+                                                fontSize: 10,
+                                                color: AppColors.primary)),
+                                      ),
                                     ],
                                   ),
                                 ],
                               ),
                             ),
                             Text(
-                              'R\$ ${service.price.toStringAsFixed(2)}',
+                              service.priceLabel,
                               style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 16,
@@ -420,6 +467,54 @@ class _EstablishmentDetailScreenState
     );
   }
 
+  Widget _vetInfoSection(EstablishmentModel e) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE8F5E9),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFA5D6A7)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.local_hospital, color: Color(0xFF2E7D32), size: 18),
+              SizedBox(width: 6),
+              Text('Atendimento Veterinário',
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: Color(0xFF2E7D32))),
+            ],
+          ),
+          const SizedBox(height: 10),
+          if (e.crmv != null && e.crmv!.isNotEmpty)
+            _vetInfoRow(Icons.badge_outlined, 'CRMV: ${e.crmv}'),
+          if (e.atendimento24h)
+            _vetInfoRow(Icons.access_time_filled, 'Atendimento 24 horas'),
+          if (e.atendeEmergencia)
+            _vetInfoRow(Icons.warning_amber_rounded, 'Atende emergências',
+                color: AppColors.danger),
+        ],
+      ),
+    );
+  }
+
+  Widget _vetInfoRow(IconData icon, String text, {Color? color}) => Padding(
+        padding: const EdgeInsets.only(bottom: 4),
+        child: Row(
+          children: [
+            Icon(icon, size: 14, color: color ?? const Color(0xFF388E3C)),
+            const SizedBox(width: 6),
+            Text(text,
+                style: TextStyle(
+                    fontSize: 13, color: color ?? const Color(0xFF388E3C))),
+          ],
+        ),
+      );
+
   Widget _infoRow(IconData icon, String text) => Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -431,6 +526,104 @@ class _EstablishmentDetailScreenState
           ),
         ],
       );
+}
+
+class _EmergencyBanner extends StatelessWidget {
+  final EstablishmentModel establishment;
+  const _EmergencyBanner({required this.establishment});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => _showEmergencyDialog(context),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.danger,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Row(
+          children: [
+            Icon(Icons.emergency, color: Colors.white, size: 22),
+            SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Emergência Veterinária',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14)),
+                  Text('Este estabelecimento atende emergências. Toque para ligar.',
+                      style: TextStyle(color: Colors.white70, fontSize: 12)),
+                ],
+              ),
+            ),
+            Icon(Icons.arrow_forward_ios, color: Colors.white70, size: 14),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showEmergencyDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                  color: AppColors.danger.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8)),
+              child: const Icon(Icons.emergency,
+                  color: AppColors.danger, size: 20),
+            ),
+            const SizedBox(width: 10),
+            const Text('Emergência Veterinária',
+                style:
+                    TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(establishment.name,
+                style: const TextStyle(
+                    fontWeight: FontWeight.w600, color: AppColors.dark)),
+            const SizedBox(height: 4),
+            Text(establishment.address,
+                style:
+                    const TextStyle(color: AppColors.grey, fontSize: 13)),
+            const SizedBox(height: 12),
+            if (establishment.phone.isNotEmpty)
+              Text('Telefone: ${establishment.phone}',
+                  style: const TextStyle(
+                      color: AppColors.dark, fontWeight: FontWeight.w500)),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Fechar',
+                style: TextStyle(color: AppColors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.danger, elevation: 0),
+            child: const Text('Entendido',
+                style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _StarRow extends StatelessWidget {

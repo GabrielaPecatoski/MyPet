@@ -18,6 +18,8 @@ class AppointmentModel {
   final String paymentStatus;
   final String? paymentMethod;
   final DateTime? expiresAt;
+  final String? driverId;
+  final String? driverName;
 
   AppointmentModel({
     required this.id,
@@ -39,6 +41,8 @@ class AppointmentModel {
     this.paymentStatus = 'NONE',
     this.paymentMethod,
     this.expiresAt,
+    this.driverId,
+    this.driverName,
   });
 
   factory AppointmentModel.fromJson(Map<String, dynamic> json) {
@@ -67,6 +71,8 @@ class AppointmentModel {
       expiresAt: json['expiresAt'] != null
           ? DateTime.tryParse(json['expiresAt'] as String)
           : null,
+      driverId: json['driverId'] as String?,
+      driverName: json['driverName'] as String?,
     );
   }
 

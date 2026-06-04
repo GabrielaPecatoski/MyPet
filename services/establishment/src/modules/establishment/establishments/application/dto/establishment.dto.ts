@@ -14,6 +14,11 @@ export class EstablishmentDto {
   @ApiProperty() reviewCount: number;
   @ApiProperty() serviceCount: number;
   @ApiPropertyOptional() imageUrl?: string;
+  @ApiPropertyOptional() crmv?: string;
+  @ApiProperty() atendeEmergencia: boolean;
+  @ApiProperty() atendimento24h: boolean;
+  @ApiProperty() receberAlertaSonoro: boolean;
+  @ApiProperty() receberPushEmergencia: boolean;
 
   private constructor(
     id: string | undefined,
@@ -28,6 +33,11 @@ export class EstablishmentDto {
     reviewCount: number,
     serviceCount: number,
     imageUrl: string | undefined,
+    crmv: string | undefined,
+    atendeEmergencia: boolean,
+    atendimento24h: boolean,
+    receberAlertaSonoro: boolean,
+    receberPushEmergencia: boolean,
   ) {
     this.id = id;
     this.ownerId = ownerId;
@@ -41,10 +51,33 @@ export class EstablishmentDto {
     this.reviewCount = reviewCount;
     this.serviceCount = serviceCount;
     this.imageUrl = imageUrl;
+    this.crmv = crmv;
+    this.atendeEmergencia = atendeEmergencia;
+    this.atendimento24h = atendimento24h;
+    this.receberAlertaSonoro = receberAlertaSonoro;
+    this.receberPushEmergencia = receberPushEmergencia;
   }
 
   static fromEstablishment(e: (Establishment & { serviceCount?: number }) | null): EstablishmentDto | null {
     if (!e) return null;
-    return new EstablishmentDto(e.id, e.ownerId, e.name, e.description, e.address, e.city, e.phone, e.type, e.rating, e.reviewCount, e.serviceCount ?? 0, e.imageUrl);
+    return new EstablishmentDto(
+      e.id,
+      e.ownerId,
+      e.name,
+      e.description,
+      e.address,
+      e.city,
+      e.phone,
+      e.type,
+      e.rating,
+      e.reviewCount,
+      e.serviceCount ?? 0,
+      e.imageUrl,
+      e.crmv,
+      e.atendeEmergencia,
+      e.atendimento24h,
+      e.receberAlertaSonoro,
+      e.receberPushEmergencia,
+    );
   }
 }

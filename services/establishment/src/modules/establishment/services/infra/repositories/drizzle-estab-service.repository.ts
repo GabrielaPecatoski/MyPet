@@ -17,6 +17,9 @@ export class DrizzleEstabServiceRepository implements EstabServiceRepository {
       priceVariable: service.priceVariable,
       durationMinutes: service.durationMinutes,
       description: service.description,
+      categoria: service.categoria,
+      imagemUrl: service.imagemUrl,
+      ativo: service.ativo,
     });
   }
 

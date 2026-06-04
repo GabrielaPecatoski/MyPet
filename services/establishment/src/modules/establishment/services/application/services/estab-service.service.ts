@@ -23,6 +23,9 @@ export class EstabServiceService {
       priceVariable,
       durationMinutes: dto.durationMinutes,
       description: dto.description ?? "",
+      categoria: dto.categoria ?? "outros",
+      imagemUrl: dto.imagemUrl,
+      ativo: dto.ativo ?? true,
     })!;
     await this.repo.create(service);
   }

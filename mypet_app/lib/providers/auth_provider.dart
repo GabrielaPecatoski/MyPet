@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../models/user.dart';
 import '../services/auth_service.dart';
+import '../services/driver_service.dart';
 import '../services/storage_service.dart';
+import '../services/veterinarian_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   UserModel? _user;
@@ -20,6 +22,7 @@ class AuthProvider extends ChangeNotifier {
   bool get isVendedor => role == 'VENDEDOR';
   bool get isCliente => role == 'CLIENTE';
   bool get isMotorista => role == 'MOTORISTA';
+  bool get isVeterinario => role == 'VETERINARIO';
 
   String get homeRoute {
     switch (role) {
@@ -27,8 +30,10 @@ class AuthProvider extends ChangeNotifier {
         return '/admin';
       case 'VENDEDOR':
         return '/estab-home';
-       case 'MOTORISTA':
-      return '/driver-home';
+      case 'MOTORISTA':
+        return '/driver-nav';
+      case 'VETERINARIO':
+        return '/vet-home';
       default:
         return '/home';
     }
@@ -165,6 +170,49 @@ class AuthProvider extends ChangeNotifier {
     _user = null;
     await StorageService.clear();
     notifyListeners();
+  }
+
+  Future<String?> registerDriverProfile({
+    required String name,
+    required String phone,
+    required String cpf,
+    required String cnh,
+    required String vehicleType,
+    required String vehicleModel,
+    required String vehiclePlate,
+  }) async {
+    if (_token == null) return 'Token ausente';
+    try {
+      await DriverService.register(
+        token: _token!,
+        name: name, phone: phone, cpf: cpf,
+        cnh: cnh, vehicleType: vehicleType,
+        vehicleModel: vehicleModel, vehiclePlate: vehiclePlate,
+      );
+      return null;
+    } catch (e) {
+      return e.toString().replaceAll('Exception: ', '');
+    }
+  }
+
+  Future<String?> registerVetProfile({
+    required String name,
+    required String phone,
+    required String cpf,
+    required String crmv,
+    String? especialidade,
+  }) async {
+    if (_token == null) return 'Token ausente';
+    try {
+      await VeterinarianService.register(
+        token: _token!,
+        name: name, phone: phone, cpf: cpf,
+        crmv: crmv, especialidade: especialidade,
+      );
+      return null;
+    } catch (e) {
+      return e.toString().replaceAll('Exception: ', '');
+    }
   }
 
   void clearError() {
