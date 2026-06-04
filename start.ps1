@@ -25,7 +25,7 @@ if (-not (Test-Path $envFile)) {
 }
 
 # 2. Verifica / aguarda Docker Desktop
-Write-Host "[2/4] Verificando Docker Desktop..." -ForegroundColor Yellow
+Write-Host "[2/5] Verificando Docker Desktop..." -ForegroundColor Yellow
 docker info 2>&1 | Out-Null
 if ($LASTEXITCODE -ne 0) {
   Write-Host "      Docker Desktop nao esta rodando. Iniciando..." -ForegroundColor Yellow
@@ -44,9 +44,35 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Host "      Docker pronto." -ForegroundColor Green
 
-# 3. Sobe containers (sem rebuild - usa imagens ja construidas)
+# 3. Aplica schema nos bancos com alteracoes pendentes
 Write-Host ""
-Write-Host "[3/4] Subindo containers..." -ForegroundColor Yellow
+Write-Host "[3/5] Aplicando schema (db:push)..." -ForegroundColor Yellow
+docker compose -f $compose up -d postgres | Out-Null
+$pgReady = $false
+for ($i = 0; $i -lt 15; $i++) {
+  Start-Sleep -Seconds 2
+  docker compose -f $compose exec postgres pg_isready -U postgres 2>&1 | Out-Null
+  if ($LASTEXITCODE -eq 0) { $pgReady = $true; break }
+}
+if ($pgReady) {
+  $services = @(
+    @{ prefix = 'services/establishment'; db = 'mypet_estab'   },
+    @{ prefix = 'services/booking';       db = 'mypet_booking' },
+    @{ prefix = 'services/driver';        db = 'mypet_driver'  }
+  )
+  foreach ($svc in $services) {
+    $env:DATABASE_URL = "postgresql://postgres:root@localhost:5433/$($svc.db)"
+    npm run db:push --prefix $svc.prefix 2>&1 | Out-Null
+  }
+  Remove-Item Env:DATABASE_URL -ErrorAction SilentlyContinue
+  Write-Host "      Schema aplicado." -ForegroundColor Green
+} else {
+  Write-Host "      Postgres nao respondeu -- pulando db:push." -ForegroundColor Yellow
+}
+
+# 4. Sobe containers (sem rebuild - usa imagens ja construidas)
+Write-Host ""
+Write-Host "[4/5] Subindo containers..." -ForegroundColor Yellow
 docker compose -f $compose up -d
 if ($LASTEXITCODE -ne 0) {
   Write-Host "      Erro ao subir containers." -ForegroundColor Red
@@ -54,9 +80,9 @@ if ($LASTEXITCODE -ne 0) {
 }
 docker compose -f $compose restart nginx | Out-Null
 
-# 4. Aguarda o gateway responder
+# 5. Aguarda o gateway responder
 Write-Host ""
-Write-Host "[4/4] Aguardando Nginx (http://localhost/health)..." -ForegroundColor Yellow
+Write-Host "[5/5] Aguardando Nginx (http://localhost/health)..." -ForegroundColor Yellow
 $maxWait = 90
 $waited  = 0
 $ready   = $false

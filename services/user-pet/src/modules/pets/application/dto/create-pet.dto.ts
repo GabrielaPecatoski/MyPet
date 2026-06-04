@@ -1,6 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { IsNotEmpty, IsNumber, IsOptional, IsString, Min } from "class-validator";
-// weight is optional — defaults to 0 when not provided
 
 export class CreatePetDto {
   @ApiProperty({ example: "Rex" })
