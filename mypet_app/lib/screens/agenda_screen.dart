@@ -523,7 +523,7 @@ class _BookingCard extends StatelessWidget {
               ),
             ],
 
-            if (ap.isConfirmado) ...[
+            if (ap.isPendente || ap.isConfirmado) ...[
               const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
