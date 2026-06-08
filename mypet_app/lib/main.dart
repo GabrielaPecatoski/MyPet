@@ -5,6 +5,7 @@ import 'providers/auth_provider.dart';
 import 'providers/booking_provider.dart';
 import 'providers/cart_provider.dart';
 import 'providers/establishment_provider.dart';
+import 'providers/notifications_provider.dart';
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
@@ -38,6 +39,7 @@ void main() {
           update: (_, auth, cart) => cart!..update(auth),
         ),
         ChangeNotifierProvider(create: (_) => EstablishmentProvider()),
+        ChangeNotifierProvider(create: (_) => NotificationsProvider()),
       ],
       child: const MyPetApp(),
     ),

@@ -12,6 +12,7 @@ import {
 import {
   ApiBearerAuth,
   ApiNoContentResponse,
+  ApiOkResponse,
   ApiOperation,
   ApiTags,
 } from "@nestjs/swagger";
@@ -57,21 +58,17 @@ export class NotificationsController {
   }
 
   @Patch(":id/read")
-  @HttpCode(HttpStatus.NO_CONTENT)
   @RequirePermissions(Permission.NOTIFICATIONS_WRITE)
   @ApiOperation({ summary: "Marcar notificação como lida" })
-  @ApiNoContentResponse({ description: "Notificação marcada como lida" })
+  @ApiOkResponse({ description: "Notificação marcada como lida" })
   async markAsRead(@Param("id") id: string) {
     return this.notificationService.markAsRead(id);
   }
 
   @Patch("user/:userId/read-all")
-  @HttpCode(HttpStatus.NO_CONTENT)
   @RequirePermissions(Permission.NOTIFICATIONS_WRITE)
   @ApiOperation({ summary: "Marcar todas as notificações como lidas" })
-  @ApiNoContentResponse({
-    description: "Todas as notificações marcadas como lidas",
-  })
+  @ApiOkResponse({ description: "Todas as notificações marcadas como lidas" })
   async markAllAsRead(@Param("userId") userId: string) {
     return this.notificationService.markAllAsRead(userId);
   }

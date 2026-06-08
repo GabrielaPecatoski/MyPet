@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/colors.dart';
 import '../providers/auth_provider.dart';
+import '../providers/notifications_provider.dart';
 import '../services/api_service.dart';
 import '../widgets/app_bottom_nav.dart';
 import '../widgets/mypet_app_bar.dart';
@@ -25,12 +26,14 @@ class _AppNotification {
 
   factory _AppNotification.fromJson(Map<String, dynamic> json) =>
       _AppNotification(
-        id: json['id'] ?? '',
-        title: json['title'] ?? '',
-        body: json['body'] ?? '',
-        type: json['type'] ?? 'INFO',
-        read: json['read'] ?? false,
-        createdAt: DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now(),
+        id: json['id'] as String? ?? '',
+        title: json['title'] as String? ?? '',
+        body: json['body'] as String? ?? '',
+        type: json['type'] as String? ?? 'INFO',
+        read: json['read'] as bool? ?? false,
+        createdAt:
+            DateTime.tryParse(json['createdAt'] as String? ?? '') ??
+                DateTime.now(),
       );
 }
 
@@ -63,16 +66,20 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       final list = data as List;
       setState(() {
         _notifications =
-            list.map((e) => _AppNotification.fromJson(e)).toList();
+            list.map((e) => _AppNotification.fromJson(e as Map<String, dynamic>)).toList();
       });
+      // Mark all as read on the backend then clear the local badge counter.
       await ApiService.patch(
         '/notifications/user/${auth.user!.id}/read-all',
         {},
         token: auth.token,
       );
+      if (mounted) {
+        context.read<NotificationsProvider>().clearUnread();
+      }
     } catch (_) {
     } finally {
-      setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -86,6 +93,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   IconData _icon(String type) {
     switch (type) {
+      // Booking – client
       case 'BOOKING_CONFIRMED':
         return Icons.check_circle_outline;
       case 'BOOKING_REJECTED':
@@ -94,8 +102,20 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return Icons.event_busy_outlined;
       case 'BOOKING_COMPLETED':
         return Icons.star_outline;
-      case 'NEW_BOOKING':
+      case 'BOOKING_REMINDER':
+        return Icons.alarm_outlined;
+      // Booking – establishment (new reservation received)
+      case 'BOOKING_CREATED':
         return Icons.calendar_today_outlined;
+      // Marketplace
+      case 'ORDER_CREATED':
+        return Icons.shopping_bag_outlined;
+      // Reviews (establishment)
+      case 'REVIEW_RECEIVED':
+        return Icons.star_rate_outlined;
+      // Auth
+      case 'AUTH_WELCOME':
+        return Icons.pets;
       default:
         return Icons.notifications_outlined;
     }
@@ -105,12 +125,16 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     switch (type) {
       case 'BOOKING_CONFIRMED':
       case 'BOOKING_COMPLETED':
+      case 'AUTH_WELCOME':
         return AppColors.success;
       case 'BOOKING_REJECTED':
       case 'BOOKING_CANCELLED':
         return AppColors.danger;
-      case 'NEW_BOOKING':
+      case 'BOOKING_REMINDER':
+      case 'REVIEW_RECEIVED':
         return AppColors.warning;
+      case 'BOOKING_CREATED':
+      case 'ORDER_CREATED':
       default:
         return AppColors.primary;
     }
@@ -135,7 +159,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         },
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+          ? const Center(
+              child: CircularProgressIndicator(color: AppColors.primary))
           : RefreshIndicator(
               onRefresh: _load,
               color: AppColors.primary,
@@ -157,15 +182,19 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                     size: 36, color: AppColors.primary),
                               ),
                               const SizedBox(height: 16),
-                              const Text('Nenhuma notificação',
-                                  style: TextStyle(
-                                      color: AppColors.dark,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600)),
+                              const Text(
+                                'Nenhuma notificação',
+                                style: TextStyle(
+                                    color: AppColors.dark,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600),
+                              ),
                               const SizedBox(height: 6),
-                              const Text('Você está em dia!',
-                                  style: TextStyle(
-                                      color: AppColors.grey, fontSize: 13)),
+                              const Text(
+                                'Você está em dia!',
+                                style:
+                                    TextStyle(color: AppColors.grey, fontSize: 13),
+                              ),
                             ],
                           ),
                         ),
@@ -216,11 +245,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                     Row(
                                       children: [
                                         Expanded(
-                                          child: Text(n.title,
-                                              style: const TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 14,
-                                                  color: AppColors.dark)),
+                                          child: Text(
+                                            n.title,
+                                            style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 14,
+                                                color: AppColors.dark),
+                                          ),
                                         ),
                                         if (!n.read)
                                           Container(
@@ -234,16 +265,19 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                       ],
                                     ),
                                     const SizedBox(height: 4),
-                                    Text(n.body,
-                                        style: const TextStyle(
-                                            fontSize: 12,
-                                            color: AppColors.grey,
-                                            height: 1.4)),
+                                    Text(
+                                      n.body,
+                                      style: const TextStyle(
+                                          fontSize: 12,
+                                          color: AppColors.grey,
+                                          height: 1.4),
+                                    ),
                                     const SizedBox(height: 6),
-                                    Text(_timeAgo(n.createdAt),
-                                        style: const TextStyle(
-                                            fontSize: 11,
-                                            color: AppColors.grey)),
+                                    Text(
+                                      _timeAgo(n.createdAt),
+                                      style: const TextStyle(
+                                          fontSize: 11, color: AppColors.grey),
+                                    ),
                                   ],
                                 ),
                               ),

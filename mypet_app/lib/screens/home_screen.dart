@@ -6,6 +6,7 @@ import '../core/constants.dart';
 import '../models/establishment.dart';
 import '../providers/auth_provider.dart';
 import '../providers/booking_provider.dart';
+import '../providers/notifications_provider.dart';
 import '../services/api_service.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -21,7 +22,6 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _loading = true;
   String? _error;
   int _selectedChip = 0;
-  int _unreadCount = 0;
 
   static const _chips = ['Todos', 'Banho', 'Tosa', 'Veterinário', 'Acessórios'];
 
@@ -30,21 +30,7 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadEstablishments();
-      _loadUnreadCount();
     });
-  }
-
-  Future<void> _loadUnreadCount() async {
-    final auth = context.read<AuthProvider>();
-    if (auth.token == null || auth.user == null) return;
-    try {
-      final data = await ApiService.get(
-        '/notifications/user/${auth.user!.id}/unread',
-        token: auth.token,
-      );
-      final count = (data as Map<String, dynamic>)['count'] as int? ?? 0;
-      if (mounted) setState(() => _unreadCount = count);
-    } catch (_) {}
   }
 
   Future<void> _loadEstablishments() async {
@@ -86,6 +72,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthProvider>().user;
+    final unreadCount = context.watch<NotificationsProvider>().unreadCount;
     final bookings = context.watch<BookingProvider>().bookings;
     final today = DateTime.now();
     final confirmedToday = bookings.where((b) =>
@@ -120,7 +107,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           children: [
                             const Icon(Icons.notifications_outlined,
                                 color: Colors.white, size: 26),
-                            if (_unreadCount > 0)
+                            if (unreadCount > 0)
                               Positioned(
                                 right: -4,
                                 top: -4,
@@ -133,7 +120,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   constraints: const BoxConstraints(
                                       minWidth: 16, minHeight: 16),
                                   child: Text(
-                                    _unreadCount > 99 ? '99+' : '$_unreadCount',
+                                    unreadCount > 99 ? '99+' : '$unreadCount',
                                     style: const TextStyle(
                                       color: Colors.white,
                                       fontSize: 9,

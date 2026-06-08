@@ -21,14 +21,14 @@ export class NotificationService {
     private readonly deviceTokenRepo: DeviceTokenRepository,
   ) {}
 
-  async create(dto: CreateNotificationDto): Promise<void> {
+  async create(dto: CreateNotificationDto): Promise<Notification> {
     const notification = Notification.restore({
       userId: dto.userId,
       title: dto.title,
       body: dto.body,
       type: dto.type,
     });
-    await this.notificationRepo.create(notification);
+    return this.notificationRepo.create(notification);
   }
 
   async listByUser(userId: string): Promise<Notification[]> {
@@ -40,16 +40,17 @@ export class NotificationService {
     return { count };
   }
 
-  async markAsRead(id: string): Promise<void> {
+  async markAsRead(id: string): Promise<Notification> {
     const notification = await this.notificationRepo.findById(id);
     if (!notification)
       throw new NotFoundException("Notificação não encontrada");
     notification.markAsRead();
     await this.notificationRepo.update(notification);
+    return notification;
   }
 
-  async markAllAsRead(userId: string): Promise<void> {
-    await this.notificationRepo.markAllAsRead(userId);
+  async markAllAsRead(userId: string): Promise<{ ok: boolean }> {
+    return this.notificationRepo.markAllAsRead(userId);
   }
 
   async saveDeviceToken(

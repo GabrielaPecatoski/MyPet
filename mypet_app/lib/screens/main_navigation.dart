@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/booking_provider.dart';
+import '../providers/notifications_provider.dart';
 import '../widgets/app_bottom_nav.dart';
-import 'home_screen.dart';
 import 'agenda_screen.dart';
-import 'produtos_screen.dart';
+import 'home_screen.dart';
 import 'pets_screen.dart';
+import 'produtos_screen.dart';
 import 'profile_screen.dart';
 
 class MainNavigation extends StatefulWidget {
@@ -25,6 +26,16 @@ class _MainNavigationState extends State<MainNavigation> {
   void initState() {
     super.initState();
     _currentIndex = widget.initialIndex;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadNotifCount());
+  }
+
+  void _loadNotifCount() {
+    final auth = context.read<AuthProvider>();
+    if (!auth.isAuthenticated) return;
+    context.read<NotificationsProvider>().loadUnreadCount(
+          token: auth.token!,
+          userId: auth.user!.id,
+        );
   }
 
   final _screens = const [
@@ -50,6 +61,7 @@ class _MainNavigationState extends State<MainNavigation> {
 
   @override
   Widget build(BuildContext context) {
+    final unread = context.watch<NotificationsProvider>().unreadCount;
     return Scaffold(
       body: IndexedStack(
         index: _currentIndex,
@@ -59,6 +71,7 @@ class _MainNavigationState extends State<MainNavigation> {
         currentIndex: _currentIndex,
         items: clientNavItems,
         onTap: _onTabTap,
+        badges: unread > 0 ? {0: unread} : {},
       ),
     );
   }
