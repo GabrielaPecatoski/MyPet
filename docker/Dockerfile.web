@@ -1,0 +1,17 @@
+FROM node:18 AS build-base
+RUN curl -fsSL https://fvm.app/install.sh | bash
+
+FROM build-base AS flutter-builder
+WORKDIR /app
+RUN export PATH="$PATH:/root/.fvm/default/bin"
+COPY mypet_app/ ./
+RUN fvm use 3.16.5
+RUN fvm install
+RUN fvm flutter pub get
+RUN fvm flutter build web --base-href "/" --release
+
+FROM nginx:alpine
+COPY docker/nginx/nginx.conf /etc/nginx/nginx.conf
+COPY --from=flutter-builder /app/build/web /usr/share/nginx/html/
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]

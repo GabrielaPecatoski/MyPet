@@ -51,12 +51,82 @@ class _EstabNavigationState extends State<EstabNavigation> {
 
   @override
   Widget build(BuildContext context) {
+    final isWide = MediaQuery.of(context).size.width >= 700;
+
+    if (isWide) {
+      return Scaffold(
+        body: Row(
+          children: [
+            _EstabSidebar(
+              selectedIndex: _currentIndex,
+              onTap: (i) => setState(() => _currentIndex = i),
+            ),
+            Expanded(
+              child: IndexedStack(
+                index: _currentIndex,
+                children: _screens,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Scaffold(
       body: IndexedStack(index: _currentIndex, children: _screens),
       bottomNavigationBar: AppBottomNav(
         currentIndex: _currentIndex,
         items: estabNavItems,
         onTap: (i) => setState(() => _currentIndex = i),
+      ),
+    );
+  }
+}
+
+class _EstabSidebar extends StatelessWidget {
+  final int selectedIndex;
+  final Function(int) onTap;
+
+  const _EstabSidebar({
+    required this.selectedIndex,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 220,
+      color: Colors.white,
+      child: Column(
+        children: [
+          Container(
+            height: 70,
+            color: const Color(0xFF7B3FF2),
+            child: Center(
+              child: Image.asset(
+                'assets/images/logo branca.png',
+                height: 32,
+                fit: BoxFit.contain,
+              ),
+            ),
+          ),
+          Expanded(
+            child: NavigationRail(
+              selectedIndex: selectedIndex,
+              onDestinationSelected: (int index) => onTap(index),
+              labelType: NavigationRailLabelType.all,
+              destinations: estabNavItems
+                  .asMap()
+                  .entries
+                  .map((e) => NavigationRailDestination(
+                        icon: Icon(e.value.icon),
+                        selectedIcon: Icon(e.value.activeIcon),
+                        label: Text(e.value.label),
+                      ))
+                  .toList(),
+            ),
+          ),
+        ],
       ),
     );
   }

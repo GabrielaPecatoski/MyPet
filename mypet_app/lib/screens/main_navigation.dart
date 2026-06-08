@@ -53,6 +53,27 @@ class _MainNavigationState extends State<MainNavigation> {
 
   @override
   Widget build(BuildContext context) {
+    final isWide = MediaQuery.of(context).size.width >= 700;
+
+    if (isWide) {
+      return Scaffold(
+        body: Row(
+          children: [
+            _ClientSidebar(
+              selectedIndex: _currentIndex,
+              onTap: _onTabTap,
+            ),
+            Expanded(
+              child: IndexedStack(
+                index: _currentIndex,
+                children: _screens,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Scaffold(
       body: IndexedStack(
         index: _currentIndex,
@@ -61,11 +82,56 @@ class _MainNavigationState extends State<MainNavigation> {
       bottomNavigationBar: AppBottomNav(
         currentIndex: _currentIndex,
         items: clientNavItems,
-<<<<<<< HEAD
-        onTap: (i) => setState(() => _currentIndex = i),
-=======
         onTap: _onTabTap,
->>>>>>> bd8e1bc58e476ec1d93775bbf210b1c3b5438eba
+      ),
+    );
+  }
+}
+
+class _ClientSidebar extends StatelessWidget {
+  final int selectedIndex;
+  final Function(int) onTap;
+
+  const _ClientSidebar({
+    required this.selectedIndex,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 220,
+      color: Colors.white,
+      child: Column(
+        children: [
+          Container(
+            height: 70,
+            color: const Color(0xFF7B3FF2),
+            child: Center(
+              child: Image.asset(
+                'assets/images/logo branca.png',
+                height: 32,
+                fit: BoxFit.contain,
+              ),
+            ),
+          ),
+          Expanded(
+            child: NavigationRail(
+              selectedIndex: selectedIndex,
+              onDestinationSelected: (int index) => onTap(index),
+              labelType: NavigationRailLabelType.all,
+              destinations: clientNavItems
+                  .asMap()
+                  .entries
+                  .map((e) => NavigationRailDestination(
+                        icon: Icon(e.value.icon),
+                        selectedIcon: Icon(e.value.activeIcon),
+                        label: Text(e.value.label),
+                      ))
+                  .toList(),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -301,6 +301,7 @@ class _AdminScreenState extends State<AdminScreen> {
   Widget build(BuildContext context) {
     final pendingComplaints = _complaints.where((c) => c.status == 'PENDENTE').length;
     final pendingQuestions = _userQuestions.where((q) => (q as Map)['status'] == 'PENDENTE').length;
+    final isWide = MediaQuery.of(context).size.width >= 700;
 
     final pages = [
       _PainelPage(
@@ -344,6 +345,26 @@ class _AdminScreenState extends State<AdminScreen> {
         loading: _loading,
       ),
     ];
+
+    if (isWide) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        body: Row(
+          children: [
+            _AdminSidebar(
+              selectedIndex: _selectedIndex,
+              badges: {
+                1: pendingComplaints,
+                4: pendingQuestions,
+              },
+              onTap: (i) => setState(() => _selectedIndex = i),
+              onLogout: _logout,
+            ),
+            Expanded(child: pages[_selectedIndex]),
+          ],
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -393,6 +414,88 @@ class _AdminSairButton extends StatelessWidget {
             Text('Sair', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
           ]),
         ),
+      ),
+    );
+  }
+}
+
+class _AdminSidebar extends StatelessWidget {
+  final int selectedIndex;
+  final Map<int, int> badges;
+  final Function(int) onTap;
+  final VoidCallback onLogout;
+
+  const _AdminSidebar({
+    required this.selectedIndex,
+    required this.badges,
+    required this.onTap,
+    required this.onLogout,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 220,
+      color: Colors.white,
+      child: Column(
+        children: [
+          Container(
+            height: 70,
+            color: AppColors.primary,
+            child: Center(
+              child: Image.asset(
+                'assets/images/logo branca.png',
+                height: 32,
+                fit: BoxFit.contain,
+              ),
+            ),
+          ),
+          Expanded(
+            child: NavigationRail(
+              selectedIndex: selectedIndex,
+              onDestinationSelected: (int index) => onTap(index),
+              labelType: NavigationRailLabelType.all,
+              destinations: adminNavItems
+                  .asMap()
+                  .entries
+                  .map((e) {
+                    final badgeCount = badges[e.key] ?? 0;
+                    final hasNotification = badgeCount > 0;
+                    return NavigationRailDestination(
+                      icon: hasNotification
+                          ? Badge.count(
+                              count: badgeCount,
+                              child: Icon(e.value.icon),
+                            )
+                          : Icon(e.value.icon),
+                      selectedIcon: hasNotification
+                          ? Badge.count(
+                              count: badgeCount,
+                              child: Icon(e.value.activeIcon),
+                            )
+                          : Icon(e.value.activeIcon),
+                      label: Text(e.value.label),
+                    );
+                  })
+                  .toList(),
+            ),
+          ),
+          Container(
+            decoration: BoxDecoration(
+              border: Border(
+                top: BorderSide(
+                  color: Colors.grey.shade200,
+                ),
+              ),
+            ),
+            child: ListTile(
+              leading: const Icon(Icons.logout),
+              title: const Text('Sair'),
+              onTap: onLogout,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+            ),
+          ),
+        ],
       ),
     );
   }

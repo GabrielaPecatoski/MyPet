@@ -1,0 +1,6 @@
+# Flutter web build output
+mypet_app/build/
+mypet_app/.dart_tool/
+
+# Nginx html directory
+docker/nginx/html/
