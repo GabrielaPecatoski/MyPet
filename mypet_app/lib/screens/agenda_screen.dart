@@ -4,6 +4,7 @@ import '../core/colors.dart';
 import '../models/appointment.dart';
 import '../providers/auth_provider.dart';
 import '../providers/booking_provider.dart';
+import '../providers/chat_provider.dart';
 import '../services/review_service.dart';
 import '../widgets/mypet_app_bar.dart';
 
@@ -540,6 +541,48 @@ class _BookingCard extends StatelessWidget {
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10)),
                     padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+              ),
+            ],
+
+            if (ap.isConfirmado) ...[
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () async {
+                    final auth = context.read<AuthProvider>();
+                    final chat = context.read<ChatProvider>();
+                    if (auth.token == null) return;
+                    try {
+                      final conv = await chat.openOrCreateConversation(
+                        bookingId: ap.id,
+                        clientId: auth.user?.id ?? ap.userId,
+                        establishmentId: ap.establishmentId,
+                        token: auth.token!,
+                      );
+                      if (!context.mounted) return;
+                      Navigator.pushNamed(context, '/chat', arguments: conv);
+                    } catch (_) {
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Não foi possível abrir o chat'),
+                          backgroundColor: AppColors.danger,
+                        ),
+                      );
+                    }
+                  },
+                  icon: const Icon(Icons.chat_bubble_outline,
+                      size: 16, color: AppColors.primary),
+                  label: const Text('Mensagem',
+                      style: TextStyle(color: AppColors.primary)),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: AppColors.primary),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
                   ),
                 ),
               ),

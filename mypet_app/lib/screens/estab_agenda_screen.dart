@@ -4,6 +4,7 @@ import '../core/colors.dart';
 import '../models/appointment.dart';
 import '../providers/auth_provider.dart';
 import '../providers/booking_provider.dart';
+import '../providers/chat_provider.dart';
 import '../providers/establishment_provider.dart';
 import '../widgets/mypet_app_bar.dart';
 import 'estab_horarios_screen.dart';
@@ -502,6 +503,52 @@ class _ApptCard extends StatelessWidget {
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: AppColors.primary,
                                   elevation: 0,
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 10),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius:
+                                          BorderRadius.circular(10)),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton.icon(
+                                onPressed: () async {
+                                  final auth = context.read<AuthProvider>();
+                                  final chat = context.read<ChatProvider>();
+                                  if (auth.token == null) return;
+                                  try {
+                                    final conv =
+                                        await chat.openOrCreateConversation(
+                                      bookingId: ap.id,
+                                      clientId: ap.userId,
+                                      establishmentId: ap.establishmentId,
+                                      token: auth.token!,
+                                    );
+                                    if (!context.mounted) return;
+                                    Navigator.pushNamed(context, '/chat',
+                                        arguments: conv);
+                                  } catch (_) {
+                                    if (!context.mounted) return;
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content:
+                                            Text('Não foi possível abrir o chat'),
+                                        backgroundColor: AppColors.danger,
+                                      ),
+                                    );
+                                  }
+                                },
+                                icon: const Icon(Icons.chat_bubble_outline,
+                                    size: 16, color: AppColors.primary),
+                                label: const Text('Responder cliente',
+                                    style:
+                                        TextStyle(color: AppColors.primary)),
+                                style: OutlinedButton.styleFrom(
+                                  side: const BorderSide(
+                                      color: AppColors.primary),
                                   padding: const EdgeInsets.symmetric(
                                       vertical: 10),
                                   shape: RoundedRectangleBorder(

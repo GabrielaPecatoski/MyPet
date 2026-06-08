@@ -50,6 +50,9 @@ export enum Permission {
   NOTIFICATIONS_READ = "notifications:read",
   NOTIFICATIONS_WRITE = "notifications:write",
 
+  CHAT_READ = "chat:read",
+  CHAT_WRITE = "chat:write",
+
   ADMIN_READ = "admin:read",
   ADMIN_WRITE = "admin:write",
 }
@@ -80,6 +83,8 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     Permission.QUESTIONS_WRITE,
     Permission.NOTIFICATIONS_READ,
     Permission.NOTIFICATIONS_WRITE,
+    Permission.CHAT_READ,
+    Permission.CHAT_WRITE,
     Permission.CART_READ,
     Permission.CART_WRITE,
     Permission.ORDERS_READ,
@@ -107,5 +112,7 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     Permission.QUESTIONS_WRITE,
     Permission.NOTIFICATIONS_READ,
     Permission.NOTIFICATIONS_WRITE,
+    Permission.CHAT_READ,
+    Permission.CHAT_WRITE,
   ],
 };

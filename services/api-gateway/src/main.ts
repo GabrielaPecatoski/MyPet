@@ -16,6 +16,7 @@ const ROUTES = [
   { prefix: "/notifications",  target: process.env.NOTIFICATION_SERVICE_URL  ?? "http://localhost:3006" },
   { prefix: "/reviews",        target: process.env.REVIEW_SERVICE_URL        ?? "http://localhost:3007" },
   { prefix: "/faq",            target: process.env.FAQ_SERVICE_URL           ?? "http://localhost:3008" },
+  { prefix: "/conversations",  target: process.env.CHAT_SERVICE_URL          ?? "http://localhost:3009" },
 ];
 
 const GATEWAY_HANDLED = ["/auth/me", "/auth/refresh"];
@@ -41,6 +42,14 @@ async function bootstrap() {
     }
     next();
   });
+
+  // WebSocket proxy for Socket.IO (chat service) — must be before REST routes
+  const chatWsProxy = createProxyMiddleware({
+    target: process.env.CHAT_SERVICE_URL ?? "http://localhost:3009",
+    changeOrigin: true,
+    ws: true,
+  });
+  expressApp.use("/socket.io", chatWsProxy);
 
   for (const route of ROUTES) {
     expressApp.use(route.prefix, (req: Request, res: Response, next: NextFunction) => {

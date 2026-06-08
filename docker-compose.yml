@@ -64,6 +64,7 @@ services:
       NOTIFICATION_SERVICE_URL: http://notification:3006
       REVIEW_SERVICE_URL: http://review:3007
       FAQ_SERVICE_URL: http://faq:3008
+      CHAT_SERVICE_URL: http://chat:3009
       THROTTLE_TTL: 60000
       THROTTLE_LIMIT: 100
     depends_on:
@@ -248,6 +249,28 @@ services:
     environment:
       PORT: 3008
       DATABASE_URL: postgresql://postgres:root@postgres:5432/mypet_faq
+      JWT_SECRET: mypet_super_secret_change_in_production
+      RABBITMQ_URL: amqp://mypet:mypet123@rabbitmq:5672
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  chat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: chat
+        SERVICE_PORT: 3009
+    container_name: mypet-chat
+    ports:
+      - '3009:3009'
+    environment:
+      PORT: 3009
+      DATABASE_URL: postgresql://postgres:root@postgres:5432/mypet_chat
       JWT_SECRET: mypet_super_secret_change_in_production
       RABBITMQ_URL: amqp://mypet:mypet123@rabbitmq:5672
     depends_on:

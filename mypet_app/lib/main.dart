@@ -5,7 +5,10 @@ import 'providers/auth_provider.dart';
 import 'providers/booking_provider.dart';
 import 'providers/cart_provider.dart';
 import 'providers/establishment_provider.dart';
+import 'providers/chat_provider.dart';
 import 'providers/notifications_provider.dart';
+import 'screens/chat_screen.dart';
+import 'screens/conversations_screen.dart';
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
@@ -40,6 +43,10 @@ void main() {
         ),
         ChangeNotifierProvider(create: (_) => EstablishmentProvider()),
         ChangeNotifierProvider(create: (_) => NotificationsProvider()),
+        ChangeNotifierProxyProvider<AuthProvider, ChatProvider>(
+          create: (_) => ChatProvider(),
+          update: (_, auth, chat) => chat!..updateAuth(auth.token),
+        ),
       ],
       child: const MyPetApp(),
     ),
@@ -89,6 +96,8 @@ class MyPetApp extends StatelessWidget {
         '/estab-help':    (_) => const EstabHelpScreen(),
         '/cart':          (_) => const CarrinhoScreen(),
         '/payment':       (_) => const PagamentoScreen(),
+        '/conversations': (_) => const ConversationsScreen(),
+        '/chat':          (_) => const ChatScreen(),
       },
     );
   }

@@ -25,6 +25,9 @@ dependencies:
   # ARMAZENAMENTO LOCAL
   shared_preferences: ^2.2.2
 
+  # WEBSOCKET / SOCKET.IO
+  socket_io_client: ^2.0.3
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
