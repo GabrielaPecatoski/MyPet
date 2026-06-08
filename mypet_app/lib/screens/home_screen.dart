@@ -21,13 +21,30 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _loading = true;
   String? _error;
   int _selectedChip = 0;
+  int _unreadCount = 0;
 
   static const _chips = ['Todos', 'Banho', 'Tosa', 'Veterinário', 'Acessórios'];
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadEstablishments());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadEstablishments();
+      _loadUnreadCount();
+    });
+  }
+
+  Future<void> _loadUnreadCount() async {
+    final auth = context.read<AuthProvider>();
+    if (auth.token == null || auth.user == null) return;
+    try {
+      final data = await ApiService.get(
+        '/notifications/user/${auth.user!.id}/unread',
+        token: auth.token,
+      );
+      final count = (data as Map<String, dynamic>)['count'] as int? ?? 0;
+      if (mounted) setState(() => _unreadCount = count);
+    } catch (_) {}
   }
 
   Future<void> _loadEstablishments() async {
@@ -93,6 +110,42 @@ class _HomeScreenState extends State<HomeScreen> {
                       'assets/images/logo branca.png',
                       height: 36,
                       fit: BoxFit.contain,
+                    ),
+                    Positioned(
+                      left: 16,
+                      child: GestureDetector(
+                        onTap: () => Navigator.pushNamed(context, '/notifications'),
+                        child: Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            const Icon(Icons.notifications_outlined,
+                                color: Colors.white, size: 26),
+                            if (_unreadCount > 0)
+                              Positioned(
+                                right: -4,
+                                top: -4,
+                                child: Container(
+                                  padding: const EdgeInsets.all(2),
+                                  decoration: const BoxDecoration(
+                                    color: AppColors.danger,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  constraints: const BoxConstraints(
+                                      minWidth: 16, minHeight: 16),
+                                  child: Text(
+                                    _unreadCount > 99 ? '99+' : '$_unreadCount',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
                     ),
                     Positioned(
                       right: 16,

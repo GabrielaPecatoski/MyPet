@@ -106,5 +106,6 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     Permission.QUESTIONS_READ,
     Permission.QUESTIONS_WRITE,
     Permission.NOTIFICATIONS_READ,
+    Permission.NOTIFICATIONS_WRITE,
   ],
 };

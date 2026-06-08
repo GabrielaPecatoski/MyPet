@@ -1,4 +1,11 @@
-import { boolean, integer, pgTable, text, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  integer,
+  pgTable,
+  text,
+  uniqueIndex,
+  uuid,
+} from "drizzle-orm/pg-core";
 
 export const schedulesSchema = pgTable(
   "schedules",
@@ -12,7 +19,9 @@ export const schedulesSchema = pgTable(
     isOpen: boolean("is_open").notNull().default(true),
     capacity: integer("capacity").notNull().default(1),
   },
-  (t) => [uniqueIndex("schedules_estab_day_uidx").on(t.establishmentId, t.dayOfWeek)],
+  (t) => [
+    uniqueIndex("schedules_estab_day_uidx").on(t.establishmentId, t.dayOfWeek),
+  ],
 );
 
 export const blockedSlotsSchema = pgTable("blocked_slots", {

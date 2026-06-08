@@ -3,16 +3,23 @@ import { LoginDto } from "@auth/users/application/dto/login.dto";
 import { UserDto } from "@auth/users/application/dto/user.dto";
 import { AuthService } from "@auth/users/application/services/auth.service";
 import { UserService } from "@auth/users/application/services/user.service";
-import { Body, Controller, Get, HttpCode, HttpStatus, Post } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Post,
+} from "@nestjs/common";
 import {
   ApiBearerAuth,
   ApiOperation,
   ApiTags,
   ApiUnauthorizedResponse,
 } from "@nestjs/swagger";
+import type { AuthenticatedUser } from "@shared/infra/auth/interfaces/authenticated-user.interface";
 import { CurrentUser } from "@shared/infra/decorators/current-user.decorator";
 import { Public } from "@shared/infra/decorators/public.decorator";
-import type { AuthenticatedUser } from "@shared/infra/auth/interfaces/authenticated-user.interface";
 
 @ApiTags("auth")
 @Controller("auth")

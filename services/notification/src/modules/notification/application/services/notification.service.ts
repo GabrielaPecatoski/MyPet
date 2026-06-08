@@ -4,6 +4,7 @@ import {
   NOTIFICATION_REPOSITORY,
   type NotificationRepository,
 } from "@notification/domain/repositories/notification-repository.interface";
+import { DeviceTokenRepository } from "@notification/infra/repositories/device-token.repository";
 
 export interface CreateNotificationDto {
   userId: string;
@@ -17,6 +18,7 @@ export class NotificationService {
   constructor(
     @Inject(NOTIFICATION_REPOSITORY)
     private readonly notificationRepo: NotificationRepository,
+    private readonly deviceTokenRepo: DeviceTokenRepository,
   ) {}
 
   async create(dto: CreateNotificationDto): Promise<void> {
@@ -40,12 +42,25 @@ export class NotificationService {
 
   async markAsRead(id: string): Promise<void> {
     const notification = await this.notificationRepo.findById(id);
-    if (!notification) throw new NotFoundException("Notificação não encontrada");
+    if (!notification)
+      throw new NotFoundException("Notificação não encontrada");
     notification.markAsRead();
     await this.notificationRepo.update(notification);
   }
 
   async markAllAsRead(userId: string): Promise<void> {
     await this.notificationRepo.markAllAsRead(userId);
+  }
+
+  async saveDeviceToken(
+    userId: string,
+    token: string,
+    platform: string,
+  ): Promise<void> {
+    await this.deviceTokenRepo.save(userId, token, platform);
+  }
+
+  async removeDeviceToken(userId: string): Promise<void> {
+    await this.deviceTokenRepo.deleteByUserId(userId);
   }
 }

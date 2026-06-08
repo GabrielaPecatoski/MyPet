@@ -6,14 +6,28 @@ export class BlockedSlot {
   private _endTime!: string;
   private _reason?: string;
 
-  private constructor(id?: string) { this._id = id; }
+  private constructor(id?: string) {
+    this._id = id;
+  }
 
-  get id(): string | undefined { return this._id; }
-  get establishmentId(): string { return this._establishmentId; }
-  get date(): string { return this._date; }
-  get startTime(): string { return this._startTime; }
-  get endTime(): string { return this._endTime; }
-  get reason(): string | undefined { return this._reason; }
+  get id(): string | undefined {
+    return this._id;
+  }
+  get establishmentId(): string {
+    return this._establishmentId;
+  }
+  get date(): string {
+    return this._date;
+  }
+  get startTime(): string {
+    return this._startTime;
+  }
+  get endTime(): string {
+    return this._endTime;
+  }
+  get reason(): string | undefined {
+    return this._reason;
+  }
 
   static restore(props?: {
     id?: string;

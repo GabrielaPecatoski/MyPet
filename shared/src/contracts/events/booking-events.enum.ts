@@ -3,6 +3,7 @@ export enum BookingExchangeName {
   STATUS_UPDATED = "booking.status-updated.exchange",
   COMPLETED = "booking.completed.exchange",
   CANCELED = "booking.canceled.exchange",
+  REMINDER = "booking.reminder.exchange",
 }
 
 export enum BookingRoutingKey {
@@ -10,4 +11,5 @@ export enum BookingRoutingKey {
   STATUS_UPDATED = "booking.status-updated",
   COMPLETED = "booking.completed",
   CANCELED = "booking.canceled",
+  REMINDER = "booking.reminder",
 }

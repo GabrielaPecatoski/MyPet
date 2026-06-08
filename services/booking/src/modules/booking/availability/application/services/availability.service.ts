@@ -2,8 +2,8 @@ import { BlockedSlot } from "@booking/availability/domain/models/blocked-slot.en
 import { Schedule } from "@booking/availability/domain/models/schedule.entity";
 import {
   BLOCKED_SLOT_REPOSITORY,
-  SCHEDULE_REPOSITORY,
   type BlockedSlotRepository,
+  SCHEDULE_REPOSITORY,
   type ScheduleRepository,
 } from "@booking/availability/domain/repositories/availability-repository.interface";
 import {
@@ -26,8 +26,10 @@ const DEFAULT_TIMES: Record<number, { open: string; close: string }> = {
 @Injectable()
 export class AvailabilityService {
   constructor(
-    @Inject(SCHEDULE_REPOSITORY) private readonly scheduleRepo: ScheduleRepository,
-    @Inject(BLOCKED_SLOT_REPOSITORY) private readonly blockedRepo: BlockedSlotRepository,
+    @Inject(SCHEDULE_REPOSITORY)
+    private readonly scheduleRepo: ScheduleRepository,
+    @Inject(BLOCKED_SLOT_REPOSITORY)
+    private readonly blockedRepo: BlockedSlotRepository,
     @Inject(BOOKING_REPOSITORY) private readonly bookingRepo: BookingRepository,
   ) {}
 
@@ -35,7 +37,12 @@ export class AvailabilityService {
     establishmentId: string;
     slotDurationMinutes: number;
     capacity?: number;
-    days: { dayOfWeek: number; startTime: string; endTime: string; isOpen: boolean }[];
+    days: {
+      dayOfWeek: number;
+      startTime: string;
+      endTime: string;
+      isOpen: boolean;
+    }[];
   }): Promise<void> {
     for (const day of dto.days) {
       const schedule = Schedule.restore({
@@ -69,7 +76,12 @@ export class AvailabilityService {
       };
     });
 
-    return { establishmentId, slotDurationMinutes: slotDuration, capacity, days };
+    return {
+      establishmentId,
+      slotDurationMinutes: slotDuration,
+      capacity,
+      days,
+    };
   }
 
   async blockSlot(dto: {
@@ -91,11 +103,15 @@ export class AvailabilityService {
     await this.blockedRepo.delete(id);
   }
 
-  async getAvailableSlots(establishmentId: string, date: string): Promise<{ slots: SlotInfo[] }> {
+  async getAvailableSlots(
+    establishmentId: string,
+    date: string,
+  ): Promise<{ slots: SlotInfo[] }> {
     const d = new Date(`${date}T00:00:00`);
     const dayOfWeek = d.getDay();
 
-    const schedules = await this.scheduleRepo.findByEstablishmentId(establishmentId);
+    const schedules =
+      await this.scheduleRepo.findByEstablishmentId(establishmentId);
     const daySchedule = schedules.find((s) => s.dayOfWeek === dayOfWeek);
 
     let openTime: string;
@@ -119,10 +135,12 @@ export class AvailabilityService {
       capacity = 1;
     }
 
-    const blocked = await this.blockedRepo.findByEstablishmentId(establishmentId);
+    const blocked =
+      await this.blockedRepo.findByEstablishmentId(establishmentId);
     const blockedOnDate = blocked.filter((b) => b.date === date);
 
-    const bookings = await this.bookingRepo.findByEstablishmentId(establishmentId);
+    const bookings =
+      await this.bookingRepo.findByEstablishmentId(establishmentId);
     const bookingsOnDate = bookings.filter((b) => {
       const bd = b.scheduledAt;
       return (
@@ -144,9 +162,16 @@ export class AvailabilityService {
       const min = String(m % 60).padStart(2, "0");
       const slotTime = `${h}:${min}`;
 
-      const block = blockedOnDate.find((b) => b.startTime <= slotTime && slotTime < b.endTime);
+      const block = blockedOnDate.find(
+        (b) => b.startTime <= slotTime && slotTime < b.endTime,
+      );
       if (block) {
-        slots.push({ time: slotTime, available: false, blockId: block.id, bookingId: null });
+        slots.push({
+          time: slotTime,
+          available: false,
+          blockId: block.id,
+          bookingId: null,
+        });
         continue;
       }
 
@@ -157,9 +182,19 @@ export class AvailabilityService {
       });
 
       if (slotBookings.length >= capacity) {
-        slots.push({ time: slotTime, available: false, blockId: null, bookingId: slotBookings[0].id ?? null });
+        slots.push({
+          time: slotTime,
+          available: false,
+          blockId: null,
+          bookingId: slotBookings[0].id ?? null,
+        });
       } else {
-        slots.push({ time: slotTime, available: true, blockId: null, bookingId: null });
+        slots.push({
+          time: slotTime,
+          available: true,
+          blockId: null,
+          bookingId: null,
+        });
       }
     }
 

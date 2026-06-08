@@ -1,17 +1,32 @@
-import { CreateBookingDto } from "@booking/bookings/application/dto/create-booking.dto";
 import { BookingDto } from "@booking/bookings/application/dto/booking.dto";
-import { Booking, type BookingStatus } from "@booking/bookings/domain/models/booking.entity";
+import { CreateBookingDto } from "@booking/bookings/application/dto/create-booking.dto";
+import {
+  Booking,
+  type BookingStatus,
+} from "@booking/bookings/domain/models/booking.entity";
 import {
   BOOKING_REPOSITORY,
   type BookingRepository,
 } from "@booking/bookings/domain/repositories/booking-repository.interface";
-import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import {
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+  OnModuleDestroy,
+  OnModuleInit,
+} from "@nestjs/common";
+import {
+  BookingExchangeName,
+  BookingRoutingKey,
+} from "@shared/contracts/events/booking-events.enum";
 import { SharedMessagingService } from "@shared/infra/messaging/shared-messaging.service";
-import { BookingExchangeName, BookingRoutingKey } from "@shared/contracts/events/booking-events.enum";
 
 @Injectable()
-export class BookingService {
+export class BookingService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(BookingService.name);
+  private reminderInterval?: ReturnType<typeof setInterval>;
+  private readonly remindedIds = new Set<string>();
 
   constructor(
     @Inject(BOOKING_REPOSITORY)
@@ -19,16 +34,63 @@ export class BookingService {
     private readonly messaging: SharedMessagingService,
   ) {}
 
-  async create(userId: string, userName: string, dto: CreateBookingDto): Promise<BookingDto> {
-    const services = dto.services && dto.services.length > 0 ? dto.services : undefined;
-    const totalPrice = services ? services.reduce((s, svc) => s + svc.price, 0) : (dto.price ?? 0);
-    const displayName = services && services.length > 1
-      ? services.map((s) => s.name).join(", ")
-      : (dto.serviceName ?? services?.[0]?.name ?? "");
+  onModuleInit() {
+    // Check every hour for bookings within 24h window
+    this.reminderInterval = setInterval(
+      () => void this.sendReminders(),
+      60 * 60 * 1000,
+    );
+  }
+
+  onModuleDestroy() {
+    if (this.reminderInterval) clearInterval(this.reminderInterval);
+  }
+
+  private async sendReminders(): Promise<void> {
+    try {
+      const now = new Date();
+      const from = new Date(now.getTime() + 23 * 60 * 60 * 1000);
+      const to = new Date(now.getTime() + 25 * 60 * 60 * 1000);
+      const upcoming = await this.repo.findUpcoming(from, to);
+
+      for (const booking of upcoming) {
+        if (!booking.id || this.remindedIds.has(booking.id)) continue;
+        this.remindedIds.add(booking.id);
+        await this.safePublish(
+          BookingExchangeName.REMINDER,
+          BookingRoutingKey.REMINDER,
+          {
+            bookingId: booking.id,
+            userId: booking.userId,
+            serviceName: booking.serviceName,
+            establishmentName: booking.establishmentName,
+            scheduledAt: booking.scheduledAt.toISOString(),
+          },
+        );
+      }
+    } catch (err) {
+      this.logger.warn(`Reminder scheduler error: ${err}`);
+    }
+  }
+
+  async create(
+    userId: string,
+    userEmail: string,
+    dto: CreateBookingDto,
+  ): Promise<BookingDto> {
+    const services =
+      dto.services && dto.services.length > 0 ? dto.services : undefined;
+    const totalPrice = services
+      ? services.reduce((s, svc) => s + svc.price, 0)
+      : (dto.price ?? 0);
+    const displayName =
+      services && services.length > 1
+        ? services.map((s) => s.name).join(", ")
+        : (dto.serviceName ?? services?.[0]?.name ?? "");
 
     const booking = Booking.restore({
       userId,
-      userName: dto.userName ?? userName,
+      userName: dto.userName ?? userEmail,
       petId: dto.petId,
       petName: dto.petName,
       serviceName: displayName,
@@ -40,13 +102,18 @@ export class BookingService {
       status: "PENDENTE",
     })!;
     await this.repo.create(booking);
-    await this.safePublish(BookingExchangeName.CREATED, BookingRoutingKey.CREATED, {
-      bookingId: booking.id!,
-      establishmentId: booking.establishmentId,
-      clientName: booking.userName,
-      serviceName: booking.serviceName,
-      scheduledAt: booking.scheduledAt.toISOString(),
-    });
+    await this.safePublish(
+      BookingExchangeName.CREATED,
+      BookingRoutingKey.CREATED,
+      {
+        bookingId: booking.id!,
+        establishmentId: booking.establishmentId,
+        clientName: booking.userName,
+        userEmail,
+        serviceName: booking.serviceName,
+        scheduledAt: booking.scheduledAt.toISOString(),
+      },
+    );
     return BookingDto.fromBooking(booking)!;
   }
 
@@ -71,24 +138,38 @@ export class BookingService {
     await this.repo.update(booking);
 
     if (status === "CONFIRMADO" || status === "RECUSADO") {
-      await this.safePublish(BookingExchangeName.STATUS_UPDATED, BookingRoutingKey.STATUS_UPDATED, {
-        bookingId: booking.id!,
-        userId: booking.userId,
-        status,
-        establishmentName: booking.establishmentName,
-      });
+      await this.safePublish(
+        BookingExchangeName.STATUS_UPDATED,
+        BookingRoutingKey.STATUS_UPDATED,
+        {
+          bookingId: booking.id!,
+          userId: booking.userId,
+          status,
+          establishmentName: booking.establishmentName,
+        },
+      );
     } else if (status === "CONCLUIDO") {
-      await this.safePublish(BookingExchangeName.COMPLETED, BookingRoutingKey.COMPLETED, {
-        bookingId: booking.id!,
-        userId: booking.userId,
-        establishmentName: booking.establishmentName,
-        serviceName: booking.serviceName,
-      });
+      await this.safePublish(
+        BookingExchangeName.COMPLETED,
+        BookingRoutingKey.COMPLETED,
+        {
+          bookingId: booking.id!,
+          userId: booking.userId,
+          establishmentName: booking.establishmentName,
+          serviceName: booking.serviceName,
+        },
+      );
     } else if (status === "CANCELADO") {
-      await this.safePublish(BookingExchangeName.CANCELED, BookingRoutingKey.CANCELED, {
-        bookingId: booking.id!,
-        userId: booking.userId,
-      });
+      await this.safePublish(
+        BookingExchangeName.CANCELED,
+        BookingRoutingKey.CANCELED,
+        {
+          bookingId: booking.id!,
+          userId: booking.userId,
+          serviceName: booking.serviceName,
+          establishmentName: booking.establishmentName,
+        },
+      );
     }
     return BookingDto.fromBooking(booking)!;
   }
@@ -126,16 +207,36 @@ export class BookingService {
       return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
     });
     const monthRevenue = monthCompleted.reduce((s, b) => s + b.price, 0);
-    const avgTicket = completed.length > 0 ? totalRevenue / completed.length : 0;
+    const avgTicket =
+      completed.length > 0 ? totalRevenue / completed.length : 0;
 
-    const ptMonths = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+    const ptMonths = [
+      "Jan",
+      "Fev",
+      "Mar",
+      "Abr",
+      "Mai",
+      "Jun",
+      "Jul",
+      "Ago",
+      "Set",
+      "Out",
+      "Nov",
+      "Dez",
+    ];
     const last6Months = [];
     for (let i = 5; i >= 0; i--) {
       const d = new Date(thisYear, thisMonth - i, 1);
       const m = d.getMonth();
       const y = d.getFullYear();
-      const monthRows = completed.filter((b) => b.scheduledAt.getMonth() === m && b.scheduledAt.getFullYear() === y);
-      last6Months.push({ month: ptMonths[m], value: monthRows.reduce((s, b) => s + b.price, 0) });
+      const monthRows = completed.filter(
+        (b) =>
+          b.scheduledAt.getMonth() === m && b.scheduledAt.getFullYear() === y,
+      );
+      last6Months.push({
+        month: ptMonths[m],
+        value: monthRows.reduce((s, b) => s + b.price, 0),
+      });
     }
 
     const serviceCount: Record<string, number> = {};
@@ -147,10 +248,22 @@ export class BookingService {
       .slice(0, 5)
       .map(([name, count]) => ({ name, count }));
 
-    return { totalRevenue, monthRevenue, avgTicket, totalBookings, monthBookings, last6Months, topServices };
+    return {
+      totalRevenue,
+      monthRevenue,
+      avgTicket,
+      totalBookings,
+      monthBookings,
+      last6Months,
+      topServices,
+    };
   }
 
-  private async safePublish(exchange: string, routingKey: string, payload: unknown): Promise<void> {
+  private async safePublish(
+    exchange: string,
+    routingKey: string,
+    payload: unknown,
+  ): Promise<void> {
     try {
       await this.messaging.assertExchange(exchange, "direct");
       await this.messaging.publish(exchange, routingKey, payload);

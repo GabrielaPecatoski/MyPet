@@ -1,8 +1,8 @@
-import { CreateBookingDto } from "@booking/bookings/application/dto/create-booking.dto";
+import { AvailabilityService } from "@booking/availability/application/services/availability.service";
 import { BookingDto } from "@booking/bookings/application/dto/booking.dto";
+import { CreateBookingDto } from "@booking/bookings/application/dto/create-booking.dto";
 import { BookingService } from "@booking/bookings/application/services/booking.service";
 import type { BookingStatus } from "@booking/bookings/domain/models/booking.entity";
-import { AvailabilityService } from "@booking/availability/application/services/availability.service";
 import {
   Body,
   Controller,
@@ -22,11 +22,11 @@ import {
   ApiTags,
 } from "@nestjs/swagger";
 import { Permission } from "@shared/domain/enums/permission.enum";
-import { RequirePermissions } from "@shared/infra/decorators/permissions.decorator";
-import { CurrentUser } from "@shared/infra/decorators/current-user.decorator";
 import type { AuthenticatedUser } from "@shared/infra/auth/interfaces/authenticated-user.interface";
-import { HateoasItem } from "@shared/infra/hateoas";
+import { CurrentUser } from "@shared/infra/decorators/current-user.decorator";
+import { RequirePermissions } from "@shared/infra/decorators/permissions.decorator";
 import { Public } from "@shared/infra/decorators/public.decorator";
+import { HateoasItem } from "@shared/infra/hateoas";
 
 @ApiTags("bookings")
 @ApiBearerAuth()
@@ -55,7 +55,9 @@ export class BookingsController {
   @Get("establishment/:establishmentId")
   @RequirePermissions(Permission.BOOKINGS_READ)
   @ApiOperation({ summary: "Listar agendamentos do estabelecimento" })
-  async findByEstablishment(@Param("establishmentId") id: string): Promise<BookingDto[]> {
+  async findByEstablishment(
+    @Param("establishmentId") id: string,
+  ): Promise<BookingDto[]> {
     return this.bookingService.findByEstablishment(id);
   }
 
@@ -131,12 +133,19 @@ export class AvailabilityController {
   @Post("schedule")
   @RequirePermissions(Permission.AVAILABILITY_WRITE)
   @ApiOperation({ summary: "Definir horário completo do estabelecimento" })
-  async setSchedule(@Body() body: {
-    establishmentId: string;
-    slotDurationMinutes: number;
-    capacity?: number;
-    days: { dayOfWeek: number; startTime: string; endTime: string; isOpen: boolean }[];
-  }) {
+  async setSchedule(
+    @Body() body: {
+      establishmentId: string;
+      slotDurationMinutes: number;
+      capacity?: number;
+      days: {
+        dayOfWeek: number;
+        startTime: string;
+        endTime: string;
+        isOpen: boolean;
+      }[];
+    },
+  ) {
     return this.availabilityService.setFullSchedule(body);
   }
 
@@ -150,7 +159,15 @@ export class AvailabilityController {
   @Post("block")
   @RequirePermissions(Permission.AVAILABILITY_WRITE)
   @ApiOperation({ summary: "Bloquear horário" })
-  async blockSlot(@Body() body: { establishmentId: string; date: string; startTime: string; endTime: string; reason?: string }) {
+  async blockSlot(
+    @Body() body: {
+      establishmentId: string;
+      date: string;
+      startTime: string;
+      endTime: string;
+      reason?: string;
+    },
+  ) {
     return this.availabilityService.blockSlot(body);
   }
 
