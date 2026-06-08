@@ -2,11 +2,10 @@ import 'dart:io' as dart_io;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/colors.dart';
-import '../core/constants.dart';
 import '../models/establishment.dart';
 import '../providers/auth_provider.dart';
 import '../providers/booking_provider.dart';
-import '../services/api_service.dart';
+import '../providers/home_provider.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -16,10 +15,6 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  List<EstablishmentModel> _establishments = [];
-  List<EstablishmentModel> _filtered = [];
-  bool _loading = true;
-  String? _error;
   int _selectedChip = 0;
 
   static const _chips = ['Todos', 'Banho', 'Tosa', 'Veterinário', 'Acessórios'];
@@ -27,47 +22,18 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadEstablishments());
-  }
-
-  Future<void> _loadEstablishments() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-    try {
-      final data = await ApiService.get(ApiConstants.establishmentsEndpoint);
-      final list = data as List;
-      setState(() {
-        _establishments =
-            list.map((e) => EstablishmentModel.fromJson(e as Map<String, dynamic>)).toList();
-        _filtered = _establishments;
-      });
-    } catch (e) {
-      setState(() => _error = 'Não foi possível carregar os estabelecimentos.');
-    } finally {
-      setState(() => _loading = false);
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) =>
+        context.read<HomeProvider>().load());
   }
 
   void _onChipTap(int idx) {
-    setState(() {
-      _selectedChip = idx;
-      if (idx == 0) {
-        _filtered = _establishments;
-      } else {
-        final term = _chips[idx].toLowerCase();
-        _filtered = _establishments
-            .where((e) =>
-                e.name.toLowerCase().contains(term) ||
-                e.services.any((s) => s.name.toLowerCase().contains(term)))
-            .toList();
-      }
-    });
+    setState(() => _selectedChip = idx);
+    context.read<HomeProvider>().filterByType(_chips[idx]);
   }
 
   @override
   Widget build(BuildContext context) {
+    final home = context.watch<HomeProvider>();
     final user = context.watch<AuthProvider>().user;
     final bookings = context.watch<BookingProvider>().bookings;
     final today = DateTime.now();
@@ -248,13 +214,13 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
 
-                    if (_loading)
+                    if (home.isLoading)
                       const Center(
                           child: Padding(
                               padding: EdgeInsets.all(40),
                               child: CircularProgressIndicator(
                                   color: AppColors.primary)))
-                    else if (_error != null)
+                    else if (home.error != null)
                       Center(
                         child: Padding(
                           padding: const EdgeInsets.all(32),
@@ -263,12 +229,12 @@ class _HomeScreenState extends State<HomeScreen> {
                               const Icon(Icons.wifi_off,
                                   size: 48, color: AppColors.greyLight),
                               const SizedBox(height: 12),
-                              Text(_error!,
+                              Text(home.error!,
                                   style: const TextStyle(color: AppColors.grey),
                                   textAlign: TextAlign.center),
                               const SizedBox(height: 12),
                               ElevatedButton(
-                                onPressed: _loadEstablishments,
+                                onPressed: () => context.read<HomeProvider>().load(),
                                 style: ElevatedButton.styleFrom(
                                     backgroundColor: AppColors.primary),
                                 child: const Text('Tentar novamente',
@@ -278,7 +244,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ),
                       )
-                    else if (_filtered.isEmpty)
+                    else if (home.establishments.isEmpty)
                       const Center(
                         child: Padding(
                           padding: EdgeInsets.all(32),
@@ -302,10 +268,10 @@ class _HomeScreenState extends State<HomeScreen> {
                         height: 168,
                         child: ListView.separated(
                           scrollDirection: Axis.horizontal,
-                          itemCount: _filtered.take(5).length,
+                          itemCount: home.establishments.take(5).length,
                           separatorBuilder: (_, __) => const SizedBox(width: 12),
                           itemBuilder: (ctx, i) =>
-                              _HighlightCard(establishment: _filtered[i]),
+                              _HighlightCard(establishment: home.establishments[i]),
                         ),
                       ),
                       const SizedBox(height: 24),
@@ -324,15 +290,15 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-            if (!_loading && _error == null && _filtered.isNotEmpty)
+            if (!home.isLoading && home.error == null && home.establishments.isNotEmpty)
               SliverList(
                 delegate: SliverChildBuilderDelegate(
                   (ctx, i) => Padding(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                    child: _EstabCard(establishment: _filtered[i]),
+                    child: _EstabCard(establishment: home.establishments[i]),
                   ),
-                  childCount: _filtered.length,
+                  childCount: home.establishments.length,
                 ),
               ),
 

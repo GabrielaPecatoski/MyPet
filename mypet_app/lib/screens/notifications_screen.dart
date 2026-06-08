@@ -2,37 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/colors.dart';
 import '../providers/auth_provider.dart';
-import '../services/api_service.dart';
+import '../providers/notifications_provider.dart';
 import '../widgets/app_bottom_nav.dart';
 import '../widgets/mypet_app_bar.dart';
-
-class _AppNotification {
-  final String id;
-  final String title;
-  final String body;
-  final String type;
-  final bool read;
-  final DateTime createdAt;
-
-  _AppNotification({
-    required this.id,
-    required this.title,
-    required this.body,
-    required this.type,
-    required this.read,
-    required this.createdAt,
-  });
-
-  factory _AppNotification.fromJson(Map<String, dynamic> json) =>
-      _AppNotification(
-        id: json['id'] ?? '',
-        title: json['title'] ?? '',
-        body: json['body'] ?? '',
-        type: json['type'] ?? 'INFO',
-        read: json['read'] ?? false,
-        createdAt: DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now(),
-      );
-}
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -42,38 +14,15 @@ class NotificationsScreen extends StatefulWidget {
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
-  List<_AppNotification> _notifications = [];
-  bool _loading = false;
-
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
-  }
-
-  Future<void> _load() async {
-    final auth = context.read<AuthProvider>();
-    if (auth.token == null || auth.user == null) return;
-    setState(() => _loading = true);
-    try {
-      final data = await ApiService.get(
-        '/notifications/user/${auth.user!.id}',
-        token: auth.token,
-      );
-      final list = data as List;
-      setState(() {
-        _notifications =
-            list.map((e) => _AppNotification.fromJson(e)).toList();
-      });
-      await ApiService.patch(
-        '/notifications/user/${auth.user!.id}/read-all',
-        {},
-        token: auth.token,
-      );
-    } catch (_) {
-    } finally {
-      setState(() => _loading = false);
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final auth = context.read<AuthProvider>();
+      if (auth.user != null) {
+        context.read<NotificationsProvider>().load(auth.user!.id, token: auth.token);
+      }
+    });
   }
 
   String _timeAgo(DateTime dt) {
@@ -134,48 +83,42 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           }
         },
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
-          : RefreshIndicator(
-              onRefresh: _load,
-              color: AppColors.primary,
-              child: _notifications.isEmpty
-                  ? ListView(
-                      children: [
-                        const SizedBox(height: 80),
-                        Center(
-                          child: Column(
-                            children: [
-                              Container(
-                                width: 72,
-                                height: 72,
-                                decoration: BoxDecoration(
-                                  color: AppColors.primaryLight,
-                                  borderRadius: BorderRadius.circular(36),
-                                ),
-                                child: const Icon(Icons.notifications_none,
-                                    size: 36, color: AppColors.primary),
-                              ),
-                              const SizedBox(height: 16),
-                              const Text('Nenhuma notificação',
-                                  style: TextStyle(
-                                      color: AppColors.dark,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600)),
-                              const SizedBox(height: 6),
-                              const Text('Você está em dia!',
-                                  style: TextStyle(
-                                      color: AppColors.grey, fontSize: 13)),
-                            ],
-                          ),
+      body: Builder(builder: (context) {
+        final provider = context.watch<NotificationsProvider>();
+        final auth = context.read<AuthProvider>();
+        if (provider.isLoading) {
+          return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+        }
+        return RefreshIndicator(
+          onRefresh: () => provider.load(auth.user?.id ?? '', token: auth.token),
+          color: AppColors.primary,
+          child: provider.notifications.isEmpty
+              ? ListView(children: [
+                  const SizedBox(height: 80),
+                  Center(
+                    child: Column(children: [
+                      Container(
+                        width: 72, height: 72,
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryLight,
+                          borderRadius: BorderRadius.circular(36),
                         ),
-                      ],
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: _notifications.length,
-                      itemBuilder: (ctx, i) {
-                        final n = _notifications[i];
+                        child: const Icon(Icons.notifications_none, size: 36, color: AppColors.primary),
+                      ),
+                      const SizedBox(height: 16),
+                      const Text('Nenhuma notificação',
+                          style: TextStyle(color: AppColors.dark, fontSize: 16, fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 6),
+                      const Text('Você está em dia!',
+                          style: TextStyle(color: AppColors.grey, fontSize: 13)),
+                    ]),
+                  ),
+                ])
+              : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: provider.notifications.length,
+                  itemBuilder: (ctx, i) {
+                    final n = provider.notifications[i];
                         final color = _color(n.type);
                         return Container(
                           margin: const EdgeInsets.only(bottom: 12),
@@ -252,7 +195,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         );
                       },
                     ),
-            ),
+        );
+      }),
     );
   }
 }

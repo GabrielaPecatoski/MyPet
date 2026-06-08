@@ -37,27 +37,83 @@ export class BookingService {
       establishmentName: dto.establishmentName,
       scheduledAt: new Date(dto.scheduledAt),
       price: totalPrice,
-      status: "PENDENTE",
+      status: "AGUARDANDO_PAGAMENTO",
     })!;
-    await this.repo.create(booking);
-    await this.safePublish(BookingExchangeName.CREATED, BookingRoutingKey.CREATED, {
-      bookingId: booking.id!,
-      establishmentId: booking.establishmentId,
-      clientName: booking.userName,
-      serviceName: booking.serviceName,
-      scheduledAt: booking.scheduledAt.toISOString(),
-    });
-    return BookingDto.fromBooking(booking)!;
+    const created = await this.repo.create(booking);
+    return BookingDto.fromBooking(created)!;
   }
 
   async findByUser(userId: string): Promise<BookingDto[]> {
     const rows = await this.repo.findByUserId(userId);
+    const now = new Date();
+    for (const b of rows) {
+      if (b.status === "AGUARDANDO_PAGAMENTO" && b.createdAt) {
+        const expiresAt = new Date(b.createdAt.getTime() + 60 * 60 * 1000);
+        if (expiresAt < now) {
+          b.withStatus("CANCELADO");
+          await this.repo.update(b);
+        }
+      }
+    }
     return rows.map((b) => BookingDto.fromBooking(b)!);
   }
 
   async findByEstablishment(establishmentId: string): Promise<BookingDto[]> {
     const rows = await this.repo.findByEstablishmentId(establishmentId);
-    return rows.map((b) => BookingDto.fromBooking(b)!);
+    return rows
+      .filter((b) => b.status !== "AGUARDANDO_PAGAMENTO")
+      .map((b) => BookingDto.fromBooking(b)!);
+  }
+
+  async pay(id: string, method: string, cardNumber?: string, installments?: number): Promise<{ booking: BookingDto; payment: Record<string, unknown> }> {
+    const booking = await this.repo.findById(id);
+    if (!booking) throw new NotFoundException("Agendamento não encontrado");
+
+    if (booking.paymentStatus === "AUTHORIZED" || booking.paymentStatus === "CAPTURED") {
+      return { booking: BookingDto.fromBooking(booking)!, payment: { status: "APPROVED", method, amount: booking.price, alreadyPaid: true } };
+    }
+
+    const payment = this.simulatePayment(method, booking.price, cardNumber, installments);
+
+    if (payment["status"] === "APPROVED") {
+      booking.withStatus("PENDENTE").withPayment("AUTHORIZED", method);
+      await this.repo.update(booking);
+      // Não aguarda o broker: a resposta do pagamento não pode ficar presa
+      // numa conexão lenta/instável com o RabbitMQ (causava timeout no app).
+      void this.safePublish(BookingExchangeName.CREATED, BookingRoutingKey.CREATED, {
+        bookingId: booking.id!,
+        establishmentId: booking.establishmentId,
+        clientName: booking.userName,
+        serviceName: booking.serviceName,
+        scheduledAt: booking.scheduledAt.toISOString(),
+      });
+    }
+
+    return { booking: BookingDto.fromBooking(booking)!, payment };
+  }
+
+  private simulatePayment(method: string, amount: number, cardNumber?: string, installments?: number): Record<string, unknown> {
+    const base = { method, amount };
+
+    if (method === "PIX") {
+      return { ...base, status: "APPROVED", pixKey: "mypet@pagamentos.com" };
+    }
+    if (method === "BOLETO") {
+      const code = "34191.75501 34191.75501 34191.75501 1 " + String(Math.floor(amount * 100)).padStart(14, "0");
+      return { ...base, status: "APPROVED", boletoCode: code };
+    }
+    if (method === "CREDIT_CARD") {
+      const lastFour = cardNumber ? cardNumber.slice(-4) : "0000";
+      if (Math.random() < 0.05) {
+        return { ...base, status: "REJECTED", rejectionReason: "Cartão recusado pela operadora." };
+      }
+      return { ...base, status: "APPROVED", cardLastFour: lastFour, installments: installments ?? 1 };
+    }
+    if (method === "DEBIT_CARD") {
+      const lastFour = cardNumber ? cardNumber.slice(-4) : "0000";
+      return { ...base, status: "APPROVED", cardLastFour: lastFour };
+    }
+    return { ...base, status: "APPROVED" };
   }
 
   async findById(id: string): Promise<BookingDto | null> {
@@ -68,6 +124,14 @@ export class BookingService {
     const booking = await this.repo.findById(id);
     if (!booking) throw new NotFoundException("Agendamento não encontrado");
     booking.withStatus(status);
+
+    // Escrow: estorna o valor retido ao recusar/cancelar; captura ao concluir.
+    if ((status === "RECUSADO" || status === "CANCELADO") && booking.paymentStatus === "AUTHORIZED") {
+      booking.withPayment("REFUNDED");
+    } else if (status === "CONCLUIDO" && booking.paymentStatus === "AUTHORIZED") {
+      booking.withPayment("CAPTURED");
+    }
+
     await this.repo.update(booking);
 
     if (status === "CONFIRMADO" || status === "RECUSADO") {
@@ -95,6 +159,24 @@ export class BookingService {
 
   async cancel(id: string): Promise<BookingDto> {
     return this.updateStatus(id, "CANCELADO");
+  }
+
+  /**
+   * Cancela em background os agendamentos que ficaram em AGUARDANDO_PAGAMENTO
+   * por mais de 1 hora. Roda periodicamente, independente do usuário abrir a agenda.
+   * Retorna a quantidade de agendamentos cancelados.
+   */
+  async cancelExpired(): Promise<number> {
+    const cutoff = new Date(Date.now() - 60 * 60 * 1000);
+    const expired = await this.repo.findExpiredAwaitingPayment(cutoff);
+    for (const b of expired) {
+      b.withStatus("CANCELADO");
+      await this.repo.update(b);
+    }
+    if (expired.length > 0) {
+      this.logger.log(`${expired.length} agendamento(s) expirado(s) cancelado(s) automaticamente.`);
+    }
+    return expired.length;
   }
 
   async complete(id: string): Promise<BookingDto> {

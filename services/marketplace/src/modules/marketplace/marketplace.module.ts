@@ -11,9 +11,10 @@ import { DrizzleOrderRepository } from "@market/orders/infra/repositories/drizzl
 import { ProductsController } from "@market/products/infra/controllers/products.controller";
 import { CartController } from "@market/cart/infra/controllers/cart.controller";
 import { OrdersController } from "@market/orders/infra/controllers/orders.controller";
+import { PaymentsController } from "@market/payments/infra/controllers/payments.controller";
 
 @Module({
-  controllers: [ProductsController, CartController, OrdersController],
+  controllers: [ProductsController, CartController, OrdersController, PaymentsController],
   providers: [
     ProductService,
     CartService,
