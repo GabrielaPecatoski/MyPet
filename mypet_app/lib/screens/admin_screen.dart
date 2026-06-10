@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/colors.dart';
@@ -7,6 +9,7 @@ import '../models/driver.dart';
 import '../models/veterinarian.dart';
 import '../providers/admin_provider.dart';
 import '../providers/auth_provider.dart';
+import '../services/storage_service.dart';
 import '../widgets/app_bottom_nav.dart';
 import '../widgets/mypet_app_bar.dart';
 
@@ -92,6 +95,7 @@ class _AdminScreenState extends State<AdminScreen> {
   Widget build(BuildContext context) {
     final vm = context.watch<AdminProvider>();
 
+    // Índices: 0=Painel, 1=Reclamações, 2=Cadastros, 3=Verificações, 4=FAQ, 5=Estatísticas(oculto)
     final pages = [
       _PainelPage(
         users: vm.users,
@@ -103,7 +107,7 @@ class _AdminScreenState extends State<AdminScreen> {
         onRetry: vm.loadAll,
         onLogout: _logout,
         onGoToComplaints: () => setState(() => _selectedIndex = 1),
-        onGoToStats: () => setState(() => _selectedIndex = 6),
+        onGoToStats: () => setState(() => _selectedIndex = 5),
       ),
       _ReclamacoesPage(
         complaints: vm.complaints,
@@ -112,8 +116,7 @@ class _AdminScreenState extends State<AdminScreen> {
         onResolve: vm.resolveComplaint,
         onReject: vm.rejectComplaint,
       ),
-      _UsuariosPage(users: vm.users, loading: vm.loading),
-      _LojasPage(estabs: vm.estabs, loading: vm.loading),
+      _CadastrosPage(users: vm.users, estabs: vm.estabs, loading: vm.loading),
       _VerificacoesPage(
         pendingVets: vm.pendingVets,
         pendingDrivers: vm.pendingDrivers,
@@ -149,19 +152,20 @@ class _AdminScreenState extends State<AdminScreen> {
       appBar: _selectedIndex == 0
           ? null
           : MypetAppBar(
-              showBack: false,
-              purple: _selectedIndex == 6,
-              actions: [_AdminSairButton(onPressed: _logout, onPurple: _selectedIndex == 6)],
+              showBack: _selectedIndex == 5,
+              onBack: _selectedIndex == 5 ? () => setState(() => _selectedIndex = 0) : null,
+              purple: _selectedIndex == 5,
+              actions: [_AdminSairButton(onPressed: _logout, onPurple: _selectedIndex == 5)],
             ),
       body: pages[_selectedIndex],
       bottomNavigationBar: AppBottomNav(
-        currentIndex: _selectedIndex,
+        currentIndex: _selectedIndex < 5 ? _selectedIndex : -1,
         items: adminNavItems,
         onTap: (i) => setState(() => _selectedIndex = i),
         badges: {
           1: vm.pendingComplaints,
-          4: vm.pendingVerifications,
-          5: vm.pendingQuestions,
+          3: vm.pendingVerifications,
+          4: vm.pendingQuestions,
         },
       ),
     );
@@ -358,45 +362,13 @@ class _PainelPage extends StatelessWidget {
               _StatCard('Novos usuários', '+${users.where((u) { final d = u.createdAt; final now = DateTime.now(); return d != null && d.year == now.year && d.month == now.month; }).length}', Icons.trending_up_outlined, AppColors.success),
             ]),
 
-            const SizedBox(height: 24),
-            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              const Text('Movimentação de hoje', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.dark)),
-              Text(
-                _dayMonth(DateTime.now()),
-                style: const TextStyle(fontSize: 12, color: AppColors.grey),
-              ),
-            ]),
-            const SizedBox(height: 12),
-            _MovCard(
-              icon: Icons.calendar_today_outlined,
-              iconColor: AppColors.primary,
-              title: '— agendamentos confirmados',
-              sub: 'dados em tempo real',
-            ),
             const SizedBox(height: 8),
-            _MovCard(
-              icon: Icons.favorite_outline,
-              iconColor: AppColors.danger,
-              title: '— serviços em atendimento',
-              sub: 'banho, tosa, consultas vet',
-            ),
-            const SizedBox(height: 8),
-            _MovCard(
-              icon: Icons.trending_up_outlined,
-              iconColor: AppColors.success,
-              title: '— transações hoje',
-              sub: 'valor total estimado',
-            ),
           ]),
         ),
       ],
     );
   }
 
-  String _dayMonth(DateTime d) {
-    const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-    return '${d.day} ${months[d.month - 1]}';
-  }
 }
 
 class _StatCard extends StatelessWidget {
@@ -428,40 +400,6 @@ class _StatCard extends StatelessWidget {
     );
   }
 }
-
-class _MovCard extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final String title;
-  final String sub;
-  const _MovCard({required this.icon, required this.iconColor, required this.title, required this.sub});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 4, offset: const Offset(0, 2))],
-      ),
-      child: Row(children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(color: iconColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
-          child: Icon(icon, size: 18, color: iconColor),
-        ),
-        const SizedBox(width: 12),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.dark)),
-          Text(sub, style: const TextStyle(fontSize: 11, color: AppColors.grey)),
-        ])),
-        const Icon(Icons.chevron_right, size: 18, color: AppColors.greyLight),
-      ]),
-    );
-  }
-}
-
 
 class _ReclamacoesPage extends StatefulWidget {
   final List<ComplaintModel> complaints;
@@ -1237,6 +1175,60 @@ class _EstabCard extends StatelessWidget {
         ])),
       ]),
     );
+  }
+}
+
+
+class _CadastrosPage extends StatefulWidget {
+  final List<AdminUserModel> users;
+  final List<AdminEstabModel> estabs;
+  final bool loading;
+  const _CadastrosPage({required this.users, required this.estabs, required this.loading});
+
+  @override
+  State<_CadastrosPage> createState() => _CadastrosPageState();
+}
+
+class _CadastrosPageState extends State<_CadastrosPage> with SingleTickerProviderStateMixin {
+  late TabController _tab;
+
+  @override
+  void initState() {
+    super.initState();
+    _tab = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tab.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.loading) return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+    return Column(children: [
+      Container(
+        color: Colors.white,
+        child: TabBar(
+          controller: _tab,
+          indicatorColor: AppColors.primary,
+          labelColor: AppColors.primary,
+          unselectedLabelColor: AppColors.grey,
+          labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+          tabs: [
+            Tab(text: 'Usuários (${widget.users.length})'),
+            Tab(text: 'Lojas (${widget.estabs.length})'),
+          ],
+        ),
+      ),
+      Expanded(
+        child: TabBarView(controller: _tab, children: [
+          _UsuariosPage(users: widget.users, loading: false),
+          _LojasPage(estabs: widget.estabs, loading: false),
+        ]),
+      ),
+    ]);
   }
 }
 
@@ -2187,11 +2179,34 @@ class _VerificacoesPageState extends State<_VerificacoesPage>
     with SingleTickerProviderStateMixin {
   late TabController _tab;
   final _processingIds = <String>{};
+  final _cnhPhotos = <String, String>{};
+  final _crmvPhotos = <String, String>{};
 
   @override
   void initState() {
     super.initState();
     _tab = TabController(length: 2, vsync: this);
+    _loadPhotos();
+  }
+
+  @override
+  void didUpdateWidget(_VerificacoesPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.pendingDrivers != widget.pendingDrivers ||
+        oldWidget.pendingVets != widget.pendingVets) {
+      _loadPhotos();
+    }
+  }
+
+  Future<void> _loadPhotos() async {
+    for (final d in widget.pendingDrivers) {
+      final path = await StorageService.getCnhPhoto(d.cpf);
+      if (path != null && mounted) setState(() => _cnhPhotos[d.cpf] = path);
+    }
+    for (final v in widget.pendingVets) {
+      final path = await StorageService.getCrmvPhoto(v.cpf);
+      if (path != null && mounted) setState(() => _crmvPhotos[v.cpf] = path);
+    }
   }
 
   @override
@@ -2223,8 +2238,6 @@ class _VerificacoesPageState extends State<_VerificacoesPage>
       return const Center(child: CircularProgressIndicator(color: AppColors.primary));
     }
 
-    final total = widget.pendingVets.length + widget.pendingDrivers.length;
-
     return Column(
       children: [
         Container(
@@ -2240,33 +2253,15 @@ class _VerificacoesPageState extends State<_VerificacoesPage>
             ],
           ),
         ),
-        if (total == 0)
-          const Expanded(
-            child: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.verified_user, size: 52, color: AppColors.greyLight),
-                  SizedBox(height: 12),
-                  Text('Nenhuma verificação pendente',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppColors.dark)),
-                  SizedBox(height: 4),
-                  Text('Todos os profissionais estão aprovados.',
-                      style: TextStyle(color: AppColors.grey, fontSize: 13)),
-                ],
-              ),
-            ),
-          )
-        else
-          Expanded(
-            child: TabBarView(
-              controller: _tab,
-              children: [
-                _listVets(),
-                _listDrivers(),
-              ],
-            ),
+        Expanded(
+          child: TabBarView(
+            controller: _tab,
+            children: [
+              _listVets(),
+              _listDrivers(),
+            ],
           ),
+        ),
       ],
     );
   }
@@ -2288,6 +2283,8 @@ class _VerificacoesPageState extends State<_VerificacoesPage>
           icon: Icons.medical_services_rounded,
           color: const Color(0xFF16A34A),
           processing: _processingIds.contains(v.id),
+          docPhotoPath: _crmvPhotos[v.cpf],
+          docPhotoLabel: 'Diploma / CRMV',
           onApprove: () => _act(v.id, widget.onApproveVet),
           onReject: () => _act(v.id, widget.onRejectVet),
         );
@@ -2312,6 +2309,8 @@ class _VerificacoesPageState extends State<_VerificacoesPage>
           icon: Icons.airport_shuttle_rounded,
           color: const Color(0xFFF97316),
           processing: _processingIds.contains(d.id),
+          docPhotoPath: _cnhPhotos[d.cpf],
+          docPhotoLabel: 'Foto da CNH',
           onApprove: () => _act(d.id, widget.onApproveDriver),
           onReject: () => _act(d.id, widget.onRejectDriver),
         );
@@ -2340,6 +2339,8 @@ class _PendingCard extends StatelessWidget {
   final IconData icon;
   final Color color;
   final bool processing;
+  final String? docPhotoPath;
+  final String? docPhotoLabel;
   final VoidCallback onApprove;
   final VoidCallback onReject;
 
@@ -2351,6 +2352,8 @@ class _PendingCard extends StatelessWidget {
     required this.icon,
     required this.color,
     required this.processing,
+    this.docPhotoPath,
+    this.docPhotoLabel,
     required this.onApprove,
     required this.onReject,
   });
@@ -2363,7 +2366,7 @@ class _PendingCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withValues(alpha: 0.25)),
+        border: Border.all(color: color.withValues(alpha: 0.4), width: 1.5),
         boxShadow: const [
           BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 2))
         ],
@@ -2426,6 +2429,27 @@ class _PendingCard extends StatelessWidget {
                       style: const TextStyle(fontSize: 12, color: AppColors.grey)),
                 ),
               ],
+            ),
+          ],
+          if (docPhotoPath != null && !kIsWeb) ...[
+            const SizedBox(height: 10),
+            Row(children: [
+              const Icon(Icons.photo_outlined, size: 13, color: AppColors.grey),
+              const SizedBox(width: 5),
+              Text(
+                '${docPhotoLabel ?? 'Documento'}:',
+                style: const TextStyle(fontSize: 12, color: AppColors.grey, fontWeight: FontWeight.w600),
+              ),
+            ]),
+            const SizedBox(height: 6),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.file(
+                File(docPhotoPath!),
+                height: 120,
+                width: double.infinity,
+                fit: BoxFit.cover,
+              ),
             ),
           ],
           const SizedBox(height: 12),

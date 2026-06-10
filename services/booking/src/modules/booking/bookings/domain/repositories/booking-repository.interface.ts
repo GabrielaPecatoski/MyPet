@@ -9,5 +9,6 @@ export interface BookingRepository {
   findById(id: string): Promise<Booking | null>;
   findByUserId(userId: string): Promise<Booking[]>;
   findByEstablishmentId(establishmentId: string): Promise<Booking[]>;
+  findByVetId(vetId: string): Promise<Booking[]>;
   findExpiredAwaitingPayment(createdBefore: Date): Promise<Booking[]>;
 }

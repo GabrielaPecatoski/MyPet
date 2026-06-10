@@ -1,6 +1,6 @@
 import { test, expect, APIRequestContext } from '@playwright/test';
 import {
-  bootAndLogin, tapText, tapButton, expectText, waitForText, byText,
+  bootAndLogin, tapText, tapButton, expectText, waitForText, byText, pollTap,
 } from './_helpers';
 import {
   apiContext, registerUser, registerIndependentDriver, SeededUser,
@@ -56,13 +56,13 @@ test('aba Perfil exibe dados do motorista e opção de logout', async ({ page })
   await expectText(page, 'Corridas');
   await expectText(page, 'Avaliação');
   await expectText(page, 'Membro');
-  await expectText(page, 'Sair da conta');
+  await expectText(page, 'Sair');
 });
 test('logout pelo perfil do motorista volta ao login', async ({ page }) => {
   await bootAndLogin(page, motorista.email, motorista.password);
-  await tapText(page, 'Perfil');
-  await waitForText(page, 'Sair da conta');
-  await tapText(page, 'Sair da conta');
+  // bottom nav é GestureDetector (texto 10px) → pollTap é robusto contra taps perdidos
+  await pollTap(page, 'Perfil', 'Sair');
+  await tapText(page, 'Sair');
   await waitForText(page, 'Entrar');
   await expectText(page, /E-mail|login/i);
 });

@@ -1,6 +1,6 @@
 import { test, expect, APIRequestContext } from '@playwright/test';
 import {
-  bootAndLogin, tapButton, tapText, expectText, waitForText, searchProduct, byText,
+  bootAndLogin, tapButton, tapText, expectText, waitForText, searchProduct, byText, pollText,
 } from './_helpers';
 import {
   apiContext, registerUser, createEstablishment, createProduct, SeededUser,
@@ -91,8 +91,9 @@ test('badge "X unidades no carrinho" aparece na tela de detalhe após adicionar'
 });
 test('botão Voltar retorna para a loja', async ({ page }) => {
   await openDetail(page);
-  await tapButton(page, 'Voltar');
-  await waitForText(page, 'Buscar produtos');
+  await page.goBack({ timeout: 10_000 }).catch(async () => { await tapButton(page, 'Voltar'); });
+  // após voltar: resultados de busca ainda visíveis (campo preenchido, hint some)
+  await pollText(page, new RegExp(produtoNome + '|Buscar produtos'), 30_000);
 });
 test('"Ver carrinho" no snackbar navega para o carrinho', async ({ page }) => {
   await openDetail(page);

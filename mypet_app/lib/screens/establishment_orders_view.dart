@@ -3,21 +3,30 @@ import 'package:provider/provider.dart';
 import '../core/colors.dart';
 import '../core/order_status.dart';
 import '../providers/auth_provider.dart';
+import '../providers/establishment_orders_provider.dart';
 import '../providers/establishment_provider.dart';
-import '../services/order_service.dart';
+import '../repositories/establishment_orders_repository.dart';
 import '../widgets/order_progress_bar.dart';
 
-class EstabPedidosView extends StatefulWidget {
+class EstabPedidosView extends StatelessWidget {
   const EstabPedidosView({super.key});
   @override
-  State<EstabPedidosView> createState() => _EstabPedidosViewState();
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (_) =>
+          EstablishmentOrdersProvider(EstablishmentOrdersRepository()),
+      child: const _EstabPedidosBody(),
+    );
+  }
 }
 
-class _EstabPedidosViewState extends State<EstabPedidosView> {
-  List<Map<String, dynamic>> _orders = [];
-  bool _loading = true;
-  String? _token;
+class _EstabPedidosBody extends StatefulWidget {
+  const _EstabPedidosBody();
+  @override
+  State<_EstabPedidosBody> createState() => _EstabPedidosBodyState();
+}
 
+class _EstabPedidosBodyState extends State<_EstabPedidosBody> {
   @override
   void initState() {
     super.initState();
@@ -27,47 +36,38 @@ class _EstabPedidosViewState extends State<EstabPedidosView> {
   Future<void> _load() async {
     final auth = context.read<AuthProvider>();
     final estabProvider = context.read<EstablishmentProvider>();
-    _token = auth.token;
 
     for (var i = 0; i < 20 && estabProvider.establishmentId == null && mounted; i++) {
       await Future.delayed(const Duration(milliseconds: 150));
     }
+    if (!mounted) return;
     final estabId = estabProvider.establishmentId;
-    if (estabId == null || _token == null) {
-      if (mounted) setState(() => _loading = false);
-      return;
-    }
-    if (mounted) setState(() => _loading = true);
-    try {
-      final data = await OrderService.fetchEstabOrders(token: _token!, establishmentId: estabId);
-      if (mounted) setState(() => _orders = data);
-    } catch (_) {
-      if (mounted) setState(() => _orders = []);
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
+    if (estabId == null || auth.token == null) return;
+    await context
+        .read<EstablishmentOrdersProvider>()
+        .load(estabId: estabId, token: auth.token!);
   }
 
   Future<void> _advance(Map<String, dynamic> order) async {
-    if (_token == null) return;
-    try {
-      await OrderService.advance(token: _token!, orderId: order['id'] as String);
-      await _load();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro ao atualizar pedido: $e'), backgroundColor: AppColors.danger),
-        );
-      }
+    final ok =
+        await context.read<EstablishmentOrdersProvider>().advance(order);
+    if (!ok && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Erro ao atualizar pedido.'),
+            backgroundColor: AppColors.danger),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) {
+    final provider = context.watch<EstablishmentOrdersProvider>();
+    final orders = provider.orders;
+    if (provider.isLoading) {
       return const Center(child: CircularProgressIndicator(color: AppColors.estab));
     }
-    if (_orders.isEmpty) {
+    if (orders.isEmpty) {
       return RefreshIndicator(
         onRefresh: _load,
         color: AppColors.estab,
@@ -86,8 +86,8 @@ class _EstabPedidosViewState extends State<EstabPedidosView> {
       color: AppColors.estab,
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
-        itemCount: _orders.length,
-        itemBuilder: (_, i) => _EstabOrderCard(order: _orders[i], onAdvance: () => _advance(_orders[i])),
+        itemCount: orders.length,
+        itemBuilder: (_, i) => _EstabOrderCard(order: orders[i], onAdvance: () => _advance(orders[i])),
       ),
     );
   }

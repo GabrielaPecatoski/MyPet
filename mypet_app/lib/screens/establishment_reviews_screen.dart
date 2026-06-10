@@ -1,33 +1,43 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/colors.dart';
+import '../models/complaint.dart';
+import '../models/review.dart';
 import '../providers/auth_provider.dart';
 import '../providers/booking_provider.dart';
-import '../services/api_service.dart';
+import '../providers/establishment_reviews_provider.dart';
+import '../repositories/establishment_reviews_repository.dart';
 import '../widgets/mypet_app_bar.dart';
 
-class EstabAvaliacoesScreen extends StatefulWidget {
+class EstabAvaliacoesScreen extends StatelessWidget {
   const EstabAvaliacoesScreen({super.key});
+
   @override
-  State<EstabAvaliacoesScreen> createState() => _EstabAvaliacoesScreenState();
+  Widget build(BuildContext context) {
+    final auth = context.read<AuthProvider>();
+    return ChangeNotifierProvider(
+      create: (_) =>
+          EstablishmentReviewsProvider(EstablishmentReviewsRepository())
+            ..load(auth.user?.id, token: auth.token),
+      child: const _EstabAvaliacoesView(),
+    );
+  }
 }
 
-class _EstabAvaliacoesScreenState extends State<EstabAvaliacoesScreen>
+class _EstabAvaliacoesView extends StatefulWidget {
+  const _EstabAvaliacoesView();
+  @override
+  State<_EstabAvaliacoesView> createState() => _EstabAvaliacoesViewState();
+}
+
+class _EstabAvaliacoesViewState extends State<_EstabAvaliacoesView>
     with SingleTickerProviderStateMixin {
   late TabController _tabCtrl;
-
-  List<Map<String, dynamic>> _avaliacoes = [];
-  List<Map<String, dynamic>> _reclamacoes = [];
-  bool _loading = true;
-  String? _token;
 
   @override
   void initState() {
     super.initState();
     _tabCtrl = TabController(length: 2, vsync: this);
-    final auth = Provider.of<AuthProvider>(context, listen: false);
-    _token = auth.token;
-    _loadData(auth.user?.id);
   }
 
   @override
@@ -36,52 +46,12 @@ class _EstabAvaliacoesScreenState extends State<EstabAvaliacoesScreen>
     super.dispose();
   }
 
-  Future<void> _loadData(String? userId) async {
-    if (userId == null) {
-      setState(() => _loading = false);
-      return;
-    }
-    setState(() => _loading = true);
-    try {
-      final estabData = await ApiService.get('/establishments/owner/$userId', token: _token);
-      final estabs = estabData is List ? estabData : [estabData];
-      if (estabs.isEmpty) {
-        setState(() => _loading = false);
-        return;
-      }
-      final id = (estabs.first as Map<String, dynamic>)['id'] as String? ?? '';
-      await Future.wait([_loadAvaliacoes(id), _loadReclamacoes(id)]);
-    } catch (_) {}
-    setState(() => _loading = false);
-  }
-
-  Future<void> _loadAvaliacoes(String estabId) async {
-    try {
-      final data = await ApiService.get('/reviews/establishment/$estabId');
-      setState(() => _avaliacoes = (data as List).cast<Map<String, dynamic>>());
-    } catch (_) {
-      setState(() => _avaliacoes = []);
-    }
-  }
-
-  Future<void> _loadReclamacoes(String estabId) async {
-    try {
-      final data = await ApiService.get('/reviews/complaints/establishment/$estabId', token: _token);
-      setState(() => _reclamacoes = (data as List).cast<Map<String, dynamic>>());
-    } catch (_) {
-      setState(() => _reclamacoes = []);
-    }
-  }
-
-  double get _mediaNota {
-    if (_avaliacoes.isEmpty) return 0;
-    final total = _avaliacoes.fold<num>(0, (sum, a) => sum + ((a['rating'] as num?) ?? 0));
-    return total / _avaliacoes.length;
-  }
-
   @override
   Widget build(BuildContext context) {
     final booking = context.watch<BookingProvider>();
+    final provider = context.watch<EstablishmentReviewsProvider>();
+    final avaliacoes = provider.reviews;
+    final reclamacoes = provider.complaints;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -91,7 +61,7 @@ class _EstabAvaliacoesScreenState extends State<EstabAvaliacoesScreen>
             EstabPurpleHeader(
               pendentes: booking.pendentes.length,
               confirmados: booking.confirmados.length,
-              avaliacao: _mediaNota.toStringAsFixed(1),
+              avaliacao: provider.mediaNota.toStringAsFixed(1),
             ),
 
             Container(
@@ -112,7 +82,7 @@ class _EstabAvaliacoesScreenState extends State<EstabAvaliacoesScreen>
             ),
 
             Expanded(
-              child: _loading
+              child: provider.isLoading
                   ? const Center(child: CircularProgressIndicator(color: AppColors.estab))
                   : TabBarView(
                       controller: _tabCtrl,
@@ -135,7 +105,7 @@ class _EstabAvaliacoesScreenState extends State<EstabAvaliacoesScreen>
                               child: Row(
                                 children: [
                                   Text(
-                                    _mediaNota.toStringAsFixed(1),
+                                    provider.mediaNota.toStringAsFixed(1),
                                     style: const TextStyle(
                                         fontSize: 48,
                                         fontWeight: FontWeight.bold,
@@ -149,9 +119,9 @@ class _EstabAvaliacoesScreenState extends State<EstabAvaliacoesScreen>
                                         children: List.generate(
                                           5,
                                           (i) => Icon(
-                                            i < _mediaNota.floor()
+                                            i < provider.mediaNota.floor()
                                                 ? Icons.star
-                                                : (i < _mediaNota
+                                                : (i < provider.mediaNota
                                                     ? Icons.star_half
                                                     : Icons.star_border),
                                             color: const Color(0xFFFFC107),
@@ -161,7 +131,7 @@ class _EstabAvaliacoesScreenState extends State<EstabAvaliacoesScreen>
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
-                                        '${_avaliacoes.length} avaliações',
+                                        '${avaliacoes.length} avaliações',
                                         style: const TextStyle(
                                             color: AppColors.grey, fontSize: 13),
                                       ),
@@ -171,7 +141,7 @@ class _EstabAvaliacoesScreenState extends State<EstabAvaliacoesScreen>
                               ),
                             ),
                             const SizedBox(height: 12),
-                            if (_avaliacoes.isEmpty)
+                            if (avaliacoes.isEmpty)
                               const Padding(
                                 padding: EdgeInsets.all(32),
                                 child: Center(
@@ -180,13 +150,13 @@ class _EstabAvaliacoesScreenState extends State<EstabAvaliacoesScreen>
                                 ),
                               )
                             else
-                              ..._avaliacoes.map((av) => _AvalCard(av: av)),
+                              ...avaliacoes.map((av) => _AvalCard(av: av)),
                           ],
                         ),
 
                         ListView(
                           padding: const EdgeInsets.all(16),
-                          children: _reclamacoes.isEmpty
+                          children: reclamacoes.isEmpty
                               ? [
                                   const Padding(
                                     padding: EdgeInsets.all(32),
@@ -196,7 +166,7 @@ class _EstabAvaliacoesScreenState extends State<EstabAvaliacoesScreen>
                                     ),
                                   )
                                 ]
-                              : _reclamacoes.map((r) => _ReclamCard(r: r)).toList(),
+                              : reclamacoes.map((r) => _ReclamCard(r: r)).toList(),
                         ),
                       ],
                     ),
@@ -209,16 +179,15 @@ class _EstabAvaliacoesScreenState extends State<EstabAvaliacoesScreen>
 }
 
 class _AvalCard extends StatelessWidget {
-  final Map<String, dynamic> av;
+  final ReviewModel av;
   const _AvalCard({required this.av});
 
   @override
   Widget build(BuildContext context) {
-    final nota = ((av['rating'] as num?) ?? 0).toInt();
-    final nome = av['userName'] as String? ?? 'Usuário';
-    final comentario = av['comment'] as String? ?? '';
-    final rawDate = av['createdAt'];
-    final data = rawDate != null ? _formatDate(rawDate.toString()) : '';
+    final nota = av.rating;
+    final nome = av.userName;
+    final comentario = av.comment ?? '';
+    final data = _formatDate(av.createdAt);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -286,24 +255,21 @@ class _AvalCard extends StatelessWidget {
     );
   }
 
-  String _formatDate(String raw) {
-    final dt = DateTime.tryParse(raw);
-    if (dt == null) return '';
-    return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
-  }
+  String _formatDate(DateTime dt) =>
+      '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
 }
 
 class _ReclamCard extends StatelessWidget {
-  final Map<String, dynamic> r;
+  final ComplaintModel r;
   const _ReclamCard({required this.r});
 
   @override
   Widget build(BuildContext context) {
-    final isPendente = r['status'] == 'PENDENTE';
-    final assunto = r['subject'] as String? ?? '';
-    final nome = r['userName'] as String? ?? 'Usuário';
-    final descricao = r['description'] as String? ?? '';
-    final status = r['status'] as String? ?? 'PENDENTE';
+    final isPendente = r.isPendente;
+    final assunto = r.subject;
+    final nome = r.userName;
+    final descricao = r.description;
+    final status = r.status;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),

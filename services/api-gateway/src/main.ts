@@ -17,7 +17,7 @@ const ROUTES = [
   { prefix: "/reviews",        target: process.env.REVIEW_SERVICE_URL        ?? "http://localhost:3007" },
   { prefix: "/faq",            target: process.env.FAQ_SERVICE_URL           ?? "http://localhost:3008" },
   { prefix: "/drivers",        target: process.env.DRIVER_SERVICE_URL        ?? "http://localhost:3009" },
-  { prefix: "/veterinarians",  target: process.env.ESTABLISHMENT_SERVICE_URL ?? "http://localhost:3003" },
+  { prefix: "/veterinarians",  target: process.env.VET_SERVICE_URL           ?? "http://localhost:3010" },
 ];
 
 const GATEWAY_HANDLED = ["GET /auth/me", "POST /auth/refresh"];

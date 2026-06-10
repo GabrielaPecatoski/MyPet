@@ -9,10 +9,12 @@ export class BookingDto {
   @ApiProperty() petName: string;
   @ApiProperty() serviceName: string;
   @ApiPropertyOptional() services?: BookingServiceItem[];
-  @ApiProperty() establishmentId: string;
+  @ApiPropertyOptional() establishmentId?: string;
   @ApiProperty() establishmentName: string;
   @ApiPropertyOptional() driverId?: string;
   @ApiPropertyOptional() driverName?: string;
+  @ApiPropertyOptional() vetId?: string;
+  @ApiPropertyOptional() vetName?: string;
   @ApiProperty() scheduledAt: Date;
   @ApiProperty() price: number;
   @ApiProperty() priceVariable: boolean;
@@ -34,6 +36,8 @@ export class BookingDto {
     this.establishmentName = b.establishmentName;
     this.driverId = b.driverId;
     this.driverName = b.driverName;
+    this.vetId = b.vetId;
+    this.vetName = b.vetName;
     this.scheduledAt = b.scheduledAt;
     this.price = b.price;
     this.priceVariable = b.priceVariable;

@@ -17,10 +17,12 @@ export class DrizzleBookingRepository implements BookingRepository {
       petName: b.petName,
       serviceName: b.serviceName,
       servicesJson: b.servicesJson ?? null,
-      establishmentId: b.establishmentId,
+      establishmentId: b.establishmentId ?? null,
       establishmentName: b.establishmentName,
       driverId: b.driverId ?? null,
       driverName: b.driverName ?? null,
+      vetId: b.vetId ?? null,
+      vetName: b.vetName ?? null,
       scheduledAt: b.scheduledAt,
       price: b.price,
       priceVariable: b.priceVariable,
@@ -61,6 +63,11 @@ export class DrizzleBookingRepository implements BookingRepository {
 
   async findByEstablishmentId(establishmentId: string): Promise<Booking[]> {
     const rows = await this.drizzleService.db.select().from(bookingsSchema).where(eq(bookingsSchema.establishmentId, establishmentId));
+    return rows.map((r) => this.toEntity(r)!);
+  }
+
+  async findByVetId(vetId: string): Promise<Booking[]> {
+    const rows = await this.drizzleService.db.select().from(bookingsSchema).where(eq(bookingsSchema.vetId, vetId));
     return rows.map((r) => this.toEntity(r)!);
   }
 

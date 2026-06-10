@@ -4,80 +4,62 @@ import '../core/colors.dart';
 import '../models/availability.dart';
 import '../models/establishment.dart';
 import '../models/review.dart';
+import '../models/veterinarian.dart';
 import '../providers/auth_provider.dart';
-import '../services/availability_service.dart';
-import '../services/establishment_service.dart';
-import '../services/review_service.dart';
+import '../providers/establishment_detail_provider.dart';
+import '../repositories/establishment_detail_repository.dart';
+import '../services/veterinarian_service.dart';
 import '../widgets/app_bottom_nav.dart';
 import '../widgets/mypet_app_bar.dart';
+import 'schedule_screen.dart' show ScheduleArgs;
 
-class EstablishmentDetailScreen extends StatefulWidget {
+class EstablishmentDetailScreen extends StatelessWidget {
   const EstablishmentDetailScreen({super.key});
 
   @override
-  State<EstablishmentDetailScreen> createState() =>
-      _EstablishmentDetailScreenState();
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (_) =>
+          EstablishmentDetailProvider(EstablishmentDetailRepository()),
+      child: const _EstablishmentDetailView(),
+    );
+  }
 }
 
-class _EstablishmentDetailScreenState
-    extends State<EstablishmentDetailScreen> {
-  List<ReviewModel> _reviews = [];
-  bool _reviewsLoading = true;
-  List<ServiceModel> _services = [];
-  ScheduleModel? _schedule;
-  bool _servicesLoaded = false;
+class _EstablishmentDetailView extends StatefulWidget {
+  const _EstablishmentDetailView();
+
+  @override
+  State<_EstablishmentDetailView> createState() =>
+      _EstablishmentDetailViewState();
+}
+
+class _EstablishmentDetailViewState
+    extends State<_EstablishmentDetailView> {
+  bool _loaded = false;
+  List<VeterinarianModel> _vets = [];
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final e = ModalRoute.of(context)!.settings.arguments as EstablishmentModel;
-    if (!_servicesLoaded) {
-      _servicesLoaded = true;
-      _loadServices(e.id);
-      _loadReviews(e.id);
-      _loadSchedule(e.id);
+    if (!_loaded) {
+      _loaded = true;
+      final token = context.read<AuthProvider>().token;
+      context.read<EstablishmentDetailProvider>().load(e.id, token: token);
+      _loadVets(e.id, token);
     }
   }
 
-  Future<void> _loadServices(String establishmentId) async {
-    try {
-      final services = await EstablishmentService.fetchServices(establishmentId);
-      if (mounted) setState(() => _services = services);
-    } catch (_) {}
-  }
-
-  Future<void> _loadSchedule(String establishmentId) async {
-    final token = context.read<AuthProvider>().token;
+  Future<void> _loadVets(String estabId, String? token) async {
     if (token == null) return;
     try {
-      final schedule = await AvailabilityService.getSchedule(
-        token: token,
-        estabId: establishmentId,
-      );
-      if (mounted) setState(() => _schedule = schedule);
+      final vets = await VeterinarianService.fetchByEstablishment(
+          token: token, establishmentId: estabId);
+      // Mostra ao cliente apenas vets aprovados (ATIVO).
+      if (mounted) setState(() => _vets = vets.where((v) => v.isAtivo).toList());
     } catch (_) {}
   }
-
-  Future<void> _loadReviews(String establishmentId) async {
-    final auth = context.read<AuthProvider>();
-    try {
-      final reviews = await ReviewService.getByEstablishment(
-        establishmentId,
-        token: auth.token,
-      );
-      if (mounted) setState(() => _reviews = reviews);
-    } catch (_) {
-    } finally {
-      if (mounted) setState(() => _reviewsLoading = false);
-    }
-  }
-
-  double get _liveRating {
-    if (_reviews.isEmpty) return 0.0;
-    return _reviews.fold<int>(0, (s, r) => s + r.rating) / _reviews.length;
-  }
-
-  int get _liveReviewCount => _reviews.length;
 
   String _fmtTime(String t) {
     final parts = t.split(':');
@@ -114,6 +96,12 @@ class _EstablishmentDetailScreenState
     final establishment =
         ModalRoute.of(context)!.settings.arguments as EstablishmentModel;
     final e = establishment;
+    final provider = context.watch<EstablishmentDetailProvider>();
+    final services = provider.services;
+    final reviews = provider.reviews;
+    final schedule = provider.schedule;
+    final liveRating = provider.liveRating;
+    final liveReviewCount = provider.liveReviewCount;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -162,13 +150,13 @@ class _EstablishmentDetailScreenState
                           const Icon(Icons.star,
                               color: Color(0xFFFFC107), size: 18),
                           const SizedBox(width: 4),
-                          Text(_liveRating > 0 ? _liveRating.toStringAsFixed(1) : '–',
+                          Text(liveRating > 0 ? liveRating.toStringAsFixed(1) : '–',
                               style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 14,
                                   color: AppColors.dark)),
                           Flexible(
-                            child: Text(' ($_liveReviewCount avaliações)',
+                            child: Text(' ($liveReviewCount avaliações)',
                                 style: const TextStyle(
                                     color: AppColors.grey, fontSize: 13),
                                 overflow: TextOverflow.ellipsis),
@@ -195,7 +183,7 @@ class _EstablishmentDetailScreenState
                       _infoRow(Icons.phone_outlined, e.phone),
                       const SizedBox(height: 8),
                       _infoRow(Icons.access_time_outlined,
-                          _schedule != null ? _formatScheduleHours(_schedule!) : '...'),
+                          schedule != null ? _formatScheduleHours(schedule) : '...'),
 
                       if (e.isVeterinario) ...[
                         const SizedBox(height: 14),
@@ -214,6 +202,9 @@ class _EstablishmentDetailScreenState
                   ),
                 ),
 
+              if (_vets.isNotEmpty)
+                SliverToBoxAdapter(child: _vetsSection(e)),
+
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
@@ -227,7 +218,7 @@ class _EstablishmentDetailScreenState
                 ),
               ),
 
-              if (_services.isEmpty)
+              if (services.isEmpty)
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -247,7 +238,7 @@ class _EstablishmentDetailScreenState
               SliverList(
                 delegate: SliverChildBuilderDelegate(
                   (ctx, i) {
-                    final service = _services[i];
+                    final service = services[i];
                     return Padding(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
                       child: Container(
@@ -344,7 +335,7 @@ class _EstablishmentDetailScreenState
                       ),
                     );
                   },
-                  childCount: _services.length,
+                  childCount: services.length,
                 ),
               ),
 
@@ -362,7 +353,7 @@ class _EstablishmentDetailScreenState
                             color: AppColors.dark),
                       ),
                       const SizedBox(height: 12),
-                      if (_liveRating > 0)
+                      if (liveRating > 0)
                         Container(
                           width: double.infinity,
                           padding: const EdgeInsets.symmetric(
@@ -374,17 +365,17 @@ class _EstablishmentDetailScreenState
                           child: Column(
                             children: [
                               Text(
-                                _liveRating.toStringAsFixed(1),
+                                liveRating.toStringAsFixed(1),
                                 style: const TextStyle(
                                     fontSize: 40,
                                     fontWeight: FontWeight.bold,
                                     color: AppColors.primary),
                               ),
                               const SizedBox(height: 6),
-                              _StarRow(rating: _liveRating),
+                              _StarRow(rating: liveRating),
                               const SizedBox(height: 4),
                               Text(
-                                '$_liveReviewCount avaliações',
+                                '$liveReviewCount avaliações',
                                 style: const TextStyle(
                                     color: AppColors.grey, fontSize: 13),
                               ),
@@ -396,7 +387,7 @@ class _EstablishmentDetailScreenState
                 ),
               ),
 
-              if (_reviewsLoading)
+              if (provider.reviewsLoading)
                 const SliverToBoxAdapter(
                   child: Center(
                     child: Padding(
@@ -406,7 +397,7 @@ class _EstablishmentDetailScreenState
                     ),
                   ),
                 )
-              else if (_reviews.isEmpty)
+              else if (reviews.isEmpty)
                 const SliverToBoxAdapter(
                   child: Padding(
                     padding: EdgeInsets.symmetric(horizontal: 16),
@@ -419,9 +410,9 @@ class _EstablishmentDetailScreenState
                   delegate: SliverChildBuilderDelegate(
                     (ctx, i) => Padding(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-                      child: _ReviewCard(review: _reviews[i]),
+                      child: _ReviewCard(review: reviews[i]),
                     ),
-                    childCount: _reviews.length,
+                    childCount: reviews.length,
                   ),
                 ),
 
@@ -466,6 +457,109 @@ class _EstablishmentDetailScreenState
       ),
     );
   }
+
+  Widget _vetsSection(EstablishmentModel e) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Veterinários',
+              style: TextStyle(
+                  fontSize: 17, fontWeight: FontWeight.bold, color: AppColors.dark)),
+          const SizedBox(height: 8),
+          ..._vets.map((v) => Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: const [
+                    BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 2))
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 46, height: 46,
+                          decoration: BoxDecoration(
+                            color: AppColors.primaryLight,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.medical_services_outlined,
+                              color: AppColors.estab, size: 24),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(v.name,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                      color: AppColors.dark)),
+                              Text('${v.especialidade ?? 'Clínico geral'} · CRMV: ${v.crmv}',
+                                  style: const TextStyle(fontSize: 12, color: AppColors.grey)),
+                              const SizedBox(height: 4),
+                              Row(children: [
+                                if (v.atende24h)
+                                  _vetBadge('24h', AppColors.danger),
+                                if (v.atendeDomicilio)
+                                  _vetBadge('Domicílio', AppColors.estab),
+                                if (v.disponivel)
+                                  _vetBadge('Disponível', AppColors.success),
+                              ]),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () => Navigator.pushNamed(
+                          context,
+                          '/schedule',
+                          arguments: ScheduleArgs(
+                            establishment: e,
+                            vetId: v.id,
+                            vetName: v.name,
+                          ),
+                        ),
+                        icon: const Icon(Icons.calendar_today_outlined, size: 16),
+                        label: const Text('Agendar consulta'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.estab,
+                          side: const BorderSide(color: AppColors.estab),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8)),
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              )),
+        ],
+      ),
+    );
+  }
+
+  Widget _vetBadge(String text, Color color) => Container(
+        margin: const EdgeInsets.only(right: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Text(text,
+            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: color)),
+      );
 
   Widget _vetInfoSection(EstablishmentModel e) {
     return Container(

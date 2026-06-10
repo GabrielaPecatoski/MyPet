@@ -10,7 +10,7 @@
 import { test, APIRequestContext } from '@playwright/test';
 import {
   bootAndLogin, tapText, tapButton, expectText, waitForText,
-  fillNth, fill, textFields, fieldByHint,
+  fillNth, fill, textFields, fieldByHint, pollText,
 } from './_helpers';
 import {
   apiContext, registerUser, createEstablishment, registerVet, SeededUser,
@@ -78,12 +78,13 @@ test('aba Cadastrar novo exibe formulário completo', async ({ page }) => {
   await waitForText(page, /Nenhum veterinário|Veterinários associados/);
   await tapButton(page, 'Adicionar');
   await waitForText(page, 'Adicionar Veterinário');
-  await tapText(page, 'Cadastrar novo');
-  await waitForText(page, /Nome completo/);
-  await expectText(page, /CPF/);
-  await expectText(page, /CRMV/);
-  await expectText(page, /Senha/);
-  await expectText(page, 'Cadastrar e Associar');
+  await page.getByRole('tab', { name: /Cadastrar novo/ }).first().waitFor({ state: 'visible', timeout: 15_000 });
+  await page.getByRole('tab', { name: /Cadastrar novo/ }).first().click({ force: true });
+  await pollText(page, /Nome completo/, 30_000);
+  await pollText(page, /CPF/, 10_000);
+  await pollText(page, /CRMV/, 10_000);
+  await pollText(page, /Senha/, 10_000);
+  await pollText(page, 'Cadastrar e Associar', 10_000);
 });
 
 test('cadastrar vet novo via UI vincula ao estab e aparece na lista', async ({ page }) => {
@@ -94,8 +95,9 @@ test('cadastrar vet novo via UI vincula ao estab e aparece na lista', async ({ p
   await waitForText(page, /Nenhum veterinário|Veterinários associados/);
   await tapButton(page, 'Adicionar');
   await waitForText(page, 'Adicionar Veterinário');
-  await tapText(page, 'Cadastrar novo');
-  await waitForText(page, 'Nome completo');
+  await page.getByRole('tab', { name: /Cadastrar novo/ }).first().waitFor({ state: 'visible', timeout: 15_000 });
+  await page.getByRole('tab', { name: /Cadastrar novo/ }).first().click({ force: true });
+  await pollText(page, /Nome completo/, 30_000);
 
   const ts = Date.now();
   const campos = textFields(page);

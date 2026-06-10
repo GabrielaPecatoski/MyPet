@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../core/constants.dart';
+import '../models/emergency_call.dart';
 import '../models/veterinarian.dart';
 
 class VeterinarianService {
@@ -189,6 +190,70 @@ class VeterinarianService {
     }
   }
 
+  // ── Emergency calls ────────────────────────────────────────────────────
+
+  static Future<EmergencyCallModel> callVet({
+    required String token,
+    required String vetId,
+    required String callerName,
+    required String callerPhone,
+    String? petDescription,
+  }) async {
+    final body = <String, dynamic>{
+      'callerName': callerName,
+      'callerPhone': callerPhone,
+    };
+    if (petDescription != null && petDescription.isNotEmpty) {
+      body['petDescription'] = petDescription;
+    }
+    final res = await http
+        .post(
+          Uri.parse('${ApiConstants.baseUrl}${ApiConstants.veterinariansEndpoint}/$vetId/emergency-call'),
+          headers: _headers(token),
+          body: jsonEncode(body),
+        )
+        .timeout(const Duration(seconds: 10));
+    if (res.statusCode == 200 || res.statusCode == 201) {
+      return EmergencyCallModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+    }
+    throw Exception('Erro ao enviar chamado de emergência');
+  }
+
+  static Future<List<EmergencyCallModel>> getPendingEmergencyCalls({
+    required String token,
+    required String vetId,
+  }) async {
+    try {
+      final res = await http
+          .get(
+            Uri.parse('${ApiConstants.baseUrl}${ApiConstants.veterinariansEndpoint}/$vetId/emergency-calls/pending'),
+            headers: _headers(token),
+          )
+          .timeout(const Duration(seconds: 6));
+      if (res.statusCode == 200) {
+        final list = jsonDecode(res.body) as List;
+        return list.map((e) => EmergencyCallModel.fromJson(e as Map<String, dynamic>)).toList();
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  static Future<void> acknowledgeEmergencyCall({
+    required String token,
+    required String callId,
+  }) async {
+    try {
+      await http
+          .patch(
+            Uri.parse('${ApiConstants.baseUrl}${ApiConstants.veterinariansEndpoint}/emergency-calls/$callId/acknowledge'),
+            headers: _headers(token),
+          )
+          .timeout(const Duration(seconds: 6));
+    } catch (_) {}
+  }
+
+  // ── Standard ───────────────────────────────────────────────────────────
+
   static Future<void> reject({
     required String token,
     required String vetId,
@@ -207,23 +272,31 @@ class VeterinarianService {
   static Future<VeterinarianModel> updateAvailability({
     required String token,
     required String vetId,
-    required bool disponivel,
-    required bool atendeDomicilio,
+    bool? disponivel,
+    bool? atendeDomicilio,
+    bool? atende24h,
   }) async {
+    final body = <String, dynamic>{};
+    if (disponivel != null) body['disponivel'] = disponivel;
+    if (atendeDomicilio != null) body['atendeDomicilio'] = atendeDomicilio;
+    if (atende24h != null) body['atende24h'] = atende24h;
     final res = await http
         .patch(
           Uri.parse('${ApiConstants.baseUrl}${ApiConstants.veterinariansEndpoint}/$vetId/availability'),
           headers: _headers(token),
-          body: jsonEncode({
-            'disponivel': disponivel,
-            'atendeDomicilio': atendeDomicilio,
-          }),
+          body: jsonEncode(body),
         )
         .timeout(const Duration(seconds: 8));
     if (res.statusCode == 200 || res.statusCode == 201) {
       return VeterinarianModel.fromJson(
           jsonDecode(res.body) as Map<String, dynamic>);
     }
-    throw Exception('Erro ao atualizar disponibilidade');
+    String msg = 'Erro ao atualizar disponibilidade';
+    try {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      final m = data['message'];
+      msg = (m is List ? m.join(', ') : m?.toString()) ?? msg;
+    } catch (_) {}
+    throw Exception(msg);
   }
 }

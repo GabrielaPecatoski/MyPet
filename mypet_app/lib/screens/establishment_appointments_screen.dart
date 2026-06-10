@@ -444,7 +444,7 @@ class _ApptCard extends StatelessWidget {
                             ),
                           ],
 
-                          if (ap.isPendente && ap.isPago) ...[
+                          if (ap.isPendente && (ap.isPago || ap.priceVariable)) ...[
                             const SizedBox(height: 12),
                             Row(children: [
                               Expanded(

@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../core/colors.dart';
+import '../models/appointment.dart';
+import '../providers/auth_provider.dart';
+import '../providers/vet_profile_provider.dart';
+import '../services/booking_service.dart';
 
 class VetAgendaScreen extends StatefulWidget {
   const VetAgendaScreen({super.key});
@@ -12,6 +17,9 @@ class _VetAgendaScreenState extends State<VetAgendaScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tab;
   final DateTime _today = DateTime.now();
+
+  List<AppointmentModel> _bookings = [];
+  bool _loading = true;
 
   static const _dayLabels = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
   static const _monthNames = [
@@ -26,12 +34,60 @@ class _VetAgendaScreenState extends State<VetAgendaScreen>
   void initState() {
     super.initState();
     _tab = TabController(length: 3, vsync: this);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 
   @override
   void dispose() {
     _tab.dispose();
     super.dispose();
+  }
+
+  Future<void> _load() async {
+    final auth = context.read<AuthProvider>();
+    final vetVm = context.read<VetProfileProvider>();
+    final token = auth.token;
+    if (token == null || auth.user?.cpf == null) {
+      if (mounted) setState(() => _loading = false);
+      return;
+    }
+    if (vetVm.vet == null) {
+      await vetVm.load(token: token, cpf: auth.user!.cpf!);
+    }
+    final vetId = vetVm.vet?.id;
+    if (vetId == null) {
+      if (mounted) setState(() => _loading = false);
+      return;
+    }
+    if (mounted) setState(() => _loading = true);
+    try {
+      final data = await BookingService.fetchVetBookings(token: token, vetId: vetId);
+      if (mounted) setState(() => _bookings = data);
+    } catch (_) {
+      if (mounted) setState(() => _bookings = []);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  bool _sameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
+
+  List<AppointmentModel> get _hoje =>
+      _bookings.where((b) => _sameDay(b.date, _today)).toList()
+        ..sort((a, b) => a.date.compareTo(b.date));
+  List<AppointmentModel> get _amanha {
+    final t = _today.add(const Duration(days: 1));
+    return _bookings.where((b) => _sameDay(b.date, t)).toList()
+      ..sort((a, b) => a.date.compareTo(b.date));
+  }
+
+  List<AppointmentModel> get _semana {
+    final fim = _today.add(const Duration(days: 7));
+    return _bookings
+        .where((b) => b.date.isAfter(_today.subtract(const Duration(days: 1))) && b.date.isBefore(fim))
+        .toList()
+      ..sort((a, b) => a.date.compareTo(b.date));
   }
 
   @override
@@ -44,14 +100,16 @@ class _VetAgendaScreenState extends State<VetAgendaScreen>
           _topHeader(top),
           _tabBar(),
           Expanded(
-            child: TabBarView(
-              controller: _tab,
-              children: const [
-                _EmptyTab(label: 'Nenhuma consulta hoje.'),
-                _EmptyTab(label: 'Nenhuma consulta amanhã.'),
-                _EmptyTab(label: 'Nenhuma consulta esta semana.'),
-              ],
-            ),
+            child: _loading
+                ? const Center(child: CircularProgressIndicator(color: _green))
+                : TabBarView(
+                    controller: _tab,
+                    children: [
+                      _dayList(_hoje, 'Nenhuma consulta hoje.'),
+                      _dayList(_amanha, 'Nenhuma consulta amanhã.'),
+                      _dayList(_semana, 'Nenhuma consulta esta semana.'),
+                    ],
+                  ),
           ),
         ],
       ),
@@ -119,11 +177,13 @@ class _VetAgendaScreenState extends State<VetAgendaScreen>
           const SizedBox(height: 14),
           Row(
             children: [
-              _statChip('0', 'Consultas', AppColors.vet),
+              _statChip('${_hoje.length}', 'Consultas', AppColors.vet),
               const SizedBox(width: 8),
-              _statChip('0', 'Confirmadas', AppColors.success),
+              _statChip('${_hoje.where((b) => b.status == 'CONFIRMADO').length}',
+                  'Confirmadas', AppColors.success),
               const SizedBox(width: 8),
-              _statChip('0', 'Pendentes', AppColors.warning),
+              _statChip('${_hoje.where((b) => b.status == 'PENDENTE').length}',
+                  'Pendentes', AppColors.warning),
             ],
           ),
         ],
@@ -171,6 +231,119 @@ class _VetAgendaScreenState extends State<VetAgendaScreen>
           ],
         ),
       );
+
+  Widget _dayList(List<AppointmentModel> items, String emptyLabel) {
+    if (items.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: _load,
+        color: _green,
+        child: ListView(children: [
+          const SizedBox(height: 60),
+          _EmptyTab(label: emptyLabel),
+        ]),
+      );
+    }
+    return RefreshIndicator(
+      onRefresh: _load,
+      color: _green,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: items.length,
+        itemBuilder: (_, i) => _VetBookingCard(ap: items[i]),
+      ),
+    );
+  }
+}
+
+class _VetBookingCard extends StatelessWidget {
+  final AppointmentModel ap;
+  const _VetBookingCard({required this.ap});
+
+  static const _green = Color(0xFF16A34A);
+
+  Color get _statusColor {
+    switch (ap.status) {
+      case 'CONFIRMADO': return AppColors.success;
+      case 'RECUSADO':
+      case 'CANCELADO': return AppColors.danger;
+      case 'CONCLUIDO': return AppColors.vet;
+      default: return AppColors.warning;
+    }
+  }
+
+  String get _statusLabel {
+    switch (ap.status) {
+      case 'CONFIRMADO': return 'Confirmado';
+      case 'PENDENTE': return 'Aguardando confirmação';
+      case 'RECUSADO': return 'Recusado';
+      case 'CANCELADO': return 'Cancelado';
+      case 'CONCLUIDO': return 'Concluído';
+      default: return ap.status;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 2))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            const CircleAvatar(
+              radius: 20,
+              backgroundColor: Color(0x1416A34A),
+              child: Icon(Icons.pets, color: _green, size: 20),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(ap.petName,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppColors.dark)),
+                Text(ap.serviceName, style: const TextStyle(fontSize: 12, color: AppColors.grey)),
+              ]),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: _statusColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(_statusLabel,
+                  style: TextStyle(color: _statusColor, fontSize: 11, fontWeight: FontWeight.w600)),
+            ),
+          ]),
+          const SizedBox(height: 10),
+          const Divider(height: 1, color: AppColors.divider),
+          const SizedBox(height: 10),
+          _row(Icons.person_outline, ap.userName.isNotEmpty ? ap.userName : 'Tutor'),
+          const SizedBox(height: 4),
+          _row(Icons.access_time,
+              '${ap.date.day.toString().padLeft(2, '0')}/${ap.date.month.toString().padLeft(2, '0')}  ${ap.time}'),
+          if (ap.establishmentName.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            _row(Icons.store_outlined, ap.establishmentName),
+          ],
+          if (ap.price > 0) ...[
+            const SizedBox(height: 4),
+            _row(Icons.attach_money, 'R\$ ${ap.price.toStringAsFixed(2)}'),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _row(IconData icon, String text) => Row(children: [
+        Icon(icon, size: 14, color: AppColors.grey),
+        const SizedBox(width: 6),
+        Expanded(child: Text(text, style: const TextStyle(fontSize: 12, color: AppColors.grey))),
+      ]);
 }
 
 class _EmptyTab extends StatelessWidget {

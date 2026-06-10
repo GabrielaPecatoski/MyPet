@@ -4,8 +4,7 @@ import '../core/colors.dart';
 import '../models/driver.dart';
 import '../providers/auth_provider.dart';
 import '../providers/establishment_provider.dart';
-import '../services/auth_service.dart';
-import '../services/driver_service.dart';
+import '../providers/establishment_staff_provider.dart';
 import '../widgets/mypet_app_bar.dart';
 
 class EstabMotoristasScreen extends StatefulWidget {
@@ -16,11 +15,6 @@ class EstabMotoristasScreen extends StatefulWidget {
 }
 
 class _EstabMotoristasScreenState extends State<EstabMotoristasScreen> {
-  List<DriverModel> _motoristas = [];
-  bool _loading = true;
-  String? _estabId;
-  String? _token;
-
   @override
   void initState() {
     super.initState();
@@ -31,7 +25,6 @@ class _EstabMotoristasScreenState extends State<EstabMotoristasScreen> {
     final auth = context.read<AuthProvider>();
     final estabProvider = context.read<EstablishmentProvider>();
     if (auth.token == null) return;
-    _token = auth.token;
 
     if (estabProvider.establishmentId == null) {
       await estabProvider.loadByOwner(
@@ -41,21 +34,11 @@ class _EstabMotoristasScreenState extends State<EstabMotoristasScreen> {
         ownerPhone: auth.user!.phone,
       );
     }
-    _estabId = estabProvider.establishmentId;
-    if (_estabId == null) {
-      setState(() => _loading = false);
-      return;
-    }
-    setState(() => _loading = true);
-    try {
-      _motoristas = await DriverService.fetchByEstablishment(
-        token: _token!,
-        establishmentId: _estabId!,
-      );
-    } catch (_) {
-    } finally {
-      setState(() => _loading = false);
-    }
+    final estabId = estabProvider.establishmentId;
+    if (estabId == null) return;
+    final staff = context.read<EstablishmentStaffProvider>();
+    staff.init(establishmentId: estabId, token: auth.token!);
+    await staff.loadDrivers();
   }
 
   Future<void> _desassociar(DriverModel driver) async {
@@ -84,28 +67,19 @@ class _EstabMotoristasScreenState extends State<EstabMotoristasScreen> {
       ),
     );
     if (ok != true || !mounted) return;
-    try {
-      await DriverService.dissociate(token: _token!, driverId: driver.id);
-      await _load();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Motorista removido do estabelecimento'),
-            backgroundColor: AppColors.success,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString().replaceAll('Exception: ', '')),
-            backgroundColor: AppColors.danger,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
+    final success = await context
+        .read<EstablishmentStaffProvider>()
+        .dissociateDriver(driver.id);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(success
+              ? 'Motorista removido do estabelecimento'
+              : 'Erro ao remover motorista'),
+          backgroundColor: success ? AppColors.success : AppColors.danger,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 
@@ -115,41 +89,28 @@ class _EstabMotoristasScreenState extends State<EstabMotoristasScreen> {
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (ctx) => EstabMotoristaBuscarSheet(
-        estabId: _estabId!,
-        token: _token!,
-        onAssociado: _load,
-      ),
+      builder: (ctx) => EstabMotoristaBuscarSheet(onAssociado: _load),
     );
-  }
-
-  Future<void> _cadastrarNovo() async {
-    final result = await Navigator.pushNamed(context, '/motorista-cadastro');
-    if (result != null && mounted) {
-      final driver = result as DriverModel;
-      if (_estabId != null && !driver.isAssociado) {
-        try {
-          await DriverService.associate(
-              token: _token!, driverId: driver.id, establishmentId: _estabId!);
-        } catch (_) {}
-      }
-      await _load();
-    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final estab = context.watch<EstablishmentProvider>();
+    final staff = context.watch<EstablishmentStaffProvider>();
+    final motoristas = staff.drivers;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: const MypetAppBar(showBack: true),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: _estabId == null ? null : _abrirBuscarMotorista,
+        onPressed:
+            estab.establishmentId == null ? null : _abrirBuscarMotorista,
         backgroundColor: AppColors.estab,
         icon: const Icon(Icons.person_add, color: Colors.white),
         label: const Text('Adicionar',
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
       ),
-      body: _loading
+      body: staff.loadingDrivers
           ? const Center(
               child: CircularProgressIndicator(color: AppColors.estab))
           : RefreshIndicator(
@@ -169,7 +130,7 @@ class _EstabMotoristasScreenState extends State<EstabMotoristasScreen> {
                     style: TextStyle(fontSize: 13, color: AppColors.grey),
                   ),
                   const SizedBox(height: 20),
-                  if (_motoristas.isEmpty)
+                  if (motoristas.isEmpty)
                     Container(
                       padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(
@@ -198,7 +159,7 @@ class _EstabMotoristasScreenState extends State<EstabMotoristasScreen> {
                       ),
                     )
                   else
-                    ..._motoristas.map((d) => EstabMotoristaCard(
+                    ...motoristas.map((d) => EstabMotoristaCard(
                           driver: d,
                           onRemover: () => _desassociar(d),
                         )),
@@ -210,12 +171,9 @@ class _EstabMotoristasScreenState extends State<EstabMotoristasScreen> {
 }
 
 class EstabMotoristaBuscarSheet extends StatefulWidget {
-  final String estabId;
-  final String token;
   final VoidCallback onAssociado;
   const EstabMotoristaBuscarSheet({
-    required this.estabId,
-    required this.token,
+    super.key,
     required this.onAssociado,
   });
 
@@ -257,8 +215,8 @@ class EstabMotoristaBuscarSheetState extends State<EstabMotoristaBuscarSheet>
       _erroMsg = null;
     });
     try {
-      final driver = await DriverService.findByCpf(
-          token: widget.token, cpf: cpf);
+      final driver =
+          await context.read<EstablishmentStaffProvider>().findDriverByCpf(cpf);
       setState(() {
         _encontrado = driver;
         _erroMsg = driver == null ? 'Motorista não encontrado' : null;
@@ -276,28 +234,25 @@ class EstabMotoristaBuscarSheetState extends State<EstabMotoristaBuscarSheet>
       return;
     }
     setState(() => _associando = true);
-    try {
-      await DriverService.associate(
-        token: widget.token,
-        driverId: driver.id,
-        establishmentId: widget.estabId,
+    final ok = await context
+        .read<EstablishmentStaffProvider>()
+        .associateDriver(driver.id);
+    if (!mounted) return;
+    if (ok) {
+      Navigator.pop(context);
+      widget.onAssociado();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${driver.name} associado com sucesso!'),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+        ),
       );
-      if (mounted) {
-        Navigator.pop(context);
-        widget.onAssociado();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${driver.name} associado com sucesso!'),
-            backgroundColor: AppColors.success,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    } catch (e) {
-      setState(() =>
-          _erroMsg = e.toString().replaceAll('Exception: ', ''));
-    } finally {
-      if (mounted) setState(() => _associando = false);
+    } else {
+      setState(() {
+        _associando = false;
+        _erroMsg = 'Erro ao associar motorista';
+      });
     }
   }
 
@@ -373,8 +328,6 @@ class EstabMotoristaBuscarSheetState extends State<EstabMotoristaBuscarSheet>
                     onAssociar: _associar,
                   ),
                   _CadastrarTab(
-                    estabId: widget.estabId,
-                    token: widget.token,
                     onCadastrado: () {
                       Navigator.pop(context);
                       widget.onAssociado();
@@ -498,12 +451,8 @@ class _BuscarTab extends StatelessWidget {
 }
 
 class _CadastrarTab extends StatefulWidget {
-  final String estabId;
-  final String token;
   final VoidCallback onCadastrado;
   const _CadastrarTab({
-    required this.estabId,
-    required this.token,
     required this.onCadastrado,
   });
 
@@ -540,25 +489,18 @@ class _CadastrarTabState extends State<_CadastrarTab> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
     try {
-      await AuthService.register(
-        name: _nameCtrl.text.trim(),
-        email: _emailCtrl.text.trim(),
-        password: _senhaCtrl.text,
-        phone: _phoneCtrl.text.trim(),
-        cpf: _cpfCtrl.text.replaceAll(RegExp(r'\D'), ''),
-        role: 'MOTORISTA',
-      );
-      final driver = await DriverService.register(
-        token: widget.token,
-        establishmentId: widget.estabId,
-        name: _nameCtrl.text.trim(),
-        phone: _phoneCtrl.text.trim(),
-        cpf: _cpfCtrl.text.replaceAll(RegExp(r'\D'), ''),
-        cnh: _cnhCtrl.text.trim(),
-        vehicleType: _vehicleType,
-        vehicleModel: _modelCtrl.text.trim(),
-        vehiclePlate: _plateCtrl.text.trim().toUpperCase(),
-      );
+      final driver =
+          await context.read<EstablishmentStaffProvider>().registerDriver(
+                name: _nameCtrl.text.trim(),
+                email: _emailCtrl.text.trim(),
+                password: _senhaCtrl.text,
+                phone: _phoneCtrl.text.trim(),
+                cpf: _cpfCtrl.text.replaceAll(RegExp(r'\D'), ''),
+                cnh: _cnhCtrl.text.trim(),
+                vehicleType: _vehicleType,
+                vehicleModel: _modelCtrl.text.trim(),
+                vehiclePlate: _plateCtrl.text.trim().toUpperCase(),
+              );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

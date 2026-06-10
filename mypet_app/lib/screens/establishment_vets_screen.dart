@@ -4,8 +4,7 @@ import '../core/colors.dart';
 import '../models/veterinarian.dart';
 import '../providers/auth_provider.dart';
 import '../providers/establishment_provider.dart';
-import '../services/auth_service.dart';
-import '../services/veterinarian_service.dart';
+import '../providers/establishment_staff_provider.dart';
 import '../widgets/mypet_app_bar.dart';
 
 class EstabVeterinariosScreen extends StatefulWidget {
@@ -16,11 +15,6 @@ class EstabVeterinariosScreen extends StatefulWidget {
 }
 
 class _EstabVeterinariosScreenState extends State<EstabVeterinariosScreen> {
-  List<VeterinarianModel> _vets = [];
-  bool _loading = true;
-  String? _estabId;
-  String? _token;
-
   @override
   void initState() {
     super.initState();
@@ -31,7 +25,6 @@ class _EstabVeterinariosScreenState extends State<EstabVeterinariosScreen> {
     final auth = context.read<AuthProvider>();
     final estabProvider = context.read<EstablishmentProvider>();
     if (auth.token == null) return;
-    _token = auth.token;
 
     if (estabProvider.establishmentId == null) {
       await estabProvider.loadByOwner(
@@ -41,21 +34,11 @@ class _EstabVeterinariosScreenState extends State<EstabVeterinariosScreen> {
         ownerPhone: auth.user!.phone,
       );
     }
-    _estabId = estabProvider.establishmentId;
-    if (_estabId == null) {
-      setState(() => _loading = false);
-      return;
-    }
-    setState(() => _loading = true);
-    try {
-      _vets = await VeterinarianService.fetchByEstablishment(
-        token: _token!,
-        establishmentId: _estabId!,
-      );
-    } catch (_) {
-    } finally {
-      setState(() => _loading = false);
-    }
+    final estabId = estabProvider.establishmentId;
+    if (estabId == null) return;
+    final staff = context.read<EstablishmentStaffProvider>();
+    staff.init(establishmentId: estabId, token: auth.token!);
+    await staff.loadVets();
   }
 
   Future<void> _remover(VeterinarianModel vet) async {
@@ -86,28 +69,18 @@ class _EstabVeterinariosScreenState extends State<EstabVeterinariosScreen> {
       ),
     );
     if (ok != true || !mounted) return;
-    try {
-      await VeterinarianService.dissociate(token: _token!, vetId: vet.id);
-      await _load();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Veterinário removido do estabelecimento'),
-            backgroundColor: AppColors.success,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString().replaceAll('Exception: ', '')),
-            backgroundColor: AppColors.danger,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
+    final success =
+        await context.read<EstablishmentStaffProvider>().dissociateVet(vet.id);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(success
+              ? 'Veterinário removido do estabelecimento'
+              : 'Erro ao remover veterinário'),
+          backgroundColor: success ? AppColors.success : AppColors.danger,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 
@@ -117,27 +90,27 @@ class _EstabVeterinariosScreenState extends State<EstabVeterinariosScreen> {
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (ctx) => _AdicionarVetSheet(
-        estabId: _estabId!,
-        token: _token!,
-        onAdicionado: _load,
-      ),
+      builder: (ctx) => _AdicionarVetSheet(onAdicionado: _load),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final estab = context.watch<EstablishmentProvider>();
+    final staff = context.watch<EstablishmentStaffProvider>();
+    final vets = staff.vets;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: const MypetAppBar(showBack: true),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: _estabId == null ? null : _abrirAdicionar,
+        onPressed: estab.establishmentId == null ? null : _abrirAdicionar,
         backgroundColor: AppColors.estab,
         icon: const Icon(Icons.person_add, color: Colors.white),
         label: const Text('Adicionar',
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
       ),
-      body: _loading
+      body: staff.loadingVets
           ? const Center(
               child: CircularProgressIndicator(color: AppColors.estab))
           : RefreshIndicator(
@@ -157,7 +130,7 @@ class _EstabVeterinariosScreenState extends State<EstabVeterinariosScreen> {
                     style: TextStyle(fontSize: 13, color: AppColors.grey),
                   ),
                   const SizedBox(height: 20),
-                  if (_vets.isEmpty)
+                  if (vets.isEmpty)
                     Container(
                       padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(
@@ -186,7 +159,7 @@ class _EstabVeterinariosScreenState extends State<EstabVeterinariosScreen> {
                       ),
                     )
                   else
-                    ..._vets.map((v) => _VetCard(
+                    ...vets.map((v) => _VetCard(
                           vet: v,
                           onRemover: () => _remover(v),
                         )),
@@ -198,12 +171,8 @@ class _EstabVeterinariosScreenState extends State<EstabVeterinariosScreen> {
 }
 
 class _AdicionarVetSheet extends StatefulWidget {
-  final String estabId;
-  final String token;
   final VoidCallback onAdicionado;
   const _AdicionarVetSheet({
-    required this.estabId,
-    required this.token,
     required this.onAdicionado,
   });
 
@@ -245,8 +214,8 @@ class _AdicionarVetSheetState extends State<_AdicionarVetSheet>
       _erroMsg = null;
     });
     try {
-      final vet = await VeterinarianService.findByCpf(
-          token: widget.token, cpf: cpf);
+      final vet =
+          await context.read<EstablishmentStaffProvider>().findVetByCpf(cpf);
       setState(() {
         _encontrado = vet;
         _erroMsg = vet == null ? 'Veterinário não encontrado' : null;
@@ -265,27 +234,24 @@ class _AdicionarVetSheetState extends State<_AdicionarVetSheet>
       return;
     }
     setState(() => _associando = true);
-    try {
-      await VeterinarianService.associate(
-        token: widget.token,
-        vetId: vet.id,
-        establishmentId: widget.estabId,
+    final ok =
+        await context.read<EstablishmentStaffProvider>().associateVet(vet.id);
+    if (!mounted) return;
+    if (ok) {
+      Navigator.pop(context);
+      widget.onAdicionado();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${vet.name} associado com sucesso!'),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+        ),
       );
-      if (mounted) {
-        Navigator.pop(context);
-        widget.onAdicionado();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${vet.name} associado com sucesso!'),
-            backgroundColor: AppColors.success,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    } catch (e) {
-      setState(() => _erroMsg = e.toString().replaceAll('Exception: ', ''));
-    } finally {
-      if (mounted) setState(() => _associando = false);
+    } else {
+      setState(() {
+        _associando = false;
+        _erroMsg = 'Erro ao associar veterinário';
+      });
     }
   }
 
@@ -360,8 +326,6 @@ class _AdicionarVetSheetState extends State<_AdicionarVetSheet>
                     onAssociar: _associar,
                   ),
                   _CadastrarTab(
-                    estabId: widget.estabId,
-                    token: widget.token,
                     onCadastrado: () {
                       Navigator.pop(context);
                       widget.onAdicionado();
@@ -486,12 +450,8 @@ class _BuscarTab extends StatelessWidget {
 }
 
 class _CadastrarTab extends StatefulWidget {
-  final String estabId;
-  final String token;
   final VoidCallback onCadastrado;
   const _CadastrarTab({
-    required this.estabId,
-    required this.token,
     required this.onCadastrado,
   });
 
@@ -526,25 +486,17 @@ class _CadastrarTabState extends State<_CadastrarTab> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
     try {
-      await AuthService.register(
-        name: _nameCtrl.text.trim(),
-        email: _emailCtrl.text.trim(),
-        password: _senhaCtrl.text,
-        phone: _phoneCtrl.text.trim(),
-        cpf: _cpfCtrl.text.replaceAll(RegExp(r'\D'), ''),
-        role: 'VETERINARIO',
-      );
-      final vet = await VeterinarianService.register(
-        token: widget.token,
-        establishmentId: widget.estabId,
-        name: _nameCtrl.text.trim(),
-        phone: _phoneCtrl.text.trim(),
-        cpf: _cpfCtrl.text.replaceAll(RegExp(r'\D'), ''),
-        crmv: _crmvCtrl.text.trim().toUpperCase(),
-        especialidade: _especialidadeCtrl.text.trim().isEmpty
-            ? null
-            : _especialidadeCtrl.text.trim(),
-      );
+      final vet = await context.read<EstablishmentStaffProvider>().registerVet(
+            name: _nameCtrl.text.trim(),
+            email: _emailCtrl.text.trim(),
+            password: _senhaCtrl.text,
+            phone: _phoneCtrl.text.trim(),
+            cpf: _cpfCtrl.text.replaceAll(RegExp(r'\D'), ''),
+            crmv: _crmvCtrl.text.trim().toUpperCase(),
+            especialidade: _especialidadeCtrl.text.trim().isEmpty
+                ? null
+                : _especialidadeCtrl.text.trim(),
+          );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

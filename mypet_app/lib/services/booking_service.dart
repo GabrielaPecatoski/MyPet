@@ -40,34 +40,53 @@ class BookingService {
     return list.map((e) => AppointmentModel.fromJson(e as Map<String, dynamic>)).toList();
   }
 
+  static Future<List<AppointmentModel>> fetchVetBookings({
+    required String token,
+    required String vetId,
+  }) async {
+    final res = await http
+        .get(
+          Uri.parse('${ApiConstants.baseUrl}/bookings/vet/$vetId'),
+          headers: _headers(token),
+        )
+        .timeout(const Duration(seconds: 8));
+    if (res.statusCode != 200) throw Exception('Erro ao buscar agendamentos');
+    final list = jsonDecode(res.body) as List;
+    return list.map((e) => AppointmentModel.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
   static Future<AppointmentModel> createBooking({
     required String token,
     required String userName,
     required String petId,
     required String petName,
     required String serviceName,
-    required String establishmentId,
-    required String establishmentName,
+    String? establishmentId,
+    String? establishmentName,
     required DateTime scheduledAt,
     double price = 0,
     bool priceVariable = false,
     List<ServiceModel>? services,
     String? driverId,
     String? driverName,
+    String? vetId,
+    String? vetName,
   }) async {
     final body = <String, dynamic>{
       'userName': userName,
       'petId': petId,
       'petName': petName,
       'serviceName': serviceName,
-      'establishmentId': establishmentId,
-      'establishmentName': establishmentName,
       'scheduledAt': scheduledAt.toIso8601String(),
       'price': price,
       'priceVariable': priceVariable,
     };
+    if (establishmentId != null) body['establishmentId'] = establishmentId;
+    if (establishmentName != null) body['establishmentName'] = establishmentName;
     if (driverId != null) body['driverId'] = driverId;
     if (driverName != null) body['driverName'] = driverName;
+    if (vetId != null) body['vetId'] = vetId;
+    if (vetName != null) body['vetName'] = vetName;
     if (services != null && services.isNotEmpty) {
       body['services'] = services
           .map((s) => {

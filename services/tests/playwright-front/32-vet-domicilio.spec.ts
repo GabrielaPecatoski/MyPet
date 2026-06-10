@@ -1,13 +1,13 @@
 /**
- * Testa o toggle de atendimento domiciliar do veterinário:
- *  - toggle aparece na home do vet
- *  - toggle pode ser ativado/desativado
- *  - estado muda visualmente ao tocar
- *  - toggle de disponibilidade (24h) ainda funciona
+ * Testa os toggles e a navegação do painel do veterinário (UI nova):
+ *  - toggles de domicílio e emergência 24h aparecem na home
+ *  - o card de toggle é tappável (texto vira aria-label → clicar via byText)
+ *  - perfil exibe CRMV/especialidade
+ *  - navegação por todas as abas (Agenda usa pollTap por causa do botão "Ver agenda")
  */
 import { test, APIRequestContext } from '@playwright/test';
 import {
-  bootAndLogin, tapText, expectText, waitForText, byText,
+  bootAndLogin, tapText, expectText, waitForText, byText, pollTap,
 } from './_helpers';
 import { apiContext, registerUser, registerVet, SeededUser } from './_api';
 
@@ -27,45 +27,33 @@ test.afterAll(async () => { await api.dispose(); });
 test('home do vet exibe toggle de atendimento domiciliar', async ({ page }) => {
   await bootAndLogin(page, vet.email, vet.password);
   await waitForText(page, 'MY PET · VETERINÁRIO');
-  await expectText(page, /Atendimento domiciliar/i);
+  // card tappável → texto vai pro aria-label; usar string exata (não regex, que olha só textContent)
+  await expectText(page, 'Atendimento domiciliar inativo');
 });
 
-test('home do vet exibe toggle de disponibilidade 24h', async ({ page }) => {
+test('home do vet exibe toggle de emergência 24h', async ({ page }) => {
   await bootAndLogin(page, vet.email, vet.password);
   await waitForText(page, 'MY PET · VETERINÁRIO');
-  await expectText(page, /Atender emergências 24h|Indisponível para chamados/);
+  await expectText(page, 'Emergências 24h desativado');
 });
 
 test('clicar no toggle domiciliar muda o texto de estado', async ({ page }) => {
   await bootAndLogin(page, vet.email, vet.password);
-  await waitForText(page, /Atendimento domiciliar/i);
-  // captura estado atual
-  const eraAtivo = await byText(page, 'Atendimento domiciliar ativo')
-    .first().isVisible({ timeout: 3000 }).catch(() => false);
-
-  await tapText(page, /Atendimento domiciliar/i);
-  await page.waitForTimeout(2000);
-
-  if (eraAtivo) {
-    // deve ter ido para inativo
-    await waitForText(page, /domiciliar inativo|domiciliar ativo/i);
-  } else {
-    await waitForText(page, /domiciliar ativo|domiciliar inativo/i);
-  }
+  await waitForText(page, 'Atendimento domiciliar inativo');
+  await byText(page, 'Atendimento domiciliar inativo').first().click({ force: true });
+  await waitForText(page, 'Atendimento domiciliar ativo');
 });
 
-test('clicar no toggle de disponibilidade 24h muda estado', async ({ page }) => {
+test('clicar no toggle de emergência 24h muda estado', async ({ page }) => {
   await bootAndLogin(page, vet.email, vet.password);
-  await waitForText(page, /Atender emergências 24h|Indisponível para chamados/);
-  await tapText(page, /Atender emergências 24h|Indisponível para chamados/);
-  await page.waitForTimeout(2000);
-  await expectText(page, /Atender emergências 24h|Indisponível para chamados/);
+  await waitForText(page, 'Emergências 24h desativado');
+  await byText(page, 'Emergências 24h desativado').first().click({ force: true });
+  await waitForText(page, 'Atender emergências 24h');
 });
 
 test('perfil do vet exibe CRMV e especialidade cadastrados', async ({ page }) => {
   await bootAndLogin(page, vet.email, vet.password);
-  await tapText(page, 'Perfil');
-  await waitForText(page, /CRMV|Registro/);
+  await pollTap(page, 'Perfil', /CRMV|Registro|Dermatologia/);
   await expectText(page, /Dermatologia/);
 });
 
@@ -73,19 +61,9 @@ test('vet pode navegar por todas as abas sem crash', async ({ page }) => {
   await bootAndLogin(page, vet.email, vet.password);
   await waitForText(page, 'MY PET · VETERINÁRIO');
 
-  await tapText(page, 'Agenda');
-  await waitForText(page, 'Hoje');
-
-  await tapText(page, 'Chamados');
-  await waitForText(page, /Chamados/);
-
-  await tapText(page, 'Pacientes');
-  await waitForText(page, /Pacientes/);
-
-  await tapText(page, 'Perfil');
-  await waitForText(page, /CRMV|Sair da conta/);
-
-  // voltar ao início
-  await tapText(page, 'Início');
-  await waitForText(page, 'MY PET · VETERINÁRIO');
+  await pollTap(page, /^Agenda$/, 'Hoje'); // "Ver agenda" (no-op) intercepta o seletor por substring
+  await pollTap(page, 'Chamados', /Chamados|Nenhum chamado/);
+  await pollTap(page, 'Pacientes', /Pacientes|Nenhum paciente/);
+  await pollTap(page, 'Perfil', /CRMV|Sair da conta/);
+  await pollTap(page, 'Início', 'MY PET · VETERINÁRIO');
 });

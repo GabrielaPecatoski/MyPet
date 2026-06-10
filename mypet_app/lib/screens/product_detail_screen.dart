@@ -375,6 +375,8 @@ class _QtyBtn extends StatelessWidget {
     return Semantics(
       button: true,
       label: label,
+      onTap: onTap,
+      excludeSemantics: true,
       child: GestureDetector(
         onTap: onTap,
         child: Container(

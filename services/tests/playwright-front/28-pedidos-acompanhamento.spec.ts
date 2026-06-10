@@ -1,6 +1,6 @@
 import { test, expect, APIRequestContext } from '@playwright/test';
 import {
-  bootAndLogin, tapText, expectText, waitForText, byText, pollTap, openLojaSearch,
+  bootAndLogin, expectText, waitForText, byText, pollTap, openLojaSearch,
 } from './_helpers';
 import {
   apiContext, registerUser, createEstablishment, createProduct,
@@ -70,27 +70,27 @@ test('pedido ENVIANDO mostra total do pedido', async ({ page }) => {
 });
 test('filtro "Em andamento" mantém pedido ENVIANDO visível', async ({ page }) => {
   await openPedidosTab(page, clienteEmAndamento.email, clienteEmAndamento.password);
-  await tapText(page, 'Em andamento');
+  await byText(page, 'Em andamento').first().click({ force: true });
   await waitForText(page, 'Enviando já');
   await expectText(page, 'Entrega');
 });
 test('filtro "Finalizados" oculta pedido ENVIANDO e mostra mensagem vazia', async ({ page }) => {
   await openPedidosTab(page, clienteEmAndamento.email, clienteEmAndamento.password);
-  await tapText(page, 'Finalizados');
+  await byText(page, 'Finalizados').first().click({ force: true });
   await waitForText(page, 'Nenhum pedido finalizado');
   const visivel = await byText(page, 'Enviando já').first().isVisible({ timeout: 2_000 }).catch(() => false);
   expect(visivel).toBe(false);
 });
 test('filtro "Finalizados" mostra pedido FINALIZADO', async ({ page }) => {
   await openPedidosTab(page, clienteFinalizado.email, clienteFinalizado.password);
-  await tapText(page, 'Finalizados');
+  await byText(page, 'Finalizados').first().click({ force: true });
   await waitForText(page, 'Finalizado');
 });
 test('filtro "Em andamento" oculta pedido FINALIZADO e mostra mensagem vazia', async ({ page }) => {
   await openPedidosTab(page, clienteFinalizado.email, clienteFinalizado.password);
-  await tapText(page, 'Em andamento');
+  await byText(page, 'Em andamento').first().click({ force: true });
   await waitForText(page, 'Nenhum pedido em andamento');
-  const visivel = await byText(page, 'Finalizado').first().isVisible({ timeout: 2_000 }).catch(() => false);
+  const visivel = await byText(page, produtoNomeFinalizado).first().isVisible({ timeout: 2_000 }).catch(() => false);
   expect(visivel).toBe(false);
 });
 test('filtro "Todos" mostra pedido FINALIZADO', async ({ page }) => {

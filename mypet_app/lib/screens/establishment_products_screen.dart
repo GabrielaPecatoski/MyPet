@@ -1,26 +1,36 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/colors.dart';
+import '../models/product.dart';
 import '../providers/auth_provider.dart';
-import '../services/api_service.dart';
+import '../providers/establishment_products_provider.dart';
+import '../repositories/establishment_products_repository.dart';
 import '../widgets/mypet_app_bar.dart';
 import 'establishment_orders_view.dart';
 
-class EstabProdutosScreen extends StatefulWidget {
+class EstabProdutosScreen extends StatelessWidget {
   const EstabProdutosScreen({super.key});
+
   @override
-  State<EstabProdutosScreen> createState() => _EstabProdutosScreenState();
+  Widget build(BuildContext context) {
+    final auth = context.read<AuthProvider>();
+    return ChangeNotifierProvider(
+      create: (_) =>
+          EstablishmentProductsProvider(EstablishmentProductsRepository())
+            ..load(auth.user?.id, token: auth.token),
+      child: const _EstabProdutosView(),
+    );
+  }
 }
 
-class _EstabProdutosScreenState extends State<EstabProdutosScreen> {
-  final _searchCtrl = TextEditingController();
-  String _filter = 'Todos';
-  String _searchQuery = '';
-  bool _loading = true;
-  String? _estabId;
-  String? _token;
+class _EstabProdutosView extends StatefulWidget {
+  const _EstabProdutosView();
+  @override
+  State<_EstabProdutosView> createState() => _EstabProdutosViewState();
+}
 
-  final List<_Product> _products = [];
+class _EstabProdutosViewState extends State<_EstabProdutosView> {
+  final _searchCtrl = TextEditingController();
 
   static const _categories = ['Higiene', 'Alimentação', 'Acessórios', 'Brinquedos', 'Saúde'];
 
@@ -41,95 +51,14 @@ class _EstabProdutosScreenState extends State<EstabProdutosScreen> {
   };
 
   @override
-  void initState() {
-    super.initState();
-    final auth = Provider.of<AuthProvider>(context, listen: false);
-    _token = auth.token;
-    _loadData(auth.user?.id);
-  }
-
-  @override
   void dispose() {
     _searchCtrl.dispose();
     super.dispose();
   }
 
-  Future<void> _loadData(String? userId) async {
-    if (userId == null) {
-      setState(() => _loading = false);
-      return;
-    }
-    setState(() => _loading = true);
-    try {
-      final estabData = await ApiService.get('/establishments/owner/$userId', token: _token);
-      final estabs = estabData is List ? estabData : [estabData];
-      if (estabs.isEmpty) {
-        setState(() => _loading = false);
-        return;
-      }
-      final id = (estabs.first as Map<String, dynamic>)['id'] as String? ?? '';
-      _estabId = id;
-      await _loadProducts();
-    } catch (_) {
-      setState(() => _loading = false);
-    }
-  }
+  void _editProduct(ProductModel p) => _showProductDialog(product: p);
 
-  Future<void> _loadProducts() async {
-    if (_estabId == null) return;
-    setState(() => _loading = true);
-    try {
-      final data = await ApiService.get(
-        '/marketplace/products/establishment/$_estabId',
-        token: _token,
-      );
-      final list = (data as List).cast<Map<String, dynamic>>();
-      setState(() {
-        _products.clear();
-        _products.addAll(list.map((e) => _Product.fromJson(e)));
-        _loading = false;
-      });
-    } catch (_) {
-      setState(() => _loading = false);
-    }
-  }
-
-  List<_Product> get _filtered {
-    var list = _products.where((p) {
-      if (_filter == 'Ativos') return p.active;
-      if (_filter == 'Inativos') return !p.active;
-      if (_filter == 'Sem estoque') return p.stock == 0;
-      return true;
-    }).toList();
-    if (_searchQuery.isNotEmpty) {
-      list = list
-          .where((p) =>
-              p.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-              p.category.toLowerCase().contains(_searchQuery.toLowerCase()))
-          .toList();
-    }
-    return list;
-  }
-
-  int get _totalAtivos => _products.where((p) => p.active).length;
-  double get _receitaTotal => _products.fold(0, (s, p) => s + p.price * p.stock);
-
-  void _addProduct() => _showProductDialog();
-  void _editProduct(_Product p) => _showProductDialog(product: p);
-
-  Future<void> _toggleActive(_Product p) async {
-    if (_estabId == null) return;
-    try {
-      await ApiService.patch(
-        '/marketplace/products/${p.id}',
-        {'active': !p.active},
-        token: _token,
-      );
-      await _loadProducts();
-    } catch (_) {}
-  }
-
-  Future<void> _deleteProduct(_Product p) async {
+  Future<void> _deleteProduct(ProductModel p) async {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -153,14 +82,12 @@ class _EstabProdutosScreenState extends State<EstabProdutosScreen> {
       ),
     );
     if (ok == true && mounted) {
-      try {
-        await ApiService.delete('/marketplace/products/${p.id}', token: _token);
-        await _loadProducts();
-      } catch (_) {}
+      await context.read<EstablishmentProductsProvider>().delete(p.id);
     }
   }
 
-  void _showProductDialog({_Product? product}) {
+  void _showProductDialog({ProductModel? product}) {
+    final provider = context.read<EstablishmentProductsProvider>();
     final nameCtrl = TextEditingController(text: product?.name ?? '');
     final brandCtrl = TextEditingController(text: product?.brand ?? '');
     final priceCtrl = TextEditingController(
@@ -280,35 +207,24 @@ class _EstabProdutosScreenState extends State<EstabProdutosScreen> {
                       final price =
                           double.tryParse(priceCtrl.text.replaceAll(',', '.')) ?? 0;
                       final stock = int.tryParse(stockCtrl.text) ?? 0;
+                      final desc = descCtrl.text.trim();
+                      final fields = <String, dynamic>{
+                        'name': name,
+                        'brand': brandCtrl.text.trim(),
+                        'unit': unitCtrl.text.trim().isEmpty
+                            ? 'Un'
+                            : unitCtrl.text.trim(),
+                        'category': category,
+                        'price': price,
+                        'stock': stock,
+                      };
+                      if (desc.isNotEmpty) fields['description'] = desc;
                       Navigator.pop(ctx);
-                      try {
-                        final desc = descCtrl.text.trim();
-                        if (product == null) {
-                          final body = <String, dynamic>{
-                            'establishmentId': _estabId,
-                            'name': name,
-                            'brand': brandCtrl.text.trim(),
-                            'unit': unitCtrl.text.trim().isEmpty ? 'Un' : unitCtrl.text.trim(),
-                            'category': category,
-                            'price': price,
-                            'stock': stock,
-                          };
-                          if (desc.isNotEmpty) body['description'] = desc;
-                          await ApiService.post('/marketplace/products', body, token: _token);
-                        } else {
-                          final body = <String, dynamic>{
-                            'name': name,
-                            'brand': brandCtrl.text.trim(),
-                            'unit': unitCtrl.text.trim().isEmpty ? 'Un' : unitCtrl.text.trim(),
-                            'category': category,
-                            'price': price,
-                            'stock': stock,
-                          };
-                          if (desc.isNotEmpty) body['description'] = desc;
-                          await ApiService.patch('/marketplace/products/${product.id}', body, token: _token);
-                        }
-                        await _loadProducts();
-                      } catch (_) {}
+                      if (product == null) {
+                        await provider.create(fields);
+                      } else {
+                        await provider.update(product.id, fields);
+                      }
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.estab,
@@ -372,7 +288,8 @@ class _EstabProdutosScreenState extends State<EstabProdutosScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final filtered = _filtered;
+    final provider = context.watch<EstablishmentProductsProvider>();
+    final filtered = provider.filtered;
 
     return DefaultTabController(
       length: 2,
@@ -397,7 +314,7 @@ class _EstabProdutosScreenState extends State<EstabProdutosScreen> {
             Expanded(
               child: TabBarView(
                 children: [
-                  _loading
+                  provider.isLoading
                       ? const Center(child: CircularProgressIndicator(color: AppColors.estab))
                       : Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -427,7 +344,9 @@ class _EstabProdutosScreenState extends State<EstabProdutosScreen> {
                             ),
                           ),
                           ElevatedButton.icon(
-                            onPressed: _estabId != null ? _addProduct : null,
+                            onPressed: provider.estabId != null
+                                ? () => _showProductDialog()
+                                : null,
                             icon: const Icon(Icons.add, size: 18, color: Colors.white),
                             label: const Text('Produto',
                                 style: TextStyle(color: Colors.white, fontSize: 13)),
@@ -447,17 +366,17 @@ class _EstabProdutosScreenState extends State<EstabProdutosScreen> {
                       Row(
                         children: [
                           _StatChip(
-                              label: '${_products.length} produtos',
+                              label: '${provider.totalProducts} produtos',
                               icon: Icons.inventory_2_outlined,
                               color: AppColors.estab),
                           const SizedBox(width: 8),
                           _StatChip(
-                              label: '$_totalAtivos ativos',
+                              label: '${provider.totalAtivos} ativos',
                               icon: Icons.check_circle_outline,
                               color: AppColors.success),
                           const SizedBox(width: 8),
                           _StatChip(
-                              label: 'R\$ ${(_receitaTotal / 1000).toStringAsFixed(1)}k',
+                              label: 'R\$ ${(provider.receitaTotal / 1000).toStringAsFixed(1)}k',
                               icon: Icons.trending_up,
                               color: const Color(0xFF6366F1)),
                         ],
@@ -466,20 +385,20 @@ class _EstabProdutosScreenState extends State<EstabProdutosScreen> {
 
                       TextField(
                         controller: _searchCtrl,
-                        onChanged: (v) => setState(() => _searchQuery = v),
+                        onChanged: (v) => provider.setSearch(v),
                         decoration: InputDecoration(
                           hintText: 'Buscar produto ou categoria...',
                           hintStyle:
                               const TextStyle(color: AppColors.grey, fontSize: 14),
                           prefixIcon: const Icon(Icons.search,
                               color: AppColors.grey, size: 20),
-                          suffixIcon: _searchQuery.isNotEmpty
+                          suffixIcon: provider.searchQuery.isNotEmpty
                               ? IconButton(
                                   icon: const Icon(Icons.close,
                                       color: AppColors.grey, size: 18),
                                   onPressed: () {
                                     _searchCtrl.clear();
-                                    setState(() => _searchQuery = '');
+                                    provider.setSearch('');
                                   },
                                 )
                               : null,
@@ -514,9 +433,9 @@ class _EstabProdutosScreenState extends State<EstabProdutosScreen> {
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           children: ['Todos', 'Ativos', 'Inativos', 'Sem estoque']
                               .map((f) {
-                            final sel = _filter == f;
+                            final sel = provider.filter == f;
                             return GestureDetector(
-                              onTap: () => setState(() => _filter = f),
+                              onTap: () => provider.setFilter(f),
                               child: Container(
                                 margin: const EdgeInsets.only(right: 20),
                                 alignment: Alignment.center,
@@ -569,8 +488,8 @@ class _EstabProdutosScreenState extends State<EstabProdutosScreen> {
                               ),
                               const SizedBox(height: 16),
                               Text(
-                                _searchQuery.isNotEmpty
-                                    ? 'Nenhum resultado para "$_searchQuery"'
+                                provider.searchQuery.isNotEmpty
+                                    ? 'Nenhum resultado para "${provider.searchQuery}"'
                                     : 'Nenhum produto nesta categoria',
                                 style: const TextStyle(
                                     color: AppColors.grey, fontSize: 14),
@@ -588,7 +507,7 @@ class _EstabProdutosScreenState extends State<EstabProdutosScreen> {
                             categoryIcon:
                                 _categoryIcons[filtered[i].category] ?? Icons.shopping_bag_outlined,
                             onEdit: () => _editProduct(filtered[i]),
-                            onToggle: () => _toggleActive(filtered[i]),
+                            onToggle: () => provider.toggleActive(filtered[i]),
                             onDelete: () => _deleteProduct(filtered[i]),
                           ),
                         ),
@@ -639,7 +558,7 @@ class _StatChip extends StatelessWidget {
 }
 
 class _ProductCard extends StatelessWidget {
-  final _Product product;
+  final ProductModel product;
   final Color categoryColor;
   final IconData categoryIcon;
   final VoidCallback onEdit, onToggle, onDelete;
@@ -868,38 +787,3 @@ class _ActionBtn extends StatelessWidget {
   }
 }
 
-class _Product {
-  final String id;
-  String name;
-  String brand;
-  String unit;
-  String category;
-  String description;
-  double price;
-  int stock;
-  bool active;
-
-  _Product({
-    required this.id,
-    required this.name,
-    this.brand = '',
-    this.unit = 'Un',
-    required this.category,
-    this.description = '',
-    required this.price,
-    required this.stock,
-    required this.active,
-  });
-
-  factory _Product.fromJson(Map<String, dynamic> json) => _Product(
-        id: json['id'] as String? ?? '',
-        name: json['name'] as String? ?? '',
-        brand: json['brand'] as String? ?? '',
-        unit: json['unit'] as String? ?? 'Un',
-        category: json['category'] as String? ?? 'Higiene',
-        description: json['description'] as String? ?? '',
-        price: (json['price'] as num?)?.toDouble() ?? 0,
-        stock: (json['stock'] as num?)?.toInt() ?? 0,
-        active: json['active'] as bool? ?? true,
-      );
-}

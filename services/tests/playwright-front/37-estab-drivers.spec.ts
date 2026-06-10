@@ -60,16 +60,23 @@ test('cadastro de novo motorista pela UI associa ao estab', async ({ page }) => 
   await tapText(page, 'Motoristas');
   await waitForText(page, /Motoristas|Nenhum motorista/);
   await tapButton(page, 'Adicionar');
-  await waitForText(page, /Nome|CNH/i);
+  // Sheet abre na aba "Buscar por CPF"; troca para "Cadastrar novo"
+  await waitForText(page, 'Adicionar Motorista');
+  await tapText(page, 'Cadastrar novo');
+  await waitForText(page, 'Veículo'); // âncora de texto real da aba Cadastrar
 
   const ts = Date.now();
-  const campos = textFields(page);
+  // Só os campos visíveis (a aba "Buscar por CPF" pode manter seu input no DOM)
+  const campos = page.locator('input[data-semantics-role="text-field"]:visible');
+  // Ordem: nome, telefone, cpf, email, senha, cnh, modelo, placa
   await fill(campos.nth(0), `Mot Novo E2E ${ts.toString().slice(-4)}`);
   await fill(campos.nth(1), '41944440005');
   await fill(campos.nth(2), String(ts).slice(-11).padStart(11, '0'));
-  await fill(campos.nth(3), String(ts).slice(-9));
-  await fill(campos.nth(4), 'Fiat Palio');
-  await fill(campos.nth(5), `CA${ts.toString().slice(-4)}`);
-  await tapButton(page, /Salvar|Cadastrar|Adicionar/);
+  await fill(campos.nth(3), `mot${ts}@mypet.com`);
+  await fill(campos.nth(4), 'senha123');
+  await fill(campos.nth(5), String(ts).slice(-9));
+  await fill(campos.nth(6), 'Fiat Palio');
+  await fill(campos.nth(7), `MOT${ts.toString().slice(-4)}`); // placa precisa de 7+ caracteres
+  await tapButton(page, 'Cadastrar e Associar');
   await waitForText(page, /cadastrado|associado|Ativo|Motoristas/i, 25_000);
 });

@@ -7,3 +7,4 @@ CREATE DATABASE mypet_notif;
 CREATE DATABASE mypet_review;
 CREATE DATABASE mypet_faq;
 CREATE DATABASE mypet_driver;
+CREATE DATABASE mypet_vet;

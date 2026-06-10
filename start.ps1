@@ -25,7 +25,7 @@ if (-not (Test-Path $envFile)) {
 }
 
 # 2. Verifica / aguarda Docker Desktop
-Write-Host "[2/5] Verificando Docker Desktop..." -ForegroundColor Yellow
+Write-Host "[1/3] Verificando Docker Desktop..." -ForegroundColor Yellow
 docker info 2>&1 | Out-Null
 if ($LASTEXITCODE -ne 0) {
   Write-Host "      Docker Desktop nao esta rodando. Iniciando..." -ForegroundColor Yellow
@@ -44,35 +44,9 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Host "      Docker pronto." -ForegroundColor Green
 
-# 3. Aplica schema nos bancos com alteracoes pendentes
+# 2. Sobe containers (migrations rodam dentro de cada container no startup)
 Write-Host ""
-Write-Host "[3/5] Aplicando schema (db:push)..." -ForegroundColor Yellow
-docker compose -f $compose up -d postgres | Out-Null
-$pgReady = $false
-for ($i = 0; $i -lt 15; $i++) {
-  Start-Sleep -Seconds 2
-  docker compose -f $compose exec postgres pg_isready -U postgres 2>&1 | Out-Null
-  if ($LASTEXITCODE -eq 0) { $pgReady = $true; break }
-}
-if ($pgReady) {
-  $services = @(
-    @{ prefix = 'services/establishment'; db = 'mypet_estab'   },
-    @{ prefix = 'services/booking';       db = 'mypet_booking' },
-    @{ prefix = 'services/driver';        db = 'mypet_driver'  }
-  )
-  foreach ($svc in $services) {
-    $env:DATABASE_URL = "postgresql://postgres:root@localhost:5433/$($svc.db)"
-    npm run db:push --prefix $svc.prefix 2>&1 | Out-Null
-  }
-  Remove-Item Env:DATABASE_URL -ErrorAction SilentlyContinue
-  Write-Host "      Schema aplicado." -ForegroundColor Green
-} else {
-  Write-Host "      Postgres nao respondeu -- pulando db:push." -ForegroundColor Yellow
-}
-
-# 4. Sobe containers (sem rebuild - usa imagens ja construidas)
-Write-Host ""
-Write-Host "[4/5] Subindo containers..." -ForegroundColor Yellow
+Write-Host "[2/3] Subindo containers..." -ForegroundColor Yellow
 docker compose -f $compose up -d
 if ($LASTEXITCODE -ne 0) {
   Write-Host "      Erro ao subir containers." -ForegroundColor Red
@@ -80,9 +54,9 @@ if ($LASTEXITCODE -ne 0) {
 }
 docker compose -f $compose restart nginx | Out-Null
 
-# 5. Aguarda o gateway responder
+# 3. Aguarda o gateway responder
 Write-Host ""
-Write-Host "[5/5] Aguardando Nginx (http://localhost/health)..." -ForegroundColor Yellow
+Write-Host "[3/3] Aguardando Nginx (http://localhost/health)..." -ForegroundColor Yellow
 $maxWait = 90
 $waited  = 0
 $ready   = $false
@@ -109,7 +83,6 @@ if ($ready) {
 }
 Write-Host ""
 Write-Host "  API (via Nginx) -> http://localhost"
-Write-Host "  RabbitMQ UI    -> http://localhost:15672  (mypet / mypet123)"
 Write-Host "  Flutter Android -> http://10.0.2.2"
 Write-Host "===================================" -ForegroundColor Cyan
 Write-Host ""

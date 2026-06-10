@@ -4,10 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../core/colors.dart';
-import '../models/driver.dart';
 import '../providers/auth_provider.dart';
-import '../services/driver_service.dart';
-import '../services/storage_service.dart';
+import '../providers/driver_profile_provider.dart';
 import '../widgets/mypet_app_bar.dart';
 
 class DriverPerfilScreen extends StatefulWidget {
@@ -17,10 +15,6 @@ class DriverPerfilScreen extends StatefulWidget {
 }
 
 class _DriverPerfilScreenState extends State<DriverPerfilScreen> {
-  DriverModel? _driver;
-  bool _loading = true;
-  String? _vehiclePhotoPath;
-
   static const _orange = Color(0xFFF97316);
 
   @override
@@ -31,23 +25,10 @@ class _DriverPerfilScreenState extends State<DriverPerfilScreen> {
 
   Future<void> _load() async {
     final auth = context.read<AuthProvider>();
-    if (auth.token == null || auth.user?.cpf == null) {
-      setState(() => _loading = false);
-      return;
-    }
-    try {
-      final results = await Future.wait([
-        DriverService.findByCpf(token: auth.token!, cpf: auth.user!.cpf!),
-        StorageService.getVehiclePhoto(),
-      ]);
-      setState(() {
-        _driver = results[0] as DriverModel?;
-        _vehiclePhotoPath = results[1] as String?;
-      });
-    } catch (_) {
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
+    if (auth.token == null || auth.user?.cpf == null) return;
+    await context
+        .read<DriverProfileProvider>()
+        .load(token: auth.token!, cpf: auth.user!.cpf!);
   }
 
   Future<void> _pickProfilePhoto() async {
@@ -66,8 +47,10 @@ class _DriverPerfilScreenState extends State<DriverPerfilScreen> {
     final picked = await ImagePicker()
         .pickImage(source: ImageSource.gallery, imageQuality: 80);
     if (picked != null && mounted) {
-      await StorageService.saveVehiclePhoto(picked.path);
-      setState(() => _vehiclePhotoPath = picked.path);
+      await context
+          .read<DriverProfileProvider>()
+          .saveVehiclePhoto(picked.path);
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         content: Text('Foto do veículo salva!'),
         backgroundColor: AppColors.success,
@@ -79,18 +62,21 @@ class _DriverPerfilScreenState extends State<DriverPerfilScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
+    final driverProfile = context.watch<DriverProfileProvider>();
+    final driver = driverProfile.driver;
+    final vehiclePhotoPath = driverProfile.vehiclePhotoPath;
     final name = auth.user?.name ?? 'Motorista';
     final email = auth.user?.email ?? '';
     final phone = auth.user?.phone ?? '';
     final photo = auth.user?.photoPath;
 
     final hasProfile = photo != null && !kIsWeb;
-    final hasVehicle = _vehiclePhotoPath != null && !kIsWeb;
+    final hasVehicle = vehiclePhotoPath != null && !kIsWeb;
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: const MypetAppBar(showBack: false),
-      body: _loading
+      body: driverProfile.loading
           ? const Center(
               child: CircularProgressIndicator(color: _orange))
           : RefreshIndicator(
@@ -169,7 +155,7 @@ class _DriverPerfilScreenState extends State<DriverPerfilScreen> {
                                       style: const TextStyle(
                                           fontSize: 13, color: AppColors.grey)),
                                 ],
-                                if (_driver != null) ...[
+                                if (driver != null) ...[
                                   const SizedBox(height: 4),
                                   Container(
                                     padding: const EdgeInsets.symmetric(
@@ -179,7 +165,7 @@ class _DriverPerfilScreenState extends State<DriverPerfilScreen> {
                                       borderRadius: BorderRadius.circular(6),
                                     ),
                                     child: Text(
-                                      '${_driver!.vehicleTypeLabel} · ${_driver!.vehiclePlate}',
+                                      '${driver.vehicleTypeLabel} · ${driver.vehiclePlate}',
                                       style: const TextStyle(
                                           fontSize: 11,
                                           color: _orange,
@@ -289,7 +275,7 @@ class _DriverPerfilScreenState extends State<DriverPerfilScreen> {
                                   child: _photoCard(
                                 label: 'Foto do veículo',
                                 icon: Icons.directions_car_outlined,
-                                photoPath: _vehiclePhotoPath,
+                                photoPath: vehiclePhotoPath,
                                 hasPhoto: hasVehicle,
                                 onTap: _pickVehiclePhoto,
                               )),
@@ -317,8 +303,8 @@ class _DriverPerfilScreenState extends State<DriverPerfilScreen> {
                             icon: Icons.badge_outlined,
                             iconColor: _orange,
                             label: 'Documentos do veículo',
-                            subtitle: _driver != null
-                                ? 'CNH: ${_driver!.cnh} · ${_driver!.vehiclePlate}'
+                            subtitle: driver != null
+                                ? 'CNH: ${driver.cnh} · ${driver.vehiclePlate}'
                                 : 'CNH, CRLV',
                             onTap: () {},
                           ),

@@ -13,8 +13,10 @@ class VetProfileProvider extends ChangeNotifier {
   bool get updating => _updating;
   String? get error => _error;
   bool get hasVet => _vet != null;
-  bool get disponivel => _vet?.disponivel ?? true;
+  bool get disponivel => _vet?.disponivel ?? false;
   bool get atendeDomicilio => _vet?.atendeDomicilio ?? false;
+  bool get atende24h => _vet?.atende24h ?? false;
+  bool get isAprovado => _vet?.isAprovado ?? false;
 
   Future<void> load({required String token, required String cpf}) async {
     _loading = true;
@@ -30,16 +32,21 @@ class VetProfileProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> updateAvailability({
+  Future<bool> updateAvailability({
     required String token,
-    required bool disponivel,
-    required bool atendeDomicilio,
+    bool? disponivel,
+    bool? atendeDomicilio,
+    bool? atende24h,
   }) async {
-    if (_vet == null) return;
+    if (_vet == null) return false;
     _updating = true;
-    final prevDisp = _vet!.disponivel;
-    final prevDom = _vet!.atendeDomicilio;
-    _vet = _vet!.copyWith(disponivel: disponivel, atendeDomicilio: atendeDomicilio);
+    _error = null;
+    final prev = _vet!;
+    _vet = _vet!.copyWith(
+      disponivel: disponivel,
+      atendeDomicilio: atendeDomicilio,
+      atende24h: atende24h,
+    );
     notifyListeners();
     try {
       _vet = await VeterinarianService.updateAvailability(
@@ -47,9 +54,13 @@ class VetProfileProvider extends ChangeNotifier {
         vetId: _vet!.id,
         disponivel: disponivel,
         atendeDomicilio: atendeDomicilio,
+        atende24h: atende24h,
       );
-    } catch (_) {
-      _vet = _vet!.copyWith(disponivel: prevDisp, atendeDomicilio: prevDom);
+      return true;
+    } catch (e) {
+      _vet = prev;
+      _error = e.toString().replaceAll('Exception: ', '');
+      return false;
     } finally {
       _updating = false;
       notifyListeners();

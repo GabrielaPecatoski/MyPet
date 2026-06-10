@@ -44,6 +44,40 @@ class StorageService {
     return prefs.getString(_vehiclePhotoKey);
   }
 
+  static String _crmvPhotoKey(String cpf) => 'vet_crmv_photo_$cpf';
+
+  static Future<void> saveCrmvPhoto(String cpf, String? path) async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = _crmvPhotoKey(cpf);
+    if (path == null) {
+      await prefs.remove(key);
+    } else {
+      await prefs.setString(key, path);
+    }
+  }
+
+  static Future<String?> getCrmvPhoto(String cpf) async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_crmvPhotoKey(cpf));
+  }
+
+  static String _cnhPhotoKey(String cpf) => 'driver_cnh_photo_$cpf';
+
+  static Future<void> saveCnhPhoto(String cpf, String? path) async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = _cnhPhotoKey(cpf);
+    if (path == null) {
+      await prefs.remove(key);
+    } else {
+      await prefs.setString(key, path);
+    }
+  }
+
+  static Future<String?> getCnhPhoto(String cpf) async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_cnhPhotoKey(cpf));
+  }
+
   static Future<void> clear() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_tokenKey);

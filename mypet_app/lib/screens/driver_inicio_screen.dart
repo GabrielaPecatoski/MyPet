@@ -5,8 +5,7 @@ import 'package:provider/provider.dart';
 import '../core/colors.dart';
 import '../models/driver.dart';
 import '../providers/auth_provider.dart';
-import '../services/driver_service.dart';
-import '../services/storage_service.dart';
+import '../providers/driver_profile_provider.dart';
 
 class DriverInicioScreen extends StatefulWidget {
   const DriverInicioScreen({super.key});
@@ -17,9 +16,6 @@ class DriverInicioScreen extends StatefulWidget {
 
 class _DriverInicioScreenState extends State<DriverInicioScreen> {
   bool _online = false;
-  DriverModel? _driver;
-  bool _loading = true;
-  String? _vehiclePhotoPath;
 
   static const _orange = Color(0xFFF97316);
   static const _orangeDark = Color(0xFFEA580C);
@@ -32,34 +28,37 @@ class _DriverInicioScreenState extends State<DriverInicioScreen> {
 
   Future<void> _load() async {
     final auth = context.read<AuthProvider>();
-    if (auth.token == null || auth.user?.cpf == null) {
-      setState(() => _loading = false);
-      return;
-    }
-    try {
-      final results = await Future.wait([
-        DriverService.findByCpf(token: auth.token!, cpf: auth.user!.cpf!),
-        StorageService.getVehiclePhoto(),
-      ]);
-      if (mounted) {
-        setState(() {
-          _driver = results[0] as DriverModel?;
-          _vehiclePhotoPath = results[1] as String?;
-        });
-      }
-    } catch (_) {
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
+    if (auth.token == null || auth.user?.cpf == null) return;
+    await context
+        .read<DriverProfileProvider>()
+        .load(token: auth.token!, cpf: auth.user!.cpf!);
   }
 
   bool get _hasPhotos {
     if (kIsWeb) return true;
     final profilePhoto = context.read<AuthProvider>().user?.photoPath;
-    return profilePhoto != null && _vehiclePhotoPath != null;
+    final vehiclePhoto = context.read<DriverProfileProvider>().vehiclePhotoPath;
+    return profilePhoto != null && vehiclePhoto != null;
   }
 
   void _tryGoOnline() {
+    final driver = context.read<DriverProfileProvider>().driver;
+    if (!_online && (driver == null || !driver.isAtivo)) {
+      final msg = driver == null
+          ? 'Complete seu cadastro de motorista antes de ficar online.'
+          : driver.isPendente
+              ? 'Aguardando aprovação do administrador para ficar online.'
+              : 'Seu cadastro não está ativo. Contate o administrador.';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(msg),
+          backgroundColor: AppColors.warning,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+      return;
+    }
     if (!_hasPhotos) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -85,9 +84,12 @@ class _DriverInicioScreenState extends State<DriverInicioScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
+    final driverProfile = context.watch<DriverProfileProvider>();
+    final driver = driverProfile.driver;
+    final vehiclePhotoPath = driverProfile.vehiclePhotoPath;
     final top = MediaQuery.of(context).padding.top;
 
-    if (_loading) {
+    if (driverProfile.loading) {
       return const Scaffold(
         backgroundColor: AppColors.background,
         body: Center(child: CircularProgressIndicator(color: _orange)),
@@ -114,8 +116,8 @@ class _DriverInicioScreenState extends State<DriverInicioScreen> {
                   ],
                   _statusCard(),
                   const SizedBox(height: 14),
-                  if (_driver != null) _vehicleCard(),
-                  if (_driver == null) _semPerfilCard(),
+                  if (driver != null) _vehicleCard(driver, vehiclePhotoPath),
+                  if (driver == null) _semPerfilCard(),
                   const SizedBox(height: 14),
                   _statsCard(),
                   const SizedBox(height: 14),
@@ -349,8 +351,7 @@ class _DriverInicioScreenState extends State<DriverInicioScreen> {
         ),
       );
 
-  Widget _vehicleCard() {
-    final d = _driver!;
+  Widget _vehicleCard(DriverModel d, String? vehiclePhotoPath) {
     final vehicleIcon = switch (d.vehicleType) {
       'MOTO' => Icons.two_wheeler,
       'VAN' => Icons.airport_shuttle,
@@ -391,7 +392,7 @@ class _DriverInicioScreenState extends State<DriverInicioScreen> {
               ],
             ),
           ),
-          if (_vehiclePhotoPath != null && !kIsWeb)
+          if (vehiclePhotoPath != null && !kIsWeb)
             Container(
               width: 44,
               height: 44,
@@ -401,7 +402,7 @@ class _DriverInicioScreenState extends State<DriverInicioScreen> {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(7),
-                child: Image.file(File(_vehiclePhotoPath!), fit: BoxFit.cover),
+                child: Image.file(File(vehiclePhotoPath), fit: BoxFit.cover),
               ),
             )
           else if (d.isAssociado)

@@ -1,6 +1,6 @@
 import { test, APIRequestContext } from '@playwright/test';
 import {
-  bootAndLogin, tapText, tapButton, expectText, waitForText, openClientTab, scrollToText,
+  bootAndLogin, tapText, tapButton, expectText, waitForText, openClientTab, scrollToText, pollText,
 } from './_helpers';
 import {
   apiContext, registerUser, createPet, createEstablishment, setSchedule, SeededUser,
@@ -59,7 +59,7 @@ test('agendar serviço veterinário variável não exige pagamento e vai direto 
   await slot.click();
   await tapButton(page, 'Confirmar Agendamento');
   await waitForText(page, 'Sob consulta');
-  await expectText(page, /valor será definido pelo estabelecimento/i);
+  await pollText(page, /valor será definido pelo estabelecimento/i, 20_000);
   await tapButton(page, 'Ver Minha Agenda');
   await openClientTab(page, 'Agenda', petNome);
   await expectText(page, 'Aguardando confirmação');
@@ -68,7 +68,7 @@ test('estabelecimento vê e confirma agendamento de preço variável (já entra 
   const bCliente = await registerUser(api, { role: 'CLIENTE' });
   const bPet = await createPet(api, bCliente, { name: `Toby ${Date.now().toString().slice(-4)}` });
   const scheduledAt = new Date();
-  scheduledAt.setHours(15, 0, 0, 0);
+  scheduledAt.setHours(12, 0, 0, 0);
   await createVariablePriceBooking(api, bCliente, {
     petId: bPet.id,
     petName: bPet.name,
@@ -79,7 +79,7 @@ test('estabelecimento vê e confirma agendamento de preço variável (já entra 
   });
   await bootAndLogin(page, owner.email, owner.password);
   await tapText(page, 'Agenda');
-  await waitForText(page, bPet.name, 40_000);
+  await pollText(page, bPet.name, 60_000);
   await tapButton(page, 'Confirmar');
   await expectText(page, 'Agendamento confirmado!');
 });

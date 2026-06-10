@@ -1,5 +1,5 @@
 import { APIRequestContext, request } from '@playwright/test';
-export const API_BASE = 'http://localhost';
+export const API_BASE = 'http://127.0.0.1';
 export interface SeededUser {
   id: string;
   name: string;
@@ -7,9 +7,10 @@ export interface SeededUser {
   password: string;
   token: string;
   role: string;
+  cpf: string;
 }
 export async function apiContext(): Promise<APIRequestContext> {
-  return request.newContext({ baseURL: API_BASE });
+  return request.newContext({ baseURL: API_BASE, timeout: 60_000 });
 }
 function auth(u: SeededUser) {
   return { Authorization: `Bearer ${u.token}` };
@@ -48,7 +49,7 @@ export async function registerUser(
     }),
     'registerUser',
   );
-  return { id: body.user.id, name: body.user.name, email, password, token: body.accessToken, role: body.user.role };
+  return { id: body.user.id, name: body.user.name, email, password, token: body.accessToken, role: body.user.role, cpf };
 }
 export async function createEstablishment(
   api: APIRequestContext,
@@ -76,18 +77,22 @@ export async function addService(
   establishmentId: string,
   data: Partial<{ name: string; price: number; durationMinutes: number; description: string }> = {},
 ): Promise<any> {
-  return ok(
-    await api.post(`/establishments/${establishmentId}/services`, {
-      headers: auth(owner),
-      data: {
-        name: data.name ?? 'Banho E2E',
-        price: data.price ?? 80,
-        durationMinutes: data.durationMinutes ?? 60,
-        description: data.description ?? 'Banho completo',
-      },
-    }),
+  const payload = {
+    name: data.name ?? 'Banho E2E',
+    price: data.price ?? 80,
+    durationMinutes: data.durationMinutes ?? 60,
+    description: data.description ?? 'Banho completo',
+  };
+  // POST /establishments/:id/services retorna 201 sem corpo → busca via GET para devolver o serviço criado.
+  await ok(
+    await api.post(`/establishments/${establishmentId}/services`, { headers: auth(owner), data: payload }),
     'addService',
   );
+  const list = await ok(
+    await api.get(`/establishments/${establishmentId}/services`, { headers: auth(owner) }),
+    'addService:list',
+  );
+  return (Array.isArray(list) ? list : []).find((s: any) => s.name === payload.name) ?? payload;
 }
 export async function setSchedule(
   api: APIRequestContext,
@@ -289,18 +294,24 @@ export async function addVariableService(
   establishmentId: string,
   data: { name: string; durationMinutes?: number; description?: string } = { name: 'Consulta E2E' },
 ): Promise<any> {
-  return ok(
+  const payload = {
+    name: data.name,
+    priceVariable: true,
+    durationMinutes: data.durationMinutes ?? 60,
+    description: data.description ?? 'Consulta com preço variável',
+  };
+  await ok(
     await api.post(`/establishments/${establishmentId}/services`, {
       headers: { Authorization: `Bearer ${owner.token}` },
-      data: {
-        name: data.name,
-        priceVariable: true,
-        durationMinutes: data.durationMinutes ?? 60,
-        description: data.description ?? 'Consulta com preço variável',
-      },
+      data: payload,
     }),
     'addVariableService',
   );
+  const list = await ok(
+    await api.get(`/establishments/${establishmentId}/services`, { headers: { Authorization: `Bearer ${owner.token}` } }),
+    'addVariableService:list',
+  );
+  return (Array.isArray(list) ? list : []).find((s: any) => s.name === payload.name) ?? payload;
 }
 export async function createVariablePriceBooking(
   api: APIRequestContext,
@@ -340,7 +351,7 @@ export async function registerDriver(
   const ts = Date.now() + counter++;
   const cpf = String(ts).slice(-11).padStart(11, '0');
   const plate = `E2E${String(ts).slice(-4)}`;
-  return ok(
+  const driver = await ok(
     await api.post('/drivers', {
       headers: auth(owner),
       data: {
@@ -356,6 +367,8 @@ export async function registerDriver(
     }),
     'registerDriver',
   );
+  await autoApproveDriver(api, driver.id);
+  return driver;
 }
 export async function registerIndependentDriver(
   api: APIRequestContext,
@@ -366,13 +379,13 @@ export async function registerIndependentDriver(
 ): Promise<any> {
   const ts = Date.now() + counter++;
   const plate = `I2E${String(ts).slice(-4)}`;
-  return ok(
+  const driver = await ok(
     await api.post('/drivers', {
       headers: auth(user),
       data: {
         name: user.name,
         phone: '41988880001',
-        cpf: user.token.slice(-11).padStart(11, '0'),
+        cpf: user.cpf,
         cnh: data.cnh ?? String(ts).slice(-9),
         vehicleType: data.vehicleType ?? 'CARRO',
         vehicleModel: data.vehicleModel ?? 'Fiat Uno',
@@ -381,6 +394,8 @@ export async function registerIndependentDriver(
     }),
     'registerIndependentDriver',
   );
+  await autoApproveDriver(api, driver.id);
+  return driver;
 }
 export async function registerVet(
   api: APIRequestContext,
@@ -388,20 +403,44 @@ export async function registerVet(
   data: Partial<{ crmv: string; especialidade: string }> = {},
 ): Promise<any> {
   const ts = Date.now() + counter++;
-  return ok(
+  const vet = await ok(
     await api.post('/veterinarians', {
       headers: auth(user),
       data: {
         name: user.name,
         phone: '41988880002',
-        cpf: user.token.slice(-11).padStart(11, '0'),
+        cpf: user.cpf,
         crmv: data.crmv ?? `SP${ts.toString().slice(-5)}`,
         especialidade: data.especialidade ?? 'Clínica geral',
       },
     }),
     'registerVet',
   );
+  await autoApproveVet(api, vet.id);
+  return vet;
 }
+let _adminCache: SeededUser | null = null;
+// Loga o admin seedado uma vez e reusa o token para aprovar vet/motorista nos testes.
+export async function getAdmin(api: APIRequestContext): Promise<SeededUser> {
+  if (_adminCache) return _adminCache;
+  _adminCache = await loginUser(api, 'admin@mypet.com', 'admin123');
+  return _adminCache;
+}
+
+// Cadastro de vet/motorista entra como PENDENTE; nos testes aprovamos automaticamente via admin.
+async function autoApproveDriver(api: APIRequestContext, driverId: string): Promise<void> {
+  try {
+    const admin = await getAdmin(api);
+    await api.patch(`/drivers/${driverId}/approve`, { headers: auth(admin) });
+  } catch { /* admin ausente: ignora, teste segue com PENDENTE */ }
+}
+async function autoApproveVet(api: APIRequestContext, vetId: string): Promise<void> {
+  try {
+    const admin = await getAdmin(api);
+    await api.patch(`/veterinarians/${vetId}/approve`, { headers: auth(admin) });
+  } catch { /* idem */ }
+}
+
 export async function loginUser(
   api: APIRequestContext,
   email: string,
@@ -418,6 +457,7 @@ export async function loginUser(
     password,
     token: body.accessToken,
     role: body.user?.role ?? 'CLIENTE',
+    cpf: body.user?.cpf ?? '',
   };
 }
 

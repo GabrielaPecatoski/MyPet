@@ -2,6 +2,7 @@ import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
 import { RabbitMQService } from "@shared/infra/messaging/rabbitmq.service";
 import { BookingExchangeName, BookingRoutingKey } from "@shared/contracts/events/booking-events.enum";
 import { MarketplaceExchangeName, MarketplaceRoutingKey } from "@shared/contracts/events/marketplace-events.enum";
+import { EmergencyExchangeName, EmergencyRoutingKey } from "@shared/contracts/events/emergency-events.enum";
 import { NotificationService } from "@notification/application/services/notification.service";
 
 interface BookingCreatedPayload {
@@ -33,6 +34,15 @@ interface OrderCreatedPayload {
   itemCount: number;
 }
 
+interface EmergencyVetCallPayload {
+  callId: string;
+  vetId: string;
+  vetName: string;
+  callerName: string;
+  callerPhone: string;
+  petDescription: string | null;
+}
+
 const NOTIFICATION_QUEUE = "notification.service.queue";
 
 @Injectable()
@@ -58,6 +68,9 @@ export class NotificationHandler implements OnModuleInit {
 
       await channel.assertExchange(MarketplaceExchangeName.ORDER_CREATED, "direct", { durable: true });
       await channel.bindQueue(NOTIFICATION_QUEUE, MarketplaceExchangeName.ORDER_CREATED, MarketplaceRoutingKey.ORDER_CREATED);
+
+      await channel.assertExchange(EmergencyExchangeName.VET_CALL, "direct", { durable: true });
+      await channel.bindQueue(NOTIFICATION_QUEUE, EmergencyExchangeName.VET_CALL, EmergencyRoutingKey.VET_CALL);
 
       await channel.consume(NOTIFICATION_QUEUE, async (msg) => {
         if (!msg) return;
@@ -118,6 +131,17 @@ export class NotificationHandler implements OnModuleInit {
           title: "Pedido realizado",
           body: `Seu pedido de ${data.itemCount} item(s) no valor de R$ ${data.total.toFixed(2)} foi registrado.`,
           type: "ORDER_CREATED",
+        });
+        break;
+      }
+      case EmergencyRoutingKey.VET_CALL: {
+        const data = payload as EmergencyVetCallPayload;
+        const pet = data.petDescription ? ` · ${data.petDescription}` : "";
+        await this.notificationService.create({
+          userId: data.vetId,
+          title: "Chamado de emergência!",
+          body: `${data.callerName} (${data.callerPhone}) precisa de atendimento urgente${pet}.`,
+          type: "EMERGENCY_VET_CALL",
         });
         break;
       }

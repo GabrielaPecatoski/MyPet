@@ -4,21 +4,31 @@ import '../core/colors.dart';
 import '../models/establishment_stats.dart';
 import '../providers/auth_provider.dart';
 import '../providers/establishment_provider.dart';
-import '../services/stats_service.dart';
+import '../providers/establishment_stats_provider.dart';
+import '../repositories/establishment_stats_repository.dart';
 import '../widgets/mypet_app_bar.dart';
 
-class EstabEstatisticasScreen extends StatefulWidget {
+class EstabEstatisticasScreen extends StatelessWidget {
   const EstabEstatisticasScreen({super.key});
+
   @override
-  State<EstabEstatisticasScreen> createState() =>
-      _EstabEstatisticasScreenState();
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (_) =>
+          EstablishmentStatsProvider(EstablishmentStatsRepository()),
+      child: const _EstabEstatisticasView(),
+    );
+  }
 }
 
-class _EstabEstatisticasScreenState extends State<EstabEstatisticasScreen> {
-  EstabStatsModel? _stats;
-  bool _loading = false;
-  String? _error;
+class _EstabEstatisticasView extends StatefulWidget {
+  const _EstabEstatisticasView();
+  @override
+  State<_EstabEstatisticasView> createState() =>
+      _EstabEstatisticasViewState();
+}
 
+class _EstabEstatisticasViewState extends State<_EstabEstatisticasView> {
   @override
   void initState() {
     super.initState();
@@ -26,43 +36,20 @@ class _EstabEstatisticasScreenState extends State<EstabEstatisticasScreen> {
   }
 
   Future<void> _load() async {
-    if (_loading || _stats != null) return;
     if (!mounted) return;
-
     final auth = context.read<AuthProvider>();
-    final estabProvider = context.read<EstablishmentProvider>();
+    final estabId = context.read<EstablishmentProvider>().establishmentId;
     final token = auth.token;
-    final estabId = estabProvider.establishmentId;
-
     if (token == null || estabId == null) return;
-
-    setState(() { _loading = true; _error = null; });
-
-    try {
-      final stats = await StatsService.fetchEstabStats(
-        estabId: estabId,
-        token: token,
-      );
-      if (mounted) setState(() { _stats = stats; _loading = false; });
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _error = 'Não foi possível carregar as estatísticas';
-          _loading = false;
-        });
-      }
-    }
+    await context
+        .read<EstablishmentStatsProvider>()
+        .load(estabId: estabId, token: token);
   }
 
-  List<_MonthBar> get _ultimos6Meses {
-    if (_stats == null) return [];
-    return _stats!.last6Months
-        .map((m) => _MonthBar(m.month, m.value))
-        .toList();
-  }
+  List<_MonthBar> _ultimos6Meses(EstabStatsModel stats) =>
+      stats.last6Months.map((m) => _MonthBar(m.month, m.value)).toList();
 
-  List<_ServiceStat> get _servicos {
-    if (_stats == null) return [];
+  List<_ServiceStat> _servicos(EstabStatsModel stats) {
     final colors = [
       AppColors.estab,
       AppColors.success,
@@ -70,37 +57,38 @@ class _EstabEstatisticasScreenState extends State<EstabEstatisticasScreen> {
       AppColors.warning,
       AppColors.grey,
     ];
-    return _stats!.topServices.asMap().entries.map((e) {
+    return stats.topServices.asMap().entries.map((e) {
       final color = colors[e.key < colors.length ? e.key : colors.length - 1];
       return _ServiceStat(e.value.name, e.value.count, color);
     }).toList();
   }
 
-  double get _maxBarValue =>
-      _ultimos6Meses.fold(0, (m, b) => b.value > m ? b.value : m);
+  double _maxBarValue(List<_MonthBar> months) =>
+      months.fold(0, (m, b) => b.value > m ? b.value : m);
 
   @override
   Widget build(BuildContext context) {
+    final statsProvider = context.watch<EstablishmentStatsProvider>();
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: const MypetAppBar(showBack: false),
       body: Consumer<EstablishmentProvider>(
         builder: (context, estabProv, _) {
-          if (_loading || estabProv.isLoading) {
+          if (statsProvider.isLoading || estabProv.isLoading) {
             return const Center(child: CircularProgressIndicator());
           }
-          if (_stats == null && estabProv.establishmentId != null && _error == null) {
-            if (!_loading) {
-              WidgetsBinding.instance.addPostFrameCallback((_) => _load());
-            }
+          if (statsProvider.stats == null &&
+              estabProv.establishmentId != null &&
+              statsProvider.error == null) {
+            WidgetsBinding.instance.addPostFrameCallback((_) => _load());
             return const Center(child: CircularProgressIndicator(color: AppColors.estab));
           }
-          if (_error != null) {
+          if (statsProvider.error != null) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(_error!,
+                  Text(statsProvider.error!,
                       style: const TextStyle(color: AppColors.grey)),
                   const SizedBox(height: 16),
                   ElevatedButton(
@@ -111,25 +99,27 @@ class _EstabEstatisticasScreenState extends State<EstabEstatisticasScreen> {
               ),
             );
           }
-          if (_stats == null) {
+          if (statsProvider.stats == null) {
             return const Center(
               child: CircularProgressIndicator(color: AppColors.estab),
             );
           }
           return RefreshIndicator(
             onRefresh: _load,
-            child: _buildContent(),
+            child: _buildContent(statsProvider.stats!),
           );
         },
       ),
     );
   }
 
-  Widget _buildContent() {
-    final stats = _stats!;
+  Widget _buildContent(EstabStatsModel stats) {
     final estab = context.read<EstablishmentProvider>().establishment;
     final avgRating = estab?.rating ?? 0.0;
     final totalReviews = estab?.reviewCount ?? 0;
+    final meses = _ultimos6Meses(stats);
+    final servicos = _servicos(stats);
+    final maxBar = _maxBarValue(meses);
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
@@ -271,7 +261,7 @@ class _EstabEstatisticasScreenState extends State<EstabEstatisticasScreen> {
 
           const SizedBox(height: 20),
 
-          if (_ultimos6Meses.isNotEmpty)
+          if (meses.isNotEmpty)
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -297,10 +287,10 @@ class _EstabEstatisticasScreenState extends State<EstabEstatisticasScreen> {
                     height: 130,
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.end,
-                      children: _ultimos6Meses.map((b) {
-                        final max = _maxBarValue > 0 ? _maxBarValue : 1;
+                      children: meses.map((b) {
+                        final max = maxBar > 0 ? maxBar : 1;
                         final ratio = b.value / max;
-                        final isLast = b == _ultimos6Meses.last;
+                        final isLast = b == meses.last;
                         return Expanded(
                           child: Padding(
                             padding:
@@ -357,9 +347,9 @@ class _EstabEstatisticasScreenState extends State<EstabEstatisticasScreen> {
               ),
             ),
 
-          if (_ultimos6Meses.isNotEmpty) const SizedBox(height: 20),
+          if (meses.isNotEmpty) const SizedBox(height: 20),
 
-          if (_servicos.isNotEmpty)
+          if (servicos.isNotEmpty)
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -381,9 +371,9 @@ class _EstabEstatisticasScreenState extends State<EstabEstatisticasScreen> {
                           fontSize: 14,
                           color: AppColors.dark)),
                   const SizedBox(height: 16),
-                  ..._servicos.map((s) {
+                  ...servicos.map((s) {
                     final total =
-                        _servicos.fold(0, (sum, x) => sum + x.count);
+                        servicos.fold(0, (sum, x) => sum + x.count);
                     final pct = total > 0 ? s.count / total : 0.0;
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 12),
@@ -433,7 +423,7 @@ class _EstabEstatisticasScreenState extends State<EstabEstatisticasScreen> {
               ),
             ),
 
-          if (_servicos.isNotEmpty) const SizedBox(height: 20),
+          if (servicos.isNotEmpty) const SizedBox(height: 20),
 
           if (stats.monthRevenue > 0)
             Container(

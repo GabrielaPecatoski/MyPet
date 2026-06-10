@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../core/colors.dart';
 import '../models/establishment.dart';
 import '../models/veterinarian.dart';
 import '../providers/auth_provider.dart';
 import '../providers/emergency_provider.dart';
+import '../services/veterinarian_service.dart';
 import '../widgets/mypet_app_bar.dart';
 
 class EmergenciaScreen extends StatefulWidget {
@@ -34,6 +36,51 @@ class _EmergenciaScreenState extends State<EmergenciaScreen>
   Future<void> _load() async {
     final token = context.read<AuthProvider>().token ?? '';
     await context.read<EmergencyProvider>().loadAll(token: token);
+  }
+
+  Future<void> _callVet(VeterinarianModel vet) async {
+    final auth = context.read<AuthProvider>();
+    final token = auth.token ?? '';
+    final callerName = auth.user?.name ?? 'Cliente';
+    final phoneCtrl = TextEditingController();
+    final petCtrl = TextEditingController();
+
+    final confirmed = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _CallVetSheet(
+        vetName: vet.name,
+        phoneCtrl: phoneCtrl,
+        petCtrl: petCtrl,
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    try {
+      HapticFeedback.heavyImpact();
+      await VeterinarianService.callVet(
+        token: token,
+        vetId: vet.id,
+        callerName: callerName,
+        callerPhone: phoneCtrl.text.trim(),
+        petDescription: petCtrl.text.trim().isEmpty ? null : petCtrl.text.trim(),
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Chamado enviado! O veterinário foi alertado.'),
+        backgroundColor: AppColors.success,
+        behavior: SnackBarBehavior.floating,
+      ));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Erro ao enviar chamado. Tente ligar diretamente.'),
+        backgroundColor: AppColors.danger,
+        behavior: SnackBarBehavior.floating,
+      ));
+    }
   }
 
   @override
@@ -108,10 +155,11 @@ class _EmergenciaScreenState extends State<EmergenciaScreen>
         context.read<EmergencyProvider>().loadVets(token: token);
       });
     }
-    if (vm.vets.isEmpty) {
+    final vets24h = vm.vets.where((v) => v.atende24h).toList();
+    if (vets24h.isEmpty) {
       return _emptyView(
-        'Nenhum veterinário disponível',
-        'No momento, nenhum veterinário está disponível para chamados.',
+        'Nenhum veterinário 24h disponível',
+        'No momento, nenhum veterinário está disponível para emergências 24h.',
         Icons.medical_services_outlined,
       );
     }
@@ -120,8 +168,11 @@ class _EmergenciaScreenState extends State<EmergenciaScreen>
       color: AppColors.danger,
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
-        itemCount: vm.vets.length,
-        itemBuilder: (ctx, i) => _VetEmergencyCard(vet: vm.vets[i]),
+        itemCount: vets24h.length,
+        itemBuilder: (ctx, i) => _VetEmergencyCard(
+          vet: vets24h[i],
+          onCall: () => _callVet(vets24h[i]),
+        ),
       ),
     );
   }
@@ -327,7 +378,8 @@ class _EmergencyCard extends StatelessWidget {
 
 class _VetEmergencyCard extends StatelessWidget {
   final VeterinarianModel vet;
-  const _VetEmergencyCard({required this.vet});
+  final VoidCallback onCall;
+  const _VetEmergencyCard({required this.vet, required this.onCall});
 
   static const _green = Color(0xFF16A34A);
   static const _orange = Color(0xFFF97316);
@@ -336,7 +388,6 @@ class _VetEmergencyCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
@@ -344,6 +395,9 @@ class _VetEmergencyCard extends StatelessWidget {
           BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 2))
         ],
       ),
+      child: Column(children: [
+      Padding(
+      padding: const EdgeInsets.all(14),
       child: Row(children: [
         Container(
           width: 52, height: 52,
@@ -424,6 +478,127 @@ class _VetEmergencyCard extends StatelessWidget {
           ],
         ]),
       ]),
+    ),  // end Padding
+    Padding(
+      padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+      child: SizedBox(
+        width: double.infinity,
+        child: ElevatedButton.icon(
+          onPressed: onCall,
+          icon: const Icon(Icons.emergency, size: 18),
+          label: const Text('Chamar veterinário'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.danger,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            padding: const EdgeInsets.symmetric(vertical: 12),
+          ),
+        ),
+      ),
+    ),
+  ]),  // end Column
+  );   // end Container
+  }
+}
+
+// ── Bottom sheet: cliente preenche telefone antes de chamar ──────────────────
+
+class _CallVetSheet extends StatelessWidget {
+  final String vetName;
+  final TextEditingController phoneCtrl;
+  final TextEditingController petCtrl;
+
+  const _CallVetSheet({
+    required this.vetName,
+    required this.phoneCtrl,
+    required this.petCtrl,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Center(
+            child: Container(
+              width: 36, height: 4,
+              decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.danger.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.emergency, color: AppColors.danger, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text('Chamar veterinário', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.dark)),
+                Text('Dr. $vetName', style: const TextStyle(fontSize: 13, color: AppColors.grey)),
+              ]),
+            ),
+          ]),
+          const SizedBox(height: 20),
+          TextField(
+            controller: phoneCtrl,
+            keyboardType: TextInputType.phone,
+            decoration: InputDecoration(
+              labelText: 'Seu telefone para retorno *',
+              prefixIcon: const Icon(Icons.phone_outlined, color: AppColors.danger, size: 20),
+              filled: true,
+              fillColor: AppColors.background,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: AppColors.danger, width: 1.5),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: petCtrl,
+            maxLines: 2,
+            decoration: InputDecoration(
+              labelText: 'Descreva a situação do pet (opcional)',
+              prefixIcon: const Icon(Icons.pets_outlined, color: AppColors.grey, size: 20),
+              filled: true,
+              fillColor: AppColors.background,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+            ),
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                if (phoneCtrl.text.trim().isEmpty) return;
+                Navigator.pop(context, true);
+              },
+              icon: const Icon(Icons.emergency, size: 18),
+              label: const Text('Enviar chamado de emergência'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.danger,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ),
+        ]),
+      ),
     );
   }
 }

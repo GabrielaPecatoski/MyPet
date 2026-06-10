@@ -5,7 +5,7 @@ import {
   BOOKING_REPOSITORY,
   type BookingRepository,
 } from "@booking/bookings/domain/repositories/booking-repository.interface";
-import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { ConflictException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { SharedMessagingService } from "@shared/infra/messaging/shared-messaging.service";
 import { BookingExchangeName, BookingRoutingKey } from "@shared/contracts/events/booking-events.enum";
 
@@ -26,6 +26,21 @@ export class BookingService {
       ? services.map((s) => s.name).join(", ")
       : (dto.serviceName ?? services?.[0]?.name ?? "");
 
+    const scheduledAt = new Date(dto.scheduledAt);
+
+    if (dto.vetId) {
+      const existentes = await this.repo.findByVetId(dto.vetId);
+      const conflito = existentes.some(
+        (b) =>
+          b.status !== "CANCELADO" &&
+          b.status !== "RECUSADO" &&
+          b.scheduledAt.getTime() === scheduledAt.getTime(),
+      );
+      if (conflito) {
+        throw new ConflictException("Horário indisponível para este veterinário");
+      }
+    }
+
     const priceVariable = dto.priceVariable ?? false;
     const booking = Booking.restore({
       userId,
@@ -35,10 +50,12 @@ export class BookingService {
       serviceName: displayName,
       servicesJson: services ? JSON.stringify(services) : undefined,
       establishmentId: dto.establishmentId,
-      establishmentName: dto.establishmentName,
+      establishmentName: dto.establishmentName ?? "",
       driverId: dto.driverId,
       driverName: dto.driverName,
-      scheduledAt: new Date(dto.scheduledAt),
+      vetId: dto.vetId,
+      vetName: dto.vetName,
+      scheduledAt,
       price: priceVariable ? 0 : totalPrice,
       priceVariable,
       status: priceVariable ? "PENDENTE" : "AGUARDANDO_PAGAMENTO",
@@ -46,6 +63,13 @@ export class BookingService {
     })!;
     const created = await this.repo.create(booking);
     return BookingDto.fromBooking(created)!;
+  }
+
+  async findByVet(vetId: string): Promise<BookingDto[]> {
+    const rows = await this.repo.findByVetId(vetId);
+    return rows
+      .filter((b) => b.status !== "AGUARDANDO_PAGAMENTO")
+      .map((b) => BookingDto.fromBooking(b)!);
   }
 
   async findByUser(userId: string): Promise<BookingDto[]> {
@@ -66,7 +90,7 @@ export class BookingService {
   async findByEstablishment(establishmentId: string): Promise<BookingDto[]> {
     const rows = await this.repo.findByEstablishmentId(establishmentId);
     return rows
-      .filter((b) => b.status !== "AGUARDANDO_PAGAMENTO" && b.paymentStatus !== "NONE")
+      .filter((b) => b.status !== "AGUARDANDO_PAGAMENTO")
       .map((b) => BookingDto.fromBooking(b)!);
   }
 

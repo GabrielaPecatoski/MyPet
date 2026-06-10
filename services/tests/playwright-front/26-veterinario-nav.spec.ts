@@ -1,6 +1,6 @@
 import { test, APIRequestContext } from '@playwright/test';
 import {
-  bootAndLogin, tapText, expectText, waitForText, fieldByHint, fill,
+  bootAndLogin, tapText, expectText, waitForText, fieldByHint, fill, pollTap, byText,
 } from './_helpers';
 import {
   apiContext, registerUser, registerVet, SeededUser,
@@ -29,62 +29,58 @@ test('home do vet exibe stats (consultas, chamados, faturamento, avaliação)', 
   await expectText(page, 'Faturamento');
   await expectText(page, 'Avaliação');
 });
-test('home do vet exibe toggle de disponibilidade', async ({ page }) => {
+test('home do vet exibe toggles de atendimento (online, 24h, domicílio)', async ({ page }) => {
   await bootAndLogin(page, vet.email, vet.password);
-  await waitForText(page, 'Disponível para chamados 24h');
-  await expectText(page, /Disponível|Indisponível/);
+  await waitForText(page, 'Ative para aparecer aos clientes'); // subtítulo do toggle online (offline)
+  await expectText(page, 'Emergências 24h desativado');
+  await expectText(page, 'Atendimento domiciliar inativo');
 });
-test('toggle de disponibilidade muda estado', async ({ page }) => {
+test('toggle de emergência 24h muda estado', async ({ page }) => {
   await bootAndLogin(page, vet.email, vet.password);
-  await waitForText(page, 'Disponível para chamados 24h');
-  await tapText(page, /Disponível|Indisponível/);
-  await waitForText(page, /Disponível|Indisponível/);
+  await waitForText(page, 'Emergências 24h desativado');
+  // O card todo é tappável (GestureDetector) → texto vira aria-label; clicar via byText.
+  await byText(page, 'Emergências 24h desativado').first().click({ force: true });
+  await waitForText(page, 'Atender emergências 24h');
 });
 test('aba Agenda exibe abas Hoje / Amanhã / Semana', async ({ page }) => {
   await bootAndLogin(page, vet.email, vet.password);
-  await tapText(page, 'Agenda');
-  await waitForText(page, 'MY PET · VETERINÁRIO');
+  await pollTap(page, /^Agenda$/, 'Hoje'); // "Ver agenda" (no-op) intercepta o seletor por substring
   await expectText(page, 'Hoje');
   await expectText(page, 'Amanhã');
   await expectText(page, 'Semana');
 });
 test('aba Agenda exibe chips de contagem', async ({ page }) => {
   await bootAndLogin(page, vet.email, vet.password);
-  await tapText(page, 'Agenda');
-  await waitForText(page, 'Hoje');
+  await pollTap(page, /^Agenda$/, 'Hoje');
   await expectText(page, 'Consultas');
   await expectText(page, 'Confirmadas');
   await expectText(page, 'Pendentes');
 });
 test('agenda tab Hoje mostra estado vazio (sem consultas mockadas)', async ({ page }) => {
   await bootAndLogin(page, vet.email, vet.password);
-  await tapText(page, 'Agenda');
-  await waitForText(page, 'Hoje');
+  await pollTap(page, /^Agenda$/, 'Hoje');
   await expectText(page, 'Nenhuma consulta hoje.');
 });
 test('aba Chamados exibe estado vazio', async ({ page }) => {
   await bootAndLogin(page, vet.email, vet.password);
-  await tapText(page, 'Chamados');
-  await waitForText(page, 'Nenhum chamado ativo');
+  await pollTap(page, 'Chamados', 'Nenhum chamado ativo');
   await expectText(page, 'Chamados de emergência');
 });
 test('aba Pacientes exibe estado vazio com busca', async ({ page }) => {
   await bootAndLogin(page, vet.email, vet.password);
-  await tapText(page, 'Pacientes');
-  await waitForText(page, 'Nenhum paciente ainda');
+  await pollTap(page, 'Pacientes', 'Nenhum paciente ainda');
   await expectText(page, 'Atendidos recentemente');
 });
 test('campo de busca de paciente está disponível', async ({ page }) => {
   await bootAndLogin(page, vet.email, vet.password);
-  await tapText(page, 'Pacientes');
-  await waitForText(page, 'Nenhum paciente ainda');
+  await pollTap(page, 'Pacientes', 'Nenhum paciente ainda');
   const campo = fieldByHint(page, 'Buscar paciente ou tutor');
   await fill(campo, 'Thor');
   await expectText(page, 'Nenhum paciente ainda');
 });
 test('aba Perfil do vet exibe dados e CRMV', async ({ page }) => {
   await bootAndLogin(page, vet.email, vet.password);
-  await tapText(page, 'Perfil');
+  await pollTap(page, 'Perfil', /Especialidades|Sair da conta|CRMV|Registro/);
   await waitForText(page, 'Pacientes');
   await expectText(page, 'Avaliação');
   await expectText(page, 'Desde');
@@ -94,8 +90,7 @@ test('aba Perfil do vet exibe dados e CRMV', async ({ page }) => {
 });
 test('logout pelo perfil do vet volta ao login', async ({ page }) => {
   await bootAndLogin(page, vet.email, vet.password);
-  await tapText(page, 'Perfil');
-  await waitForText(page, 'Sair da conta');
+  await pollTap(page, 'Perfil', 'Sair da conta');
   await tapText(page, 'Sair da conta');
   await waitForText(page, 'Entrar');
 });

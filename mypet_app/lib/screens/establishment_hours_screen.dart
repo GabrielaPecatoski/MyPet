@@ -3,38 +3,52 @@ import 'package:provider/provider.dart';
 import '../core/colors.dart';
 import '../models/availability.dart';
 import '../providers/auth_provider.dart';
+import '../providers/establishment_hours_provider.dart';
 import '../providers/establishment_provider.dart';
-import '../services/availability_service.dart';
+import '../repositories/establishment_hours_repository.dart';
 import '../widgets/mypet_app_bar.dart';
 
-class EstabHorariosScreen extends StatefulWidget {
+class EstabHorariosScreen extends StatelessWidget {
   const EstabHorariosScreen({super.key});
 
   @override
-  State<EstabHorariosScreen> createState() => _EstabHorariosScreenState();
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (_) =>
+          EstablishmentHoursProvider(EstablishmentHoursRepository()),
+      child: const _EstabHorariosView(),
+    );
+  }
 }
 
-class _EstabHorariosScreenState extends State<EstabHorariosScreen>
+class _EstabHorariosView extends StatefulWidget {
+  const _EstabHorariosView();
+
+  @override
+  State<_EstabHorariosView> createState() => _EstabHorariosViewState();
+}
+
+class _EstabHorariosViewState extends State<_EstabHorariosView>
     with SingleTickerProviderStateMixin {
   late TabController _tabCtrl;
-  ScheduleModel? _schedule;
-  bool _loadingSchedule = false;
-  bool _savingSchedule = false;
-  int _slotDuration = 60;
-  int _capacity = 1;
-
-  DateTime _selectedDay = DateTime.now();
-  List<TimeSlotModel> _slots = [];
-  bool _loadingSlots = false;
 
   @override
   void initState() {
     super.initState();
     _tabCtrl = TabController(length: 2, vsync: this);
     _tabCtrl.addListener(() {
-      if (_tabCtrl.index == 1) _loadSlots();
+      if (_tabCtrl.index == 1) {
+        context.read<EstablishmentHoursProvider>().loadSlots();
+      }
     });
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadSchedule());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = context.read<EstablishmentHoursProvider>();
+      provider.configure(
+        estabId: context.read<EstablishmentProvider>().establishmentId,
+        token: context.read<AuthProvider>().token,
+      );
+      provider.loadSchedule();
+    });
   }
 
   @override
@@ -43,140 +57,32 @@ class _EstabHorariosScreenState extends State<EstabHorariosScreen>
     super.dispose();
   }
 
-  String? get _estabId =>
-      context.read<EstablishmentProvider>().establishmentId;
-
-  String? get _token => context.read<AuthProvider>().token;
-
-  ScheduleModel _defaultSchedule(String estabId) => ScheduleModel(
-        establishmentId: estabId,
-        slotDurationMinutes: 60,
-        days: [
-          const WorkingDayModel(dayOfWeek: 0, startTime: '08:00', endTime: '12:00', isOpen: false),
-          const WorkingDayModel(dayOfWeek: 1, startTime: '08:00', endTime: '18:00', isOpen: true),
-          const WorkingDayModel(dayOfWeek: 2, startTime: '08:00', endTime: '18:00', isOpen: true),
-          const WorkingDayModel(dayOfWeek: 3, startTime: '08:00', endTime: '18:00', isOpen: true),
-          const WorkingDayModel(dayOfWeek: 4, startTime: '08:00', endTime: '18:00', isOpen: true),
-          const WorkingDayModel(dayOfWeek: 5, startTime: '08:00', endTime: '18:00', isOpen: true),
-          const WorkingDayModel(dayOfWeek: 6, startTime: '08:00', endTime: '14:00', isOpen: true),
-        ],
-      );
-
-  Future<void> _loadSchedule() async {
-    final id = _estabId;
-    final token = _token;
-    setState(() => _loadingSchedule = true);
-    try {
-      if (id == null || token == null) throw Exception('não autenticado');
-      final s = await AvailabilityService.getSchedule(token: token, estabId: id);
-      setState(() {
-        _schedule = s;
-        _slotDuration = s.slotDurationMinutes;
-        _capacity = s.capacity;
-      });
-    } catch (_) {
-      setState(() => _schedule = _defaultSchedule(id ?? 'local'));
-    } finally {
-      setState(() => _loadingSchedule = false);
-    }
-  }
-
   Future<void> _saveSchedule() async {
-    final id = _estabId;
-    final token = _token;
-    final s = _schedule;
-    if (id == null || token == null || s == null) return;
-    setState(() => _savingSchedule = true);
-    try {
-      await AvailabilityService.saveSchedule(
-        token: token,
-        schedule: ScheduleModel(
-          establishmentId: id,
-          slotDurationMinutes: _slotDuration,
-          capacity: _capacity,
-          days: s.days,
-        ),
-      );
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Horários salvos com sucesso!'),
-          backgroundColor: AppColors.success,
-        ));
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(e.toString().replaceAll('Exception: ', '')),
-          backgroundColor: AppColors.danger,
-        ));
-      }
-    } finally {
-      setState(() => _savingSchedule = false);
-    }
-  }
-
-  Future<void> _loadSlots() async {
-    final id = _estabId;
-    final token = _token;
-    if (id == null || token == null) return;
-    setState(() => _loadingSlots = true);
-    try {
-      final dateStr = _formatDateKey(_selectedDay);
-      final slots = await AvailabilityService.getAvailability(
-        token: token,
-        estabId: id,
-        date: dateStr,
-      );
-      setState(() => _slots = slots);
-    } catch (_) {
-      setState(() => _slots = []);
-    } finally {
-      setState(() => _loadingSlots = false);
-    }
+    final error =
+        await context.read<EstablishmentHoursProvider>().saveSchedule();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(error ?? 'Horários salvos com sucesso!'),
+      backgroundColor: error == null ? AppColors.success : AppColors.danger,
+    ));
   }
 
   Future<void> _toggleSlot(TimeSlotModel slot) async {
-    final id = _estabId;
-    final token = _token;
-    if (id == null || token == null) return;
-
-    try {
-      if (!slot.available && slot.blockId != null) {
-        await AvailabilityService.unblockSlot(token: token, blockId: slot.blockId!);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('Horário liberado!'),
-            backgroundColor: AppColors.success,
-          ));
-        }
-      } else if (slot.available) {
-        await AvailabilityService.blockSlot(
-          token: token,
-          estabId: id,
-          date: _formatDateKey(_selectedDay),
-          startTime: slot.time,
-          endTime: AvailabilityService.addMinutes(slot.time, _slotDuration),
-        );
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('Horário bloqueado!'),
-            backgroundColor: AppColors.warning,
-          ));
-        }
-      }
-      await _loadSlots();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(e.toString().replaceAll('Exception: ', '')),
-          backgroundColor: AppColors.danger,
-        ));
-      }
+    final result =
+        await context.read<EstablishmentHoursProvider>().toggleSlot(slot);
+    if (!mounted) return;
+    if (result.acted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(result.wasBlock ? 'Horário bloqueado!' : 'Horário liberado!'),
+        backgroundColor: result.wasBlock ? AppColors.warning : AppColors.success,
+      ));
+    } else if (result.errorMessage != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(result.errorMessage!),
+        backgroundColor: AppColors.danger,
+      ));
     }
   }
-
-  String _formatDateKey(DateTime d) =>
-      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
   String _formatDateDisplay(DateTime d) {
     const months = [
@@ -184,20 +90,6 @@ class _EstabHorariosScreenState extends State<EstabHorariosScreen>
       'jul', 'ago', 'set', 'out', 'nov', 'dez'
     ];
     return '${d.day} de ${months[d.month - 1]}';
-  }
-
-  void _updateDay(int index, WorkingDayModel updated) {
-    if (_schedule == null) return;
-    final days = List<WorkingDayModel>.from(_schedule!.days);
-    days[index] = updated;
-    setState(() {
-      _schedule = ScheduleModel(
-        establishmentId: _schedule!.establishmentId,
-        slotDurationMinutes: _slotDuration,
-        capacity: _capacity,
-        days: days,
-      );
-    });
   }
 
   Future<void> _pickTime(BuildContext context, String current,
@@ -251,15 +143,16 @@ class _EstabHorariosScreenState extends State<EstabHorariosScreen>
   }
 
   Widget _buildScheduleTab() {
-    if (_loadingSchedule) {
+    final provider = context.watch<EstablishmentHoursProvider>();
+    if (provider.loadingSchedule) {
       return const Center(
           child: CircularProgressIndicator(color: AppColors.estab));
     }
-    final schedule = _schedule;
+    final schedule = provider.schedule;
     if (schedule == null) {
       return Center(
         child: ElevatedButton(
-          onPressed: _loadSchedule,
+          onPressed: provider.loadSchedule,
           child: const Text('Tentar novamente'),
         ),
       );
@@ -289,9 +182,9 @@ class _EstabHorariosScreenState extends State<EstabHorariosScreen>
               Wrap(
                 spacing: 8,
                 children: [30, 45, 60, 90, 120].map((min) {
-                  final selected = _slotDuration == min;
+                  final selected = provider.slotDuration == min;
                   return GestureDetector(
-                    onTap: () => setState(() => _slotDuration = min),
+                    onTap: () => provider.setSlotDuration(min),
                     child: Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 14, vertical: 8),
@@ -331,9 +224,9 @@ class _EstabHorariosScreenState extends State<EstabHorariosScreen>
               Wrap(
                 spacing: 8,
                 children: [1, 2, 3, 4, 5].map((n) {
-                  final selected = _capacity == n;
+                  final selected = provider.capacity == n;
                   return GestureDetector(
-                    onTap: () => setState(() => _capacity = n),
+                    onTap: () => provider.setCapacity(n),
                     child: Container(
                       width: 48,
                       height: 48,
@@ -396,7 +289,7 @@ class _EstabHorariosScreenState extends State<EstabHorariosScreen>
                       Switch(
                         value: day.isOpen,
                         onChanged: (v) =>
-                            _updateDay(i, day.copyWith(isOpen: v)),
+                            provider.updateDay(i, day.copyWith(isOpen: v)),
                         activeThumbColor: AppColors.estab,
                         activeTrackColor: AppColors.primaryLight,
                         materialTapTargetSize:
@@ -411,7 +304,7 @@ class _EstabHorariosScreenState extends State<EstabHorariosScreen>
                     child: GestureDetector(
                       onTap: () => _pickTime(
                           context, day.startTime,
-                          (t) => _updateDay(i, day.copyWith(startTime: t))),
+                          (t) => provider.updateDay(i, day.copyWith(startTime: t))),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                             vertical: 10, horizontal: 12),
@@ -437,7 +330,7 @@ class _EstabHorariosScreenState extends State<EstabHorariosScreen>
                     child: GestureDetector(
                       onTap: () => _pickTime(
                           context, day.endTime,
-                          (t) => _updateDay(i, day.copyWith(endTime: t))),
+                          (t) => provider.updateDay(i, day.copyWith(endTime: t))),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                             vertical: 10, horizontal: 12),
@@ -469,14 +362,14 @@ class _EstabHorariosScreenState extends State<EstabHorariosScreen>
           width: double.infinity,
           height: 52,
           child: ElevatedButton(
-            onPressed: _savingSchedule ? null : _saveSchedule,
+            onPressed: provider.savingSchedule ? null : _saveSchedule,
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.estab,
               elevation: 0,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12)),
             ),
-            child: _savingSchedule
+            child: provider.savingSchedule
                 ? const SizedBox(
                     width: 22,
                     height: 22,
@@ -495,6 +388,7 @@ class _EstabHorariosScreenState extends State<EstabHorariosScreen>
   }
 
   Widget _buildBlockTab() {
+    final provider = context.watch<EstablishmentHoursProvider>();
     return Column(
       children: [
         Container(
@@ -505,7 +399,7 @@ class _EstabHorariosScreenState extends State<EstabHorariosScreen>
               const Icon(Icons.calendar_today,
                   size: 18, color: AppColors.estab),
               const SizedBox(width: 8),
-              Text(_formatDateDisplay(_selectedDay),
+              Text(_formatDateDisplay(provider.selectedDay),
                   style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 15,
@@ -515,7 +409,7 @@ class _EstabHorariosScreenState extends State<EstabHorariosScreen>
                 onPressed: () async {
                   final picked = await showDatePicker(
                     context: context,
-                    initialDate: _selectedDay,
+                    initialDate: provider.selectedDay,
                     firstDate: DateTime.now(),
                     lastDate: DateTime.now().add(const Duration(days: 60)),
                     builder: (ctx, child) => Theme(
@@ -527,8 +421,7 @@ class _EstabHorariosScreenState extends State<EstabHorariosScreen>
                     ),
                   );
                   if (picked != null) {
-                    setState(() => _selectedDay = picked);
-                    _loadSlots();
+                    await provider.setSelectedDay(picked);
                   }
                 },
                 icon: const Icon(Icons.edit_calendar,
@@ -537,7 +430,7 @@ class _EstabHorariosScreenState extends State<EstabHorariosScreen>
                     style: TextStyle(color: AppColors.estab)),
               ),
               ElevatedButton.icon(
-                onPressed: _loadSlots,
+                onPressed: provider.loadSlots,
                 icon: const Icon(Icons.refresh, size: 16),
                 label: const Text('Atualizar'),
                 style: ElevatedButton.styleFrom(
@@ -568,11 +461,11 @@ class _EstabHorariosScreenState extends State<EstabHorariosScreen>
         ),
 
         Expanded(
-          child: _loadingSlots
+          child: provider.loadingSlots
               ? const Center(
                   child:
                       CircularProgressIndicator(color: AppColors.estab))
-              : _slots.isEmpty
+              : provider.slots.isEmpty
                   ? Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -601,9 +494,9 @@ class _EstabHorariosScreenState extends State<EstabHorariosScreen>
                         crossAxisSpacing: 10,
                         mainAxisSpacing: 10,
                       ),
-                      itemCount: _slots.length,
+                      itemCount: provider.slots.length,
                       itemBuilder: (_, i) {
-                        final slot = _slots[i];
+                        final slot = provider.slots[i];
                         final hasBooking = slot.bookingId != null;
                         final isBlocked =
                             !slot.available && slot.blockId != null;

@@ -9,6 +9,7 @@ class VeterinarianModel {
   final String status;
   final bool atendeDomicilio;
   final bool disponivel;
+  final bool atende24h;
 
   VeterinarianModel({
     required this.id,
@@ -18,19 +19,23 @@ class VeterinarianModel {
     required this.cpf,
     required this.crmv,
     this.especialidade,
-    this.status = 'ATIVO',
+    this.status = 'PENDENTE',
     this.atendeDomicilio = false,
-    this.disponivel = true,
+    this.disponivel = false,
+    this.atende24h = false,
   });
 
   bool get isAtivo => status == 'ATIVO';
   bool get isPendente => status == 'PENDENTE';
+  bool get isRejeitado => status == 'REJEITADO';
+  bool get isAprovado => status == 'ATIVO';
   bool get isAssociado => establishmentId != null && establishmentId!.isNotEmpty;
   String get statusLabel {
     switch (status) {
       case 'ATIVO': return 'Ativo';
       case 'INATIVO': return 'Inativo';
       case 'PENDENTE': return 'Aguardando aprovação';
+      case 'REJEITADO': return 'Cadastro rejeitado';
       default: return status;
     }
   }
@@ -43,14 +48,16 @@ class VeterinarianModel {
         cpf: json['cpf'] as String,
         crmv: json['crmv'] as String,
         especialidade: json['especialidade'] as String?,
-        status: json['status'] as String? ?? 'ATIVO',
+        status: json['status'] as String? ?? 'PENDENTE',
         atendeDomicilio: json['atendeDomicilio'] as bool? ?? false,
-        disponivel: json['disponivel'] as bool? ?? true,
+        disponivel: json['disponivel'] as bool? ?? false,
+        atende24h: json['atende24h'] as bool? ?? false,
       );
 
   VeterinarianModel copyWith({
     bool? atendeDomicilio,
     bool? disponivel,
+    bool? atende24h,
     String? status,
   }) =>
       VeterinarianModel(
@@ -64,5 +71,6 @@ class VeterinarianModel {
         status: status ?? this.status,
         atendeDomicilio: atendeDomicilio ?? this.atendeDomicilio,
         disponivel: disponivel ?? this.disponivel,
+        atende24h: atende24h ?? this.atende24h,
       );
 }

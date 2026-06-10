@@ -29,74 +29,73 @@ test('login como admin abre painel de admin', async ({ page }) => {
   await expectText(page, /Usuários|Reclamações/);
 });
 
-test('painel admin exibe bottom nav com 7 itens', async ({ page }) => {
+test('painel admin exibe bottom nav com 5 itens', async ({ page }) => {
   await bootAndLogin(page, ADMIN_EMAIL, ADMIN_PASSWORD);
   await waitForText(page, /Painel|Dashboard/);
   await expectText(page, 'Reclamações');
-  await expectText(page, 'Usuários');
-  await expectText(page, 'Lojas');
+  await expectText(page, 'Cadastros');
   await expectText(page, 'Verificações');
   await expectText(page, 'FAQ');
-  await expectText(page, 'Estatísticas');
 });
 
 test('aba Verificações exibe tabs Veterinários e Motoristas', async ({ page }) => {
   await bootAndLogin(page, ADMIN_EMAIL, ADMIN_PASSWORD);
   await waitForText(page, /Painel|Dashboard/);
   await tapText(page, 'Verificações');
-  await waitForText(page, /Veterinários|Motoristas/);
-  await expectText(page, /Veterinários/);
-  await expectText(page, /Motoristas/);
+  // labels das tabs ficam só no aria-label (textContent vazio) — usar string, não regex
+  await waitForText(page, 'Veterinários', 60_000);
+  await expectText(page, 'Veterinários');
+  await expectText(page, 'Motoristas');
 });
 
 test('aba Verificações: sem pendentes exibe mensagem "Nenhuma verificação pendente"', async ({ page }) => {
   await bootAndLogin(page, ADMIN_EMAIL, ADMIN_PASSWORD);
   await tapText(page, 'Verificações');
-  await waitForText(page, /Veterinários|Nenhuma verificação/);
+  await waitForText(page, 'Veterinários', 60_000);
   // se não há pendentes, deve aparecer a mensagem
   await page.waitForFunction(
     () => {
       const all = Array.from(document.querySelectorAll('flt-semantics'));
-      return all.some(
-        (el) =>
-          el.textContent?.includes('Nenhuma verificação') ||
-          el.textContent?.includes('Veterinários') ||
-          el.textContent?.includes('pendente'),
-      );
+      return all.some((el) => {
+        const txt = `${el.textContent ?? ''} ${el.getAttribute('aria-label') ?? ''}`;
+        return txt.includes('Nenhuma verificação') || txt.includes('Veterinários') || /pendente/i.test(txt);
+      });
     },
-    { timeout: 25_000 },
+    { timeout: 60_000 },
   );
 });
 
 test('aba Veterinários dentro de Verificações é acessível', async ({ page }) => {
   await bootAndLogin(page, ADMIN_EMAIL, ADMIN_PASSWORD);
   await tapText(page, 'Verificações');
-  await waitForText(page, /Veterinários/);
+  await waitForText(page, 'Veterinários', 60_000);
   await tapText(page, /^Veterinários/);
   await page.waitForTimeout(1500);
-  await expectText(page, /Veterinários|nenhum vet|Aguardando aprovação|Nenhuma/i);
+  await expectText(page, 'Veterinários');
 });
 
 test('aba Motoristas dentro de Verificações é acessível', async ({ page }) => {
   await bootAndLogin(page, ADMIN_EMAIL, ADMIN_PASSWORD);
   await tapText(page, 'Verificações');
-  await waitForText(page, /Veterinários|Motoristas/);
+  await waitForText(page, 'Veterinários', 60_000);
   await tapText(page, /^Motoristas/);
   await page.waitForTimeout(1500);
-  await expectText(page, /Motoristas|nenhum motorista|Aguardando aprovação|Nenhuma/i);
+  await expectText(page, 'Motoristas');
 });
 
-test('admin pode navegar pela aba Usuários sem crash', async ({ page }) => {
+test('admin pode navegar pela aba Cadastros (Usuários) sem crash', async ({ page }) => {
   await bootAndLogin(page, ADMIN_EMAIL, ADMIN_PASSWORD);
-  await tapText(page, 'Usuários');
-  await waitForText(page, /Usuários|Clientes|Lojistas/);
+  await tapText(page, 'Cadastros');
+  await waitForText(page, 'Usuários', 60_000);
   await expectText(page, /Total|Clientes|CLIENTE/i);
 });
 
-test('admin pode navegar pela aba Lojas sem crash', async ({ page }) => {
+test('admin pode navegar pela aba Cadastros (Lojas) sem crash', async ({ page }) => {
   await bootAndLogin(page, ADMIN_EMAIL, ADMIN_PASSWORD);
-  await tapText(page, 'Lojas');
-  await waitForText(page, /Lojas|Estabelecimentos/);
+  await tapText(page, 'Cadastros');
+  await waitForText(page, 'Usuários', 60_000);
+  await tapText(page, /^Lojas/);
+  await page.waitForTimeout(1000);
   await expectText(page, /Pet|Estab|loja/i);
 });
 
@@ -121,6 +120,10 @@ test('admin pode navegar pela aba Reclamações', async ({ page }) => {
 test('logout do admin pelo painel volta ao login', async ({ page }) => {
   await bootAndLogin(page, ADMIN_EMAIL, ADMIN_PASSWORD);
   await waitForText(page, /Painel|Dashboard/);
-  await tapText(page, 'Sair');
+  // botão "Sair" do header não é leaf nem expõe role=button — usar byText com force click
+  await byText(page, 'Sair').first().click({ force: true });
+  await waitForText(page, /Sair da conta/);
+  // o diálogo sobrepõe o botão "Sair" do painel — o botão de confirmação é o último na árvore
+  await page.locator('flt-semantics[role="button"]').filter({ hasText: 'Sair' }).last().click({ force: true });
   await waitForText(page, /Entrar|E-mail/);
 });

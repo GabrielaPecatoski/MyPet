@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../core/colors.dart';
 import '../providers/auth_provider.dart';
+import '../services/storage_service.dart';
 class RegisterScreen extends StatefulWidget {
   final int initialTipo;
   const RegisterScreen({super.key, this.initialTipo = 0});
@@ -30,6 +31,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   late int _tipoUsuario;
   String _vehicleType = 'CARRO';
   String? _photoPath;
+  String? _crmvPhotoPath;
   static const _vehicleTypes = [
     ('CARRO', 'Carro', Icons.directions_car),
     ('MOTO', 'Moto', Icons.two_wheeler),
@@ -91,12 +93,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
   Future<void> _pickPhoto() async {
     if (kIsWeb) return;
-    final picker = ImagePicker();
-    final picked =
-        await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
-    if (picked != null && mounted) {
-      setState(() => _photoPath = picked.path);
-    }
+    final picked = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 80);
+    if (picked != null && mounted) setState(() => _photoPath = picked.path);
+  }
+
+  Future<void> _pickCrmvPhoto() async {
+    if (kIsWeb) return;
+    final picked = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 80);
+    if (picked != null && mounted) setState(() => _crmvPhotoPath = picked.path);
   }
   Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
@@ -164,15 +168,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Future<void> _registerVetProfile(AuthProvider auth) async {
+    final cpf = _cpfCtrl.text.replaceAll(RegExp(r'\D'), '');
     final err = await auth.registerVetProfile(
       name: _nomeCtrl.text.trim(),
       phone: _telefoneCtrl.text.trim(),
-      cpf: _cpfCtrl.text.replaceAll(RegExp(r'\D'), ''),
+      cpf: cpf,
       crmv: _crmvCtrl.text.trim().toUpperCase(),
       especialidade: _especialidadeVetCtrl.text.trim().isEmpty
           ? null
           : _especialidadeVetCtrl.text.trim(),
     );
+    if (_crmvPhotoPath != null) {
+      await StorageService.saveCrmvPhoto(cpf, _crmvPhotoPath);
+    }
     if (err != null && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('Conta criada, mas erro ao salvar perfil vet: $err'),
@@ -345,6 +353,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           _label('Especialidade (opcional)'),
                           _field(_especialidadeVetCtrl,
                               'Ex: Ortopedia, Dermatologia'),
+                          const SizedBox(height: 14),
+                          _CrmvPhotoField(
+                            photoPath: _crmvPhotoPath,
+                            onPick: _pickCrmvPhoto,
+                          ),
                         ],
                         if (isMotorista) ...[
                           const SizedBox(height: 20),
@@ -852,4 +865,70 @@ class _TipoMeta {
     required this.accent,
     required this.desc,
   });
+}
+
+class _CrmvPhotoField extends StatelessWidget {
+  final String? photoPath;
+  final VoidCallback onPick;
+  const _CrmvPhotoField({required this.photoPath, required this.onPick});
+
+  @override
+  Widget build(BuildContext context) {
+    if (kIsWeb) return const SizedBox.shrink();
+    const green = Color(0xFF16A34A);
+
+    return GestureDetector(
+      onTap: onPick,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: photoPath != null ? green : AppColors.greyLight,
+          ),
+        ),
+        child: Row(children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: (photoPath != null ? green : green).withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: photoPath != null
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: Image.file(File(photoPath!), fit: BoxFit.cover),
+                  )
+                : const Icon(Icons.badge_outlined, color: green, size: 24),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(
+                photoPath != null ? 'Diploma/CRMV anexado' : 'Foto do diploma ou CRMV',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                  color: photoPath != null ? green : AppColors.dark,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                photoPath != null ? 'Toque para trocar' : 'Enviar comprovante (só o admin verá)',
+                style: const TextStyle(fontSize: 12, color: AppColors.grey),
+              ),
+            ]),
+          ),
+          Icon(
+            photoPath != null ? Icons.check_circle : Icons.add_a_photo_outlined,
+            color: photoPath != null ? green : green,
+            size: 20,
+          ),
+        ]),
+      ),
+    );
+  }
 }

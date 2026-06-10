@@ -5,20 +5,32 @@ import '../core/colors.dart';
 import '../models/appointment.dart';
 import '../providers/auth_provider.dart';
 import '../providers/booking_provider.dart';
-import '../services/review_service.dart';
+import '../providers/user_reviews_provider.dart';
+import '../repositories/user_reviews_repository.dart';
 import '../widgets/mypet_app_bar.dart';
 
-class AgendaScreen extends StatefulWidget {
+class AgendaScreen extends StatelessWidget {
   const AgendaScreen({super.key});
 
   @override
-  State<AgendaScreen> createState() => _AgendaScreenState();
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (_) => UserReviewsProvider(UserReviewsRepository()),
+      child: const _AgendaView(),
+    );
+  }
 }
 
-class _AgendaScreenState extends State<AgendaScreen>
+class _AgendaView extends StatefulWidget {
+  const _AgendaView();
+
+  @override
+  State<_AgendaView> createState() => _AgendaViewState();
+}
+
+class _AgendaViewState extends State<_AgendaView>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final Set<String> _reviewedBookingIds = {};
 
   @override
   void initState() {
@@ -34,20 +46,7 @@ class _AgendaScreenState extends State<AgendaScreen>
           token: auth.token!,
           userId: auth.user!.id,
         );
-    _loadReviewed(auth.token!);
-  }
-
-  Future<void> _loadReviewed(String token) async {
-    try {
-      final reviews = await ReviewService.getMyReviews(token: token);
-      if (mounted) {
-        setState(() {
-          _reviewedBookingIds.addAll(
-            reviews.where((r) => r.bookingId.isNotEmpty).map((r) => r.bookingId),
-          );
-        });
-      }
-    } catch (_) {}
+    context.read<UserReviewsProvider>().loadReviewed(token: auth.token!);
   }
 
   @override
@@ -95,6 +94,7 @@ class _AgendaScreenState extends State<AgendaScreen>
   @override
   Widget build(BuildContext context) {
     final booking = context.watch<BookingProvider>();
+    final reviews = context.watch<UserReviewsProvider>();
     final proximos = booking.ativos;
     final historico = booking.historico;
 
@@ -195,15 +195,13 @@ class _AgendaScreenState extends State<AgendaScreen>
                     _BookingList(
                         appointments: proximos,
                         onCancel: _cancel,
-                        reviewedBookingIds: _reviewedBookingIds,
-                        onReviewed: (bookingId) => setState(() => _reviewedBookingIds.add(bookingId)),
+                        reviewedBookingIds: reviews.reviewedBookingIds,
                         onExpired: _load),
                     _BookingList(
                         appointments: historico,
                         onCancel: _cancel,
                         isHistory: true,
-                        reviewedBookingIds: _reviewedBookingIds,
-                        onReviewed: (bookingId) => setState(() => _reviewedBookingIds.add(bookingId))),
+                        reviewedBookingIds: reviews.reviewedBookingIds),
                   ],
                 ),
               ),
@@ -219,14 +217,12 @@ class _BookingList extends StatelessWidget {
   final Future<void> Function(AppointmentModel) onCancel;
   final bool isHistory;
   final Set<String> reviewedBookingIds;
-  final void Function(String bookingId) onReviewed;
   final VoidCallback? onExpired;
 
   const _BookingList({
     required this.appointments,
     required this.onCancel,
     required this.reviewedBookingIds,
-    required this.onReviewed,
     this.isHistory = false,
     this.onExpired,
   });
@@ -274,7 +270,6 @@ class _BookingList extends StatelessWidget {
         appointment: appointments[i],
         onCancel: onCancel,
         isReviewed: reviewedBookingIds.contains(appointments[i].id),
-        onReviewed: () => onReviewed(appointments[i].id),
         onExpired: onExpired,
       ),
     );
@@ -285,14 +280,12 @@ class _BookingCard extends StatefulWidget {
   final AppointmentModel appointment;
   final Future<void> Function(AppointmentModel) onCancel;
   final bool isReviewed;
-  final VoidCallback onReviewed;
   final VoidCallback? onExpired;
 
   const _BookingCard({
     required this.appointment,
     required this.onCancel,
     required this.isReviewed,
-    required this.onReviewed,
     this.onExpired,
   });
 
@@ -444,16 +437,15 @@ class _BookingCardState extends State<_BookingCard> {
                     : () async {
                         Navigator.pop(ctx);
                         final auth = context.read<AuthProvider>();
-                        try {
-                          await ReviewService.submitReview(
-                            establishmentId: ap.establishmentId,
-                            bookingId: ap.id,
-                            rating: selectedRating,
-                            comment: commentCtrl.text.trim().isEmpty ? null : commentCtrl.text.trim(),
-                            token: auth.token,
-                          );
-                        } catch (_) {}
-                        widget.onReviewed();
+                        await context.read<UserReviewsProvider>().submitReview(
+                              establishmentId: ap.establishmentId,
+                              bookingId: ap.id,
+                              rating: selectedRating,
+                              comment: commentCtrl.text.trim().isEmpty
+                                  ? null
+                                  : commentCtrl.text.trim(),
+                              token: auth.token ?? '',
+                            );
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text('Avaliação enviada!'), backgroundColor: AppColors.success),

@@ -75,8 +75,6 @@ test('logout do cliente retorna ao login', async ({ page }) => {
   await tapText(page, 'Perfil');
   await waitForText(page, /Sair|Logout/i);
   await tapText(page, /Sair/i);
-  await waitForText(page, /Sair da conta|Sim|Confirmar/);
-  await tapButton(page, /Sair|Sim/);
   await waitForText(page, /E-mail|Entrar/);
 });
 
@@ -86,8 +84,6 @@ test('logout do vendedor retorna ao login', async ({ page }) => {
   await tapText(page, 'Perfil');
   await waitForText(page, /Sair|Logout/i);
   await tapText(page, /Sair/i);
-  await waitForText(page, /Sair da conta|Sim|Confirmar/);
-  await tapButton(page, /Sair|Sim/);
   await waitForText(page, /E-mail|Entrar/);
 });
 

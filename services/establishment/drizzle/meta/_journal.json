@@ -5,8 +5,15 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1748822400000,
-      "tag": "0000_veterinary_support",
+      "when": 1780881389303,
+      "tag": "0000_rainy_ma_gnuci",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1780936828841,
+      "tag": "0001_friendly_naoko",
       "breakpoints": true
     }
   ]

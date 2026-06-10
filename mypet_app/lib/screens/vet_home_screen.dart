@@ -1,10 +1,14 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../core/colors.dart';
+import '../models/emergency_call.dart';
 import '../providers/auth_provider.dart';
 import '../providers/vet_profile_provider.dart';
+import '../services/veterinarian_service.dart';
 
 class VetHomeScreen extends StatefulWidget {
   const VetHomeScreen({super.key});
@@ -18,10 +22,20 @@ class _VetHomeScreenState extends State<VetHomeScreen> {
   static const _greenDark = Color(0xFF0F7A35);
   static const _orange    = Color(0xFFF97316);
 
+  Timer? _pollTimer;
+  bool _alarmVisible = false;
+  EmergencyCallModel? _incomingCall;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -31,28 +45,116 @@ class _VetHomeScreenState extends State<VetHomeScreen> {
           token: auth.token!,
           cpf: auth.user!.cpf!,
         );
+    _resetPollTimer();
+  }
+
+  void _resetPollTimer() {
+    _pollTimer?.cancel();
+    final vm = context.read<VetProfileProvider>();
+    if (!vm.atende24h || vm.vet == null) return;
+
+    _pollTimer = Timer.periodic(const Duration(seconds: 15), (_) => _checkEmergencyCalls());
+    // Check immediately on activation
+    _checkEmergencyCalls();
+  }
+
+  Future<void> _checkEmergencyCalls() async {
+    if (!mounted) return;
+    final auth = context.read<AuthProvider>();
+    final vm   = context.read<VetProfileProvider>();
+    if (auth.token == null || vm.vet == null) return;
+    if (_alarmVisible) return; // already showing alarm, don't stack
+
+    final calls = await VeterinarianService.getPendingEmergencyCalls(
+      token: auth.token!,
+      vetId: vm.vet!.id,
+    );
+
+    if (calls.isNotEmpty && mounted && !_alarmVisible) {
+      HapticFeedback.vibrate();
+      HapticFeedback.heavyImpact();
+      setState(() {
+        _incomingCall = calls.first;
+        _alarmVisible = true;
+      });
+    }
+  }
+
+  Future<void> _dismissAlarm({required bool accept}) async {
+    final call = _incomingCall;
+    if (call == null) return;
+    setState(() {
+      _alarmVisible = false;
+      _incomingCall = null;
+    });
+    final auth = context.read<AuthProvider>();
+    if (auth.token != null) {
+      await VeterinarianService.acknowledgeEmergencyCall(
+        token: auth.token!,
+        callId: call.id,
+      );
+    }
+    if (accept && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Ligue para ${call.callerPhone} para atender a emergência.'),
+        backgroundColor: _green,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 8),
+      ));
+    }
   }
 
   Future<void> _toggleDisponivel() async {
     final auth = context.read<AuthProvider>();
     final vm   = context.read<VetProfileProvider>();
     if (auth.token == null) return;
-    await vm.updateAvailability(
-      token: auth.token!,
-      disponivel: !vm.disponivel,
-      atendeDomicilio: vm.atendeDomicilio,
-    );
+    if (!vm.disponivel && !vm.isAprovado) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Aguardando aprovação do administrador para ficar disponível.'),
+        backgroundColor: AppColors.warning,
+        behavior: SnackBarBehavior.floating,
+      ));
+      return;
+    }
+    final ok = await vm.updateAvailability(token: auth.token!, disponivel: !vm.disponivel);
+    if (!ok && mounted && vm.error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(vm.error!),
+        backgroundColor: AppColors.danger,
+        behavior: SnackBarBehavior.floating,
+      ));
+    }
+  }
+
+  Future<void> _toggleEmergencia24h() async {
+    final auth = context.read<AuthProvider>();
+    final vm   = context.read<VetProfileProvider>();
+    if (auth.token == null) return;
+    if (!vm.isAprovado) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Aguardando aprovação do administrador para alterar disponibilidade.'),
+        backgroundColor: AppColors.warning,
+        behavior: SnackBarBehavior.floating,
+      ));
+      return;
+    }
+    await vm.updateAvailability(token: auth.token!, atende24h: !vm.atende24h);
+    _resetPollTimer();
   }
 
   Future<void> _toggleDomicilio() async {
     final auth = context.read<AuthProvider>();
     final vm   = context.read<VetProfileProvider>();
     if (auth.token == null) return;
-    await vm.updateAvailability(
-      token: auth.token!,
-      disponivel: vm.disponivel,
-      atendeDomicilio: !vm.atendeDomicilio,
-    );
+    if (!vm.isAprovado) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Aguardando aprovação do administrador para alterar disponibilidade.'),
+        backgroundColor: AppColors.warning,
+        behavior: SnackBarBehavior.floating,
+      ));
+      return;
+    }
+    await vm.updateAvailability(token: auth.token!, atendeDomicilio: !vm.atendeDomicilio);
   }
 
   @override
@@ -68,58 +170,84 @@ class _VetHomeScreenState extends State<VetHomeScreen> {
       );
     }
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: RefreshIndicator(
-        onRefresh: _load,
-        color: _green,
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            _topHeader(auth, vm, top),
-            const SizedBox(height: 16),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Column(
-                children: [
-                  _statsCard(),
-                  const SizedBox(height: 14),
-                  _ToggleCard(
-                    icon: Icons.notifications_active_outlined,
-                    color: _green,
-                    titleOn: 'Atender emergências 24h',
-                    titleOff: 'Indisponível para chamados',
-                    subtitleOn: 'Você pode receber chamados urgentes',
-                    subtitleOff: 'Ative para receber emergências',
-                    value: vm.disponivel,
-                    updating: vm.updating,
-                    onToggle: _toggleDisponivel,
+    return Stack(
+      children: [
+        Scaffold(
+          backgroundColor: AppColors.background,
+          body: RefreshIndicator(
+            onRefresh: _load,
+            color: _green,
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                _topHeader(auth, vm, top),
+                const SizedBox(height: 16),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                    children: [
+                      _statsCard(),
+                      const SizedBox(height: 14),
+                      _ToggleCard(
+                        icon: Icons.check_circle_outline,
+                        color: _green,
+                        titleOn: 'Disponível para atendimento',
+                        titleOff: vm.isAprovado ? 'Indisponível' : 'Aguardando aprovação do admin',
+                        subtitleOn: 'Você aparece como serviço para os clientes',
+                        subtitleOff: vm.isAprovado
+                            ? 'Ative para aparecer aos clientes'
+                            : 'O administrador precisa aprovar seu cadastro',
+                        value: vm.disponivel,
+                        updating: vm.updating,
+                        onToggle: _toggleDisponivel,
+                      ),
+                      const SizedBox(height: 14),
+                      _ToggleCard(
+                        icon: Icons.notifications_active_outlined,
+                        color: AppColors.danger,
+                        titleOn: 'Atender emergências 24h',
+                        titleOff: 'Emergências 24h desativado',
+                        subtitleOn: 'Você aparece na lista de emergências',
+                        subtitleOff: 'Ative para receber chamados urgentes',
+                        value: vm.atende24h,
+                        updating: vm.updating,
+                        onToggle: _toggleEmergencia24h,
+                      ),
+                      if (vm.hasVet) ...[
+                        const SizedBox(height: 14),
+                        _perfilCard(vm),
+                      ],
+                      const SizedBox(height: 14),
+                      _ToggleCard(
+                        icon: Icons.home_outlined,
+                        color: _orange,
+                        titleOn: 'Atendimento domiciliar ativo',
+                        titleOff: 'Atendimento domiciliar inativo',
+                        subtitleOn: 'Clientes podem solicitar visita em casa',
+                        subtitleOff: 'Ative para oferecer consultas em domicílio',
+                        value: vm.atendeDomicilio,
+                        updating: vm.updating,
+                        onToggle: _toggleDomicilio,
+                      ),
+                      const SizedBox(height: 14),
+                      _consultasCard(),
+                      const SizedBox(height: 24),
+                    ],
                   ),
-                  if (vm.hasVet) ...[
-                    const SizedBox(height: 14),
-                    _perfilCard(vm),
-                  ],
-                  const SizedBox(height: 14),
-                  _ToggleCard(
-                    icon: Icons.home_outlined,
-                    color: _orange,
-                    titleOn: 'Atendimento domiciliar ativo',
-                    titleOff: 'Atendimento domiciliar inativo',
-                    subtitleOn: 'Clientes podem solicitar visita em casa',
-                    subtitleOff: 'Ative para oferecer consultas em domicílio',
-                    value: vm.atendeDomicilio,
-                    updating: vm.updating,
-                    onToggle: _toggleDomicilio,
-                  ),
-                  const SizedBox(height: 14),
-                  _consultasCard(),
-                  const SizedBox(height: 24),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
-      ),
+
+        // ── Alarm overlay ──────────────────────────────────────────────────
+        if (_alarmVisible && _incomingCall != null)
+          _EmergencyAlarmOverlay(
+            call: _incomingCall!,
+            onAccept: () => _dismissAlarm(accept: true),
+            onDecline: () => _dismissAlarm(accept: false),
+          ),
+      ],
     );
   }
 
@@ -367,6 +495,182 @@ class _VetHomeScreenState extends State<VetHomeScreen> {
       );
 }
 
+// ── Emergency alarm overlay ────────────────────────────────────────────────────
+
+class _EmergencyAlarmOverlay extends StatefulWidget {
+  final EmergencyCallModel call;
+  final VoidCallback onAccept;
+  final VoidCallback onDecline;
+
+  const _EmergencyAlarmOverlay({
+    required this.call,
+    required this.onAccept,
+    required this.onDecline,
+  });
+
+  @override
+  State<_EmergencyAlarmOverlay> createState() => _EmergencyAlarmOverlayState();
+}
+
+class _EmergencyAlarmOverlayState extends State<_EmergencyAlarmOverlay>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _pulse;
+  late Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulse = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    )..repeat(reverse: true);
+    _scale = Tween<double>(begin: 1.0, end: 1.12).animate(
+      CurvedAnimation(parent: _pulse, curve: Curves.easeInOut),
+    );
+
+    // Repeat vibration
+    _vibrateRepeat();
+  }
+
+  Future<void> _vibrateRepeat() async {
+    for (int i = 0; i < 6; i++) {
+      await Future.delayed(const Duration(milliseconds: 400));
+      if (!mounted) return;
+      HapticFeedback.heavyImpact();
+    }
+  }
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final call = widget.call;
+    return Material(
+      color: Colors.black.withValues(alpha: 0.85),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Pulsing icon
+              ScaleTransition(
+                scale: _scale,
+                child: Container(
+                  width: 100, height: 100,
+                  decoration: BoxDecoration(
+                    color: AppColors.danger,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.danger.withValues(alpha: 0.6),
+                        blurRadius: 30,
+                        spreadRadius: 10,
+                      ),
+                    ],
+                  ),
+                  child: const Icon(Icons.emergency, color: Colors.white, size: 52),
+                ),
+              ),
+              const SizedBox(height: 32),
+
+              const Text(
+                'EMERGÊNCIA!',
+                style: TextStyle(
+                  color: AppColors.danger,
+                  fontSize: 28,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 2,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Chamado de atendimento urgente',
+                style: TextStyle(color: Colors.white70, fontSize: 15),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 32),
+
+              // Caller card
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.danger.withValues(alpha: 0.4)),
+                ),
+                child: Column(children: [
+                  _alarmRow(Icons.person_outline, call.callerName),
+                  const SizedBox(height: 12),
+                  _alarmRow(Icons.phone_outlined, call.callerPhone),
+                  if (call.petDescription != null && call.petDescription!.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    _alarmRow(Icons.pets, call.petDescription!),
+                  ],
+                ]),
+              ),
+              const SizedBox(height: 40),
+
+              // Buttons
+              Row(children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: widget.onDecline,
+                    icon: const Icon(Icons.close, size: 18),
+                    label: const Text('Recusar'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white70,
+                      side: const BorderSide(color: Colors.white38),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  flex: 2,
+                  child: ElevatedButton.icon(
+                    onPressed: widget.onAccept,
+                    icon: const Icon(Icons.check_circle_outline, size: 20),
+                    label: const Text('Atender', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.danger,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ),
+              ]),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _alarmRow(IconData icon, String text) => Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: Colors.white60, size: 18),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(text,
+                style: const TextStyle(
+                    color: Colors.white, fontSize: 15, fontWeight: FontWeight.w500)),
+          ),
+        ],
+      );
+}
+
+// ── Toggle card (unchanged) ────────────────────────────────────────────────────
+
 class _ToggleCard extends StatelessWidget {
   final IconData icon;
   final Color color;
@@ -383,7 +687,10 @@ class _ToggleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return GestureDetector(
+      onTap: updating ? null : onToggle,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -444,6 +751,7 @@ class _ToggleCard extends StatelessWidget {
                 ),
               ),
       ]),
+    ),
     );
   }
 }

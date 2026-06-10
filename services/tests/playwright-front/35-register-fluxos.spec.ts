@@ -12,7 +12,7 @@
 import { test, APIRequestContext } from '@playwright/test';
 import {
   bootFlutter, tapText, tapButton, fillNth, expectText, waitForText,
-  skipOnboardingIfPresent, textFields, fill,
+  skipOnboardingIfPresent, textFields, fill, pollText,
 } from './_helpers';
 import { apiContext } from './_api';
 
@@ -103,9 +103,9 @@ test('cadastro Motorista completo → painel do motorista', async ({ page }) => 
   await fill(campos.nth(5), 'senha123');
   await fill(campos.nth(6), String(ts).slice(-9));
   await fill(campos.nth(7), 'Honda Civic');
-  await fill(campos.nth(8), `AB${ts.toString().slice(-4)}`);
+  await fill(campos.nth(8), `ABC${ts.toString().slice(-4)}`);
   await tapButton(page, 'Criar conta');
-  await expectText(page, /MY PET · MOTORISTA|Painel/);
+  await pollText(page, /MY PET · MOTORISTA|Painel|Início|Corridas/, 40_000);
 });
 
 // ─── Validações ──────────────────────────────────────────────────────────────

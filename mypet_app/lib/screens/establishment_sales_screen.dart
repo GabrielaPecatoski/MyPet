@@ -2,20 +2,30 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/colors.dart';
 import '../providers/establishment_provider.dart';
-import '../services/api_service.dart';
+import '../providers/establishment_sales_provider.dart';
+import '../repositories/establishment_sales_repository.dart';
 import '../widgets/mypet_app_bar.dart';
 
-class EstabVendasScreen extends StatefulWidget {
+class EstabVendasScreen extends StatelessWidget {
   const EstabVendasScreen({super.key});
+
   @override
-  State<EstabVendasScreen> createState() => _EstabVendasScreenState();
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (_) =>
+          EstablishmentSalesProvider(EstablishmentSalesRepository()),
+      child: const _EstabVendasView(),
+    );
+  }
 }
 
-class _EstabVendasScreenState extends State<EstabVendasScreen> {
-  List<Map<String, dynamic>> _orders = [];
-  bool _loading = false;
-  int _filterIdx = 0;
+class _EstabVendasView extends StatefulWidget {
+  const _EstabVendasView();
+  @override
+  State<_EstabVendasView> createState() => _EstabVendasViewState();
+}
 
+class _EstabVendasViewState extends State<_EstabVendasView> {
   static const _filters = ['Todos', 'Retirada', 'Entrega'];
 
   static const _deliveryLabels = {
@@ -48,77 +58,34 @@ class _EstabVendasScreenState extends State<EstabVendasScreen> {
 
   Future<void> _load() async {
     final estabId = context.read<EstablishmentProvider>().establishmentId;
-    if (estabId == null) return;
-    setState(() => _loading = true);
-    try {
-      final data = await ApiService.get(
-        '/marketplace/orders/establishment/$estabId',
+    final ok = await context.read<EstablishmentSalesProvider>().load(estabId);
+    if (!ok && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Erro ao carregar pedidos.'),
+          backgroundColor: AppColors.danger,
+        ),
       );
-      setState(() => _orders = (data as List).cast<Map<String, dynamic>>());
-    } catch (e) {
-      setState(() => _orders = []);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erro ao carregar pedidos: $e'),
-            backgroundColor: AppColors.danger,
-          ),
-        );
-      }
-    } finally {
-      setState(() => _loading = false);
     }
-  }
-
-  List<Map<String, dynamic>> get _filtered {
-    if (_filterIdx == 1) {
-      return _orders.where((o) {
-        final p = _latestPayment(o);
-        return (p?['deliveryMethod'] as String? ?? 'PICKUP') == 'PICKUP';
-      }).toList();
-    }
-    if (_filterIdx == 2) {
-      return _orders.where((o) {
-        final p = _latestPayment(o);
-        return (p?['deliveryMethod'] as String? ?? 'PICKUP') == 'DELIVERY';
-      }).toList();
-    }
-    return _orders;
-  }
-
-  Map<String, dynamic>? _latestPayment(Map<String, dynamic> order) {
-    final payments = order['payments'] as List?;
-    if (payments == null || payments.isEmpty) return null;
-    return payments.first as Map<String, dynamic>;
   }
 
   Future<void> _advanceDelivery(Map<String, dynamic> order) async {
-    final current = order['deliveryStatus'] as String? ?? 'PENDING';
-    final idx = _deliverySteps.indexOf(current);
-    if (idx >= _deliverySteps.length - 1) return;
-    final next = _deliverySteps[idx + 1];
-
-    try {
-      await ApiService.patch(
-        '/marketplace/orders/${order['id']}/delivery',
-        {'deliveryStatus': next},
+    final ok =
+        await context.read<EstablishmentSalesProvider>().advanceDelivery(order);
+    if (!ok && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Erro ao atualizar pedido.'),
+          backgroundColor: AppColors.danger,
+        ),
       );
-      await _load();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erro ao atualizar pedido: $e'),
-            backgroundColor: AppColors.danger,
-          ),
-        );
-      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final filtered = _filtered;
+    final provider = context.watch<EstablishmentSalesProvider>();
+    final filtered = provider.filtered;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -131,16 +98,18 @@ class _EstabVendasScreenState extends State<EstabVendasScreen> {
             padding: EdgeInsets.only(right: i < _filters.length - 1 ? 8 : 0),
             child: ChoiceChip(
               label: Text(_filters[i]),
-              selected: _filterIdx == i,
-              onSelected: (_) => setState(() => _filterIdx = i),
+              selected: provider.filterIdx == i,
+              onSelected: (_) => provider.setFilter(i),
               selectedColor: AppColors.primaryLight,
               labelStyle: TextStyle(
-                color: _filterIdx == i ? AppColors.estab : AppColors.grey,
-                fontWeight: _filterIdx == i ? FontWeight.w600 : FontWeight.normal,
+                color: provider.filterIdx == i ? AppColors.estab : AppColors.grey,
+                fontWeight:
+                    provider.filterIdx == i ? FontWeight.w600 : FontWeight.normal,
                 fontSize: 13,
               ),
               side: BorderSide(
-                  color: _filterIdx == i ? AppColors.estab : AppColors.greyLight),
+                  color:
+                      provider.filterIdx == i ? AppColors.estab : AppColors.greyLight),
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20)),
               backgroundColor: Colors.white,
@@ -150,7 +119,7 @@ class _EstabVendasScreenState extends State<EstabVendasScreen> {
         ),
 
         Expanded(
-          child: _loading
+          child: provider.isLoading
               ? const Center(child: CircularProgressIndicator(color: AppColors.estab))
               : filtered.isEmpty
                   ? Center(child: Column(

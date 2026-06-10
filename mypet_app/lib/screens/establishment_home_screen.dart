@@ -6,9 +6,7 @@ import '../models/driver.dart';
 import '../providers/auth_provider.dart';
 import '../providers/booking_provider.dart';
 import '../providers/establishment_provider.dart';
-import '../services/auth_service.dart';
-import '../services/driver_service.dart';
-import '../services/veterinarian_service.dart';
+import '../providers/establishment_staff_provider.dart';
 import '../widgets/mypet_app_bar.dart';
 import '../models/veterinarian.dart';
 import 'establishment_drivers_screen.dart';
@@ -830,9 +828,6 @@ class _MotoristasTab extends StatefulWidget {
 
 class _MotoristasTabState extends State<_MotoristasTab>
     with AutomaticKeepAliveClientMixin {
-  List<DriverModel> _motoristas = [];
-  bool _loading = true;
-
   @override
   bool get wantKeepAlive => true;
 
@@ -845,24 +840,13 @@ class _MotoristasTabState extends State<_MotoristasTab>
   Future<void> _load() async {
     final auth = context.read<AuthProvider>();
     final estab = context.read<EstablishmentProvider>();
-    if (auth.token == null || estab.establishmentId == null) {
-      setState(() => _loading = false);
-      return;
-    }
-    setState(() => _loading = true);
-    try {
-      _motoristas = await DriverService.fetchByEstablishment(
-        token: auth.token!,
-        establishmentId: estab.establishmentId!,
-      );
-    } catch (_) {
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
+    if (auth.token == null || estab.establishmentId == null) return;
+    final staff = context.read<EstablishmentStaffProvider>();
+    staff.init(establishmentId: estab.establishmentId!, token: auth.token!);
+    await staff.loadDrivers();
   }
 
   Future<void> _desassociar(DriverModel driver) async {
-    final auth = context.read<AuthProvider>();
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -890,45 +874,29 @@ class _MotoristasTabState extends State<_MotoristasTab>
       ),
     );
     if (ok != true || !mounted) return;
-    try {
-      await DriverService.dissociate(
-          token: auth.token!, driverId: driver.id);
-      await _load();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Motorista removido do estabelecimento'),
-            backgroundColor: AppColors.success,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString().replaceAll('Exception: ', '')),
-            backgroundColor: AppColors.danger,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
+    final success = await context
+        .read<EstablishmentStaffProvider>()
+        .dissociateDriver(driver.id);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(success
+              ? 'Motorista removido do estabelecimento'
+              : 'Erro ao remover motorista'),
+          backgroundColor: success ? AppColors.success : AppColors.danger,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 
   void _abrirAdicionar() {
-    final auth = context.read<AuthProvider>();
-    final estab = context.read<EstablishmentProvider>();
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (ctx) => EstabMotoristaBuscarSheet(
-        estabId: estab.establishmentId!,
-        token: auth.token!,
-        onAssociado: _load,
-      ),
+      builder: (ctx) => EstabMotoristaBuscarSheet(onAssociado: _load),
     );
   }
 
@@ -936,6 +904,9 @@ class _MotoristasTabState extends State<_MotoristasTab>
   Widget build(BuildContext context) {
     super.build(context);
     final estab = context.watch<EstablishmentProvider>();
+    final staff = context.watch<EstablishmentStaffProvider>();
+    final motoristas = staff.drivers;
+    final loading = staff.loadingDrivers;
 
     return RefreshIndicator(
       onRefresh: _load,
@@ -970,14 +941,14 @@ class _MotoristasTabState extends State<_MotoristasTab>
             ],
           ),
           const SizedBox(height: 12),
-          if (_loading)
+          if (loading)
             const Center(
               child: Padding(
                 padding: EdgeInsets.all(32),
                 child: CircularProgressIndicator(color: AppColors.estab),
               ),
             )
-          else if (_motoristas.isEmpty)
+          else if (motoristas.isEmpty)
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -1004,7 +975,7 @@ class _MotoristasTabState extends State<_MotoristasTab>
               ),
             )
           else
-            ..._motoristas.map((d) => EstabMotoristaCard(
+            ...motoristas.map((d) => EstabMotoristaCard(
                   driver: d,
                   onRemover: () => _desassociar(d),
                 )),
@@ -1022,9 +993,6 @@ class _VeterinarioTab extends StatefulWidget {
 
 class _VeterinarioTabState extends State<_VeterinarioTab>
     with AutomaticKeepAliveClientMixin {
-  List<VeterinarianModel> _vets = [];
-  bool _loading = true;
-
   @override
   bool get wantKeepAlive => true;
 
@@ -1037,24 +1005,13 @@ class _VeterinarioTabState extends State<_VeterinarioTab>
   Future<void> _load() async {
     final auth = context.read<AuthProvider>();
     final estab = context.read<EstablishmentProvider>();
-    if (auth.token == null || estab.establishmentId == null) {
-      setState(() => _loading = false);
-      return;
-    }
-    setState(() => _loading = true);
-    try {
-      _vets = await VeterinarianService.fetchByEstablishment(
-        token: auth.token!,
-        establishmentId: estab.establishmentId!,
-      );
-    } catch (_) {
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
+    if (auth.token == null || estab.establishmentId == null) return;
+    final staff = context.read<EstablishmentStaffProvider>();
+    staff.init(establishmentId: estab.establishmentId!, token: auth.token!);
+    await staff.loadVets();
   }
 
   Future<void> _desassociar(VeterinarianModel vet) async {
-    final auth = context.read<AuthProvider>();
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -1078,24 +1035,16 @@ class _VeterinarioTabState extends State<_VeterinarioTab>
       ),
     );
     if (ok != true || !mounted) return;
-    try {
-      await VeterinarianService.dissociate(token: auth.token!, vetId: vet.id);
-      await _load();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Veterinário removido do estabelecimento'),
-          backgroundColor: AppColors.success,
-          behavior: SnackBarBehavior.floating,
-        ));
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(e.toString().replaceAll('Exception: ', '')),
-          backgroundColor: AppColors.danger,
-          behavior: SnackBarBehavior.floating,
-        ));
-      }
+    final success =
+        await context.read<EstablishmentStaffProvider>().dissociateVet(vet.id);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(success
+            ? 'Veterinário removido do estabelecimento'
+            : 'Erro ao remover veterinário'),
+        backgroundColor: success ? AppColors.success : AppColors.danger,
+        behavior: SnackBarBehavior.floating,
+      ));
     }
   }
 
@@ -1119,6 +1068,9 @@ class _VeterinarioTabState extends State<_VeterinarioTab>
   Widget build(BuildContext context) {
     super.build(context);
     final estab = context.watch<EstablishmentProvider>();
+    final staff = context.watch<EstablishmentStaffProvider>();
+    final vets = staff.vets;
+    final loading = staff.loadingVets;
     return RefreshIndicator(
       onRefresh: _load,
       color: AppColors.estab,
@@ -1146,12 +1098,12 @@ class _VeterinarioTabState extends State<_VeterinarioTab>
             ],
           ),
           const SizedBox(height: 12),
-          if (_loading)
+          if (loading)
             const Center(
               child: Padding(padding: EdgeInsets.all(32),
                 child: CircularProgressIndicator(color: AppColors.estab)),
             )
-          else if (_vets.isEmpty)
+          else if (vets.isEmpty)
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -1174,7 +1126,7 @@ class _VeterinarioTabState extends State<_VeterinarioTab>
               ),
             )
           else
-            ..._vets.map((v) => _VetCardInline(
+            ...vets.map((v) => _VetCardInline(
                   vet: v,
                   onRemover: () => _desassociar(v),
                 )),
@@ -1224,7 +1176,8 @@ class _AdicionarVetSheetState extends State<_AdicionarVetSheet>
     if (cpf.length != 11) { setState(() => _erroMsg = 'CPF deve ter 11 dígitos'); return; }
     setState(() { _buscando = true; _encontrado = null; _erroMsg = null; });
     try {
-      final v = await VeterinarianService.findByCpf(token: widget.token, cpf: cpf);
+      final v =
+          await context.read<EstablishmentStaffProvider>().findVetByCpf(cpf);
       setState(() { _encontrado = v; _erroMsg = v == null ? 'Veterinário não encontrado' : null; });
     } catch (_) {
       setState(() => _erroMsg = 'Erro ao buscar');
@@ -1236,22 +1189,22 @@ class _AdicionarVetSheetState extends State<_AdicionarVetSheet>
   Future<void> _associar(VeterinarianModel v) async {
     if (v.isAssociado) { setState(() => _erroMsg = 'Já associado a outro estabelecimento'); return; }
     setState(() => _associando = true);
-    try {
-      await VeterinarianService.associate(
-          token: widget.token, vetId: v.id, establishmentId: widget.estabId);
-      if (mounted) {
-        Navigator.pop(context);
-        widget.onAdicionado();
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('${v.name} associado!'),
-          backgroundColor: AppColors.success,
-          behavior: SnackBarBehavior.floating,
-        ));
-      }
-    } catch (e) {
-      setState(() => _erroMsg = e.toString().replaceAll('Exception: ', ''));
-    } finally {
-      if (mounted) setState(() => _associando = false);
+    final ok =
+        await context.read<EstablishmentStaffProvider>().associateVet(v.id);
+    if (!mounted) return;
+    if (ok) {
+      Navigator.pop(context);
+      widget.onAdicionado();
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('${v.name} associado!'),
+        backgroundColor: AppColors.success,
+        behavior: SnackBarBehavior.floating,
+      ));
+    } else {
+      setState(() {
+        _associando = false;
+        _erroMsg = 'Erro ao associar veterinário';
+      });
     }
   }
 
@@ -1434,18 +1387,16 @@ class _CadastrarVetTabState extends State<_CadastrarVetTab> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
     try {
-      await AuthService.register(
-        name: _nameCtrl.text.trim(), email: _emailCtrl.text.trim(),
-        password: _senhaCtrl.text, phone: _phoneCtrl.text.trim(),
-        cpf: _cpfCtrl.text.replaceAll(RegExp(r'\D'), ''), role: 'VETERINARIO',
-      );
-      final vet = await VeterinarianService.register(
-        token: widget.token, establishmentId: widget.estabId,
-        name: _nameCtrl.text.trim(), phone: _phoneCtrl.text.trim(),
-        cpf: _cpfCtrl.text.replaceAll(RegExp(r'\D'), ''),
-        crmv: _crmvCtrl.text.trim().toUpperCase(),
-        especialidade: _espCtrl.text.trim().isEmpty ? null : _espCtrl.text.trim(),
-      );
+      final vet = await context.read<EstablishmentStaffProvider>().registerVet(
+            name: _nameCtrl.text.trim(),
+            email: _emailCtrl.text.trim(),
+            password: _senhaCtrl.text,
+            phone: _phoneCtrl.text.trim(),
+            cpf: _cpfCtrl.text.replaceAll(RegExp(r'\D'), ''),
+            crmv: _crmvCtrl.text.trim().toUpperCase(),
+            especialidade:
+                _espCtrl.text.trim().isEmpty ? null : _espCtrl.text.trim(),
+          );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('${vet.name} cadastrado e associado!'),

@@ -3,25 +3,33 @@ import 'package:provider/provider.dart';
 import '../core/colors.dart';
 import '../models/faq.dart';
 import '../providers/auth_provider.dart';
-import '../services/faq_service.dart';
+import '../providers/faq_provider.dart';
+import '../repositories/faq_repository.dart';
 import '../widgets/mypet_app_bar.dart';
 
-class EstabHelpScreen extends StatefulWidget {
+class EstabHelpScreen extends StatelessWidget {
   const EstabHelpScreen({super.key});
+
   @override
-  State<EstabHelpScreen> createState() => _EstabHelpScreenState();
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (_) => FaqProvider(FaqRepository()),
+      child: const _EstabHelpView(),
+    );
+  }
 }
 
-class _EstabHelpScreenState extends State<EstabHelpScreen>
+class _EstabHelpView extends StatefulWidget {
+  const _EstabHelpView();
+  @override
+  State<_EstabHelpView> createState() => _EstabHelpViewState();
+}
+
+class _EstabHelpViewState extends State<_EstabHelpView>
     with SingleTickerProviderStateMixin {
   late TabController _tabs;
-  List<FaqItem> _faqs = [];
-  List<UserQuestion> _myQuestions = [];
-  bool _loadingFaq = false;
-  bool _loadingQuestions = false;
   String _search = '';
   String? _selectedCategory;
-  List<String> _categories = [];
   final Set<String> _expanded = {};
   final Set<String> _expandedCats = {};
 
@@ -37,7 +45,7 @@ class _EstabHelpScreenState extends State<EstabHelpScreen>
     super.initState();
     _tabs = TabController(length: 2, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadFaqs();
+      context.read<FaqProvider>().loadFaqs();
       _loadMyQuestions();
     });
   }
@@ -48,39 +56,20 @@ class _EstabHelpScreenState extends State<EstabHelpScreen>
     super.dispose();
   }
 
-  Future<void> _loadFaqs() async {
-    setState(() => _loadingFaq = true);
-    try {
-      final cats = await FaqService.getCategories();
-      final faqs = await FaqService.getFaqs();
-      final estabFaqs =
-          faqs.where((f) => _estabCategories.contains(f.category)).toList();
-      setState(() {
-        _categories =
-            cats.where((c) => _estabCategories.contains(c)).toList();
-        _faqs = estabFaqs;
-      });
-    } finally {
-      setState(() => _loadingFaq = false);
-    }
-  }
-
   Future<void> _loadMyQuestions() async {
     final auth = context.read<AuthProvider>();
     if (auth.user == null) return;
-    setState(() => _loadingQuestions = true);
-    try {
-      final qs = await FaqService.getUserQuestions(auth.user!.id, token: auth.token);
-      setState(() => _myQuestions = qs);
-    } finally {
-      setState(() => _loadingQuestions = false);
-    }
+    await context
+        .read<FaqProvider>()
+        .loadMyQuestions(auth.user!.id, token: auth.token);
   }
 
-  List<FaqItem> get _filtered {
-    var list = _selectedCategory != null
-        ? _faqs.where((f) => f.category == _selectedCategory).toList()
-        : _faqs;
+  List<FaqItem> _filtered(List<FaqItem> faqs) {
+    var list =
+        faqs.where((f) => _estabCategories.contains(f.category)).toList();
+    if (_selectedCategory != null) {
+      list = list.where((f) => f.category == _selectedCategory).toList();
+    }
     if (_search.isNotEmpty) {
       final q = _search.toLowerCase();
       list = list
@@ -91,6 +80,9 @@ class _EstabHelpScreenState extends State<EstabHelpScreen>
     }
     return list;
   }
+
+  List<String> _estabCats(List<String> all) =>
+      all.where((c) => _estabCategories.contains(c)).toList();
 
   void _showAskDialog() {
     final ctrl = TextEditingController();
@@ -144,32 +136,14 @@ class _EstabHelpScreenState extends State<EstabHelpScreen>
               if (text.isEmpty) return;
               Navigator.pop(ctx);
               final auth = context.read<AuthProvider>();
-
-              final localQ = UserQuestion(
-                id: 'local_${DateTime.now().millisecondsSinceEpoch}',
-                userId: auth.user?.id ?? '',
-                userName: auth.user?.name ?? 'Estabelecimento',
-                userRole: 'ESTABELECIMENTO',
-                question: text,
-                status: 'PENDENTE',
-                createdAt: DateTime.now(),
-              );
-              setState(() => _myQuestions = [localQ, ..._myQuestions]);
               _tabs.animateTo(1);
-
-              final saved = await FaqService.submitQuestion(
-                question: text,
-                token: auth.token,
-              );
-              if (saved != null) {
-                setState(() {
-                  _myQuestions = [
-                    saved,
-                    ..._myQuestions.where((q) => q.id != localQ.id),
-                  ];
-                });
-              }
-
+              await context.read<FaqProvider>().submitQuestion(
+                    question: text,
+                    userId: auth.user?.id ?? '',
+                    userName: auth.user?.name ?? 'Estabelecimento',
+                    userRole: 'ESTABELECIMENTO',
+                    token: auth.token,
+                  );
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
@@ -195,6 +169,8 @@ class _EstabHelpScreenState extends State<EstabHelpScreen>
 
   @override
   Widget build(BuildContext context) {
+    final faqProvider = context.watch<FaqProvider>();
+    final myQuestions = faqProvider.myQuestions;
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: const MypetAppBar(showBack: true),
@@ -289,7 +265,7 @@ class _EstabHelpScreenState extends State<EstabHelpScreen>
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             const Text('Minhas Dúvidas'),
-                            if (_myQuestions
+                            if (myQuestions
                                 .any((q) => q.status == 'RESPONDIDA')) ...[
                               const SizedBox(width: 5),
                               Container(
@@ -300,7 +276,7 @@ class _EstabHelpScreenState extends State<EstabHelpScreen>
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Text(
-                                  '${_myQuestions.where((q) => q.status == 'RESPONDIDA').length}',
+                                  '${myQuestions.where((q) => q.status == 'RESPONDIDA').length}',
                                   style: const TextStyle(
                                       color: Colors.white,
                                       fontSize: 10,
@@ -324,9 +300,9 @@ class _EstabHelpScreenState extends State<EstabHelpScreen>
               controller: _tabs,
               children: [
                 _EstabFaqTab(
-                  loading: _loadingFaq,
-                  faqs: _filtered,
-                  categories: _categories,
+                  loading: faqProvider.loadingFaq,
+                  faqs: _filtered(faqProvider.faqs),
+                  categories: _estabCats(faqProvider.categories),
                   selectedCategory: _selectedCategory,
                   expanded: _expanded,
                   expandedCats: _expandedCats,
@@ -342,8 +318,8 @@ class _EstabHelpScreenState extends State<EstabHelpScreen>
                   onAskTap: _showAskDialog,
                 ),
                 _EstabQuestionsTab(
-                  loading: _loadingQuestions,
-                  questions: _myQuestions,
+                  loading: faqProvider.loadingQuestions,
+                  questions: myQuestions,
                   onAskTap: _showAskDialog,
                   onRefresh: _loadMyQuestions,
                 ),

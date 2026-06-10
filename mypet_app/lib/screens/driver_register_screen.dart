@@ -1,19 +1,36 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../core/colors.dart';
 import '../models/driver.dart';
 import '../providers/auth_provider.dart';
-import '../services/driver_service.dart';
+import '../providers/driver_register_provider.dart';
+import '../repositories/driver_register_repository.dart';
+import '../services/storage_service.dart';
 import '../widgets/mypet_app_bar.dart';
 
-class MotoristaRegisterScreen extends StatefulWidget {
+class MotoristaRegisterScreen extends StatelessWidget {
   const MotoristaRegisterScreen({super.key});
 
   @override
-  State<MotoristaRegisterScreen> createState() => _MotoristaRegisterScreenState();
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (_) => DriverRegisterProvider(DriverRegisterRepository()),
+      child: const _MotoristaRegisterView(),
+    );
+  }
 }
 
-class _MotoristaRegisterScreenState extends State<MotoristaRegisterScreen> {
+class _MotoristaRegisterView extends StatefulWidget {
+  const _MotoristaRegisterView();
+
+  @override
+  State<_MotoristaRegisterView> createState() => _MotoristaRegisterViewState();
+}
+
+class _MotoristaRegisterViewState extends State<_MotoristaRegisterView> {
   final _formKey = GlobalKey<FormState>();
 
   final _nameCtrl = TextEditingController();
@@ -24,7 +41,7 @@ class _MotoristaRegisterScreenState extends State<MotoristaRegisterScreen> {
   final _vehiclePlateCtrl = TextEditingController();
 
   String _vehicleType = 'CARRO';
-  bool _loading = false;
+  String? _cnhPhotoPath;
 
   String? _establishmentId;
 
@@ -52,38 +69,47 @@ class _MotoristaRegisterScreenState extends State<MotoristaRegisterScreen> {
     super.dispose();
   }
 
+  Future<void> _pickCnhPhoto() async {
+    if (kIsWeb) return;
+    final picked = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 80);
+    if (picked != null && mounted) {
+      setState(() => _cnhPhotoPath = picked.path);
+    }
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
     final auth = context.read<AuthProvider>();
     if (auth.token == null) return;
 
-    setState(() => _loading = true);
-    try {
-      final driver = await DriverService.register(
-        token: auth.token!,
-        establishmentId: _establishmentId,
-        name: _nameCtrl.text.trim(),
-        phone: _phoneCtrl.text.trim(),
-        cpf: _cpfCtrl.text.trim(),
-        cnh: _cnhCtrl.text.trim(),
-        vehicleType: _vehicleType,
-        vehicleModel: _vehicleModelCtrl.text.trim(),
-        vehiclePlate: _vehiclePlateCtrl.text.trim().toUpperCase(),
-      );
-      if (!mounted) return;
+    final provider = context.read<DriverRegisterProvider>();
+    final cpf = _cpfCtrl.text.trim();
+    final driver = await provider.submit(
+      token: auth.token!,
+      establishmentId: _establishmentId,
+      name: _nameCtrl.text.trim(),
+      phone: _phoneCtrl.text.trim(),
+      cpf: cpf,
+      cnh: _cnhCtrl.text.trim(),
+      vehicleType: _vehicleType,
+      vehicleModel: _vehicleModelCtrl.text.trim(),
+      vehiclePlate: _vehiclePlateCtrl.text.trim().toUpperCase(),
+    );
+    if (!mounted) return;
+    if (driver != null) {
+      if (_cnhPhotoPath != null) {
+        await StorageService.saveCnhPhoto(cpf, _cnhPhotoPath!);
+      }
       _showSuccess(driver);
-    } catch (e) {
-      if (!mounted) return;
+    } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(e.toString().replaceAll('Exception: ', '')),
+          content: Text(provider.error ?? 'Erro ao cadastrar motorista'),
           backgroundColor: AppColors.danger,
           behavior: SnackBarBehavior.floating,
         ),
       );
-    } finally {
-      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -110,7 +136,7 @@ class _MotoristaRegisterScreenState extends State<MotoristaRegisterScreen> {
             _infoRow('Placa:', driver.vehiclePlate),
             const SizedBox(height: 8),
             const Text(
-              'O motorista está ativo e pronto para realizar transportes.',
+              'Cadastro enviado. Aguardando aprovação do administrador.',
               style: TextStyle(fontSize: 12, color: AppColors.grey),
             ),
           ],
@@ -148,6 +174,7 @@ class _MotoristaRegisterScreenState extends State<MotoristaRegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isLoading = context.watch<DriverRegisterProvider>().isLoading;
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: const MypetAppBar(showBack: true),
@@ -185,6 +212,11 @@ class _MotoristaRegisterScreenState extends State<MotoristaRegisterScreen> {
               }),
               const SizedBox(height: 12),
               _field(_cnhCtrl, 'CNH (número)', Icons.credit_card, required: true),
+              const SizedBox(height: 12),
+              _CnhPhotoField(
+                photoPath: _cnhPhotoPath,
+                onPick: _pickCnhPhoto,
+              ),
 
               const SizedBox(height: 24),
               _sectionTitle('Veículo'),
@@ -250,13 +282,13 @@ class _MotoristaRegisterScreenState extends State<MotoristaRegisterScreen> {
                 width: double.infinity,
                 height: 52,
                 child: ElevatedButton(
-                  onPressed: _loading ? null : _submit,
+                  onPressed: isLoading ? null : _submit,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     elevation: 0,
                   ),
-                  child: _loading
+                  child: isLoading
                       ? const SizedBox(
                           width: 24,
                           height: 24,
@@ -316,4 +348,69 @@ class _MotoristaRegisterScreenState extends State<MotoristaRegisterScreen> {
                 ? (v) => (v == null || v.trim().isEmpty) ? 'Campo obrigatório' : null
                 : null),
       );
+}
+
+class _CnhPhotoField extends StatelessWidget {
+  final String? photoPath;
+  final VoidCallback onPick;
+  const _CnhPhotoField({required this.photoPath, required this.onPick});
+
+  @override
+  Widget build(BuildContext context) {
+    if (kIsWeb) return const SizedBox.shrink();
+
+    return GestureDetector(
+      onTap: onPick,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: photoPath != null ? AppColors.success : AppColors.greyLight,
+          ),
+        ),
+        child: Row(children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: (photoPath != null ? AppColors.success : AppColors.primary).withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: photoPath != null
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: Image.file(File(photoPath!), fit: BoxFit.cover),
+                  )
+                : Icon(Icons.credit_card, color: AppColors.primary, size: 24),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(
+                photoPath != null ? 'Foto da CNH anexada' : 'Foto da CNH (uso interno)',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                  color: photoPath != null ? AppColors.success : AppColors.dark,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                photoPath != null ? 'Toque para trocar' : 'Enviar foto do documento (só o admin verá)',
+                style: const TextStyle(fontSize: 12, color: AppColors.grey),
+              ),
+            ]),
+          ),
+          Icon(
+            photoPath != null ? Icons.check_circle : Icons.add_a_photo_outlined,
+            color: photoPath != null ? AppColors.success : AppColors.primary,
+            size: 20,
+          ),
+        ]),
+      ),
+    );
+  }
 }

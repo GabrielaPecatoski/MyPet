@@ -1,0 +1,38 @@
+{
+  "name": "@mypet/user-driver",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "nest build",
+    "start": "node dist/services/user-driver/src/main",
+    "start:dev": "nest start --watch",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/config": "^4.0.2",
+    "@nestjs/core": "^11.0.0",
+    "@nestjs/jwt": "^11.0.0",
+    "@nestjs/platform-express": "^11.0.0",
+    "@nestjs/swagger": "^11.0.0",
+    "amqplib": "^0.10.4",
+    "bcrypt": "^5.1.1",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.1",
+    "drizzle-orm": "^0.41.0",
+    "pg": "^8.13.3",
+    "reflect-metadata": "^0.2.0",
+    "rxjs": "^7.8.1"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11.0.0",
+    "@nestjs/schematics": "^11.0.0",
+    "@types/amqplib": "^0.10.5",
+    "@types/bcrypt": "^5.0.2",
+    "@types/pg": "^8.11.10",
+    "drizzle-kit": "^0.30.4",
+    "typescript": "^5.7.3"
+  }
+}

@@ -17,10 +17,12 @@ export class Booking {
   private _petName!: string;
   private _serviceName!: string;
   private _servicesJson?: string;
-  private _establishmentId!: string;
+  private _establishmentId?: string;
   private _establishmentName!: string;
   private _driverId?: string;
   private _driverName?: string;
+  private _vetId?: string;
+  private _vetName?: string;
   private _scheduledAt!: Date;
   private _price!: number;
   private _priceVariable!: boolean;
@@ -47,10 +49,12 @@ export class Booking {
     if (!this._servicesJson) return [];
     try { return JSON.parse(this._servicesJson); } catch { return []; }
   }
-  get establishmentId(): string { return this._establishmentId; }
+  get establishmentId(): string | undefined { return this._establishmentId; }
   get establishmentName(): string { return this._establishmentName; }
   get driverId(): string | undefined { return this._driverId; }
   get driverName(): string | undefined { return this._driverName; }
+  get vetId(): string | undefined { return this._vetId; }
+  get vetName(): string | undefined { return this._vetName; }
   get scheduledAt(): Date { return this._scheduledAt; }
   get price(): number { return this._price; }
   get priceVariable(): boolean { return this._priceVariable; }
@@ -75,10 +79,12 @@ export class Booking {
     petName: string;
     serviceName: string;
     servicesJson?: string | null;
-    establishmentId: string;
-    establishmentName: string;
+    establishmentId?: string | null;
+    establishmentName?: string | null;
     driverId?: string | null;
     driverName?: string | null;
+    vetId?: string | null;
+    vetName?: string | null;
     scheduledAt: Date;
     price: number;
     priceVariable?: boolean | null;
@@ -96,10 +102,12 @@ export class Booking {
     b._petName = props.petName;
     b._serviceName = props.serviceName;
     b._servicesJson = props.servicesJson ?? undefined;
-    b._establishmentId = props.establishmentId;
-    b._establishmentName = props.establishmentName;
+    b._establishmentId = props.establishmentId ?? undefined;
+    b._establishmentName = props.establishmentName ?? "";
     b._driverId = props.driverId ?? undefined;
     b._driverName = props.driverName ?? undefined;
+    b._vetId = props.vetId ?? undefined;
+    b._vetName = props.vetName ?? undefined;
     b._scheduledAt = props.scheduledAt;
     b._price = props.price;
     b._priceVariable = props.priceVariable ?? false;

@@ -110,7 +110,7 @@ export async function openClientTab(
   probe: string | RegExp,
   timeout = 45_000,
 ): Promise<void> {
-  const target = button(page, tabLabel).first();
+  const target = button(page, tabLabel, true).first();
   await expect
     .poll(
       async () => {
@@ -170,7 +170,13 @@ export async function searchProduct(page: Page, nome: string): Promise<void> {
 export async function login(page: Page, email: string, senha: string): Promise<void> {
   await fill(emailField(page), email);
   await fill(passwordField(page), senha);
-  await tapButton(page, 'Entrar');
+  // Flutter web às vezes perde o 1º tap em "Entrar" → re-tap (bounded) até sair da tela de login.
+  // Para credenciais inválidas, esgota as tentativas e permanece no login (testes de erro seguem).
+  for (let i = 0; i < 5; i++) {
+    await tapButton(page, 'Entrar').catch(() => {});
+    const aindaLogin = await emailField(page).isVisible({ timeout: 4500 }).catch(() => false);
+    if (!aindaLogin) return;
+  }
 }
 export async function skipOnboardingIfPresent(page: Page): Promise<void> {
   const pular = page.getByRole('button', { name: 'Pular', exact: true });
@@ -190,6 +196,35 @@ export async function bootAndLogin(page: Page, email: string, senha: string): Pr
   await skipOnboardingIfPresent(page);
   await goToLogin(page);
   await login(page, email, senha);
+}
+export async function pollText(
+  page: Page,
+  pattern: RegExp | string,
+  timeoutMs = 30_000,
+): Promise<void> {
+  const src = pattern instanceof RegExp
+    ? pattern.source
+    : pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const flags = pattern instanceof RegExp ? pattern.flags : 'i';
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const found = await page.evaluate(
+      (args: string[]) => {
+        const re = new RegExp(args[0], args[1]);
+        const inSemantics = Array.from(document.querySelectorAll('flt-semantics')).some(
+          (el) => re.test((el.textContent ?? '') + ' ' + (el.getAttribute('aria-label') ?? '')),
+        );
+        if (inSemantics) return true;
+        return Array.from(document.querySelectorAll('input, textarea')).some(
+          (el) => re.test(el.getAttribute('aria-label') ?? ''),
+        );
+      },
+      [src, flags],
+    ).catch(() => false);
+    if (found) return;
+    await page.waitForTimeout(500);
+  }
+  throw new Error(`pollText: "${src}" not found in flt-semantics within ${timeoutMs}ms`);
 }
 export async function dumpSemantics(page: Page): Promise<string> {
   return page.evaluate(() => {

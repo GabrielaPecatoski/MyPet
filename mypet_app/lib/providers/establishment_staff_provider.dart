@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/driver.dart';
 import '../models/veterinarian.dart';
+import '../services/auth_service.dart';
 import '../services/driver_service.dart';
 import '../services/veterinarian_service.dart';
 
@@ -78,6 +79,60 @@ class EstablishmentStaffProvider extends ChangeNotifier {
     }
   }
 
+  Future<DriverModel?> findDriverByCpf(String cpf) async {
+    if (_token == null) return null;
+    return DriverService.findByCpf(token: _token!, cpf: cpf);
+  }
+
+  Future<bool> associateDriver(String driverId) async {
+    if (_establishmentId == null || _token == null) return false;
+    try {
+      await DriverService.associate(
+        token: _token!,
+        driverId: driverId,
+        establishmentId: _establishmentId!,
+      );
+      await loadDrivers();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<DriverModel> registerDriver({
+    required String name,
+    required String email,
+    required String password,
+    required String phone,
+    required String cpf,
+    required String cnh,
+    required String vehicleType,
+    required String vehicleModel,
+    required String vehiclePlate,
+  }) async {
+    await AuthService.register(
+      name: name,
+      email: email,
+      password: password,
+      phone: phone,
+      cpf: cpf,
+      role: 'MOTORISTA',
+    );
+    final driver = await DriverService.register(
+      token: _token!,
+      establishmentId: _establishmentId,
+      name: name,
+      phone: phone,
+      cpf: cpf,
+      cnh: cnh,
+      vehicleType: vehicleType,
+      vehicleModel: vehicleModel,
+      vehiclePlate: vehiclePlate,
+    );
+    await loadDrivers();
+    return driver;
+  }
+
 
   Future<void> loadVets() async {
     if (_establishmentId == null || _token == null) return;
@@ -125,6 +180,36 @@ class EstablishmentStaffProvider extends ChangeNotifier {
     } catch (_) {
       return false;
     }
+  }
+
+  Future<VeterinarianModel> registerVet({
+    required String name,
+    required String email,
+    required String password,
+    required String phone,
+    required String cpf,
+    required String crmv,
+    String? especialidade,
+  }) async {
+    await AuthService.register(
+      name: name,
+      email: email,
+      password: password,
+      phone: phone,
+      cpf: cpf,
+      role: 'VETERINARIO',
+    );
+    final vet = await VeterinarianService.register(
+      token: _token!,
+      establishmentId: _establishmentId,
+      name: name,
+      phone: phone,
+      cpf: cpf,
+      crmv: crmv,
+      especialidade: especialidade,
+    );
+    await loadVets();
+    return vet;
   }
 
   Future<void> loadAll() async {

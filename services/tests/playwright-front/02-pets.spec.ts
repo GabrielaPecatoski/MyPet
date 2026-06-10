@@ -1,5 +1,5 @@
 import { test, expect, APIRequestContext } from '@playwright/test';
-import { bootAndLogin, tapText, tapButton, fillNth, expectText, waitForText, byText } from './_helpers';
+import { bootAndLogin, tapText, tapButton, fillNth, expectText, waitForText, byText, pollText } from './_helpers';
 import { apiContext, registerUser, SeededUser } from './_api';
 let api: APIRequestContext;
 let cliente: SeededUser;
@@ -15,7 +15,7 @@ test('cadastrar, editar e remover um pet pela UI', async ({ page }) => {
   await tapText(page, 'Pets');
   await waitForText(page, 'Adicionar pet');
   await tapButton(page, 'Adicionar pet');
-  await waitForText(page, 'Cadastrar Pet');
+  await pollText(page, 'Cadastrar Pet', 40_000);
   await fillNth(page, 0, nome);
   await fillNth(page, 1, 'Vira-lata');
   await fillNth(page, 2, '4');

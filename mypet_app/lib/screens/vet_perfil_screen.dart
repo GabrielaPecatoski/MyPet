@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/colors.dart';
 import '../providers/auth_provider.dart';
+import '../providers/vet_profile_provider.dart';
 import '../models/veterinarian.dart';
-import '../services/veterinarian_service.dart';
 import '../widgets/mypet_app_bar.dart';
 
 class VetPerfilScreen extends StatefulWidget {
@@ -14,9 +14,6 @@ class VetPerfilScreen extends StatefulWidget {
 }
 
 class _VetPerfilScreenState extends State<VetPerfilScreen> {
-  VeterinarianModel? _vet;
-  bool _loading = true;
-
   static const _green = Color(0xFF16A34A);
 
   @override
@@ -27,28 +24,22 @@ class _VetPerfilScreenState extends State<VetPerfilScreen> {
 
   Future<void> _load() async {
     final auth = context.read<AuthProvider>();
-    if (auth.token == null || auth.user?.cpf == null) {
-      setState(() => _loading = false);
-      return;
-    }
-    try {
-      final data = await VeterinarianService.findByCpf(
-          token: auth.token!, cpf: auth.user!.cpf!);
-      setState(() => _vet = data);
-    } catch (_) {
-    } finally {
-      setState(() => _loading = false);
-    }
+    if (auth.token == null || auth.user?.cpf == null) return;
+    await context
+        .read<VetProfileProvider>()
+        .load(token: auth.token!, cpf: auth.user!.cpf!);
   }
 
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
+    final vetProfile = context.watch<VetProfileProvider>();
+    final vet = vetProfile.vet;
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: const MypetAppBar(showBack: false),
-      body: _loading
+      body: vetProfile.loading
           ? const Center(
               child: CircularProgressIndicator(color: _green))
           : RefreshIndicator(
@@ -57,11 +48,11 @@ class _VetPerfilScreenState extends State<VetPerfilScreen> {
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  _profileCard(auth),
+                  _profileCard(auth, vet),
                   const SizedBox(height: 16),
                   _statsCard(),
                   const SizedBox(height: 16),
-                  _infoSection(),
+                  _infoSection(vet),
                   const SizedBox(height: 24),
                   _logoutButton(auth),
                   const SizedBox(height: 32),
@@ -71,7 +62,7 @@ class _VetPerfilScreenState extends State<VetPerfilScreen> {
     );
   }
 
-  Widget _profileCard(AuthProvider auth) {
+  Widget _profileCard(AuthProvider auth, VeterinarianModel? vet) {
     final name = auth.user?.name ?? 'Veterinário';
     final email = auth.user?.email ?? '';
     final phone = auth.user?.phone ?? '';
@@ -82,8 +73,8 @@ class _VetPerfilScreenState extends State<VetPerfilScreen> {
         .take(2)
         .map((s) => s[0].toUpperCase())
         .join();
-    final crmv = _vet?.crmv;
-    final esp = _vet?.especialidade;
+    final crmv = vet?.crmv;
+    final esp = vet?.especialidade;
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -199,7 +190,7 @@ class _VetPerfilScreenState extends State<VetPerfilScreen> {
   Widget _divider() =>
       Container(width: 1, height: 36, color: AppColors.greyLight);
 
-  Widget _infoSection() => Container(
+  Widget _infoSection(VeterinarianModel? vet) => Container(
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
@@ -214,15 +205,15 @@ class _VetPerfilScreenState extends State<VetPerfilScreen> {
               icon: Icons.badge_outlined,
               iconColor: _green,
               title: 'Registro CRMV',
-              subtitle: '${_vet?.crmv ?? 'CRMV-SP 12345'} — verificado',
+              subtitle: '${vet?.crmv ?? 'CRMV-SP 12345'} — verificado',
             ),
             const Divider(height: 1, indent: 56, color: AppColors.divider),
             _infoTile(
               icon: Icons.medical_information_outlined,
               iconColor: AppColors.vet,
               title: 'Especialidades',
-              subtitle: _vet?.especialidade?.isNotEmpty == true
-                  ? _vet!.especialidade!
+              subtitle: vet?.especialidade?.isNotEmpty == true
+                  ? vet!.especialidade!
                   : 'Clínica geral',
             ),
             const Divider(height: 1, indent: 56, color: AppColors.divider),

@@ -33,11 +33,9 @@ const estabNavItems = [
 const adminNavItems = [
   BottomNavItemData(icon: Icons.dashboard_outlined,      activeIcon: Icons.dashboard,       label: 'Painel'),
   BottomNavItemData(icon: Icons.warning_amber_outlined,  activeIcon: Icons.warning_amber,   label: 'Reclamações'),
-  BottomNavItemData(icon: Icons.people_outlined,         activeIcon: Icons.people,          label: 'Usuários'),
-  BottomNavItemData(icon: Icons.store_outlined,          activeIcon: Icons.store,           label: 'Lojas'),
+  BottomNavItemData(icon: Icons.people_outlined,         activeIcon: Icons.people,          label: 'Cadastros'),
   BottomNavItemData(icon: Icons.verified_user_outlined,  activeIcon: Icons.verified_user,   label: 'Verificações'),
   BottomNavItemData(icon: Icons.help_outline,            activeIcon: Icons.help,            label: 'FAQ'),
-  BottomNavItemData(icon: Icons.bar_chart_outlined,      activeIcon: Icons.bar_chart,       label: 'Estatísticas'),
 ];
 
 class AppBottomNav extends StatelessWidget {
@@ -78,7 +76,13 @@ class AppBottomNav extends StatelessWidget {
               final isActive = i == currentIndex;
               final color = activeColor ?? AppColors.primary;
               return Expanded(
-                child: GestureDetector(
+                child: Semantics(
+                  button: true,
+                  selected: isActive,
+                  label: item.label,
+                  excludeSemantics: true,
+                  onTap: () => onTap(i),
+                  child: GestureDetector(
                   onTap: () => onTap(i),
                   behavior: HitTestBehavior.opaque,
                   child: Column(
@@ -122,6 +126,7 @@ class AppBottomNav extends StatelessWidget {
                       ),
                     ],
                   ),
+                ),
                 ),
               );
             }),

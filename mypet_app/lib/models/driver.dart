@@ -25,12 +25,14 @@ class DriverModel {
 
   bool get isAtivo => status == 'ATIVO';
   bool get isPendente => status == 'PENDENTE';
+  bool get isRejeitado => status == 'REJEITADO';
   bool get isAssociado => establishmentId != null && establishmentId!.isNotEmpty;
   String get statusLabel {
     switch (status) {
       case 'ATIVO': return 'Ativo';
       case 'INATIVO': return 'Inativo';
       case 'PENDENTE': return 'Aguardando aprovação';
+      case 'REJEITADO': return 'Cadastro rejeitado';
       default: return status;
     }
   }

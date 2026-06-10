@@ -2,41 +2,51 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/colors.dart';
-import '../core/constants.dart';
 import '../models/availability.dart';
 import '../models/driver.dart';
 import '../models/establishment.dart';
 import '../models/pet.dart';
 import '../providers/auth_provider.dart';
 import '../providers/booking_provider.dart';
-import '../services/api_service.dart';
-import '../services/availability_service.dart';
-import '../services/driver_service.dart';
-import '../services/establishment_service.dart';
+import '../providers/schedule_provider.dart';
+import '../repositories/schedule_repository.dart';
 import '../widgets/mypet_app_bar.dart';
 
-class ScheduleScreen extends StatefulWidget {
+class ScheduleArgs {
+  final EstablishmentModel establishment;
+  final String? vetId;
+  final String? vetName;
+  const ScheduleArgs({required this.establishment, this.vetId, this.vetName});
+}
+
+class ScheduleScreen extends StatelessWidget {
   const ScheduleScreen({super.key});
 
   @override
-  State<ScheduleScreen> createState() => _ScheduleScreenState();
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (_) => ScheduleProvider(ScheduleRepository()),
+      child: const _ScheduleView(),
+    );
+  }
 }
 
-class _ScheduleScreenState extends State<ScheduleScreen> {
+class _ScheduleView extends StatefulWidget {
+  const _ScheduleView();
+
+  @override
+  State<_ScheduleView> createState() => _ScheduleViewState();
+}
+
+class _ScheduleViewState extends State<_ScheduleView> {
   PetModel? _selectedPet;
   List<ServiceModel> _selectedServices = [];
   DateTime? _selectedDate;
   String? _selectedTime;
-  List<PetModel> _pets = [];
-  bool _loadingPets = false;
-  List<ServiceModel> _services = [];
-  bool _loadingServices = false;
-  List<TimeSlotModel> _slots = [];
-  bool _loadingSlots = false;
-  bool _servicesLoaded = false;
-  List<DriverModel> _drivers = [];
   DriverModel? _selectedDriver;
-  bool _loadingDrivers = false;
+  String? _vetId;
+  String? _vetName;
+  bool _servicesLoaded = false;
 
   static const _weekdays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
   static const _months = [
@@ -47,7 +57,14 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadPets());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final auth = context.read<AuthProvider>();
+      if (auth.user != null) {
+        context
+            .read<ScheduleProvider>()
+            .loadPets(auth.user!.id, token: auth.token);
+      }
+    });
   }
 
   @override
@@ -55,89 +72,51 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     super.didChangeDependencies();
     if (!_servicesLoaded) {
       _servicesLoaded = true;
-      final establishment =
-          ModalRoute.of(context)?.settings.arguments as EstablishmentModel?;
-      if (establishment != null) _loadServices(establishment.id);
+      final args = ModalRoute.of(context)?.settings.arguments;
+      EstablishmentModel? establishment;
+      if (args is ScheduleArgs) {
+        establishment = args.establishment;
+        _vetId = args.vetId;
+        _vetName = args.vetName;
+      } else if (args is EstablishmentModel) {
+        establishment = args;
+      }
+      if (establishment != null) {
+        final auth = context.read<AuthProvider>();
+        context
+            .read<ScheduleProvider>()
+            .loadServicesAndDrivers(establishment.id, token: auth.token);
+      }
     }
   }
 
-  Future<void> _loadServices(String estabId) async {
-    setState(() => _loadingServices = true);
-    try {
-      final svcs = await EstablishmentService.fetchServices(estabId);
-      if (mounted) setState(() => _services = svcs);
-    } catch (_) {
-    } finally {
-      if (mounted) setState(() => _loadingServices = false);
-    }
-    await _loadDrivers(estabId);
-  }
-
-  Future<void> _loadDrivers(String estabId) async {
-    final auth = context.read<AuthProvider>();
-    if (auth.token == null) return;
-    setState(() => _loadingDrivers = true);
-    try {
-      final byEstab = await DriverService.fetchByEstablishment(
-        token: auth.token!,
-        establishmentId: estabId,
-      );
-      final independent = await DriverService.fetchUnassociated(token: auth.token!);
-      final all = [...byEstab, ...independent];
-      if (mounted) setState(() => _drivers = all.where((d) => d.isAtivo).toList());
-    } catch (_) {
-    } finally {
-      if (mounted) setState(() => _loadingDrivers = false);
-    }
-  }
-
-  Future<void> _loadPets() async {
-    final auth = context.read<AuthProvider>();
-    if (auth.token == null) return;
-    setState(() => _loadingPets = true);
-    try {
-      final data = await ApiService.get(
-        '${ApiConstants.petsEndpoint}/${auth.user!.id}',
-        token: auth.token,
-      );
-      final list = data as List;
-      setState(() => _pets = list.map((e) => PetModel.fromJson(e)).toList());
-    } catch (_) {
-    } finally {
-      setState(() => _loadingPets = false);
-    }
+  EstablishmentModel? _establishment(BuildContext ctx) {
+    final args = ModalRoute.of(ctx)?.settings.arguments;
+    if (args is ScheduleArgs) return args.establishment;
+    if (args is EstablishmentModel) return args;
+    return null;
   }
 
   Future<void> _loadSlots(EstablishmentModel? establishment) async {
     if (_selectedDate == null || establishment == null) return;
     final auth = context.read<AuthProvider>();
     if (auth.token == null) return;
-    setState(() {
-      _loadingSlots = true;
-      _selectedTime = null;
-      _slots = [];
-    });
-    try {
-      final dateStr =
-          '${_selectedDate!.year}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}';
-      _slots = await AvailabilityService.getAvailability(
-        token: auth.token!,
-        estabId: establishment.id,
-        date: dateStr,
-      );
-    } catch (e) {
-      _slots = [];
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erro ao buscar horários: $e'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 6),
-          ),
+    setState(() => _selectedTime = null);
+    final dateStr =
+        '${_selectedDate!.year}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}';
+    final error = await context.read<ScheduleProvider>().loadSlots(
+          estabId: establishment.id,
+          date: dateStr,
+          token: auth.token!,
         );
-      }
-    } finally {
-      setState(() => _loadingSlots = false);
+    if (error != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erro ao buscar horários: $error'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 6),
+        ),
+      );
     }
   }
 
@@ -188,14 +167,16 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           petId: _selectedPet!.id,
           petName: _selectedPet!.name,
           serviceName: serviceNameDisplay,
-          establishmentId: establishment?.id ?? '',
-          establishmentName: establishment?.name ?? '',
+          establishmentId: establishment?.id,
+          establishmentName: establishment?.name,
           scheduledAt: scheduledAt,
           price: totalPrice,
           priceVariable: allVariable,
           services: _selectedServices,
           driverId: _selectedDriver?.id,
           driverName: _selectedDriver?.name,
+          vetId: _vetId,
+          vetName: _vetName,
         );
 
     if (!mounted) return;
@@ -328,9 +309,9 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final establishment =
-        ModalRoute.of(context)?.settings.arguments as EstablishmentModel?;
+    final establishment = _establishment(context);
     final booking = context.watch<BookingProvider>();
+    final schedule = context.watch<ScheduleProvider>();
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -342,15 +323,41 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (_vetName != null)
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE8F5E9),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFFA5D6A7)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.medical_services_outlined,
+                            color: Color(0xFF2E7D32), size: 18),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Veterinário: $_vetName',
+                            style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF2E7D32)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 _sectionTitle('Selecione o pet'),
                 const SizedBox(height: 10),
-                if (_loadingPets)
+                if (schedule.loadingPets)
                   const Center(
                       child: Padding(
                           padding: EdgeInsets.all(16),
                           child: CircularProgressIndicator(
                               color: AppColors.primary)))
-                else if (_pets.isEmpty)
+                else if (schedule.pets.isEmpty)
                   GestureDetector(
                     onTap: () => Navigator.pushNamedAndRemoveUntil(
                         context, '/home', (r) => false,
@@ -393,7 +400,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                     ),
                   )
                 else
-                  ..._pets.map((pet) => _PetSelectCard(
+                  ...schedule.pets.map((pet) => _PetSelectCard(
                         pet: pet,
                         selected: _selectedPet?.id == pet.id,
                         onTap: () => setState(() => _selectedPet = pet),
@@ -403,15 +410,15 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
                 _sectionTitle('Selecione os serviços'),
                 const SizedBox(height: 10),
-                if (_loadingServices)
+                if (schedule.loadingServices)
                   const Center(
                     child: Padding(
                       padding: EdgeInsets.all(16),
                       child: CircularProgressIndicator(color: AppColors.primary),
                     ),
                   )
-                else if (_services.isNotEmpty)
-                  ..._services.map((s) {
+                else if (schedule.services.isNotEmpty)
+                  ...schedule.services.map((s) {
                     final sel = _selectedServices.any((x) => x.id == s.id);
                     return _ServiceSelectCard(
                       service: s,
@@ -474,14 +481,14 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                   style: TextStyle(fontSize: 12, color: AppColors.grey),
                 ),
                 const SizedBox(height: 10),
-                if (_loadingDrivers)
+                if (schedule.loadingDrivers)
                   const Center(
                     child: Padding(
                       padding: EdgeInsets.all(12),
                       child: CircularProgressIndicator(color: AppColors.primary),
                     ),
                   )
-                else if (_drivers.isEmpty)
+                else if (schedule.drivers.isEmpty)
                   Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
@@ -500,7 +507,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                     selected: _selectedDriver == null,
                     onTap: () => setState(() => _selectedDriver = null),
                   ),
-                  ..._drivers.map((d) => _DriverSelectCard(
+                  ...schedule.drivers.map((d) => _DriverSelectCard(
                         driver: d,
                         selected: _selectedDriver?.id == d.id,
                         onTap: () => setState(() => _selectedDriver = d),
@@ -617,14 +624,14 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                   const SizedBox(height: 24),
                   _sectionTitle('Selecione o horário'),
                   const SizedBox(height: 10),
-                  if (_loadingSlots)
+                  if (schedule.loadingSlots)
                     const Center(
                         child: Padding(
                       padding: EdgeInsets.all(16),
                       child: CircularProgressIndicator(
                           color: AppColors.primary),
                     ))
-                  else if (_slots.isEmpty)
+                  else if (schedule.slots.isEmpty)
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
@@ -639,7 +646,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                     )
                   else
                     _SlotGrid(
-                      slots: _slots,
+                      slots: schedule.slots,
                       selectedTime: _selectedTime,
                       selectedDate: _selectedDate!,
                       onSelect: (t) => setState(() => _selectedTime = t),
