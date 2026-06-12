@@ -1,21 +1,8 @@
-# Watchdog do wslrelay zumbi (roda via Tarefa Agendada a cada 5 min).
-#
-# Problema: `wslrelay` (WSL) às vezes fica preso escutando ::1:80 SEM responder.
-# Como `localhost` resolve primeiro para ::1, http://localhost inteiro trava
-# (timeout), enquanto http://127.0.0.1 (Docker) segue funcionando.
-#
-# Regra de segurança: só mata o wslrelay se OUTRO processo (Docker) também
-# estiver servindo a porta 80 — ou seja, só em situação de conflito, nunca
-# quando o wslrelay for o único dono legítimo da porta.
-#
-# Registro/remoção da tarefa: scripts/register-watchdog.ps1
-
 $log = Join-Path $env:LOCALAPPDATA 'mypet-watchdog.log'
 
 function Write-Log([string]$msg) {
   $line = "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') $msg"
   Add-Content -Path $log -Value $line
-  # mantém o log pequeno (últimas 200 linhas)
   $lines = Get-Content $log -ErrorAction SilentlyContinue
   if ($lines.Count -gt 200) { $lines | Select-Object -Last 200 | Set-Content $log }
 }

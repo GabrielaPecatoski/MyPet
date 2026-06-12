@@ -1,20 +1,4 @@
-# Corrige os dois "processos zumbis" que derrubam o ambiente de testes:
-#
-# 1. wslrelay segurando ::1:80 — `localhost` resolve primeiro para ::1 (IPv6);
-#    quando o wslrelay trava nessa porta ele ACEITA a conexão e não responde
-#    (timeout, sem fallback para IPv4), então http://localhost morre enquanto
-#    http://127.0.0.1 segue funcionando e os containers ficam todos "Up".
-#    Matar o wslrelay é seguro: ele re-spawna limpo quando o WSL precisar.
-#    NÃO usar `wsl --shutdown` (derruba o engine do Docker Desktop em backend WSL2).
-#
-# 2. python -m http.server zumbi na 8080 — sobrou de uma rodada Playwright morta;
-#    a próxima rodada o reusa (reuseExistingServer) e ele morre no meio, causando
-#    ERR_CONNECTION_REFUSED em massa.
-#
-# Uso:  powershell -File scripts\fix-localhost.ps1 [-RestartWebServer]
-
 param(
-  # Se passado, sobe um http.server novo na 8080 servindo o build web do Flutter
   [switch]$RestartWebServer
 )
 

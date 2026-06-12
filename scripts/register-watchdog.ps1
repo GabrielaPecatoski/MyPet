@@ -1,11 +1,3 @@
-# Registra (ou remove) a tarefa agendada que mata o wslrelay zumbi da porta 80
-# a cada 5 minutos. A logica vai EMBUTIDA na tarefa (-EncodedCommand), entao
-# ela funciona mesmo se esta pasta for movida, renomeada ou apagada.
-#
-# Uso:
-#   powershell -File scripts\register-watchdog.ps1            # registra
-#   powershell -File scripts\register-watchdog.ps1 -Remove    # remove
-
 param([switch]$Remove)
 
 $taskName = 'MyPetLocalhostWatchdog'

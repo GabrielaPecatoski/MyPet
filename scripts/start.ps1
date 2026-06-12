@@ -1,6 +1,3 @@
-# MyPet - inicia toda a stack
-# Se travar em politica de execucao: Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
-
 $ErrorActionPreference = 'Continue'
 $root = Split-Path -Parent $PSScriptRoot
 $compose = "$root\docker-compose.yml"
@@ -11,7 +8,6 @@ Write-Host "  MyPet - Iniciando stack" -ForegroundColor Cyan
 Write-Host "===================================" -ForegroundColor Cyan
 Write-Host ""
 
-# 1. Verifica arquivo .env
 $envFile = "$root\.env"
 if (-not (Test-Path $envFile)) {
   $envExample = "$root\.env.example"
@@ -25,7 +21,6 @@ if (-not (Test-Path $envFile)) {
   }
 }
 
-# 2. Verifica / aguarda Docker Desktop
 Write-Host "[1/3] Verificando Docker Desktop..." -ForegroundColor Yellow
 docker info 2>&1 | Out-Null
 if ($LASTEXITCODE -ne 0) {
@@ -45,7 +40,6 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Host "      Docker pronto." -ForegroundColor Green
 
-# 2. Sobe containers (migrations rodam dentro de cada container no startup)
 Write-Host ""
 Write-Host "[2/3] Subindo containers..." -ForegroundColor Yellow
 docker compose -f $compose up -d
@@ -55,7 +49,6 @@ if ($LASTEXITCODE -ne 0) {
 }
 docker compose -f $compose restart nginx | Out-Null
 
-# 3. Aguarda o gateway responder
 Write-Host ""
 Write-Host "[3/3] Aguardando Nginx (http://localhost/health)..." -ForegroundColor Yellow
 $maxWait = 90
@@ -71,7 +64,6 @@ while ($waited -lt $maxWait) {
   Write-Host "      aguardando... ($waited/$maxWait s)" -ForegroundColor DarkGray
 }
 
-# Resultado
 Write-Host ""
 Write-Host "===================================" -ForegroundColor Cyan
 docker ps --format "table {{.Names}}`t{{.Status}}"

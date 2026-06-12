@@ -1,11 +1,3 @@
-"""Remove comentarios de arquivos TS/JS/Dart sem tocar em strings/regex.
-
-Uso: python scripts/strip_comments.py <arquivo> [<arquivo> ...]
-A linguagem e inferida pela extensao. Pragmas funcionais sao preservados
-(// ignore: / // ignore_for_file: no Dart; @ts-ignore/@ts-expect-error/
-biome-ignore no TS, se existirem).
-"""
-
 import re
 import sys
 
@@ -20,7 +12,6 @@ REGEX_PREV_WORDS = {
 
 
 def prev_significant(out: list[str]) -> tuple[str, str]:
-    """Ultimo char nao-espaco do output e a ultima palavra (para regex vs divisao)."""
     i = len(out) - 1
     while i >= 0 and out[i] in " \t\r\n":
         i -= 1
@@ -37,8 +28,7 @@ def prev_significant(out: list[str]) -> tuple[str, str]:
 def strip_ts(src: str) -> str:
     out: list[str] = []
     i, n = 0, len(src)
-    # pilha de contextos para template literals: 'tpl' dentro de `...`, 'code' dentro de ${}
-    tpl_stack: list[int] = []  # contagem de chaves abertas dentro de ${}
+    tpl_stack: list[int] = []
 
     def line_comment_end(k: int) -> int:
         while k < n and src[k] not in "\r\n":
@@ -59,14 +49,12 @@ def strip_ts(src: str) -> str:
             if c == "/" and i + 1 < n and src[i + 1] == "*":
                 j = src.find("*/", i + 2)
                 j = n if j == -1 else j + 2
-                # preserva quebras de linha do bloco para o pos-processamento
                 out.extend(ch for ch in src[i:j] if ch in "\r\n")
                 i = j
                 continue
             if c == "/":
                 ch, word = prev_significant(out)
                 if ch == "" or ch in REGEX_PRECEDERS or word in REGEX_PREV_WORDS:
-                    # literal de regex: consome ate a / final (respeitando [...] e escapes)
                     out.append(c)
                     i += 1
                     in_class = False
@@ -200,7 +188,6 @@ def strip_dart(src: str) -> str:
 
 
 def postprocess(original: str, stripped: str) -> str:
-    """Apaga linhas que viraram so-espaco (eram comentario inteiro)."""
     orig_lines = original.splitlines(keepends=True)
     new_lines = stripped.splitlines(keepends=True)
     result = []

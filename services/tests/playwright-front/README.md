@@ -19,7 +19,7 @@ reais ao backend** (via Nginx em `http://localhost`). Nada é mockado.
 
 ## Pré-requisitos
 
-1. Stack no ar: `./start.ps1` (Docker) — `http://localhost/health` deve responder 200.
+1. Stack no ar: `.\scripts\start.ps1` (Docker) — `http://localhost/health` deve responder 200.
 2. Build web atualizado: `cd mypet_app && flutter build web --base-href /`
    (refazer sempre que mudar o app Flutter).
 3. Browser do Playwright: `npx playwright install chromium`.
@@ -69,6 +69,18 @@ npx playwright show-report playwright-report-front
 | `26-veterinario-nav` | navegação do vet: home stats, agenda, chamados, pacientes, perfil |
 | `27-product-detail` | tela de detalhe do produto: info, seletor de qty, snackbar, badge carrinho |
 | `28-pedidos-acompanhamento` | barra de progresso e filtros (Todos / Em andamento / Finalizados) |
+| `29-welcome-cores` | cores por papel na tela de boas-vindas |
+| `30-emergencia-vets` | emergência: abas Clínicas/Veterinários, filtro 24h |
+| `31-home-vet-filter` | chips de filtro da home (Veterinário etc.) |
+| `32-vet-domicilio` | toggles do vet: online, 24h, atendimento domiciliar |
+| `33-estab-vinculos-vet` | estabelecimento vincula/desvincula veterinários |
+| `34-admin-verificacoes` | admin aprova/rejeita vets e motoristas |
+| `35-register-fluxos` | fluxos completos de registro por papel |
+| `36-agendamento-vet` | cliente agenda consulta em clínica veterinária (preço fixo e variável) |
+| `37-estab-drivers` | estabelecimento gerencia motoristas (buscar por CPF / cadastrar novo) |
+| `38-splash-e-auth-flow` | splash, sessão persistida, logout |
+| `39-estab-pedidos` | gestão de pedidos pelo estabelecimento (badges, progresso, status) |
+| `40-vet-alarme` | alarme de emergência em tempo real (RabbitMQ→SSE, overlay em <1s) |
 
 Localização: `services/tests/playwright-front`. As configs (`playwright.front.config.ts`)
 ficam na raiz do projeto.
