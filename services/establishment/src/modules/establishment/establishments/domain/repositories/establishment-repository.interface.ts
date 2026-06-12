@@ -25,8 +25,13 @@ export interface EstablishmentRepository {
   delete(id: string): Promise<void>;
   findById(id: string): Promise<Establishment | null>;
   findByOwnerId(ownerId: string): Promise<Establishment[]>;
-  findAll(search?: string): Promise<(Establishment & { serviceCount: number })[]>;
-  findAllPaginated(params: PaginationParams, search?: string): Promise<{ rows: Establishment[]; total: number }>;
+  findAll(
+    search?: string,
+  ): Promise<(Establishment & { serviceCount: number })[]>;
+  findAllPaginated(
+    params: PaginationParams,
+    search?: string,
+  ): Promise<{ rows: Establishment[]; total: number }>;
   findAllAdmin(): Promise<EstablishmentAdminItem[]>;
   findByEmergency(): Promise<(Establishment & { serviceCount: number })[]>;
 }

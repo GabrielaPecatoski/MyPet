@@ -1,6 +1,6 @@
-import type { Veterinarian } from '@vet/vet/domain/models/veterinarian.entity';
+import type { Veterinarian } from "@vet/vet/domain/models/veterinarian.entity";
 
-export const VETERINARIAN_REPOSITORY = Symbol('VETERINARIAN_REPOSITORY');
+export const VETERINARIAN_REPOSITORY = Symbol("VETERINARIAN_REPOSITORY");
 
 export interface VeterinarianRepository {
   create(vet: Veterinarian): Promise<Veterinarian>;

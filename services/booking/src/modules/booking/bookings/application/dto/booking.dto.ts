@@ -1,4 +1,7 @@
-import type { Booking, BookingServiceItem } from "@booking/bookings/domain/models/booking.entity";
+import type {
+  Booking,
+  BookingServiceItem,
+} from "@booking/bookings/domain/models/booking.entity";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 
 export class BookingDto {

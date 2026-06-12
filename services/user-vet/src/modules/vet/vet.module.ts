@@ -1,9 +1,9 @@
-import { Module } from '@nestjs/common';
-import { VeterinarianService } from '@vet/vet/application/services/veterinarian.service';
-import { VETERINARIAN_REPOSITORY } from '@vet/vet/domain/repositories/veterinarian-repository.interface';
-import { DrizzleVeterinarianRepository } from '@vet/vet/infra/repositories/drizzle-veterinarian.repository';
-import { VetEmergencyCallsRepository } from '@vet/vet/infra/repositories/vet-emergency-calls.repository';
-import { VeterinariansController } from '@vet/vet/infra/controllers/veterinarians.controller';
+import { Module } from "@nestjs/common";
+import { VeterinarianService } from "@vet/vet/application/services/veterinarian.service";
+import { VETERINARIAN_REPOSITORY } from "@vet/vet/domain/repositories/veterinarian-repository.interface";
+import { VeterinariansController } from "@vet/vet/infra/controllers/veterinarians.controller";
+import { DrizzleVeterinarianRepository } from "@vet/vet/infra/repositories/drizzle-veterinarian.repository";
+import { VetEmergencyCallsRepository } from "@vet/vet/infra/repositories/vet-emergency-calls.repository";
 
 @Module({
   controllers: [VeterinariansController],
@@ -11,7 +11,10 @@ import { VeterinariansController } from '@vet/vet/infra/controllers/veterinarian
     VeterinarianService,
     DrizzleVeterinarianRepository,
     VetEmergencyCallsRepository,
-    { provide: VETERINARIAN_REPOSITORY, useExisting: DrizzleVeterinarianRepository },
+    {
+      provide: VETERINARIAN_REPOSITORY,
+      useExisting: DrizzleVeterinarianRepository,
+    },
   ],
 })
 export class VetModule {}

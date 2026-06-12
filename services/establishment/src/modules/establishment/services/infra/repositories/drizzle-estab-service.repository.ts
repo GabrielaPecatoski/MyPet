@@ -24,10 +24,14 @@ export class DrizzleEstabServiceRepository implements EstabServiceRepository {
   }
 
   async delete(id: string): Promise<void> {
-    await this.drizzleService.db.delete(estabServicesSchema).where(eq(estabServicesSchema.id, id));
+    await this.drizzleService.db
+      .delete(estabServicesSchema)
+      .where(eq(estabServicesSchema.id, id));
   }
 
-  async findByEstablishmentId(establishmentId: string): Promise<EstabService[]> {
+  async findByEstablishmentId(
+    establishmentId: string,
+  ): Promise<EstabService[]> {
     const rows = await this.drizzleService.db
       .select()
       .from(estabServicesSchema)

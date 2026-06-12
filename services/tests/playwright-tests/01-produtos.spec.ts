@@ -1,7 +1,7 @@
-import { test, expect, APIRequestContext } from '@playwright/test';
+import { APIRequestContext, expect, test } from "@playwright/test";
 
-const BASE = 'http://localhost:3004';
-const ESTAB_ID = 'estab-test-001';
+const BASE = "http://localhost:3004";
+const ESTAB_ID = "estab-test-001";
 
 let api: APIRequestContext;
 let productId: string;
@@ -15,21 +15,21 @@ test.afterAll(async () => {
   await api.dispose();
 });
 
-test('listar produtos - retorna array', async () => {
-  const res = await api.get('/marketplace/products');
+test("listar produtos - retorna array", async () => {
+  const res = await api.get("/marketplace/products");
   expect(res.status()).toBe(200);
   const body = await res.json();
   expect(Array.isArray(body)).toBe(true);
 });
 
-test('criar produto', async () => {
-  const res = await api.post('/marketplace/products', {
+test("criar produto", async () => {
+  const res = await api.post("/marketplace/products", {
     data: {
       name: productName,
-      brand: 'Marca Teste',
+      brand: "Marca Teste",
       price: 49.9,
       stock: 10,
-      category: 'Alimentação',
+      category: "Alimentação",
       establishmentId: ESTAB_ID,
     },
   });
@@ -41,7 +41,7 @@ test('criar produto', async () => {
   productId = body.id;
 });
 
-test('buscar produto por id', async () => {
+test("buscar produto por id", async () => {
   const res = await api.get(`/marketplace/products/${productId}`);
   expect(res.status()).toBe(200);
   const body = await res.json();
@@ -49,22 +49,24 @@ test('buscar produto por id', async () => {
   expect(body.name).toBe(productName);
 });
 
-test('listar produtos filtrados por estabelecimento', async () => {
-  const res = await api.get(`/marketplace/products?establishmentId=${ESTAB_ID}`);
+test("listar produtos filtrados por estabelecimento", async () => {
+  const res = await api.get(
+    `/marketplace/products?establishmentId=${ESTAB_ID}`,
+  );
   expect(res.status()).toBe(200);
   const body: any[] = await res.json();
   expect(body.some((p) => p.id === productId)).toBe(true);
 });
 
-test('buscar produto por nome (search)', async () => {
-  const keyword = productName.split(' ')[1];
+test("buscar produto por nome (search)", async () => {
+  const keyword = productName.split(" ")[1];
   const res = await api.get(`/marketplace/products?search=${keyword}`);
   expect(res.status()).toBe(200);
   const body: any[] = await res.json();
   expect(body.some((p) => p.id === productId)).toBe(true);
 });
 
-test('atualizar produto - preço e estoque', async () => {
+test("atualizar produto - preço e estoque", async () => {
   const res = await api.patch(`/marketplace/products/${productId}`, {
     data: { price: 55.0, stock: 20 },
   });
@@ -74,18 +76,18 @@ test('atualizar produto - preço e estoque', async () => {
   expect(body.stock).toBe(20);
 });
 
-test('produto inexistente retorna 404', async () => {
-  const res = await api.get('/marketplace/products/nao-existe-id');
+test("produto inexistente retorna 404", async () => {
+  const res = await api.get("/marketplace/products/nao-existe-id");
   expect(res.status()).toBe(404);
 });
 
-test('excluir produto (soft delete)', async () => {
+test("excluir produto (soft delete)", async () => {
   const res = await api.delete(`/marketplace/products/${productId}`);
   expect(res.status()).toBe(204);
 });
 
-test('produto deletado não aparece na listagem pública', async () => {
-  const res = await api.get('/marketplace/products');
+test("produto deletado não aparece na listagem pública", async () => {
+  const res = await api.get("/marketplace/products");
   expect(res.status()).toBe(200);
   const body: any[] = await res.json();
   expect(body.some((p) => p.id === productId)).toBe(false);

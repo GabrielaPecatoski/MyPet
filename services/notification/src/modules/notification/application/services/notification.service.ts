@@ -40,7 +40,8 @@ export class NotificationService {
 
   async markAsRead(id: string): Promise<void> {
     const notification = await this.notificationRepo.findById(id);
-    if (!notification) throw new NotFoundException("Notificação não encontrada");
+    if (!notification)
+      throw new NotFoundException("Notificação não encontrada");
     notification.markAsRead();
     await this.notificationRepo.update(notification);
   }

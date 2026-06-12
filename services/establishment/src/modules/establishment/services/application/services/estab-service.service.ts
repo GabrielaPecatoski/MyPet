@@ -14,7 +14,10 @@ export class EstabServiceService {
     private readonly repo: EstabServiceRepository,
   ) {}
 
-  async addService(establishmentId: string, dto: CreateServiceDto): Promise<void> {
+  async addService(
+    establishmentId: string,
+    dto: CreateServiceDto,
+  ): Promise<void> {
     const priceVariable = dto.priceVariable ?? false;
     const service = EstabService.restore({
       establishmentId,
@@ -30,7 +33,9 @@ export class EstabServiceService {
     await this.repo.create(service);
   }
 
-  async findByEstablishment(establishmentId: string): Promise<EstabServiceDto[]> {
+  async findByEstablishment(
+    establishmentId: string,
+  ): Promise<EstabServiceDto[]> {
     const rows = await this.repo.findByEstablishmentId(establishmentId);
     return rows.map((s) => EstabServiceDto.fromService(s)!);
   }

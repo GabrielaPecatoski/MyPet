@@ -1,4 +1,11 @@
-import { boolean, doublePrecision, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  doublePrecision,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+} from "drizzle-orm/pg-core";
 
 export const bookingsSchema = pgTable("bookings", {
   id: uuid("id").primaryKey().defaultRandom(),

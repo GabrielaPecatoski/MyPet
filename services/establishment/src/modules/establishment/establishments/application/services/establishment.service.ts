@@ -17,7 +17,10 @@ export class EstablishmentService {
     private readonly repo: EstablishmentRepository,
   ) {}
 
-  async create(ownerId: string, dto: CreateEstablishmentDto): Promise<EstablishmentDto> {
+  async create(
+    ownerId: string,
+    dto: CreateEstablishmentDto,
+  ): Promise<EstablishmentDto> {
     const establishment = Establishment.restore({
       ownerId,
       name: dto.name,
@@ -44,7 +47,10 @@ export class EstablishmentService {
     return rows.map((e) => EstablishmentDto.fromEstablishment(e)!);
   }
 
-  async listPaginated(params: PaginationParams, search?: string): Promise<PaginatedResult<EstablishmentDto>> {
+  async listPaginated(
+    params: PaginationParams,
+    search?: string,
+  ): Promise<PaginatedResult<EstablishmentDto>> {
     const { rows, total } = await this.repo.findAllPaginated(params, search);
     return {
       data: rows.map((e) => EstablishmentDto.fromEstablishment(e)!),
@@ -84,14 +90,22 @@ export class EstablishmentService {
     if (dto.type) e.withType(dto.type);
     if (dto.imageUrl !== undefined) e.withImageUrl(dto.imageUrl);
     if (dto.crmv !== undefined) e.withCrmv(dto.crmv);
-    if (dto.atendeEmergencia !== undefined) e.withAtendeEmergencia(dto.atendeEmergencia);
-    if (dto.atendimento24h !== undefined) e.withAtendimento24h(dto.atendimento24h);
-    if (dto.receberAlertaSonoro !== undefined) e.withReceberAlertaSonoro(dto.receberAlertaSonoro);
-    if (dto.receberPushEmergencia !== undefined) e.withReceberPushEmergencia(dto.receberPushEmergencia);
+    if (dto.atendeEmergencia !== undefined)
+      e.withAtendeEmergencia(dto.atendeEmergencia);
+    if (dto.atendimento24h !== undefined)
+      e.withAtendimento24h(dto.atendimento24h);
+    if (dto.receberAlertaSonoro !== undefined)
+      e.withReceberAlertaSonoro(dto.receberAlertaSonoro);
+    if (dto.receberPushEmergencia !== undefined)
+      e.withReceberPushEmergencia(dto.receberPushEmergencia);
     await this.repo.update(e);
   }
 
-  async updateRating(id: string, rating: number, reviewCount: number): Promise<void> {
+  async updateRating(
+    id: string,
+    rating: number,
+    reviewCount: number,
+  ): Promise<void> {
     await this.repo.updateRating(id, rating, reviewCount);
   }
 

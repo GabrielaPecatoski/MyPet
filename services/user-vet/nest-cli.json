@@ -2,6 +2,6 @@
   "$schema": "https://json.schemastore.org/nest-cli",
   "collection": "@nestjs/schematics",
   "sourceRoot": "src",
-  "entryFile": "services/user-driver/src/main",
+  "entryFile": "services/user-vet/src/main",
   "compilerOptions": { "deleteOutDir": true }
 }

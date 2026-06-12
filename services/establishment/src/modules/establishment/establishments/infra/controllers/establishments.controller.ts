@@ -25,10 +25,10 @@ import {
   ApiTags,
 } from "@nestjs/swagger";
 import { Permission } from "@shared/domain/enums/permission.enum";
-import { RequirePermissions } from "@shared/infra/decorators/permissions.decorator";
-import { CurrentUser } from "@shared/infra/decorators/current-user.decorator";
-import { Public } from "@shared/infra/decorators/public.decorator";
 import type { AuthenticatedUser } from "@shared/infra/auth/interfaces/authenticated-user.interface";
+import { CurrentUser } from "@shared/infra/decorators/current-user.decorator";
+import { RequirePermissions } from "@shared/infra/decorators/permissions.decorator";
+import { Public } from "@shared/infra/decorators/public.decorator";
 import { HateoasItem } from "@shared/infra/hateoas";
 
 @ApiTags("establishments")
@@ -49,7 +49,9 @@ export class EstablishmentsController {
 
   @Get("emergency")
   @Public()
-  @ApiOperation({ summary: "Listar estabelecimentos que atendem emergências veterinárias" })
+  @ApiOperation({
+    summary: "Listar estabelecimentos que atendem emergências veterinárias",
+  })
   async findByEmergency(): Promise<EstablishmentDto[]> {
     return this.establishmentService.findByEmergency();
   }
@@ -57,7 +59,9 @@ export class EstablishmentsController {
   @Get("admin/all")
   @ApiBearerAuth()
   @RequirePermissions(Permission.ADMIN_READ)
-  @ApiOperation({ summary: "Listar estabelecimentos com contagem de serviços (admin)" })
+  @ApiOperation({
+    summary: "Listar estabelecimentos com contagem de serviços (admin)",
+  })
   async findAllAdmin() {
     return this.establishmentService.findAllAdmin();
   }
@@ -66,7 +70,9 @@ export class EstablishmentsController {
   @ApiBearerAuth()
   @RequirePermissions(Permission.ESTABLISHMENTS_READ)
   @ApiOperation({ summary: "Listar estabelecimentos do proprietário" })
-  async findByOwner(@Param("ownerId") ownerId: string): Promise<EstablishmentDto[]> {
+  async findByOwner(
+    @Param("ownerId") ownerId: string,
+  ): Promise<EstablishmentDto[]> {
     return this.establishmentService.findByOwnerId(ownerId);
   }
 
@@ -79,7 +85,10 @@ export class EstablishmentsController {
     itemLinks: (item) => ({
       self: { href: `/v1/establishments/${item.id}`, method: "GET" },
       update: { href: `/v1/establishments/${item.id}`, method: "PATCH" },
-      services: { href: `/v1/establishments/${item.id}/services`, method: "GET" },
+      services: {
+        href: `/v1/establishments/${item.id}/services`,
+        method: "GET",
+      },
     }),
   })
   async findById(@Param("id") id: string) {
@@ -100,7 +109,9 @@ export class EstablishmentsController {
   @Post("owner/:ownerId")
   @ApiBearerAuth()
   @RequirePermissions(Permission.ESTABLISHMENTS_WRITE)
-  @ApiOperation({ summary: "Criar estabelecimento para proprietário específico" })
+  @ApiOperation({
+    summary: "Criar estabelecimento para proprietário específico",
+  })
   async createForOwner(
     @Param("ownerId") ownerId: string,
     @Body() body: CreateEstablishmentDto,
@@ -139,10 +150,7 @@ export class EstablishmentsController {
   @ApiBearerAuth()
   @RequirePermissions(Permission.SERVICES_WRITE)
   @ApiOperation({ summary: "Adicionar serviço ao estabelecimento" })
-  async addService(
-    @Param("id") id: string,
-    @Body() body: CreateServiceDto,
-  ) {
+  async addService(@Param("id") id: string, @Body() body: CreateServiceDto) {
     return this.serviceService.addService(id, body);
   }
 

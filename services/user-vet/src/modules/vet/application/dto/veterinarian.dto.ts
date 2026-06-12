@@ -1,5 +1,5 @@
-import type { Veterinarian } from '@vet/vet/domain/models/veterinarian.entity';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import type { Veterinarian } from "@vet/vet/domain/models/veterinarian.entity";
 
 export class VeterinarianDto {
   @ApiProperty() id: string | undefined;

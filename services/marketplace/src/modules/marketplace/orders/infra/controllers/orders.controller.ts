@@ -1,13 +1,9 @@
 import { OrderService } from "@market/orders/application/services/order.service";
+import type { OrderStatus } from "@market/orders/domain/models/order.entity";
 import { Body, Controller, Get, Param, Patch, Post } from "@nestjs/common";
-import {
-  ApiBearerAuth,
-  ApiOperation,
-  ApiTags,
-} from "@nestjs/swagger";
+import { ApiBearerAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
 import { Permission } from "@shared/domain/enums/permission.enum";
 import { RequirePermissions } from "@shared/infra/decorators/permissions.decorator";
-import type { OrderStatus } from "@market/orders/domain/models/order.entity";
 
 @ApiTags("marketplace/orders")
 @ApiBearerAuth()
@@ -39,7 +35,10 @@ export class OrdersController {
   @Patch(":id/status")
   @RequirePermissions(Permission.ORDERS_WRITE)
   @ApiOperation({ summary: "Atualizar status do pedido (acompanhamento)" })
-  async updateStatus(@Param("id") id: string, @Body() body: { status: OrderStatus }) {
+  async updateStatus(
+    @Param("id") id: string,
+    @Body() body: { status: OrderStatus },
+  ) {
     return this.orderService.updateStatus(id, body.status);
   }
 

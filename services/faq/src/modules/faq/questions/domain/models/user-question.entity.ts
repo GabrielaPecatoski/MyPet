@@ -16,18 +16,44 @@ export class UserQuestion {
     this._createdAt = createdAt;
   }
 
-  get id(): string | undefined { return this._id; }
-  get userId(): string { return this._userId; }
-  get userName(): string { return this._userName; }
-  get userRole(): string { return this._userRole; }
-  get question(): string { return this._question; }
-  get answer(): string | undefined { return this._answer; }
-  get status(): QuestionStatus { return this._status; }
-  get createdAt(): Date | undefined { return this._createdAt; }
-  get answeredAt(): Date | undefined { return this._answeredAt; }
+  get id(): string | undefined {
+    return this._id;
+  }
+  get userId(): string {
+    return this._userId;
+  }
+  get userName(): string {
+    return this._userName;
+  }
+  get userRole(): string {
+    return this._userRole;
+  }
+  get question(): string {
+    return this._question;
+  }
+  get answer(): string | undefined {
+    return this._answer;
+  }
+  get status(): QuestionStatus {
+    return this._status;
+  }
+  get createdAt(): Date | undefined {
+    return this._createdAt;
+  }
+  get answeredAt(): Date | undefined {
+    return this._answeredAt;
+  }
 
-  withAnswer(answer: string) { this._answer = answer; this._status = "RESPONDIDA"; this._answeredAt = new Date(); return this; }
-  close() { this._status = "FECHADA"; return this; }
+  withAnswer(answer: string) {
+    this._answer = answer;
+    this._status = "RESPONDIDA";
+    this._answeredAt = new Date();
+    return this;
+  }
+  close() {
+    this._status = "FECHADA";
+    return this;
+  }
 
   toJSON() {
     return {

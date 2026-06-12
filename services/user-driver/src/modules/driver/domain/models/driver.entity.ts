@@ -21,21 +21,51 @@ export class Driver {
     this._updatedAt = updatedAt;
   }
 
-  get id(): string | undefined { return this._id; }
-  get establishmentId(): string | undefined { return this._establishmentId; }
-  get name(): string { return this._name; }
-  get phone(): string { return this._phone; }
-  get cpf(): string { return this._cpf; }
-  get cnh(): string { return this._cnh; }
-  get vehicleType(): VehicleType { return this._vehicleType; }
-  get vehicleModel(): string { return this._vehicleModel; }
-  get vehiclePlate(): string { return this._vehiclePlate; }
-  get status(): DriverStatus { return this._status; }
-  get createdAt(): Date | undefined { return this._createdAt; }
-  get updatedAt(): Date | undefined { return this._updatedAt; }
+  get id(): string | undefined {
+    return this._id;
+  }
+  get establishmentId(): string | undefined {
+    return this._establishmentId;
+  }
+  get name(): string {
+    return this._name;
+  }
+  get phone(): string {
+    return this._phone;
+  }
+  get cpf(): string {
+    return this._cpf;
+  }
+  get cnh(): string {
+    return this._cnh;
+  }
+  get vehicleType(): VehicleType {
+    return this._vehicleType;
+  }
+  get vehicleModel(): string {
+    return this._vehicleModel;
+  }
+  get vehiclePlate(): string {
+    return this._vehiclePlate;
+  }
+  get status(): DriverStatus {
+    return this._status;
+  }
+  get createdAt(): Date | undefined {
+    return this._createdAt;
+  }
+  get updatedAt(): Date | undefined {
+    return this._updatedAt;
+  }
 
-  withStatus(status: DriverStatus) { this._status = status; return this; }
-  withEstablishment(establishmentId: string | undefined) { this._establishmentId = establishmentId; return this; }
+  withStatus(status: DriverStatus) {
+    this._status = status;
+    return this;
+  }
+  withEstablishment(establishmentId: string | undefined) {
+    this._establishmentId = establishmentId;
+    return this;
+  }
 
   static restore(props?: {
     id?: string;

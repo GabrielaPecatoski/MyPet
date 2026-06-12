@@ -1,4 +1,9 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import type { Channel, ChannelModel } from "amqplib";
 import amqplib from "amqplib";
@@ -15,7 +20,9 @@ export class RabbitMQService implements OnModuleInit, OnModuleDestroy {
     const url = this.configService.get<string>("RABBITMQ_URL");
 
     if (!url) {
-      this.logger.warn("RABBITMQ_URL not configured; RabbitMQ client disabled.");
+      this.logger.warn(
+        "RABBITMQ_URL not configured; RabbitMQ client disabled.",
+      );
       return;
     }
 
@@ -28,7 +35,9 @@ export class RabbitMQService implements OnModuleInit, OnModuleDestroy {
         this.logger.log("RabbitMQ connection established");
         return;
       } catch (err) {
-        this.logger.warn(`RabbitMQ not ready (attempt ${attempt}/${maxRetries}), retrying in ${delayMs}ms...`);
+        this.logger.warn(
+          `RabbitMQ not ready (attempt ${attempt}/${maxRetries}), retrying in ${delayMs}ms...`,
+        );
         if (attempt === maxRetries) throw err;
         await new Promise((r) => setTimeout(r, delayMs));
       }

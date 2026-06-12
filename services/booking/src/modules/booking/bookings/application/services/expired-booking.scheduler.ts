@@ -1,5 +1,10 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
 import { BookingService } from "@booking/bookings/application/services/booking.service";
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from "@nestjs/common";
 
 @Injectable()
 export class ExpiredBookingScheduler implements OnModuleInit, OnModuleDestroy {
@@ -13,7 +18,9 @@ export class ExpiredBookingScheduler implements OnModuleInit, OnModuleDestroy {
     this.timer = setInterval(() => {
       this.bookingService
         .cancelExpired()
-        .catch((err) => this.logger.warn(`Falha ao cancelar expirados: ${err}`));
+        .catch((err) =>
+          this.logger.warn(`Falha ao cancelar expirados: ${err}`),
+        );
     }, this.intervalMs);
     this.timer.unref?.();
   }

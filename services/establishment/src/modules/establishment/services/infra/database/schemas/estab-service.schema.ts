@@ -1,5 +1,12 @@
-import { boolean, doublePrecision, integer, pgTable, text, uuid } from "drizzle-orm/pg-core";
 import { establishmentsSchema } from "@estab/establishments/infra/database/schemas/establishment.schema";
+import {
+  boolean,
+  doublePrecision,
+  integer,
+  pgTable,
+  text,
+  uuid,
+} from "drizzle-orm/pg-core";
 
 export const estabServicesSchema = pgTable("estab_services", {
   id: uuid("id").primaryKey().defaultRandom(),

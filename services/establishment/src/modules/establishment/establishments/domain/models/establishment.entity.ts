@@ -24,40 +24,121 @@ export class Establishment {
     this._updatedAt = updatedAt;
   }
 
-  get id(): string | undefined { return this._id; }
-  get ownerId(): string { return this._ownerId; }
-  get name(): string { return this._name; }
-  get description(): string { return this._description; }
-  get address(): string { return this._address; }
-  get city(): string { return this._city; }
-  get phone(): string { return this._phone; }
-  get type(): string { return this._type; }
-  get rating(): number { return this._rating; }
-  get reviewCount(): number { return this._reviewCount; }
-  get imageUrl(): string | undefined { return this._imageUrl; }
-  get crmv(): string | undefined { return this._crmv; }
-  get atendeEmergencia(): boolean { return this._atendeEmergencia; }
-  get atendimento24h(): boolean { return this._atendimento24h; }
-  get receberAlertaSonoro(): boolean { return this._receberAlertaSonoro; }
-  get receberPushEmergencia(): boolean { return this._receberPushEmergencia; }
-  get createdAt(): Date | undefined { return this._createdAt; }
-  get updatedAt(): Date | undefined { return this._updatedAt; }
+  get id(): string | undefined {
+    return this._id;
+  }
+  get ownerId(): string {
+    return this._ownerId;
+  }
+  get name(): string {
+    return this._name;
+  }
+  get description(): string {
+    return this._description;
+  }
+  get address(): string {
+    return this._address;
+  }
+  get city(): string {
+    return this._city;
+  }
+  get phone(): string {
+    return this._phone;
+  }
+  get type(): string {
+    return this._type;
+  }
+  get rating(): number {
+    return this._rating;
+  }
+  get reviewCount(): number {
+    return this._reviewCount;
+  }
+  get imageUrl(): string | undefined {
+    return this._imageUrl;
+  }
+  get crmv(): string | undefined {
+    return this._crmv;
+  }
+  get atendeEmergencia(): boolean {
+    return this._atendeEmergencia;
+  }
+  get atendimento24h(): boolean {
+    return this._atendimento24h;
+  }
+  get receberAlertaSonoro(): boolean {
+    return this._receberAlertaSonoro;
+  }
+  get receberPushEmergencia(): boolean {
+    return this._receberPushEmergencia;
+  }
+  get createdAt(): Date | undefined {
+    return this._createdAt;
+  }
+  get updatedAt(): Date | undefined {
+    return this._updatedAt;
+  }
 
-  withOwnerId(ownerId: string) { this._ownerId = ownerId; return this; }
-  withName(name: string) { this._name = name; return this; }
-  withDescription(description: string) { this._description = description; return this; }
-  withAddress(address: string) { this._address = address; return this; }
-  withCity(city: string) { this._city = city; return this; }
-  withPhone(phone: string) { this._phone = phone; return this; }
-  withType(type: string) { this._type = type; return this; }
-  withRating(rating: number) { this._rating = rating; return this; }
-  withReviewCount(reviewCount: number) { this._reviewCount = reviewCount; return this; }
-  withImageUrl(imageUrl?: string) { this._imageUrl = imageUrl; return this; }
-  withCrmv(crmv?: string) { this._crmv = crmv; return this; }
-  withAtendeEmergencia(v: boolean) { this._atendeEmergencia = v; return this; }
-  withAtendimento24h(v: boolean) { this._atendimento24h = v; return this; }
-  withReceberAlertaSonoro(v: boolean) { this._receberAlertaSonoro = v; return this; }
-  withReceberPushEmergencia(v: boolean) { this._receberPushEmergencia = v; return this; }
+  withOwnerId(ownerId: string) {
+    this._ownerId = ownerId;
+    return this;
+  }
+  withName(name: string) {
+    this._name = name;
+    return this;
+  }
+  withDescription(description: string) {
+    this._description = description;
+    return this;
+  }
+  withAddress(address: string) {
+    this._address = address;
+    return this;
+  }
+  withCity(city: string) {
+    this._city = city;
+    return this;
+  }
+  withPhone(phone: string) {
+    this._phone = phone;
+    return this;
+  }
+  withType(type: string) {
+    this._type = type;
+    return this;
+  }
+  withRating(rating: number) {
+    this._rating = rating;
+    return this;
+  }
+  withReviewCount(reviewCount: number) {
+    this._reviewCount = reviewCount;
+    return this;
+  }
+  withImageUrl(imageUrl?: string) {
+    this._imageUrl = imageUrl;
+    return this;
+  }
+  withCrmv(crmv?: string) {
+    this._crmv = crmv;
+    return this;
+  }
+  withAtendeEmergencia(v: boolean) {
+    this._atendeEmergencia = v;
+    return this;
+  }
+  withAtendimento24h(v: boolean) {
+    this._atendimento24h = v;
+    return this;
+  }
+  withReceberAlertaSonoro(v: boolean) {
+    this._receberAlertaSonoro = v;
+    return this;
+  }
+  withReceberPushEmergencia(v: boolean) {
+    this._receberPushEmergencia = v;
+    return this;
+  }
 
   static restore(props?: {
     id?: string;

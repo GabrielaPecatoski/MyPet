@@ -1,5 +1,12 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { IsEmail, IsIn, IsNotEmpty, IsOptional, IsString, MinLength } from "class-validator";
+import {
+  IsEmail,
+  IsIn,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MinLength,
+} from "class-validator";
 
 export class CreateUserDto {
   @ApiProperty({ example: "Maria Silva" })
@@ -27,7 +34,10 @@ export class CreateUserDto {
   @IsNotEmpty()
   cpf!: string;
 
-  @ApiPropertyOptional({ enum: ["ADMIN", "CLIENTE", "VENDEDOR", "MOTORISTA", "VETERINARIO"], default: "CLIENTE" })
+  @ApiPropertyOptional({
+    enum: ["ADMIN", "CLIENTE", "VENDEDOR", "MOTORISTA", "VETERINARIO"],
+    default: "CLIENTE",
+  })
   @IsOptional()
   @IsIn(["ADMIN", "CLIENTE", "VENDEDOR", "MOTORISTA", "VETERINARIO"])
   role?: "ADMIN" | "CLIENTE" | "VENDEDOR" | "MOTORISTA" | "VETERINARIO";

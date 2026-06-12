@@ -1,16 +1,40 @@
+import {
+  CART_REPOSITORY,
+  type CartRepository,
+} from "@market/cart/domain/repositories/cart-repository.interface";
 import { OrderDto } from "@market/orders/application/dto/order.dto";
-import { type DeliveryMethod, Order, type OrderStatus } from "@market/orders/domain/models/order.entity";
+import {
+  type DeliveryMethod,
+  Order,
+  type OrderStatus,
+} from "@market/orders/domain/models/order.entity";
 import {
   ORDER_REPOSITORY,
   type OrderRepository,
 } from "@market/orders/domain/repositories/order-repository.interface";
-import { CART_REPOSITORY, type CartRepository } from "@market/cart/domain/repositories/cart-repository.interface";
-import { PRODUCT_REPOSITORY, type ProductRepository } from "@market/products/domain/repositories/product-repository.interface";
-import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import {
+  PRODUCT_REPOSITORY,
+  type ProductRepository,
+} from "@market/products/domain/repositories/product-repository.interface";
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from "@nestjs/common";
+import {
+  MarketplaceExchangeName,
+  MarketplaceRoutingKey,
+} from "@shared/contracts/events/marketplace-events.enum";
 import { SharedMessagingService } from "@shared/infra/messaging/shared-messaging.service";
-import { MarketplaceExchangeName, MarketplaceRoutingKey } from "@shared/contracts/events/marketplace-events.enum";
 
-const STATUS_FLOW: OrderStatus[] = ["AGUARDANDO_PAGAMENTO", "ENVIANDO", "A_CAMINHO", "FINALIZADO"];
+const STATUS_FLOW: OrderStatus[] = [
+  "AGUARDANDO_PAGAMENTO",
+  "ENVIANDO",
+  "A_CAMINHO",
+  "FINALIZADO",
+];
 
 @Injectable()
 export class OrderService {
@@ -36,7 +60,11 @@ export class OrderService {
       if (!product) continue;
       establishmentId ??= product.establishmentId;
       total += product.price * item.quantity;
-      orderItems.push({ productId: item.productId, quantity: item.quantity, price: product.price });
+      orderItems.push({
+        productId: item.productId,
+        quantity: item.quantity,
+        price: product.price,
+      });
     }
 
     const order = Order.restore({
@@ -66,20 +94,33 @@ export class OrderService {
     const order = await this.orderRepo.findById(orderId);
     if (!order) throw new NotFoundException("Pedido não encontrado");
 
-    const payment = this.simulatePayment(method, order.total, cardNumber, installments);
+    const payment = this.simulatePayment(
+      method,
+      order.total,
+      cardNumber,
+      installments,
+    );
 
     if (deliveryMethod) {
-      await this.orderRepo.updateDelivery(orderId, deliveryMethod as DeliveryMethod, deliveryAddress);
+      await this.orderRepo.updateDelivery(
+        orderId,
+        deliveryMethod as DeliveryMethod,
+        deliveryAddress,
+      );
     }
 
     if (payment["status"] === "APPROVED") {
       await this.orderRepo.updateStatus(orderId, "ENVIANDO");
-      await this.safePublish(MarketplaceExchangeName.ORDER_CREATED, MarketplaceRoutingKey.ORDER_CREATED, {
-        orderId,
-        userId: order.userId,
-        total: order.total,
-        itemCount: order.items.length,
-      });
+      await this.safePublish(
+        MarketplaceExchangeName.ORDER_CREATED,
+        MarketplaceRoutingKey.ORDER_CREATED,
+        {
+          orderId,
+          userId: order.userId,
+          total: order.total,
+          itemCount: order.items.length,
+        },
+      );
     }
 
     const updated = await this.orderRepo.findById(orderId);
@@ -117,26 +158,47 @@ export class OrderService {
     return this.updateStatus(orderId, STATUS_FLOW[idx + 1]);
   }
 
-  private simulatePayment(method: string, amount: number, cardNumber?: string, installments?: number): Record<string, unknown> {
+  private simulatePayment(
+    method: string,
+    amount: number,
+    cardNumber?: string,
+    installments?: number,
+  ): Record<string, unknown> {
     const base = { method, amount };
 
     if (method === "PIX") {
       return { ...base, status: "APPROVED", pixKey: "mypet@pagamentos.com" };
     }
     if (method === "BOLETO") {
-      const code = "34191.75501 34191.75501 34191.75501 1 " + String(Math.floor(amount * 100)).padStart(14, "0");
+      const code =
+        "34191.75501 34191.75501 34191.75501 1 " +
+        String(Math.floor(amount * 100)).padStart(14, "0");
       return { ...base, status: "APPROVED", boletoCode: code };
     }
     if (method === "CREDIT_CARD" || method === "DEBIT_CARD") {
       const lastFour = cardNumber ? cardNumber.slice(-4) : "0000";
       const rejected = method === "CREDIT_CARD" && Math.random() < 0.05;
-      if (rejected) return { ...base, status: "REJECTED", rejectionReason: "Cartão recusado pela operadora." };
-      return { ...base, status: "APPROVED", cardLastFour: lastFour, installments: installments ?? 1 };
+      if (rejected)
+        return {
+          ...base,
+          status: "REJECTED",
+          rejectionReason: "Cartão recusado pela operadora.",
+        };
+      return {
+        ...base,
+        status: "APPROVED",
+        cardLastFour: lastFour,
+        installments: installments ?? 1,
+      };
     }
     return { ...base, status: "APPROVED" };
   }
 
-  private async safePublish(exchange: string, routingKey: string, payload: unknown): Promise<void> {
+  private async safePublish(
+    exchange: string,
+    routingKey: string,
+    payload: unknown,
+  ): Promise<void> {
     try {
       await this.messaging.assertExchange(exchange, "direct");
       await this.messaging.publish(exchange, routingKey, payload);

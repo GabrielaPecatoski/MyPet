@@ -1,7 +1,13 @@
 import { BlockedSlot } from "@booking/availability/domain/models/blocked-slot.entity";
 import { Schedule } from "@booking/availability/domain/models/schedule.entity";
-import type { BlockedSlotRepository, ScheduleRepository } from "@booking/availability/domain/repositories/availability-repository.interface";
-import { blockedSlotsSchema, schedulesSchema } from "@booking/availability/infra/database/schemas/availability.schema";
+import type {
+  BlockedSlotRepository,
+  ScheduleRepository,
+} from "@booking/availability/domain/repositories/availability-repository.interface";
+import {
+  blockedSlotsSchema,
+  schedulesSchema,
+} from "@booking/availability/infra/database/schemas/availability.schema";
 import { Injectable } from "@nestjs/common";
 import { DrizzleService } from "@shared/infra/database/drizzle.service";
 import { and, eq, isNull } from "drizzle-orm";
@@ -11,11 +17,17 @@ export class DrizzleScheduleRepository implements ScheduleRepository {
   constructor(private readonly drizzleService: DrizzleService) {}
 
   async upsert(schedule: Schedule): Promise<void> {
-    let condition;
+    let condition: ReturnType<typeof and> | undefined;
     if (schedule.establishmentId) {
-      condition = and(eq(schedulesSchema.establishmentId, schedule.establishmentId), eq(schedulesSchema.dayOfWeek, schedule.dayOfWeek));
+      condition = and(
+        eq(schedulesSchema.establishmentId, schedule.establishmentId),
+        eq(schedulesSchema.dayOfWeek, schedule.dayOfWeek),
+      );
     } else if (schedule.vetId) {
-      condition = and(eq(schedulesSchema.vetId, schedule.vetId), eq(schedulesSchema.dayOfWeek, schedule.dayOfWeek));
+      condition = and(
+        eq(schedulesSchema.vetId, schedule.vetId),
+        eq(schedulesSchema.dayOfWeek, schedule.dayOfWeek),
+      );
     }
     if (condition) {
       await this.drizzleService.db.delete(schedulesSchema).where(condition);
@@ -36,13 +48,19 @@ export class DrizzleScheduleRepository implements ScheduleRepository {
     const rows = await this.drizzleService.db
       .select()
       .from(schedulesSchema)
-      .where(and(eq(schedulesSchema.establishmentId, establishmentId), isNull(schedulesSchema.vetId)));
-    return rows.map((r) =>
-      Schedule.restore({
-        ...r,
-        isOpen: r.isOpen ?? true,
-        capacity: r.capacity ?? 1,
-      })!,
+      .where(
+        and(
+          eq(schedulesSchema.establishmentId, establishmentId),
+          isNull(schedulesSchema.vetId),
+        ),
+      );
+    return rows.map(
+      (r) =>
+        Schedule.restore({
+          ...r,
+          isOpen: r.isOpen ?? true,
+          capacity: r.capacity ?? 1,
+        })!,
     );
   }
 
@@ -50,13 +68,19 @@ export class DrizzleScheduleRepository implements ScheduleRepository {
     const rows = await this.drizzleService.db
       .select()
       .from(schedulesSchema)
-      .where(and(eq(schedulesSchema.vetId, vetId), isNull(schedulesSchema.establishmentId)));
-    return rows.map((r) =>
-      Schedule.restore({
-        ...r,
-        isOpen: r.isOpen ?? true,
-        capacity: r.capacity ?? 1,
-      })!,
+      .where(
+        and(
+          eq(schedulesSchema.vetId, vetId),
+          isNull(schedulesSchema.establishmentId),
+        ),
+      );
+    return rows.map(
+      (r) =>
+        Schedule.restore({
+          ...r,
+          isOpen: r.isOpen ?? true,
+          capacity: r.capacity ?? 1,
+        })!,
     );
   }
 }
@@ -77,22 +101,38 @@ export class DrizzleBlockedSlotRepository implements BlockedSlotRepository {
   }
 
   async delete(id: string): Promise<void> {
-    await this.drizzleService.db.delete(blockedSlotsSchema).where(eq(blockedSlotsSchema.id, id));
+    await this.drizzleService.db
+      .delete(blockedSlotsSchema)
+      .where(eq(blockedSlotsSchema.id, id));
   }
 
   async findByEstablishmentId(establishmentId: string): Promise<BlockedSlot[]> {
     const rows = await this.drizzleService.db
       .select()
       .from(blockedSlotsSchema)
-      .where(and(eq(blockedSlotsSchema.establishmentId, establishmentId), isNull(blockedSlotsSchema.vetId)));
-    return rows.map((r) => BlockedSlot.restore({ ...r, reason: r.reason ?? undefined })!);
+      .where(
+        and(
+          eq(blockedSlotsSchema.establishmentId, establishmentId),
+          isNull(blockedSlotsSchema.vetId),
+        ),
+      );
+    return rows.map(
+      (r) => BlockedSlot.restore({ ...r, reason: r.reason ?? undefined })!,
+    );
   }
 
   async findByVetId(vetId: string): Promise<BlockedSlot[]> {
     const rows = await this.drizzleService.db
       .select()
       .from(blockedSlotsSchema)
-      .where(and(eq(blockedSlotsSchema.vetId, vetId), isNull(blockedSlotsSchema.establishmentId)));
-    return rows.map((r) => BlockedSlot.restore({ ...r, reason: r.reason ?? undefined })!);
+      .where(
+        and(
+          eq(blockedSlotsSchema.vetId, vetId),
+          isNull(blockedSlotsSchema.establishmentId),
+        ),
+      );
+    return rows.map(
+      (r) => BlockedSlot.restore({ ...r, reason: r.reason ?? undefined })!,
+    );
   }
 }

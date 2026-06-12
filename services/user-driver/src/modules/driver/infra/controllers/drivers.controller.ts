@@ -1,6 +1,16 @@
 import { CreateDriverDto } from "@driver/driver/application/dto/create-driver.dto";
 import { DriverService } from "@driver/driver/application/services/driver.service";
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  Patch,
+  Post,
+  Query,
+} from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 
 @ApiTags("Drivers")
@@ -9,7 +19,9 @@ export class DriversController {
   constructor(private readonly driverService: DriverService) {}
 
   @Post()
-  @ApiOperation({ summary: "Registrar motorista (independente ou já associado a um estab)" })
+  @ApiOperation({
+    summary: "Registrar motorista (independente ou já associado a um estab)",
+  })
   register(@Body() dto: CreateDriverDto) {
     return this.driverService.register(dto);
   }

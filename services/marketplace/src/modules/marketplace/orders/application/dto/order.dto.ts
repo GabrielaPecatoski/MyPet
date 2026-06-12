@@ -9,7 +9,11 @@ export class OrderDto {
   @ApiProperty() status: string;
   @ApiProperty() deliveryMethod: string;
   @ApiProperty() deliveryAddress: string | undefined;
-  @ApiProperty() items: { productId: string; quantity: number; price: number }[];
+  @ApiProperty() items: {
+    productId: string;
+    quantity: number;
+    price: number;
+  }[];
   @ApiProperty() createdAt: Date | undefined;
 
   private constructor(o: Order) {

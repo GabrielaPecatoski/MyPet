@@ -9,17 +9,37 @@ export class Schedule {
   private _isOpen!: boolean;
   private _capacity!: number;
 
-  private constructor(id?: string) { this._id = id; }
+  private constructor(id?: string) {
+    this._id = id;
+  }
 
-  get id(): string | undefined { return this._id; }
-  get establishmentId(): string | undefined { return this._establishmentId; }
-  get vetId(): string | undefined { return this._vetId; }
-  get dayOfWeek(): number { return this._dayOfWeek; }
-  get openTime(): string { return this._openTime; }
-  get closeTime(): string { return this._closeTime; }
-  get slotDuration(): number { return this._slotDuration; }
-  get isOpen(): boolean { return this._isOpen; }
-  get capacity(): number { return this._capacity; }
+  get id(): string | undefined {
+    return this._id;
+  }
+  get establishmentId(): string | undefined {
+    return this._establishmentId;
+  }
+  get vetId(): string | undefined {
+    return this._vetId;
+  }
+  get dayOfWeek(): number {
+    return this._dayOfWeek;
+  }
+  get openTime(): string {
+    return this._openTime;
+  }
+  get closeTime(): string {
+    return this._closeTime;
+  }
+  get slotDuration(): number {
+    return this._slotDuration;
+  }
+  get isOpen(): boolean {
+    return this._isOpen;
+  }
+  get capacity(): number {
+    return this._capacity;
+  }
 
   static restore(props?: {
     id?: string;

@@ -1,9 +1,9 @@
-import { Veterinarian } from '@vet/vet/domain/models/veterinarian.entity';
-import type { VeterinarianRepository } from '@vet/vet/domain/repositories/veterinarian-repository.interface';
-import { veterinariansSchema } from '@vet/vet/infra/database/schemas/veterinarian.schema';
-import { Injectable } from '@nestjs/common';
-import { DrizzleService } from '@shared/infra/database/drizzle.service';
-import { and, eq, isNull } from 'drizzle-orm';
+import { Injectable } from "@nestjs/common";
+import { DrizzleService } from "@shared/infra/database/drizzle.service";
+import { Veterinarian } from "@vet/vet/domain/models/veterinarian.entity";
+import type { VeterinarianRepository } from "@vet/vet/domain/repositories/veterinarian-repository.interface";
+import { veterinariansSchema } from "@vet/vet/infra/database/schemas/veterinarian.schema";
+import { and, eq, isNull } from "drizzle-orm";
 
 @Injectable()
 export class DrizzleVeterinarianRepository implements VeterinarianRepository {
@@ -31,7 +31,9 @@ export class DrizzleVeterinarianRepository implements VeterinarianRepository {
   }
 
   async findAll(): Promise<Veterinarian[]> {
-    const rows = await this.drizzleService.db.select().from(veterinariansSchema);
+    const rows = await this.drizzleService.db
+      .select()
+      .from(veterinariansSchema);
     return rows.map((r) => Veterinarian.restore(r)!);
   }
 
@@ -47,7 +49,12 @@ export class DrizzleVeterinarianRepository implements VeterinarianRepository {
     const rows = await this.drizzleService.db
       .select()
       .from(veterinariansSchema)
-      .where(and(eq(veterinariansSchema.status, 'ATIVO'), eq(veterinariansSchema.disponivel, true)));
+      .where(
+        and(
+          eq(veterinariansSchema.status, "ATIVO"),
+          eq(veterinariansSchema.disponivel, true),
+        ),
+      );
     return rows.map((r) => Veterinarian.restore(r)!);
   }
 

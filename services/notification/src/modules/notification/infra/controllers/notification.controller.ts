@@ -8,7 +8,12 @@ import {
   Patch,
   Post,
 } from "@nestjs/common";
-import { ApiBearerAuth, ApiNoContentResponse, ApiOperation, ApiTags } from "@nestjs/swagger";
+import {
+  ApiBearerAuth,
+  ApiNoContentResponse,
+  ApiOperation,
+  ApiTags,
+} from "@nestjs/swagger";
 import { NotificationService } from "@notification/application/services/notification.service";
 import { Permission } from "@shared/domain/enums/permission.enum";
 import { RequirePermissions } from "@shared/infra/decorators/permissions.decorator";
@@ -22,7 +27,9 @@ export class NotificationsController {
   @Post()
   @RequirePermissions(Permission.ADMIN_WRITE)
   @ApiOperation({ summary: "Criar notificação" })
-  async create(@Body() body: { userId: string; title: string; body: string; type: string }) {
+  async create(
+    @Body() body: { userId: string; title: string; body: string; type: string },
+  ) {
     return this.notificationService.create(body);
   }
 
@@ -53,7 +60,9 @@ export class NotificationsController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @RequirePermissions(Permission.NOTIFICATIONS_WRITE)
   @ApiOperation({ summary: "Marcar todas as notificações como lidas" })
-  @ApiNoContentResponse({ description: "Todas as notificações marcadas como lidas" })
+  @ApiNoContentResponse({
+    description: "Todas as notificações marcadas como lidas",
+  })
   async markAllAsRead(@Param("userId") userId: string) {
     return this.notificationService.markAllAsRead(userId);
   }

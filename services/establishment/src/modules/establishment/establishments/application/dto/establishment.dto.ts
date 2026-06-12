@@ -58,7 +58,9 @@ export class EstablishmentDto {
     this.receberPushEmergencia = receberPushEmergencia;
   }
 
-  static fromEstablishment(e: (Establishment & { serviceCount?: number }) | null): EstablishmentDto | null {
+  static fromEstablishment(
+    e: (Establishment & { serviceCount?: number }) | null,
+  ): EstablishmentDto | null {
     if (!e) return null;
     return new EstablishmentDto(
       e.id,

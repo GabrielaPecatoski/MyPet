@@ -5,7 +5,12 @@ import {
   DRIVER_REPOSITORY,
   type DriverRepository,
 } from "@driver/driver/domain/repositories/driver-repository.interface";
-import { ConflictException, Inject, Injectable, NotFoundException } from "@nestjs/common";
+import {
+  ConflictException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
 
 @Injectable()
 export class DriverService {
@@ -84,7 +89,9 @@ export class DriverService {
     const driver = await this.repo.findById(id);
     if (!driver) throw new NotFoundException("Motorista não encontrado");
     if (driver.establishmentId) {
-      throw new ConflictException("Motorista já está associado a um estabelecimento");
+      throw new ConflictException(
+        "Motorista já está associado a um estabelecimento",
+      );
     }
     driver.withEstablishment(establishmentId);
     await this.repo.update(driver);

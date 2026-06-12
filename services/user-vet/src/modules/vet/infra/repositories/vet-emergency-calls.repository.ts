@@ -1,10 +1,10 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { DrizzleService } from '@shared/infra/database/drizzle.service';
-import { and, desc, eq, gt, sql } from 'drizzle-orm';
+import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
+import { DrizzleService } from "@shared/infra/database/drizzle.service";
 import {
-  vetEmergencyCallsSchema,
   type VetEmergencyCallRecord,
-} from '@vet/vet/infra/database/schemas/vet-emergency-calls.schema';
+  vetEmergencyCallsSchema,
+} from "@vet/vet/infra/database/schemas/vet-emergency-calls.schema";
+import { and, desc, eq, gt, sql } from "drizzle-orm";
 
 const CALL_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
@@ -27,9 +27,9 @@ export class VetEmergencyCallsRepository implements OnModuleInit {
           created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )
       `);
-      this.logger.log('vet_emergency_calls table ready');
+      this.logger.log("vet_emergency_calls table ready");
     } catch (err) {
-      this.logger.error('Failed to create vet_emergency_calls table', err);
+      this.logger.error("Failed to create vet_emergency_calls table", err);
     }
   }
 
@@ -59,7 +59,7 @@ export class VetEmergencyCallsRepository implements OnModuleInit {
       .where(
         and(
           eq(vetEmergencyCallsSchema.vetId, vetId),
-          eq(vetEmergencyCallsSchema.status, 'PENDING'),
+          eq(vetEmergencyCallsSchema.status, "PENDING"),
           gt(vetEmergencyCallsSchema.createdAt, cutoff),
         ),
       )
@@ -69,7 +69,7 @@ export class VetEmergencyCallsRepository implements OnModuleInit {
   async acknowledge(callId: string): Promise<void> {
     await this.drizzleService.db
       .update(vetEmergencyCallsSchema)
-      .set({ status: 'ACKNOWLEDGED' })
+      .set({ status: "ACKNOWLEDGED" })
       .where(eq(vetEmergencyCallsSchema.id, callId));
   }
 }

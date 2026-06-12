@@ -88,6 +88,8 @@ export class DrizzleDriverRepository implements DriverRepository {
   }
 
   async delete(id: string): Promise<void> {
-    await this.drizzleService.db.delete(driversSchema).where(eq(driversSchema.id, id));
+    await this.drizzleService.db
+      .delete(driversSchema)
+      .where(eq(driversSchema.id, id));
   }
 }

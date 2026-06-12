@@ -1,5 +1,8 @@
 import { Establishment } from "@estab/establishments/domain/models/establishment.entity";
-import type { EstablishmentAdminItem, EstablishmentRepository } from "@estab/establishments/domain/repositories/establishment-repository.interface";
+import type {
+  EstablishmentAdminItem,
+  EstablishmentRepository,
+} from "@estab/establishments/domain/repositories/establishment-repository.interface";
 import { establishmentsSchema } from "@estab/establishments/infra/database/schemas/establishment.schema";
 import { estabServicesSchema } from "@estab/services/infra/database/schemas/estab-service.schema";
 import { Injectable } from "@nestjs/common";
@@ -60,7 +63,11 @@ export class DrizzleEstablishmentRepository implements EstablishmentRepository {
       .where(eq(establishmentsSchema.id, e.id!));
   }
 
-  async updateRating(id: string, rating: number, reviewCount: number): Promise<void> {
+  async updateRating(
+    id: string,
+    rating: number,
+    reviewCount: number,
+  ): Promise<void> {
     await this.drizzleService.db
       .update(establishmentsSchema)
       .set({ rating, reviewCount, updatedAt: new Date() })
@@ -68,7 +75,9 @@ export class DrizzleEstablishmentRepository implements EstablishmentRepository {
   }
 
   async delete(id: string): Promise<void> {
-    await this.drizzleService.db.delete(establishmentsSchema).where(eq(establishmentsSchema.id, id));
+    await this.drizzleService.db
+      .delete(establishmentsSchema)
+      .where(eq(establishmentsSchema.id, id));
   }
 
   async findById(id: string): Promise<Establishment | null> {
@@ -112,25 +121,45 @@ export class DrizzleEstablishmentRepository implements EstablishmentRepository {
         serviceCount: sql<number>`count(${estabServicesSchema.id})::int`,
       })
       .from(establishmentsSchema)
-      .leftJoin(estabServicesSchema, eq(estabServicesSchema.establishmentId, establishmentsSchema.id))
+      .leftJoin(
+        estabServicesSchema,
+        eq(estabServicesSchema.establishmentId, establishmentsSchema.id),
+      )
       .groupBy(establishmentsSchema.id);
   }
 
-  async findAll(search?: string): Promise<(Establishment & { serviceCount: number })[]> {
+  async findAll(
+    search?: string,
+  ): Promise<(Establishment & { serviceCount: number })[]> {
     const baseQuery = this._baseSelectWithCount();
 
     const rows = search
       ? await baseQuery.where(
-          or(ilike(establishmentsSchema.name, `%${search}%`), ilike(establishmentsSchema.city, `%${search}%`)),
+          or(
+            ilike(establishmentsSchema.name, `%${search}%`),
+            ilike(establishmentsSchema.city, `%${search}%`),
+          ),
         )
       : await baseQuery;
 
-    return rows.map((r) => Object.assign(Establishment.restore(r)!, { serviceCount: r.serviceCount }));
+    return rows.map((r) =>
+      Object.assign(Establishment.restore(r)!, {
+        serviceCount: r.serviceCount,
+      }),
+    );
   }
 
-  async findByEmergency(): Promise<(Establishment & { serviceCount: number })[]> {
-    const rows = await this._baseSelectWithCount().where(eq(establishmentsSchema.atendeEmergencia, true));
-    return rows.map((r) => Object.assign(Establishment.restore(r)!, { serviceCount: r.serviceCount }));
+  async findByEmergency(): Promise<
+    (Establishment & { serviceCount: number })[]
+  > {
+    const rows = await this._baseSelectWithCount().where(
+      eq(establishmentsSchema.atendeEmergencia, true),
+    );
+    return rows.map((r) =>
+      Object.assign(Establishment.restore(r)!, {
+        serviceCount: r.serviceCount,
+      }),
+    );
   }
 
   async findAllAdmin(): Promise<EstablishmentAdminItem[]> {
@@ -150,26 +179,49 @@ export class DrizzleEstablishmentRepository implements EstablishmentRepository {
         servicesCount: sql<number>`count(${estabServicesSchema.id})::int`,
       })
       .from(establishmentsSchema)
-      .leftJoin(estabServicesSchema, eq(estabServicesSchema.establishmentId, establishmentsSchema.id))
+      .leftJoin(
+        estabServicesSchema,
+        eq(estabServicesSchema.establishmentId, establishmentsSchema.id),
+      )
       .groupBy(establishmentsSchema.id);
     return rows;
   }
 
-  async findAllPaginated(params: PaginationParams, search?: string): Promise<{ rows: Establishment[]; total: number }> {
+  async findAllPaginated(
+    params: PaginationParams,
+    search?: string,
+  ): Promise<{ rows: Establishment[]; total: number }> {
     const { page, limit } = params;
     const offset = (page - 1) * limit;
 
     const whereClause = search
-      ? or(ilike(establishmentsSchema.name, `%${search}%`), ilike(establishmentsSchema.city, `%${search}%`))
+      ? or(
+          ilike(establishmentsSchema.name, `%${search}%`),
+          ilike(establishmentsSchema.city, `%${search}%`),
+        )
       : undefined;
 
     const [rows, [countResult]] = await Promise.all([
       whereClause
-        ? this.drizzleService.db.select().from(establishmentsSchema).where(whereClause).limit(limit).offset(offset)
-        : this.drizzleService.db.select().from(establishmentsSchema).limit(limit).offset(offset),
+        ? this.drizzleService.db
+            .select()
+            .from(establishmentsSchema)
+            .where(whereClause)
+            .limit(limit)
+            .offset(offset)
+        : this.drizzleService.db
+            .select()
+            .from(establishmentsSchema)
+            .limit(limit)
+            .offset(offset),
       whereClause
-        ? this.drizzleService.db.select({ count: sql<number>`count(*)::int` }).from(establishmentsSchema).where(whereClause)
-        : this.drizzleService.db.select({ count: sql<number>`count(*)::int` }).from(establishmentsSchema),
+        ? this.drizzleService.db
+            .select({ count: sql<number>`count(*)::int` })
+            .from(establishmentsSchema)
+            .where(whereClause)
+        : this.drizzleService.db
+            .select({ count: sql<number>`count(*)::int` })
+            .from(establishmentsSchema),
     ]);
 
     return {

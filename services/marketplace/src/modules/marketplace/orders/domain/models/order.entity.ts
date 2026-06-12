@@ -23,15 +23,33 @@ export class Order {
     this._createdAt = createdAt;
   }
 
-  get id(): string | undefined { return this._id; }
-  get userId(): string { return this._userId; }
-  get establishmentId(): string | undefined { return this._establishmentId; }
-  get total(): number { return this._total; }
-  get status(): OrderStatus { return this._status; }
-  get deliveryMethod(): DeliveryMethod { return this._deliveryMethod; }
-  get deliveryAddress(): string | undefined { return this._deliveryAddress; }
-  get items(): OrderItemData[] { return this._items; }
-  get createdAt(): Date | undefined { return this._createdAt; }
+  get id(): string | undefined {
+    return this._id;
+  }
+  get userId(): string {
+    return this._userId;
+  }
+  get establishmentId(): string | undefined {
+    return this._establishmentId;
+  }
+  get total(): number {
+    return this._total;
+  }
+  get status(): OrderStatus {
+    return this._status;
+  }
+  get deliveryMethod(): DeliveryMethod {
+    return this._deliveryMethod;
+  }
+  get deliveryAddress(): string | undefined {
+    return this._deliveryAddress;
+  }
+  get items(): OrderItemData[] {
+    return this._items;
+  }
+  get createdAt(): Date | undefined {
+    return this._createdAt;
+  }
 
   static restore(props?: {
     id?: string;

@@ -1,6 +1,20 @@
-import { test, APIRequestContext } from '@playwright/test';
-import { bootAndLogin, tapText, tapButton, expectText, waitForText, scrollToText } from './_helpers';
-import { apiContext, registerUser, createPet, seedFullEstablishment, SeededUser } from './_api';
+import { APIRequestContext, test } from "@playwright/test";
+import {
+  apiContext,
+  createPet,
+  registerUser,
+  SeededUser,
+  seedFullEstablishment,
+} from "./_api";
+import {
+  bootAndLogin,
+  expectText,
+  scrollToText,
+  tapButton,
+  tapText,
+  waitForText,
+} from "./_helpers";
+
 let api: APIRequestContext;
 let cliente: SeededUser;
 let estabNome: string;
@@ -10,35 +24,39 @@ const MESES = /(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)/;
 const HORARIO = /^\d{1,2}:\d{2}$/;
 test.beforeAll(async () => {
   api = await apiContext();
-  cliente = await registerUser(api, { role: 'CLIENTE' });
-  const pet = await createPet(api, cliente, { name: `Rex ${Date.now().toString().slice(-4)}` });
+  cliente = await registerUser(api, { role: "CLIENTE" });
+  const pet = await createPet(api, cliente, {
+    name: `Rex ${Date.now().toString().slice(-4)}`,
+  });
   petNome = pet.name;
   serviceNome = `Banho ${Date.now().toString().slice(-4)}`;
   const seed = await seedFullEstablishment(api, serviceNome);
   estabNome = seed.estab.name;
 });
-test.afterAll(async () => { await api.dispose(); });
-test('agendar serviço e pagar (dinheiro) pela UI', async ({ page }) => {
+test.afterAll(async () => {
+  await api.dispose();
+});
+test("agendar serviço e pagar (dinheiro) pela UI", async ({ page }) => {
   await bootAndLogin(page, cliente.email, cliente.password);
   await page.waitForTimeout(2000);
   await scrollToText(page, estabNome);
   await tapText(page, estabNome);
-  await waitForText(page, 'Agendar Serviço');
-  await tapButton(page, 'Agendar Serviço');
-  await waitForText(page, 'Selecione o pet');
+  await waitForText(page, "Agendar Serviço");
+  await tapButton(page, "Agendar Serviço");
+  await waitForText(page, "Selecione o pet");
   await tapText(page, petNome);
   await tapText(page, serviceNome);
-  await page.getByRole('button', { name: MESES }).nth(3).click();
-  const slot = page.getByRole('button', { name: HORARIO }).first();
-  await slot.waitFor({ state: 'visible', timeout: 20_000 });
+  await page.getByRole("button", { name: MESES }).nth(3).click();
+  const slot = page.getByRole("button", { name: HORARIO }).first();
+  await slot.waitFor({ state: "visible", timeout: 20_000 });
   await slot.click();
-  await tapButton(page, 'Confirmar Agendamento');
-  await waitForText(page, 'Quase lá!');
-  await tapButton(page, 'Pagar Agora');
-  await waitForText(page, 'Forma de pagamento');
-  await tapText(page, 'Dinheiro');
-  await tapButton(page, 'Confirmar Pagamento');
-  await expectText(page, 'Pagamento Confirmado!');
-  await tapButton(page, 'Ver Minha Agenda');
+  await tapButton(page, "Confirmar Agendamento");
+  await waitForText(page, "Quase lá!");
+  await tapButton(page, "Pagar Agora");
+  await waitForText(page, "Forma de pagamento");
+  await tapText(page, "Dinheiro");
+  await tapButton(page, "Confirmar Pagamento");
+  await expectText(page, "Pagamento Confirmado!");
+  await tapButton(page, "Ver Minha Agenda");
   await expectText(page, petNome);
 });

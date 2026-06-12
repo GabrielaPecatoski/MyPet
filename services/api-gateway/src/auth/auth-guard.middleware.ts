@@ -1,4 +1,8 @@
-import { Injectable, NestMiddleware, UnauthorizedException } from "@nestjs/common";
+import {
+  Injectable,
+  NestMiddleware,
+  UnauthorizedException,
+} from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import type { NextFunction, Request, Response } from "express";
 
@@ -17,7 +21,8 @@ export class AuthGuardMiddleware implements NestMiddleware {
 
     try {
       const payload = this.jwtService.verify(token, {
-        secret: process.env.JWT_SECRET ?? "mypet_super_secret_change_in_production",
+        secret:
+          process.env.JWT_SECRET ?? "mypet_super_secret_change_in_production",
       });
 
       req.headers["x-user-id"] = payload.sub ?? payload.userId;

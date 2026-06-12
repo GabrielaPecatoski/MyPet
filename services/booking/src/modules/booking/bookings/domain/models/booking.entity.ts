@@ -1,4 +1,10 @@
-export type BookingStatus = "AGUARDANDO_PAGAMENTO" | "PENDENTE" | "CONFIRMADO" | "RECUSADO" | "CANCELADO" | "CONCLUIDO";
+export type BookingStatus =
+  | "AGUARDANDO_PAGAMENTO"
+  | "PENDENTE"
+  | "CONFIRMADO"
+  | "RECUSADO"
+  | "CANCELADO"
+  | "CONCLUIDO";
 
 export type PaymentStatus = "NONE" | "AUTHORIZED" | "CAPTURED" | "REFUNDED";
 
@@ -38,33 +44,82 @@ export class Booking {
     this._updatedAt = updatedAt;
   }
 
-  get id(): string | undefined { return this._id; }
-  get userId(): string { return this._userId; }
-  get userName(): string { return this._userName; }
-  get petId(): string { return this._petId; }
-  get petName(): string { return this._petName; }
-  get serviceName(): string { return this._serviceName; }
-  get servicesJson(): string | undefined { return this._servicesJson; }
+  get id(): string | undefined {
+    return this._id;
+  }
+  get userId(): string {
+    return this._userId;
+  }
+  get userName(): string {
+    return this._userName;
+  }
+  get petId(): string {
+    return this._petId;
+  }
+  get petName(): string {
+    return this._petName;
+  }
+  get serviceName(): string {
+    return this._serviceName;
+  }
+  get servicesJson(): string | undefined {
+    return this._servicesJson;
+  }
   get services(): BookingServiceItem[] {
     if (!this._servicesJson) return [];
-    try { return JSON.parse(this._servicesJson); } catch { return []; }
+    try {
+      return JSON.parse(this._servicesJson);
+    } catch {
+      return [];
+    }
   }
-  get establishmentId(): string | undefined { return this._establishmentId; }
-  get establishmentName(): string { return this._establishmentName; }
-  get driverId(): string | undefined { return this._driverId; }
-  get driverName(): string | undefined { return this._driverName; }
-  get vetId(): string | undefined { return this._vetId; }
-  get vetName(): string | undefined { return this._vetName; }
-  get scheduledAt(): Date { return this._scheduledAt; }
-  get price(): number { return this._price; }
-  get priceVariable(): boolean { return this._priceVariable; }
-  get status(): BookingStatus { return this._status; }
-  get paymentStatus(): PaymentStatus { return this._paymentStatus; }
-  get paymentMethod(): string | undefined { return this._paymentMethod; }
-  get createdAt(): Date | undefined { return this._createdAt; }
-  get updatedAt(): Date | undefined { return this._updatedAt; }
+  get establishmentId(): string | undefined {
+    return this._establishmentId;
+  }
+  get establishmentName(): string {
+    return this._establishmentName;
+  }
+  get driverId(): string | undefined {
+    return this._driverId;
+  }
+  get driverName(): string | undefined {
+    return this._driverName;
+  }
+  get vetId(): string | undefined {
+    return this._vetId;
+  }
+  get vetName(): string | undefined {
+    return this._vetName;
+  }
+  get scheduledAt(): Date {
+    return this._scheduledAt;
+  }
+  get price(): number {
+    return this._price;
+  }
+  get priceVariable(): boolean {
+    return this._priceVariable;
+  }
+  get status(): BookingStatus {
+    return this._status;
+  }
+  get paymentStatus(): PaymentStatus {
+    return this._paymentStatus;
+  }
+  get paymentMethod(): string | undefined {
+    return this._paymentMethod;
+  }
+  get createdAt(): Date | undefined {
+    return this._createdAt;
+  }
+  get updatedAt(): Date | undefined {
+    return this._updatedAt;
+  }
 
-  withStatus(status: BookingStatus) { this._status = status; return this; }
+  withStatus(status: BookingStatus) {
+    this._status = status;
+    return this;
+  }
   withPayment(paymentStatus: PaymentStatus, method?: string) {
     this._paymentStatus = paymentStatus;
     if (method !== undefined) this._paymentMethod = method;

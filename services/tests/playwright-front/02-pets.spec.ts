@@ -1,34 +1,48 @@
-import { test, expect, APIRequestContext } from '@playwright/test';
-import { bootAndLogin, tapText, tapButton, fillNth, expectText, waitForText, byText, pollText } from './_helpers';
-import { apiContext, registerUser, SeededUser } from './_api';
+import { APIRequestContext, expect, test } from "@playwright/test";
+import { apiContext, registerUser, SeededUser } from "./_api";
+import {
+  bootAndLogin,
+  byText,
+  expectText,
+  fillNth,
+  pollText,
+  tapButton,
+  tapText,
+  waitForText,
+} from "./_helpers";
+
 let api: APIRequestContext;
 let cliente: SeededUser;
 test.beforeAll(async () => {
   api = await apiContext();
-  cliente = await registerUser(api, { role: 'CLIENTE' });
+  cliente = await registerUser(api, { role: "CLIENTE" });
 });
-test.afterAll(async () => { await api.dispose(); });
-test('cadastrar, editar e remover um pet pela UI', async ({ page }) => {
+test.afterAll(async () => {
+  await api.dispose();
+});
+test("cadastrar, editar e remover um pet pela UI", async ({ page }) => {
   const nome = `Pet ${Date.now().toString().slice(-5)}`;
   const nomeEditado = `${nome} Jr`;
   await bootAndLogin(page, cliente.email, cliente.password);
-  await tapText(page, 'Pets');
-  await waitForText(page, 'Adicionar pet');
-  await tapButton(page, 'Adicionar pet');
-  await pollText(page, 'Cadastrar Pet', 40_000);
+  await tapText(page, "Pets");
+  await waitForText(page, "Adicionar pet");
+  await tapButton(page, "Adicionar pet");
+  await pollText(page, "Cadastrar Pet", 40_000);
   await fillNth(page, 0, nome);
-  await fillNth(page, 1, 'Vira-lata');
-  await fillNth(page, 2, '4');
-  await fillNth(page, 3, '12.5');
-  await tapButton(page, 'Cadastrar Pet');
+  await fillNth(page, 1, "Vira-lata");
+  await fillNth(page, 2, "4");
+  await fillNth(page, 3, "12.5");
+  await tapButton(page, "Cadastrar Pet");
   await expectText(page, nome);
-  await tapButton(page, 'Editar pet');
-  await waitForText(page, 'Editar Pet');
+  await tapButton(page, "Editar pet");
+  await waitForText(page, "Editar Pet");
   await fillNth(page, 0, nomeEditado);
-  await tapButton(page, 'Salvar Alterações');
+  await tapButton(page, "Salvar Alterações");
   await expectText(page, nomeEditado);
-  await tapButton(page, 'Remover pet');
-  await waitForText(page, 'Remover pet');
-  await tapButton(page, 'Remover', true);
-  await expect.poll(async () => byText(page, nomeEditado).count(), { timeout: 20_000 }).toBe(0);
+  await tapButton(page, "Remover pet");
+  await waitForText(page, "Remover pet");
+  await tapButton(page, "Remover", true);
+  await expect
+    .poll(async () => byText(page, nomeEditado).count(), { timeout: 20_000 })
+    .toBe(0);
 });
