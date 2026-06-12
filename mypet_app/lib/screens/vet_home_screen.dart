@@ -12,7 +12,6 @@ import '../models/emergency_call.dart';
 import '../providers/auth_provider.dart';
 import '../providers/vet_profile_provider.dart';
 import '../services/sse/sse_client.dart';
-import '../services/veterinarian_service.dart';
 
 class VetHomeScreen extends StatefulWidget {
   const VetHomeScreen({super.key});
@@ -85,12 +84,9 @@ class _VetHomeScreenState extends State<VetHomeScreen> {
     final auth = context.read<AuthProvider>();
     final vm   = context.read<VetProfileProvider>();
     if (auth.token == null || vm.vet == null) return;
-    if (_alarmVisible) return;
 
-    final calls = await VeterinarianService.getPendingEmergencyCalls(
-      token: auth.token!,
-      vetId: vm.vet!.id,
-    );
+    final calls = await vm.refreshPendingCalls(token: auth.token!);
+    if (_alarmVisible) return;
 
     if (calls.isNotEmpty && mounted && !_alarmVisible) {
       HapticFeedback.vibrate();
@@ -111,10 +107,9 @@ class _VetHomeScreenState extends State<VetHomeScreen> {
     });
     final auth = context.read<AuthProvider>();
     if (auth.token != null) {
-      await VeterinarianService.acknowledgeEmergencyCall(
-        token: auth.token!,
-        callId: call.id,
-      );
+      await context
+          .read<VetProfileProvider>()
+          .acknowledgeCall(token: auth.token!, callId: call.id);
     }
     if (accept && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -409,7 +404,8 @@ class _VetHomeScreenState extends State<VetHomeScreen> {
           children: [
             _stat(Icons.calendar_today_outlined, AppColors.vet, '0', 'Consultas hoje'),
             _vDivider(),
-            _stat(Icons.notification_important_outlined, AppColors.warning, '0', 'Chamados'),
+            _stat(Icons.notification_important_outlined, AppColors.warning,
+                '${context.watch<VetProfileProvider>().pendingCallsCount}', 'Chamados'),
             _vDivider(),
             _stat(Icons.attach_money, _green, 'R\$ 0', 'Faturamento'),
             _vDivider(),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../models/emergency_call.dart';
 import '../models/veterinarian.dart';
 import '../services/veterinarian_service.dart';
 
@@ -7,6 +8,7 @@ class VetProfileProvider extends ChangeNotifier {
   bool _loading = false;
   bool _updating = false;
   String? _error;
+  List<EmergencyCallModel> _pendingCalls = [];
 
   VeterinarianModel? get vet => _vet;
   bool get loading => _loading;
@@ -17,6 +19,30 @@ class VetProfileProvider extends ChangeNotifier {
   bool get atendeDomicilio => _vet?.atendeDomicilio ?? false;
   bool get atende24h => _vet?.atende24h ?? false;
   bool get isAprovado => _vet?.isAprovado ?? false;
+  List<EmergencyCallModel> get pendingCalls => _pendingCalls;
+  int get pendingCallsCount => _pendingCalls.length;
+
+  Future<List<EmergencyCallModel>> refreshPendingCalls(
+      {required String token}) async {
+    if (_vet == null) return _pendingCalls;
+    final calls = await VeterinarianService.getPendingEmergencyCalls(
+      token: token,
+      vetId: _vet!.id,
+    );
+    final changed = calls.length != _pendingCalls.length ||
+        !calls.every((c) => _pendingCalls.any((p) => p.id == c.id));
+    _pendingCalls = calls;
+    if (changed) notifyListeners();
+    return _pendingCalls;
+  }
+
+  Future<void> acknowledgeCall(
+      {required String token, required String callId}) async {
+    await VeterinarianService.acknowledgeEmergencyCall(
+        token: token, callId: callId);
+    _pendingCalls = _pendingCalls.where((c) => c.id != callId).toList();
+    notifyListeners();
+  }
 
   Future<void> load({required String token, required String cpf}) async {
     _loading = true;
@@ -70,6 +96,7 @@ class VetProfileProvider extends ChangeNotifier {
   void clear() {
     _vet = null;
     _error = null;
+    _pendingCalls = [];
     notifyListeners();
   }
 }

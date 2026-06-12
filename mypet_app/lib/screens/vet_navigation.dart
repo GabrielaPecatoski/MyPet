@@ -1,5 +1,7 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../core/colors.dart';
+import '../providers/vet_profile_provider.dart';
 import '../widgets/app_bottom_nav.dart';
 import 'vet_home_screen.dart';
 import 'vet_appointments_screen.dart';
@@ -63,7 +65,7 @@ class _VetNavigationState extends State<VetNavigation> {
           currentIndex: _index,
           items: vetNavItems,
           onTap: (i) => setState(() => _index = i),
-          badges: const {2: 2},
+          badges: {2: context.watch<VetProfileProvider>().pendingCallsCount},
           activeColor: AppColors.vet,
         ),
       ),
