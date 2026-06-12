@@ -126,7 +126,6 @@ export async function addService(
     durationMinutes: data.durationMinutes ?? 60,
     description: data.description ?? "Banho completo",
   };
-  // POST /establishments/:id/services retorna 201 sem corpo → busca via GET para devolver o serviço criado.
   await ok(
     await api.post(`/establishments/${establishmentId}/services`, {
       headers: auth(owner),
@@ -529,14 +528,12 @@ export async function registerVet(
   return vet;
 }
 let _adminCache: SeededUser | null = null;
-// Loga o admin seedado uma vez e reusa o token para aprovar vet/motorista nos testes.
 export async function getAdmin(api: APIRequestContext): Promise<SeededUser> {
   if (_adminCache) return _adminCache;
   _adminCache = await loginUser(api, "admin@mypet.com", "admin123");
   return _adminCache;
 }
 
-// Cadastro de vet/motorista entra como PENDENTE; nos testes aprovamos automaticamente via admin.
 async function autoApproveDriver(
   api: APIRequestContext,
   driverId: string,
@@ -544,9 +541,7 @@ async function autoApproveDriver(
   try {
     const admin = await getAdmin(api);
     await api.patch(`/drivers/${driverId}/approve`, { headers: auth(admin) });
-  } catch {
-    /* admin ausente: ignora, teste segue com PENDENTE */
-  }
+  } catch {}
 }
 async function autoApproveVet(
   api: APIRequestContext,
@@ -557,9 +552,7 @@ async function autoApproveVet(
     await api.patch(`/veterinarians/${vetId}/approve`, {
       headers: auth(admin),
     });
-  } catch {
-    /* idem */
-  }
+  } catch {}
 }
 
 export async function loginUser(

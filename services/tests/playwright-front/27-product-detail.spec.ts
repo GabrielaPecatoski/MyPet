@@ -122,7 +122,6 @@ test("botão Voltar retorna para a loja", async ({ page }) => {
   await page.goBack({ timeout: 10_000 }).catch(async () => {
     await tapButton(page, "Voltar");
   });
-  // após voltar: resultados de busca ainda visíveis (campo preenchido, hint some)
   await pollText(page, new RegExp(produtoNome + "|Buscar produtos"), 30_000);
 });
 test('"Ver carrinho" no snackbar navega para o carrinho', async ({ page }) => {

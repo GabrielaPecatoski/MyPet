@@ -1,11 +1,3 @@
-/**
- * Testa a tela de boas-vindas (welcome):
- *  - cards de papéis com rótulos corretos
- *  - seleção muda o card ativo
- *  - botão reflete o papel escolhido
- *  - navegação para registro após seleção
- *  - link "Entrar" vai para login
- */
 import { test } from "@playwright/test";
 import {
   bootFlutter,
@@ -34,7 +26,6 @@ test("welcome exibe os 4 papéis disponíveis", async ({ page }) => {
 test("botão Continuar fica desabilitado sem seleção", async ({ page }) => {
   await goToWelcome(page);
   await waitForText(page, "Como você quer usar o app?");
-  // botão existe mas não tem label de papel — permanece com texto "Continuar"
   await expectText(page, "Continuar");
 });
 
@@ -135,7 +126,6 @@ test('"Entrar agora" no register leva de volta ao login (não para welcome)', as
   await tapText(page, "Sou Tutor");
   await tapButton(page, /Continuar como Tutor/);
   await waitForText(page, "Nome completo");
-  // clicar em "Entrar agora" deve ir para login (não welcome)
   await tapText(page, "Entrar agora");
   await waitForText(page, "E-mail");
   await expectText(page, /Senha/);

@@ -18,8 +18,6 @@ test.afterAll(async () => {
   await api.dispose();
 });
 
-// ---- registro ----
-
 test("registrar novo usuário CLIENTE", async () => {
   const res = await api.post("/auth/register", {
     data: {
@@ -59,8 +57,6 @@ test("registrar sem campos obrigatórios retorna 400", async () => {
   expect(res.status()).toBe(400);
 });
 
-// ---- login ----
-
 test("login com credenciais corretas retorna token", async () => {
   const res = await api.post("/auth/login", {
     data: { email, password: "senha123" },
@@ -84,8 +80,6 @@ test("login com email inexistente retorna 401", async () => {
   });
   expect(res.status()).toBe(401);
 });
-
-// ---- me ----
 
 test("GET /auth/me com x-user-id retorna perfil", async () => {
   const res = await api.get("/auth/me", {
@@ -114,8 +108,6 @@ test("PATCH /auth/me atualiza nome e telefone", async () => {
   expect(body.phone).toBe("41977770000");
 });
 
-// ---- refresh ----
-
 test("POST /auth/refresh retorna novo token", async () => {
   const res = await api.post("/auth/refresh", {
     headers: { "x-user-id": userId },
@@ -124,8 +116,6 @@ test("POST /auth/refresh retorna novo token", async () => {
   const body = await res.json();
   expect(body.access_token).toBeTruthy();
 });
-
-// ---- admin ----
 
 test("GET /auth/admin/users com secret retorna lista", async () => {
   const res = await api.get("/auth/admin/users", {
@@ -144,10 +134,7 @@ test("GET /auth/admin/users sem secret retorna 403", async () => {
   expect(res.status()).toBe(403);
 });
 
-// ---- delete (por último) ----
-
 test("DELETE /auth/me remove conta", async () => {
-  // cria usuário descartável com CPF único e diferente
   const delTs = Date.now() + 999;
   const delEmail = `del${delTs}@mypet.com`;
   const delCpf = String(delTs + 50000).slice(-11);
@@ -169,7 +156,6 @@ test("DELETE /auth/me remove conta", async () => {
   });
   expect(res.status()).toBe(204);
 
-  // usuário deletado não deve mais existir (retorna 404 ou 401)
   const check = await api.get("/auth/me", {
     headers: { "x-user-id": user.id },
   });

@@ -174,8 +174,6 @@ export class VeterinarianService {
     await this.repo.delete(id);
   }
 
-  // ── Emergency calls ──────────────────────────────────────────────────────
-
   async createEmergencyCall(vetId: string, dto: CreateEmergencyCallDto) {
     const vet = await this.repo.findById(vetId);
     if (!vet) throw new NotFoundException("Veterinário não encontrado");

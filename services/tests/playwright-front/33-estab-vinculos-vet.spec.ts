@@ -1,12 +1,3 @@
-/**
- * Testa a tela de vínculos de veterinários do estabelecimento:
- *  - tela lista vets vinculados
- *  - botão Adicionar abre sheet com abas "Buscar por CPF" e "Cadastrar novo"
- *  - busca por CPF de vet existente retorna o perfil
- *  - busca por CPF inválido mostra mensagem de erro
- *  - cadastro de novo vet vincula ao estabelecimento
- *  - remover vet mostra confirmação
- */
 import { APIRequestContext, test } from "@playwright/test";
 import {
   apiContext,
@@ -146,7 +137,6 @@ test("cadastrar vet novo via UI vincula ao estab e aparece na lista", async ({
   await fill(campos.nth(5), `SP${ts.toString().slice(-5)}`);
   await tapButton(page, "Cadastrar e Associar");
 
-  // sucesso: sheet fecha e lista atualiza
   await waitForText(
     page,
     /cadastrado e associado|Associado|Veterinários associados/i,
@@ -155,7 +145,6 @@ test("cadastrar vet novo via UI vincula ao estab e aparece na lista", async ({
 });
 
 test("buscar vet existente por CPF permite associá-lo", async ({ page }) => {
-  // Cria um vet independente via API para depois buscar na UI
   const vetUser = await registerUser(api, {
     role: "VETERINARIO",
     namePrefix: "Vet Busca E2E",

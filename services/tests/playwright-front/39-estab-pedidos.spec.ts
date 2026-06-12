@@ -1,11 +1,3 @@
-/**
- * Gerenciamento de pedidos da loja pelo estabelecimento.
- * Testa a aba "Pedidos" dentro de EstabProdutosScreen (EstabPedidosView):
- *  - pedido DELIVERY: badge, endereço, total, barra de progresso, avanço completo
- *  - pedido PICKUP: badge "Preparando", "Retirada no local", avanço para "Pronto p/ retirada"
- *  - pedido AGUARDANDO_PAGAMENTO: banner de alerta, sem botão de avanço
- *  - pedido FINALIZADO: banner verde, sem botão de avanço
- */
 import { APIRequestContext, expect, Page, test } from "@playwright/test";
 import {
   addToCart,
@@ -29,7 +21,6 @@ import {
 
 let api: APIRequestContext;
 
-// Um dono por grupo de testes para isolar estados
 let ownerDelivery: SeededUser;
 let estabDeliveryId: string;
 
@@ -44,7 +35,6 @@ let estabFinalId: string;
 test.beforeAll(async () => {
   api = await apiContext();
 
-  // Delivery: pedido pago, status ENVIANDO
   ownerDelivery = await registerUser(api, {
     role: "VENDEDOR",
     businessName: "Estab Ped Del E2E",
@@ -55,7 +45,6 @@ test.beforeAll(async () => {
   estabDeliveryId = eDelivery.id;
   await seedPaidOrder(api, ownerDelivery, estabDeliveryId);
 
-  // Pickup: pedido pago com retirada no local
   ownerPickup = await registerUser(api, {
     role: "VENDEDOR",
     businessName: "Estab Ped Pick E2E",
@@ -77,7 +66,6 @@ test.beforeAll(async () => {
     deliveryMethod: "PICKUP",
   });
 
-  // Unpaid: pedido criado mas não pago (AGUARDANDO_PAGAMENTO)
   ownerUnpaid = await registerUser(api, {
     role: "VENDEDOR",
     businessName: "Estab Ped Unp E2E",
@@ -92,9 +80,8 @@ test.beforeAll(async () => {
   });
   const cliUnp = await registerUser(api, { role: "CLIENTE" });
   await addToCart(api, cliUnp, prodUnp.id, 1);
-  await checkoutOrder(api, cliUnp); // não paga → AGUARDANDO_PAGAMENTO
+  await checkoutOrder(api, cliUnp);
 
-  // Finalizado: pedido já em FINALIZADO
   ownerFinal = await registerUser(api, {
     role: "VENDEDOR",
     businessName: "Estab Ped Fin E2E",
@@ -110,7 +97,6 @@ test.afterAll(async () => {
   await api.dispose();
 });
 
-// Navega ao painel do estab e abre a aba Pedidos, esperando que `probe` apareça
 async function abrirPedidosEstab(
   page: Page,
   owner: SeededUser,
@@ -120,8 +106,6 @@ async function abrirPedidosEstab(
   await openClientTab(page, "Produtos", "Pedidos");
   await pollTap(page, "Pedidos", probe);
 }
-
-// ─── PEDIDOS DE ENTREGA (DELIVERY) ───────────────────────────────────────────
 
 test('aba Pedidos exibe pedido de entrega com badge "Enviando já"', async ({
   page,
@@ -147,7 +131,6 @@ test("pedido de entrega exibe barra de progresso com todas as etapas", async ({
   page,
 }) => {
   await abrirPedidosEstab(page, ownerDelivery, "Saiu para entrega");
-  // Barra de progresso: 4 etapas de entrega
   await expectText(page, "Aguardando pagamento");
   await expectText(page, "Enviando já");
   await expectText(page, "Indo até o endereço");
@@ -157,7 +140,6 @@ test("pedido de entrega exibe barra de progresso com todas as etapas", async ({
 test('botão "Saiu para entrega" avança pedido e mostra badge "Indo até o endereço"', async ({
   page,
 }) => {
-  // Seed pedido isolado para este teste de transição
   await seedPaidOrder(api, ownerDelivery, estabDeliveryId);
   await abrirPedidosEstab(page, ownerDelivery, "Saiu para entrega");
   await pollTap(
@@ -187,8 +169,6 @@ test("pedido FINALIZADO não exibe botão de avanço", async ({ page }) => {
   expect(btnVisible).toBe(false);
 });
 
-// ─── PEDIDOS DE RETIRADA (PICKUP) ─────────────────────────────────────────────
-
 test('pedido de retirada exibe badge "Preparando" em vez de "Enviando já"', async ({
   page,
 }) => {
@@ -215,7 +195,6 @@ test("pedido de retirada exibe barra de progresso com etapas de pickup", async (
 test('botão "Marcar como pronto" avança pickup e mostra "Pronto p/ retirada"', async ({
   page,
 }) => {
-  // Seed pedido pickup isolado para este teste
   const prodPick2 = await createProduct(api, ownerPickup, estabPickupId, {
     name: `Prod Pick2 ${Date.now()}`,
     price: 14.9,
@@ -238,8 +217,6 @@ test('botão "Marcar como pronto" avança pickup e mostra "Pronto p/ retirada"',
   await expectText(page, "Pronto p/ retirada");
 });
 
-// ─── PEDIDO AGUARDANDO PAGAMENTO ──────────────────────────────────────────────
-
 test('pedido aguardando pagamento mostra banner "Aguardando pagamento do cliente"', async ({
   page,
 }) => {
@@ -257,8 +234,6 @@ test("pedido aguardando pagamento não exibe botão de avanço", async ({
     .catch(() => false);
   expect(btn).toBe(false);
 });
-
-// ─── PEDIDO FINALIZADO ────────────────────────────────────────────────────────
 
 test('pedido finalizado exibe badge "Finalizado"', async ({ page }) => {
   await abrirPedidosEstab(page, ownerFinal, "Pedido finalizado");

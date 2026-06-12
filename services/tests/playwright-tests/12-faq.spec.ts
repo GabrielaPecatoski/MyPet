@@ -16,8 +16,6 @@ test.afterAll(async () => {
   await api.dispose();
 });
 
-// ---- FAQs públicas ----
-
 test("listar FAQs ativas retorna array", async () => {
   const res = await api.get("/faq");
   expect(res.status()).toBe(200);
@@ -31,8 +29,6 @@ test("listar categorias retorna array", async () => {
   const body = await res.json();
   expect(Array.isArray(body)).toBe(true);
 });
-
-// ---- admin: criar FAQ ----
 
 test("criar FAQ sem admin secret retorna 403", async () => {
   const res = await api.post("/faq/admin", {
@@ -114,8 +110,6 @@ test("admin: deletar FAQ", async () => {
   expect(res.status()).toBe(200);
 });
 
-// ---- perguntas de usuários ----
-
 test("enviar pergunta de usuário", async () => {
   const res = await api.post("/faq/questions", {
     data: {
@@ -178,7 +172,6 @@ test("admin: fechar pergunta", async () => {
 });
 
 test("admin: responder sem texto retorna erro", async () => {
-  // cria nova pergunta para testar
   const qRes = await api.post("/faq/questions", {
     data: {
       userId,

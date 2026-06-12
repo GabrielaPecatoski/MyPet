@@ -24,7 +24,7 @@ class _EstabAgendaScreenState extends State<EstabAgendaScreen> {
   ];
 
   List<DateTime> get _weekDays {
-    final dow = _selectedDate.weekday % 7; // 0 = domingo
+    final dow = _selectedDate.weekday % 7;
     final sunday = _selectedDate.subtract(Duration(days: dow));
     return List.generate(7, (i) => sunday.add(Duration(days: i)));
   }

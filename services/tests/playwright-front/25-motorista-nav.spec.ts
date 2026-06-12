@@ -76,7 +76,6 @@ test("aba Perfil exibe dados do motorista e opção de logout", async ({
 });
 test("logout pelo perfil do motorista volta ao login", async ({ page }) => {
   await bootAndLogin(page, motorista.email, motorista.password);
-  // bottom nav é GestureDetector (texto 10px) → pollTap é robusto contra taps perdidos
   await pollTap(page, "Perfil", "Sair");
   await tapText(page, "Sair");
   await waitForText(page, "Entrar");

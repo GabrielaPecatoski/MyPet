@@ -1,15 +1,3 @@
-/**
- * Testa o fluxo completo de autenticação e persistência de sessão:
- *  - splash leva ao onboarding sem sessão
- *  - splash leva direto à home com sessão válida (token armazenado)
- *  - logout limpa sessão e volta ao login
- *  - token expirado redireciona para login
- *  - cliente registrado vê a home correta
- *  - vendedor registrado vê o painel do estab
- *  - motorista registrado vê o painel do motorista
- *  - vet registrado vê o painel do vet
- *  - admin registrado vê o painel de admin
- */
 import { APIRequestContext, test } from "@playwright/test";
 import { apiContext, registerUser, SeededUser } from "./_api";
 import {
@@ -46,7 +34,6 @@ test.afterAll(async () => {
 
 test("app sem sessão abre onboarding", async ({ page }) => {
   await bootFlutter(page, "/");
-  // onboarding ou welcome
   await page.waitForFunction(
     () => {
       const all = Array.from(document.querySelectorAll("flt-semantics"));
@@ -104,9 +91,7 @@ test("senha errada não loga e mostra snackbar de erro", async ({ page }) => {
   await skipOnboardingIfPresent(page);
   await goToLogin(page);
   await login(page, cliente.email, "senhaerrada999");
-  // botão Entrar continua visível (não navegou)
   await waitForText(page, /E-mail|Entrar/);
-  // snackbar ou campo de erro
   await waitForText(page, /erro|inválid|incorrect/i, 15_000);
 });
 
@@ -115,7 +100,6 @@ test("campos vazios no login mostram validação", async ({ page }) => {
   await skipOnboardingIfPresent(page);
   await goToLogin(page);
   await tapButton(page, "Entrar");
-  // permanece na tela de login
   await expectText(page, "Entrar");
   await expectText(page, /inválido|Informe|obrigatório/i);
 });
@@ -131,7 +115,6 @@ test('link "Criar Conta" no login leva ao registro', async ({ page }) => {
 test('link "Entrar" no welcome leva ao login', async ({ page }) => {
   await bootFlutter(page, "/");
   await skipOnboardingIfPresent(page);
-  // já na welcome
   await waitForText(page, /Como você quer usar|Sou Tutor/);
   await tapText(page, "Entrar");
   await waitForText(page, "E-mail");

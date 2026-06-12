@@ -7,7 +7,7 @@ import type { BookingRepository } from "@booking/bookings/domain/repositories/bo
 import { bookingsSchema } from "@booking/bookings/infra/database/schemas/booking.schema";
 import { Injectable } from "@nestjs/common";
 import { DrizzleService } from "@shared/infra/database/drizzle.service";
-import { and, eq, lt } from "drizzle-orm";
+import { and, eq, gte, isNull, lt } from "drizzle-orm";
 
 @Injectable()
 export class DrizzleBookingRepository implements BookingRepository {
@@ -49,6 +49,7 @@ export class DrizzleBookingRepository implements BookingRepository {
         status: b.status,
         paymentStatus: b.paymentStatus,
         paymentMethod: b.paymentMethod ?? null,
+        reminderSentAt: b.reminderSentAt ?? null,
         updatedAt: new Date(),
       })
       .where(eq(bookingsSchema.id, b.id!));
@@ -90,6 +91,24 @@ export class DrizzleBookingRepository implements BookingRepository {
       .select()
       .from(bookingsSchema)
       .where(eq(bookingsSchema.vetId, vetId));
+    return rows.map((r) => this.toEntity(r)!);
+  }
+
+  async findConfirmedForReminder(
+    scheduledFrom: Date,
+    scheduledTo: Date,
+  ): Promise<Booking[]> {
+    const rows = await this.drizzleService.db
+      .select()
+      .from(bookingsSchema)
+      .where(
+        and(
+          eq(bookingsSchema.status, "CONFIRMADO"),
+          isNull(bookingsSchema.reminderSentAt),
+          gte(bookingsSchema.scheduledAt, scheduledFrom),
+          lt(bookingsSchema.scheduledAt, scheduledTo),
+        ),
+      );
     return rows.map((r) => this.toEntity(r)!);
   }
 

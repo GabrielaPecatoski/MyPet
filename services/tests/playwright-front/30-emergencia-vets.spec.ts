@@ -1,10 +1,3 @@
-/**
- * Testa a tela de emergência:
- *  - tabs Clínicas e Veterinários
- *  - vet registrado e disponível aparece na aba
- *  - badge "Domiciliar" quando vet ativa atendimento domiciliar
- *  - estabelecimento de emergência aparece na aba Clínicas
- */
 import { APIRequestContext, test } from "@playwright/test";
 import {
   apiContext,
@@ -15,8 +8,6 @@ import {
 } from "./_api";
 import { bootAndLogin, expectText, tapText, waitForText } from "./_helpers";
 
-// page.evaluate polling — imune ao visibility check do Playwright e ao actionTimeout cap
-// Checa textContent E aria-label porque Flutter Web pode usar qualquer um dos dois
 async function pollText(
   page: import("@playwright/test").Page,
   pattern: RegExp,
@@ -57,9 +48,7 @@ test.beforeAll(async () => {
   });
   try {
     await registerVet(api, vet, { especialidade: "Clínica geral" });
-  } catch (_) {
-    /* já cadastrado */
-  }
+  } catch (_) {}
 });
 
 test.afterAll(async () => {
@@ -72,7 +61,6 @@ test("tela de emergência exibe duas abas: Clínicas e Veterinários", async ({
   await bootAndLogin(page, cliente.email, cliente.password);
   await tapText(page, "Emergência Veterinária");
   await waitForText(page, "Emergência Veterinária");
-  // Tabs usam aria-label (não textContent) → usar getByRole
   await page
     .getByRole("tab", { name: /Clínicas/ })
     .first()
@@ -87,7 +75,6 @@ test("aba Clínicas é exibida por padrão", async ({ page }) => {
   await bootAndLogin(page, cliente.email, cliente.password);
   await tapText(page, "Emergência Veterinária");
   await waitForText(page, "Emergência Veterinária");
-  // header está presente
   await expectText(page, /Emergência Veterinária/);
 });
 
@@ -98,7 +85,6 @@ test("navegar para aba Veterinários mostra lista ou estado vazio", async ({
   await tapText(page, "Emergência Veterinária");
   await waitForText(page, "Emergência Veterinária");
   await tapText(page, /Veterinários/);
-  // poll via evaluate — flt-semantics inside TabBarView não passa no waitFor({ state: 'visible' })
   if (!(await pollText(page, /Nenhum veterinário|Disponível|Dr\./, 30_000)))
     throw new Error("Conteúdo da aba Veterinários não carregou em 30s");
 });
@@ -109,7 +95,6 @@ test("aba Clínicas: estado vazio ou card de clínica sem crash", async ({
   await bootAndLogin(page, cliente.email, cliente.password);
   await tapText(page, "Emergência Veterinária");
   await waitForText(page, /Emergência/);
-  // poll via evaluate — flt-semantics inside TabBarView não passa no waitFor({ state: 'visible' })
   if (!(await pollText(page, /Nenhuma clínica|disponível|Pet shops/, 30_000)))
     throw new Error("Conteúdo da aba Clínicas não carregou em 30s");
 });
@@ -118,9 +103,8 @@ test("botão voltar na tela de emergência retorna à home", async ({ page }) =>
   await bootAndLogin(page, cliente.email, cliente.password);
   await tapText(page, "Emergência Veterinária");
   await waitForText(page, /Emergência/);
-  // pressionar back (AppBar com showBack: true)
   await page.goBack({ timeout: 10_000 }).catch(async () => {
     await tapText(page, "voltar");
   });
-  await expectText(page, "Emergência Veterinária"); // botão ainda existe
+  await expectText(page, "Emergência Veterinária");
 });

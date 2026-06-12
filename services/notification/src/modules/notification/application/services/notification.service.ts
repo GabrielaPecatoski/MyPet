@@ -1,4 +1,5 @@
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { NotificationStreamService } from "@notification/application/services/notification-stream.service";
 import { Notification } from "@notification/domain/models/notification.entity";
 import {
   NOTIFICATION_REPOSITORY,
@@ -17,6 +18,7 @@ export class NotificationService {
   constructor(
     @Inject(NOTIFICATION_REPOSITORY)
     private readonly notificationRepo: NotificationRepository,
+    private readonly streamService: NotificationStreamService,
   ) {}
 
   async create(dto: CreateNotificationDto): Promise<void> {
@@ -27,6 +29,12 @@ export class NotificationService {
       type: dto.type,
     });
     await this.notificationRepo.create(notification);
+    this.streamService.publish(dto.userId, {
+      type: dto.type,
+      title: dto.title,
+      body: dto.body,
+      createdAt: new Date().toISOString(),
+    });
   }
 
   async listByUser(userId: string): Promise<Notification[]> {

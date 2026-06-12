@@ -27,6 +27,7 @@ export const bookingsSchema = pgTable("bookings", {
   status: text("status").notNull().default("PENDENTE"),
   paymentStatus: text("payment_status").notNull().default("NONE"),
   paymentMethod: text("payment_method"),
+  reminderSentAt: timestamp("reminder_sent_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });

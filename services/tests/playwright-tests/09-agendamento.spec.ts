@@ -9,7 +9,6 @@ const estabId = `estab-booking-${ts}`;
 let bookingId: string;
 let blockId: string;
 
-// próxima segunda-feira
 function nextWeekday(day: number): string {
   const d = new Date();
   d.setDate(d.getDate() + ((day - d.getDay() + 7) % 7 || 7));
@@ -24,8 +23,6 @@ test.beforeAll(async ({ playwright }) => {
 test.afterAll(async () => {
   await api.dispose();
 });
-
-// ---- agenda de disponibilidade ----
 
 test("configurar agenda do estabelecimento", async () => {
   const res = await api.post("/availability/schedule", {
@@ -59,7 +56,6 @@ test("buscar agenda do estabelecimento", async () => {
 test("buscar horários disponíveis", async () => {
   const res = await api.get(`/availability/${estabId}?date=${futureDate}`);
   expect(res.status()).toBe(200);
-  // resposta: { date: "...", slots: [...] }
   const body = await res.json();
   expect(Array.isArray(body.slots)).toBe(true);
   const available = body.slots.filter((s: any) => s.available);
@@ -102,8 +98,6 @@ test("desbloquear horário", async () => {
   const res = await api.delete(`/availability/block/${blockId}`);
   expect(res.status()).toBe(204);
 });
-
-// ---- bookings ----
 
 test("listar agendamentos de usuário sem bookings retorna array", async () => {
   const res = await api.get(`/bookings/user/${userId}`);
@@ -167,7 +161,6 @@ test("estatísticas do estabelecimento retornam contagem", async () => {
   const res = await api.get(`/bookings/stats/establishment/${estabId}`);
   expect(res.status()).toBe(200);
   const body = await res.json();
-  // campos reais: totalBookings, monthBookings, totalRevenue, ...
   expect(typeof body.totalBookings).toBe("number");
   expect(body.totalBookings).toBeGreaterThan(0);
 });

@@ -5,7 +5,6 @@ const ESTAB_ID = "estab-pag-test";
 
 let api: APIRequestContext;
 
-// helpers para criar produto + carrinho + order prontos para pagar
 async function createOrderForUser(
   userId: string,
   price = 100.0,
@@ -36,8 +35,6 @@ test.beforeAll(async ({ playwright }) => {
 test.afterAll(async () => {
   await api.dispose();
 });
-
-// ---- PIX ----
 
 test("pagamento PIX é aprovado imediatamente", async () => {
   const userId = `user-pix-${Date.now()}`;
@@ -79,8 +76,6 @@ test("pagamento PIX atualiza pedido para CONFIRMED", async () => {
   expect(order?.status).toBe("CONFIRMED");
 });
 
-// ---- Débito ----
-
 test("pagamento no débito é aprovado", async () => {
   const userId = `user-deb-${Date.now()}`;
   const orderId = await createOrderForUser(userId);
@@ -101,8 +96,6 @@ test("pagamento no débito é aprovado", async () => {
   expect(body.cardLastFour).toBe("1111");
 });
 
-// ---- Dinheiro ----
-
 test("pagamento em dinheiro fica PENDING (AWAITING_PAYMENT)", async () => {
   const userId = `user-cash-${Date.now()}`;
   const orderId = await createOrderForUser(userId);
@@ -120,15 +113,12 @@ test("pagamento em dinheiro fica PENDING (AWAITING_PAYMENT)", async () => {
   const body = await res.json();
   expect(body.status).toBe("PENDING");
 
-  // pedido deve ser AWAITING_PAYMENT
   const orders: any[] = await (
     await api.get(`/marketplace/orders/${userId}`)
   ).json();
   const order = orders.find((o) => o.id === orderId);
   expect(order?.status).toBe("AWAITING_PAYMENT");
 });
-
-// ---- Boleto ----
 
 test("pagamento por boleto fica PENDING e gera código", async () => {
   const userId = `user-boleto-${Date.now()}`;
@@ -151,8 +141,6 @@ test("pagamento por boleto fica PENDING e gera código", async () => {
   expect(body.deliveryMethod).toBe("DELIVERY");
   expect(body.deliveryAddress).toBe("Rua Teste, 123");
 });
-
-// ---- Cartão de crédito ----
 
 test("pagamento crédito retorna APPROVED ou REJECTED (simulação)", async () => {
   const userId = `user-cc-${Date.now()}`;
@@ -177,8 +165,6 @@ test("pagamento crédito retorna APPROVED ou REJECTED (simulação)", async () =
     expect(body.rejectionReason).toBeTruthy();
   }
 });
-
-// ---- Buscar pagamento ----
 
 test("buscar pagamento por id", async () => {
   const userId = `user-findpay-${Date.now()}`;
@@ -243,8 +229,6 @@ test("buscar pagamentos por pedido", async () => {
   const body: any[] = await res.json();
   expect(body.some((p) => p.id === payment.id)).toBe(true);
 });
-
-// ---- Cancelamento e estorno ----
 
 test("cancelar pagamento PENDING", async () => {
   const userId = `user-cancel-${Date.now()}`;

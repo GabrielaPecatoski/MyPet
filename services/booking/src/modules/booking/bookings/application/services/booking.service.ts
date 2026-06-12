@@ -268,11 +268,6 @@ export class BookingService {
     return this.updateStatus(id, "CANCELADO");
   }
 
-  /**
-   * Cancela em background os agendamentos que ficaram em AGUARDANDO_PAGAMENTO
-   * por mais de 1 hora. Roda periodicamente, independente do usuário abrir a agenda.
-   * Retorna a quantidade de agendamentos cancelados.
-   */
   async cancelExpired(): Promise<number> {
     const cutoff = new Date(Date.now() - 60 * 60 * 1000);
     const expired = await this.repo.findExpiredAwaitingPayment(cutoff);
@@ -286,6 +281,47 @@ export class BookingService {
       );
     }
     return expired.length;
+  }
+
+  async notifyTodayBookings(): Promise<number> {
+    const now = new Date();
+    const startOfDay = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    );
+    const startOfNextDay = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate() + 1,
+    );
+    const bookings = await this.repo.findConfirmedForReminder(
+      startOfDay,
+      startOfNextDay,
+    );
+    for (const b of bookings) {
+      b.withReminderSent(now);
+      await this.repo.update(b);
+      await this.safePublish(
+        BookingExchangeName.TODAY_REMINDER,
+        BookingRoutingKey.TODAY_REMINDER,
+        {
+          bookingId: b.id!,
+          establishmentId: b.establishmentId,
+          userId: b.userId,
+          clientName: b.userName,
+          establishmentName: b.establishmentName,
+          serviceName: b.serviceName,
+          scheduledAt: b.scheduledAt.toISOString(),
+        },
+      );
+    }
+    if (bookings.length > 0) {
+      this.logger.log(
+        `${bookings.length} lembrete(s) de atendimento de hoje enviado(s).`,
+      );
+    }
+    return bookings.length;
   }
 
   async complete(id: string): Promise<BookingDto> {

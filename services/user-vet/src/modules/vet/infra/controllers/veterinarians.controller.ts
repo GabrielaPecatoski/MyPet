@@ -64,8 +64,6 @@ export class VeterinariansController {
     return this.vetService.findByEstablishment(establishmentId);
   }
 
-  // ── Emergency calls ──────────────────────────────────────────────────────
-
   @Post(":vetId/emergency-call")
   @ApiOperation({ summary: "Cliente dispara chamado de emergência para o vet" })
   createEmergencyCall(
@@ -87,8 +85,6 @@ export class VeterinariansController {
   acknowledgeEmergencyCall(@Param("callId") callId: string) {
     return this.vetService.acknowledgeEmergencyCall(callId);
   }
-
-  // ── Standard CRUD ────────────────────────────────────────────────────────
 
   @Get(":id")
   @ApiOperation({ summary: "Buscar por id" })

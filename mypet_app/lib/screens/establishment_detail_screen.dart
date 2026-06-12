@@ -56,7 +56,6 @@ class _EstablishmentDetailViewState
     try {
       final vets = await VeterinarianService.fetchByEstablishment(
           token: token, establishmentId: estabId);
-      // Mostra ao cliente apenas vets aprovados (ATIVO).
       if (mounted) setState(() => _vets = vets.where((v) => v.isAtivo).toList());
     } catch (_) {}
   }

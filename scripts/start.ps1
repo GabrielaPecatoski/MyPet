@@ -2,7 +2,8 @@
 # Se travar em politica de execucao: Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
 
 $ErrorActionPreference = 'Continue'
-$compose = "$PSScriptRoot\docker-compose.yml"
+$root = Split-Path -Parent $PSScriptRoot
+$compose = "$root\docker-compose.yml"
 
 Write-Host ""
 Write-Host "===================================" -ForegroundColor Cyan
@@ -11,9 +12,9 @@ Write-Host "===================================" -ForegroundColor Cyan
 Write-Host ""
 
 # 1. Verifica arquivo .env
-$envFile = "$PSScriptRoot\.env"
+$envFile = "$root\.env"
 if (-not (Test-Path $envFile)) {
-  $envExample = "$PSScriptRoot\.env.example"
+  $envExample = "$root\.env.example"
   if (Test-Path $envExample) {
     Copy-Item $envExample $envFile
     Write-Host "[!] .env criado. Defina o JWT_SECRET e feche o Notepad para continuar." -ForegroundColor Yellow

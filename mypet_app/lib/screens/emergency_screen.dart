@@ -478,7 +478,7 @@ class _VetEmergencyCard extends StatelessWidget {
           ],
         ]),
       ]),
-    ),  // end Padding
+    ),
     Padding(
       padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
       child: SizedBox(
@@ -497,12 +497,11 @@ class _VetEmergencyCard extends StatelessWidget {
         ),
       ),
     ),
-  ]),  // end Column
-  );   // end Container
+  ]),
+  );
   }
 }
 
-// ── Bottom sheet: cliente preenche telefone antes de chamar ──────────────────
 
 class _CallVetSheet extends StatelessWidget {
   final String vetName;

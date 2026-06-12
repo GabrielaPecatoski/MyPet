@@ -9,6 +9,7 @@ import {
 } from "@booking/availability/infra/repositories/drizzle-availability.repository";
 import { BookingService } from "@booking/bookings/application/services/booking.service";
 import { ExpiredBookingScheduler } from "@booking/bookings/application/services/expired-booking.scheduler";
+import { TodayBookingReminderScheduler } from "@booking/bookings/application/services/today-booking-reminder.scheduler";
 import { BOOKING_REPOSITORY } from "@booking/bookings/domain/repositories/booking-repository.interface";
 import {
   AvailabilityController,
@@ -22,6 +23,7 @@ import { Module } from "@nestjs/common";
   providers: [
     BookingService,
     ExpiredBookingScheduler,
+    TodayBookingReminderScheduler,
     AvailabilityService,
     DrizzleBookingRepository,
     DrizzleScheduleRepository,

@@ -27,7 +27,6 @@ test("stats de estabelecimento sem avaliações retorna avg 0", async () => {
   const res = await api.get(`/reviews/establishment/${estabId}/stats`);
   expect(res.status()).toBe(200);
   const body = await res.json();
-  // campos reais: { avg: number, count: number }
   expect(body.avg).toBe(0);
   expect(body.count).toBe(0);
 });
@@ -45,7 +44,6 @@ test("criar primeira avaliação (5 estrelas)", async () => {
     data: { rating: 5, comment: "Excelente serviço!", userName: "Cliente 1" },
   });
   expect(res.status()).toBe(201);
-  // resposta: { review: {...}, avg: number, count: number }
   const body = await res.json();
   expect(body.review.id).toBeTruthy();
   expect(body.review.rating).toBe(5);
@@ -93,11 +91,9 @@ test("avaliação sem comentário é criada com sucesso", async () => {
 });
 
 test("avaliação com rating inválido é aceita pelo serviço (sem validação de range)", async () => {
-  // O serviço atual não valida o range de rating — apenas registra o valor
   const res = await api.post(`/reviews/establishment/${estabId}`, {
     headers: { "x-user-id": userId1 },
     data: { rating: 10 },
   });
-  // O serviço aceita qualquer número como rating
   expect(res.status()).toBe(201);
 });

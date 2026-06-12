@@ -35,6 +35,7 @@ export class Booking {
   private _status!: BookingStatus;
   private _paymentStatus!: PaymentStatus;
   private _paymentMethod?: string;
+  private _reminderSentAt?: Date;
   private readonly _createdAt?: Date;
   private readonly _updatedAt?: Date;
 
@@ -109,6 +110,9 @@ export class Booking {
   get paymentMethod(): string | undefined {
     return this._paymentMethod;
   }
+  get reminderSentAt(): Date | undefined {
+    return this._reminderSentAt;
+  }
   get createdAt(): Date | undefined {
     return this._createdAt;
   }
@@ -123,6 +127,10 @@ export class Booking {
   withPayment(paymentStatus: PaymentStatus, method?: string) {
     this._paymentStatus = paymentStatus;
     if (method !== undefined) this._paymentMethod = method;
+    return this;
+  }
+  withReminderSent(at: Date) {
+    this._reminderSentAt = at;
     return this;
   }
 
@@ -146,6 +154,7 @@ export class Booking {
     status: BookingStatus;
     paymentStatus?: PaymentStatus | null;
     paymentMethod?: string | null;
+    reminderSentAt?: Date | null;
     createdAt?: Date;
     updatedAt?: Date;
   }): Booking | null {
@@ -169,6 +178,7 @@ export class Booking {
     b._status = props.status as BookingStatus;
     b._paymentStatus = (props.paymentStatus as PaymentStatus) ?? "NONE";
     b._paymentMethod = props.paymentMethod ?? undefined;
+    b._reminderSentAt = props.reminderSentAt ?? undefined;
     return b;
   }
 }

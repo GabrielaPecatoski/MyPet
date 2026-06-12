@@ -95,7 +95,6 @@ class _AdminScreenState extends State<AdminScreen> {
   Widget build(BuildContext context) {
     final vm = context.watch<AdminProvider>();
 
-    // Índices: 0=Painel, 1=Reclamações, 2=Cadastros, 3=Verificações, 4=FAQ, 5=Estatísticas(oculto)
     final pages = [
       _PainelPage(
         users: vm.users,

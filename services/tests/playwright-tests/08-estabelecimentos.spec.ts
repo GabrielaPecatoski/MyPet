@@ -84,7 +84,6 @@ test("atualizar estabelecimento", async () => {
 });
 
 test("adicionar serviço ao estabelecimento", async () => {
-  // POST retorna o estabelecimento completo com os serviços
   const res = await api.post(`/establishments/${estabId}/services`, {
     data: {
       name: "Banho e Tosa",
@@ -95,7 +94,6 @@ test("adicionar serviço ao estabelecimento", async () => {
   });
   expect(res.status()).toBe(201);
   const body = await res.json();
-  // resposta é o estabelecimento; pegamos o último serviço adicionado
   expect(Array.isArray(body.services)).toBe(true);
   expect(body.services.length).toBeGreaterThan(0);
   serviceId = body.services[body.services.length - 1].id;
@@ -111,7 +109,6 @@ test("buscar estatísticas do estabelecimento", async () => {
   const res = await api.get(`/establishments/${estabId}/stats`);
   expect(res.status()).toBe(200);
   const body = await res.json();
-  // campos reais: totalBookings, avgRating, totalReviews
   expect(typeof body.totalBookings).toBe("number");
   expect(typeof body.avgRating).toBe("number");
 });

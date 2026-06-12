@@ -1,13 +1,17 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../core/colors.dart';
+import '../core/constants.dart';
 import '../models/emergency_call.dart';
 import '../providers/auth_provider.dart';
 import '../providers/vet_profile_provider.dart';
+import '../services/sse/sse_client.dart';
 import '../services/veterinarian_service.dart';
 
 class VetHomeScreen extends StatefulWidget {
@@ -23,6 +27,7 @@ class _VetHomeScreenState extends State<VetHomeScreen> {
   static const _orange    = Color(0xFFF97316);
 
   Timer? _pollTimer;
+  SseSubscription? _sse;
   bool _alarmVisible = false;
   EmergencyCallModel? _incomingCall;
 
@@ -35,6 +40,7 @@ class _VetHomeScreenState extends State<VetHomeScreen> {
   @override
   void dispose() {
     _pollTimer?.cancel();
+    _sse?.close();
     super.dispose();
   }
 
@@ -50,12 +56,28 @@ class _VetHomeScreenState extends State<VetHomeScreen> {
 
   void _resetPollTimer() {
     _pollTimer?.cancel();
+    _sse?.close();
+    _sse = null;
     final vm = context.read<VetProfileProvider>();
     if (!vm.atende24h || vm.vet == null) return;
 
+    _connectSse();
     _pollTimer = Timer.periodic(const Duration(seconds: 15), (_) => _checkEmergencyCalls());
-    // Check immediately on activation
     _checkEmergencyCalls();
+  }
+
+  void _connectSse() {
+    final auth = context.read<AuthProvider>();
+    final vm = context.read<VetProfileProvider>();
+    if (auth.token == null || vm.vet == null) return;
+    final url =
+        '${ApiConstants.baseUrl}/notifications/stream/${vm.vet!.id}?token=${auth.token}';
+    _sse = connectSse(url, (data) {
+      try {
+        final event = jsonDecode(data) as Map<String, dynamic>;
+        if (event['type'] == 'EMERGENCY_VET_CALL') _checkEmergencyCalls();
+      } catch (_) {}
+    });
   }
 
   Future<void> _checkEmergencyCalls() async {
@@ -63,7 +85,7 @@ class _VetHomeScreenState extends State<VetHomeScreen> {
     final auth = context.read<AuthProvider>();
     final vm   = context.read<VetProfileProvider>();
     if (auth.token == null || vm.vet == null) return;
-    if (_alarmVisible) return; // already showing alarm, don't stack
+    if (_alarmVisible) return;
 
     final calls = await VeterinarianService.getPendingEmergencyCalls(
       token: auth.token!,
@@ -240,7 +262,6 @@ class _VetHomeScreenState extends State<VetHomeScreen> {
           ),
         ),
 
-        // ── Alarm overlay ──────────────────────────────────────────────────
         if (_alarmVisible && _incomingCall != null)
           _EmergencyAlarmOverlay(
             call: _incomingCall!,
@@ -495,7 +516,6 @@ class _VetHomeScreenState extends State<VetHomeScreen> {
       );
 }
 
-// ── Emergency alarm overlay ────────────────────────────────────────────────────
 
 class _EmergencyAlarmOverlay extends StatefulWidget {
   final EmergencyCallModel call;
@@ -516,6 +536,7 @@ class _EmergencyAlarmOverlayState extends State<_EmergencyAlarmOverlay>
     with SingleTickerProviderStateMixin {
   late AnimationController _pulse;
   late Animation<double> _scale;
+  final AudioPlayer _siren = AudioPlayer();
 
   @override
   void initState() {
@@ -528,8 +549,15 @@ class _EmergencyAlarmOverlayState extends State<_EmergencyAlarmOverlay>
       CurvedAnimation(parent: _pulse, curve: Curves.easeInOut),
     );
 
-    // Repeat vibration
     _vibrateRepeat();
+    _playSiren();
+  }
+
+  Future<void> _playSiren() async {
+    try {
+      await _siren.setReleaseMode(ReleaseMode.loop);
+      await _siren.play(AssetSource('sounds/alarm.wav'), volume: 1.0);
+    } catch (_) {}
   }
 
   Future<void> _vibrateRepeat() async {
@@ -542,6 +570,8 @@ class _EmergencyAlarmOverlayState extends State<_EmergencyAlarmOverlay>
 
   @override
   void dispose() {
+    _siren.stop();
+    _siren.dispose();
     _pulse.dispose();
     super.dispose();
   }
@@ -557,7 +587,6 @@ class _EmergencyAlarmOverlayState extends State<_EmergencyAlarmOverlay>
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Pulsing icon
               ScaleTransition(
                 scale: _scale,
                 child: Container(
@@ -595,7 +624,6 @@ class _EmergencyAlarmOverlayState extends State<_EmergencyAlarmOverlay>
               ),
               const SizedBox(height: 32),
 
-              // Caller card
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(20),
@@ -616,7 +644,6 @@ class _EmergencyAlarmOverlayState extends State<_EmergencyAlarmOverlay>
               ),
               const SizedBox(height: 40),
 
-              // Buttons
               Row(children: [
                 Expanded(
                   child: OutlinedButton.icon(
@@ -669,7 +696,6 @@ class _EmergencyAlarmOverlayState extends State<_EmergencyAlarmOverlay>
       );
 }
 
-// ── Toggle card (unchanged) ────────────────────────────────────────────────────
 
 class _ToggleCard extends StatelessWidget {
   final IconData icon;

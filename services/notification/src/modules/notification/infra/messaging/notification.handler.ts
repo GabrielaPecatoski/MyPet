@@ -36,6 +36,16 @@ interface BookingCompletedPayload {
   serviceName: string;
 }
 
+interface BookingTodayReminderPayload {
+  bookingId: string;
+  establishmentId?: string;
+  userId: string;
+  clientName: string;
+  establishmentName: string;
+  serviceName: string;
+  scheduledAt: string;
+}
+
 interface OrderCreatedPayload {
   orderId: string;
   userId: string;
@@ -79,6 +89,11 @@ export class NotificationHandler implements OnModuleInit {
       await channel.assertExchange(BookingExchangeName.COMPLETED, "direct", {
         durable: true,
       });
+      await channel.assertExchange(
+        BookingExchangeName.TODAY_REMINDER,
+        "direct",
+        { durable: true },
+      );
       await channel.bindQueue(
         NOTIFICATION_QUEUE,
         BookingExchangeName.CREATED,
@@ -93,6 +108,11 @@ export class NotificationHandler implements OnModuleInit {
         NOTIFICATION_QUEUE,
         BookingExchangeName.COMPLETED,
         BookingRoutingKey.COMPLETED,
+      );
+      await channel.bindQueue(
+        NOTIFICATION_QUEUE,
+        BookingExchangeName.TODAY_REMINDER,
+        BookingRoutingKey.TODAY_REMINDER,
       );
 
       await channel.assertExchange(
@@ -173,6 +193,28 @@ export class NotificationHandler implements OnModuleInit {
           title: "Atendimento concluído",
           body: `Seu atendimento de ${data.serviceName} em ${data.establishmentName} foi concluído. Deixe uma avaliação!`,
           type: "BOOKING_COMPLETED",
+        });
+        break;
+      }
+      case BookingRoutingKey.TODAY_REMINDER: {
+        const data = payload as BookingTodayReminderPayload;
+        const when = new Date(data.scheduledAt).toLocaleTimeString("pt-BR", {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+        if (data.establishmentId) {
+          await this.notificationService.create({
+            userId: data.establishmentId,
+            title: "Atendimento hoje",
+            body: `${data.clientName} tem ${data.serviceName} agendado para hoje às ${when}.`,
+            type: "BOOKING_TODAY_REMINDER",
+          });
+        }
+        await this.notificationService.create({
+          userId: data.userId,
+          title: "Seu atendimento é hoje",
+          body: `Você tem ${data.serviceName} em ${data.establishmentName} hoje às ${when}.`,
+          type: "BOOKING_TODAY_REMINDER",
         });
         break;
       }

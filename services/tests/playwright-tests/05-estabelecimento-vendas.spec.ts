@@ -6,7 +6,6 @@ const ESTAB_ID = `estab-vendas-${Date.now()}`;
 let api: APIRequestContext;
 let productId: string;
 
-// utilitário para criar pedido completo e pago
 async function criarPedidoPago(
   userId: string,
   method: "PIX" | "CASH" | "BOLETO" | "DEBIT_CARD",
@@ -52,8 +51,6 @@ test.afterAll(async () => {
   await api.dispose();
 });
 
-// ---- visibilidade dos pedidos ----
-
 test("pedido PIX (CONFIRMED) aparece na tela de vendas", async () => {
   const { orderId } = await criarPedidoPago(`user-pix-v-${Date.now()}`, "PIX");
 
@@ -91,8 +88,6 @@ test("pedido Boleto (AWAITING_PAYMENT) aparece na tela de vendas", async () => {
   expect(found.status).toBe("AWAITING_PAYMENT");
 });
 
-// ---- dados retornados nos pedidos ----
-
 test("pedido retorna itens com produto e pagamento", async () => {
   const { orderId } = await criarPedidoPago(`user-data-v-${Date.now()}`, "PIX");
 
@@ -125,13 +120,10 @@ test("pedido de entrega (DELIVERY) inclui endereço no payment", async () => {
   expect(payment?.deliveryAddress).toBe("Av. Paulista, 1000");
 });
 
-// ---- fluxo completo de confirmação de venda ----
-
 test("fluxo completo: confirmar pedido → preparar → pronto → entregar", async () => {
   const userId = `user-full-v-${Date.now()}`;
   const initialStock = 100;
 
-  // verifica estoque inicial
   const prodBefore = await (
     await api.get(`/marketplace/products/${productId}`)
   ).json();
@@ -139,26 +131,22 @@ test("fluxo completo: confirmar pedido → preparar → pronto → entregar", as
 
   const { orderId } = await criarPedidoPago(userId, "PIX");
 
-  // PENDING → PREPARING (confirmar pedido)
   let res = await api.patch(`/marketplace/orders/${orderId}/delivery`, {
     data: { deliveryStatus: "PREPARING" },
   });
   expect(res.status()).toBe(200);
   expect((await res.json()).deliveryStatus).toBe("PREPARING");
 
-  // PREPARING → READY
   res = await api.patch(`/marketplace/orders/${orderId}/delivery`, {
     data: { deliveryStatus: "READY" },
   });
   expect((await res.json()).deliveryStatus).toBe("READY");
 
-  // estoque ainda intacto
   const prodMid = await (
     await api.get(`/marketplace/products/${productId}`)
   ).json();
   expect(prodMid.stock).toBe(stockBefore);
 
-  // READY → DELIVERED → decrementa estoque
   res = await api.patch(`/marketplace/orders/${orderId}/delivery`, {
     data: { deliveryStatus: "DELIVERED" },
   });
@@ -167,7 +155,7 @@ test("fluxo completo: confirmar pedido → preparar → pronto → entregar", as
   const prodAfter = await (
     await api.get(`/marketplace/products/${productId}`)
   ).json();
-  expect(prodAfter.stock).toBe(stockBefore - 1); // qty = 1
+  expect(prodAfter.stock).toBe(stockBefore - 1);
 });
 
 test("pedido DELIVERED continua visível (status CONFIRMED) com deliveryStatus=DELIVERED", async () => {
@@ -178,8 +166,6 @@ test("pedido DELIVERED continua visível (status CONFIRMED) com deliveryStatus=D
     data: { deliveryStatus: "DELIVERED" },
   });
 
-  // pedido permanece no endpoint (status=CONFIRMED), mas com deliveryStatus=DELIVERED
-  // a tela Flutter exibe o banner "Pedido concluído" para esse caso
   const res = await api.get(`/marketplace/orders/establishment/${ESTAB_ID}`);
   const orders: any[] = await res.json();
   const order = orders.find((o) => o.id === orderId);

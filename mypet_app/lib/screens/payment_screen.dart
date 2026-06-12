@@ -102,9 +102,9 @@ class _PagamentoScreenState extends State<PagamentoScreen> {
         rejectionReason: payment['rejectionReason'] as String?,
         onDone: () {
           Navigator.of(context)
-            ..pop() // bottom sheet
-            ..pop() // pagamento
-            ..pop(); // carrinho
+            ..pop()
+            ..pop()
+            ..pop();
         },
         onRetry: status == 'REJECTED' ? () {
           Navigator.of(context).pop();

@@ -11,7 +11,6 @@ let orderId: string;
 test.beforeAll(async ({ playwright }) => {
   api = await playwright.request.newContext({ baseURL: BASE });
 
-  // cria produto para usar no carrinho
   const res = await api.post("/marketplace/products", {
     data: {
       name: `Produto Carrinho ${Date.now()}`,
@@ -70,7 +69,6 @@ test("atualizar quantidade do item", async () => {
 });
 
 test("atualizar quantidade para 0 remove item", async () => {
-  // adiciona um segundo produto temporário
   const tempRes = await api.post("/marketplace/products", {
     data: {
       name: `Temp ${Date.now()}`,
@@ -99,7 +97,6 @@ test("atualizar quantidade para 0 remove item", async () => {
 });
 
 test("remover item específico do carrinho", async () => {
-  // garante que o item principal está no carrinho
   const cartRes = await api.get(`/marketplace/cart/${USER_ID}`);
   const cart: any[] = await cartRes.json();
   expect(cart.some((i) => i.productId === productId)).toBe(true);
@@ -111,7 +108,6 @@ test("remover item específico do carrinho", async () => {
 });
 
 test("checkout cria pedido e limpa carrinho", async () => {
-  // recoloca item no carrinho
   await api.post(`/marketplace/cart/${USER_ID}`, {
     data: { productId, quantity: 2 },
   });
@@ -125,7 +121,6 @@ test("checkout cria pedido e limpa carrinho", async () => {
   expect(Array.isArray(body.items)).toBe(true);
   orderId = body.id;
 
-  // carrinho deve estar vazio após checkout
   const cartRes = await api.get(`/marketplace/cart/${USER_ID}`);
   const cart = await cartRes.json();
   expect(cart.length).toBe(0);

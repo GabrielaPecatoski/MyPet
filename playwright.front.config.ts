@@ -5,6 +5,7 @@ const WEB_PORT = 8080;
 
 export default defineConfig({
   testDir: "./services/tests/playwright-front",
+  globalSetup: "./services/tests/playwright-front/_global-setup.ts",
   timeout: 180_000,
   expect: { timeout: 25_000 },
   retries: 1,

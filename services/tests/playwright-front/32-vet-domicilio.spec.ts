@@ -1,10 +1,3 @@
-/**
- * Testa os toggles e a navegação do painel do veterinário (UI nova):
- *  - toggles de domicílio e emergência 24h aparecem na home
- *  - o card de toggle é tappável (texto vira aria-label → clicar via byText)
- *  - perfil exibe CRMV/especialidade
- *  - navegação por todas as abas (Agenda usa pollTap por causa do botão "Ver agenda")
- */
 import { APIRequestContext, test } from "@playwright/test";
 import { apiContext, registerUser, registerVet, SeededUser } from "./_api";
 import {
@@ -27,9 +20,7 @@ test.beforeAll(async () => {
   });
   try {
     await registerVet(api, vet, { especialidade: "Dermatologia" });
-  } catch (_) {
-    /* já existe */
-  }
+  } catch (_) {}
 });
 
 test.afterAll(async () => {
@@ -39,7 +30,6 @@ test.afterAll(async () => {
 test("home do vet exibe toggle de atendimento domiciliar", async ({ page }) => {
   await bootAndLogin(page, vet.email, vet.password);
   await waitForText(page, "MY PET · VETERINÁRIO");
-  // card tappável → texto vai pro aria-label; usar string exata (não regex, que olha só textContent)
   await expectText(page, "Atendimento domiciliar inativo");
 });
 
@@ -79,7 +69,7 @@ test("vet pode navegar por todas as abas sem crash", async ({ page }) => {
   await bootAndLogin(page, vet.email, vet.password);
   await waitForText(page, "MY PET · VETERINÁRIO");
 
-  await pollTap(page, /^Agenda$/, "Hoje"); // "Ver agenda" (no-op) intercepta o seletor por substring
+  await pollTap(page, /^Agenda$/, "Hoje");
   await pollTap(page, "Chamados", /Chamados|Nenhum chamado/);
   await pollTap(page, "Pacientes", /Pacientes|Nenhum paciente/);
   await pollTap(page, "Perfil", /CRMV|Sair da conta/);

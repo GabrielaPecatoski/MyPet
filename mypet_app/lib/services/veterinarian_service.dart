@@ -190,7 +190,6 @@ class VeterinarianService {
     }
   }
 
-  // ── Emergency calls ────────────────────────────────────────────────────
 
   static Future<EmergencyCallModel> callVet({
     required String token,
@@ -252,7 +251,6 @@ class VeterinarianService {
     } catch (_) {}
   }
 
-  // ── Standard ───────────────────────────────────────────────────────────
 
   static Future<void> reject({
     required String token,

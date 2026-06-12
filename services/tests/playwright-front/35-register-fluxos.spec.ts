@@ -1,14 +1,3 @@
-/**
- * Testa todos os fluxos de cadastro pelo caminho da welcome screen:
- *  - Tutor → home do cliente
- *  - Estabelecimento → home do estab
- *  - Veterinário → painel do vet
- *  - Motorista → painel do motorista
- *  - Validação de campos obrigatórios
- *  - Senha inválida (menos de 6 chars)
- *  - Senhas que não coincidem
- *  - E-mail duplicado mostra erro sem crash
- */
 import { APIRequestContext, test } from "@playwright/test";
 import { apiContext } from "./_api";
 import {
@@ -37,8 +26,6 @@ async function goToWelcome(page: Parameters<typeof bootFlutter>[0]) {
   await skipOnboardingIfPresent(page);
 }
 
-// ─── Tutor ───────────────────────────────────────────────────────────────────
-
 test("cadastro Tutor completo → home do cliente", async ({ page }) => {
   await goToWelcome(page);
   await tapText(page, "Sou Tutor");
@@ -56,8 +43,6 @@ test("cadastro Tutor completo → home do cliente", async ({ page }) => {
   await expectText(page, "Agenda");
   await expectText(page, "Pets");
 });
-
-// ─── Estabelecimento ─────────────────────────────────────────────────────────
 
 test("cadastro Estabelecimento completo → home do estab", async ({ page }) => {
   await goToWelcome(page);
@@ -77,8 +62,6 @@ test("cadastro Estabelecimento completo → home do estab", async ({ page }) => 
   await waitForText(page, /Painel|Agenda|Home/, 40_000);
 });
 
-// ─── Veterinário ──────────────────────────────────────────────────────────────
-
 test("cadastro Veterinário completo → painel do vet", async ({ page }) => {
   await goToWelcome(page);
   await tapText(page, "Sou Veterinário");
@@ -97,8 +80,6 @@ test("cadastro Veterinário completo → painel do vet", async ({ page }) => {
   await expectText(page, "MY PET · VETERINÁRIO");
   await expectText(page, "Agenda");
 });
-
-// ─── Motorista ────────────────────────────────────────────────────────────────
 
 test("cadastro Motorista completo → painel do motorista", async ({ page }) => {
   await goToWelcome(page);
@@ -120,15 +101,12 @@ test("cadastro Motorista completo → painel do motorista", async ({ page }) => 
   await pollText(page, /MY PET · MOTORISTA|Painel|Início|Corridas/, 40_000);
 });
 
-// ─── Validações ──────────────────────────────────────────────────────────────
-
 test("submeter form vazio mostra erros de validação", async ({ page }) => {
   await goToWelcome(page);
   await tapText(page, "Sou Tutor");
   await tapButton(page, /Continuar como Tutor/);
   await waitForText(page, "Nome completo");
   await tapButton(page, "Criar conta");
-  // deve continuar na tela de cadastro (não navega)
   await expectText(page, "Criar conta");
   await expectText(page, /Informe|obrigatório/i);
 });
@@ -144,7 +122,7 @@ test("senha com menos de 6 caracteres é rejeitada", async ({ page }) => {
   await fill(campos.nth(1), String(ts).slice(-11).padStart(11, "0"));
   await fill(campos.nth(2), "41988880000");
   await fill(campos.nth(3), `curto${ts}@e2e.com`);
-  await fill(campos.nth(4), "123"); // muito curto
+  await fill(campos.nth(4), "123");
   await fill(campos.nth(5), "123");
   await tapButton(page, "Criar conta");
   await expectText(page, /Mínimo 6|senha|caracteres/i);
@@ -168,7 +146,6 @@ test("senhas diferentes mostram erro de confirmação", async ({ page }) => {
 });
 
 test("e-mail duplicado mostra mensagem de erro sem crash", async ({ page }) => {
-  // usa seed — email fixo que deve existir depois do seed
   await goToWelcome(page);
   await tapText(page, "Sou Tutor");
   await tapButton(page, /Continuar como Tutor/);
@@ -178,11 +155,10 @@ test("e-mail duplicado mostra mensagem de erro sem crash", async ({ page }) => {
   await fill(campos.nth(0), "Duplicado Teste");
   await fill(campos.nth(1), String(ts).slice(-11).padStart(11, "0"));
   await fill(campos.nth(2), "41988889999");
-  await fill(campos.nth(3), "admin@mypet.com"); // email já existente
+  await fill(campos.nth(3), "admin@mypet.com");
   await fill(campos.nth(4), "senha123");
   await fill(campos.nth(5), "senha123");
   await tapButton(page, "Criar conta");
-  // deve mostrar snackbar de erro sem crash
   await waitForText(page, /erro|existente|utilizado|inválido|email/i, 20_000);
 });
 
@@ -199,7 +175,6 @@ test("vet sem CRMV não passa validação", async ({ page }) => {
   await fill(campos.nth(3), `vetcrmv${ts}@e2e.com`);
   await fill(campos.nth(4), "senha123");
   await fill(campos.nth(5), "senha123");
-  // deixa CRMV (campos.nth(6)) vazio
   await tapButton(page, "Criar conta");
   await expectText(page, /CRMV|Informe|obrigatório/i);
 });
@@ -217,7 +192,6 @@ test("motorista sem CNH não passa validação", async ({ page }) => {
   await fill(campos.nth(3), `motcnh${ts}@e2e.com`);
   await fill(campos.nth(4), "senha123");
   await fill(campos.nth(5), "senha123");
-  // deixa CNH vazio (campos.nth(6))
   await fill(campos.nth(7), "Fiat Uno");
   await fill(campos.nth(8), `XX${ts.toString().slice(-4)}`);
   await tapButton(page, "Criar conta");

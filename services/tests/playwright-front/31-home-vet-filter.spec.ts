@@ -1,10 +1,3 @@
-/**
- * Testa o chip "Veterinário" na home do cliente:
- *  - chip existe e é clicável
- *  - ao selecionar, seção "Veterinários disponíveis" aparece
- *  - ao voltar para "Todos", seção "Mais Bem Avaliados" reaparece
- *  - outros chips (Banho, Tosa, Acessórios) continuam funcionando
- */
 import { APIRequestContext, test } from "@playwright/test";
 import { apiContext, registerUser, registerVet, SeededUser } from "./_api";
 import {
@@ -80,7 +73,6 @@ test("chip Banho filtra estabelecimentos (não quebra a UI)", async ({
   await bootAndLogin(page, cliente.email, cliente.password);
   await waitForText(page, "Emergência Veterinária");
   await tapText(page, "Banho");
-  // aguarda recarregamento sem erro
   await page.waitForFunction(
     () => {
       const all = Array.from(document.querySelectorAll("flt-semantics"));
@@ -99,7 +91,6 @@ test("chip Tosa filtra estabelecimentos sem crash", async ({ page }) => {
   await waitForText(page, "Emergência Veterinária");
   await tapText(page, "Tosa");
   await page.waitForTimeout(3000);
-  // não deve ter erro visível
   await expectText(page, /Todos|Banho|Tosa/);
 });
 
@@ -114,17 +105,14 @@ test("chip Acessórios filtra sem crash", async ({ page }) => {
 test("seção Veterinários mostra badge Domiciliar se vet ativa o serviço", async ({
   page,
 }) => {
-  // este teste cria um vet com domiciliar ativo (depende de backend atualizado)
   await bootAndLogin(page, cliente.email, cliente.password);
   await waitForText(page, "Emergência Veterinária");
   await tapText(page, "Veterinário");
   await waitForText(page, /Veterinários disponíveis|Nenhum veterinário/);
-  // se há vets com domiciliar, o badge deve aparecer; caso contrário passa
   const hasDomiciliar = await byText(page, "Domiciliar")
     .first()
     .isVisible({ timeout: 5000 })
     .catch(() => false);
-  // test passes either way — just confirms no crash
   if (hasDomiciliar) {
     await expectText(page, "Domiciliar");
   }

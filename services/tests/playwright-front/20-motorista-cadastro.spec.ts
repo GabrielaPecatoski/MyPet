@@ -1,14 +1,3 @@
-/**
- * Motoristas do estabelecimento — contrato ATUAL.
- *
- * O fluxo antigo (Perfil→Motoristas abria um form "Cadastro de Motorista") e a regra
- * "1 motorista ativo por estabelecimento" foram REMOVIDOS. Hoje:
- *  - register() do driver-service só valida CPF único (sem limite por estab);
- *  - a tela Motoristas é uma lista + FAB "Adicionar" (cadastro novo coberto pelo spec 37).
- *
- * Este spec valida o contrato novo: um estabelecimento pode ter VÁRIOS motoristas
- * associados, e todos aparecem na lista da UI.
- */
 import { APIRequestContext, expect, test } from "@playwright/test";
 import {
   apiContext,

@@ -226,8 +226,6 @@ export async function openLojaSearch(page: Page): Promise<Locator> {
 export async function searchProduct(page: Page, nome: string): Promise<void> {
   const field = await openLojaSearch(page);
   await fill(field, nome);
-  // O produto recem-criado pode demorar a aparecer no indice de busca
-  // (consistencia eventual via fila), entao reenvia o Enter ate aparecer.
   await expect
     .poll(
       async () => {
@@ -248,8 +246,6 @@ export async function login(
 ): Promise<void> {
   await fill(emailField(page), email);
   await fill(passwordField(page), senha);
-  // Flutter web às vezes perde o 1º tap em "Entrar" → re-tap (bounded) até sair da tela de login.
-  // Para credenciais inválidas, esgota as tentativas e permanece no login (testes de erro seguem).
   for (let i = 0; i < 5; i++) {
     await tapButton(page, "Entrar").catch(() => {});
     const aindaLogin = await emailField(page)

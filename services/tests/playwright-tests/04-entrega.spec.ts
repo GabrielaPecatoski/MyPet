@@ -12,7 +12,6 @@ const userId = `user-entrega-${Date.now()}`;
 test.beforeAll(async ({ playwright }) => {
   api = await playwright.request.newContext({ baseURL: BASE });
 
-  // cria produto com estoque conhecido
   const prodRes = await api.post("/marketplace/products", {
     data: {
       name: `Produto Entrega ${Date.now()}`,
@@ -24,7 +23,6 @@ test.beforeAll(async ({ playwright }) => {
   const prod = await prodRes.json();
   productId = prod.id;
 
-  // adiciona ao carrinho e faz checkout
   await api.post(`/marketplace/cart/${userId}`, {
     data: { productId, quantity: 3 },
   });
@@ -32,7 +30,6 @@ test.beforeAll(async ({ playwright }) => {
   const order = await orderRes.json();
   orderId = order.id;
 
-  // paga via PIX (APPROVED → CONFIRMED)
   await api.post("/marketplace/payments", {
     data: {
       orderId,
@@ -77,7 +74,6 @@ test("avançar para READY", async () => {
 test("estoque NÃO foi decrementado antes de DELIVERED", async () => {
   const res = await api.get(`/marketplace/products/${productId}`);
   const prod = await res.json();
-  // estoque ainda deve ser o original (desconto só ocorre ao marcar DELIVERED)
   expect(prod.stock).toBe(INITIAL_STOCK);
 });
 
@@ -89,18 +85,14 @@ test("avançar para DELIVERED decrementa estoque", async () => {
   const body = await res.json();
   expect(body.deliveryStatus).toBe("DELIVERED");
 
-  // verifica decremento de 3 unidades
   const prodRes = await api.get(`/marketplace/products/${productId}`);
   const prod = await prodRes.json();
   expect(prod.stock).toBe(INITIAL_STOCK - 3);
 });
 
-// ---- pedido com pagamento pendente (Cash) ----
-
 test("pedido Cash (AWAITING_PAYMENT) aparece no endpoint do estabelecimento", async () => {
   const cashUser = `user-cash-entrega-${Date.now()}`;
 
-  // cria produto e order para cash
   const prodRes = await api.post("/marketplace/products", {
     data: {
       name: `Prod Cash ${Date.now()}`,
@@ -117,7 +109,6 @@ test("pedido Cash (AWAITING_PAYMENT) aparece no endpoint do estabelecimento", as
   const orderRes = await api.post(`/marketplace/orders/${cashUser}`);
   const cashOrder = await orderRes.json();
 
-  // paga em dinheiro → fica AWAITING_PAYMENT
   await api.post("/marketplace/payments", {
     data: {
       orderId: cashOrder.id,
@@ -128,7 +119,6 @@ test("pedido Cash (AWAITING_PAYMENT) aparece no endpoint do estabelecimento", as
     },
   });
 
-  // deve aparecer nos pedidos do estabelecimento
   const res = await api.get(`/marketplace/orders/establishment/${ESTAB_ID}`);
   expect(res.status()).toBe(200);
   const orders: any[] = await res.json();
@@ -136,12 +126,9 @@ test("pedido Cash (AWAITING_PAYMENT) aparece no endpoint do estabelecimento", as
 });
 
 test("pedido com pagamento rejeitado (PAYMENT_FAILED) não aparece no estabelecimento", async () => {
-  // Cria um cenário onde o crédito é sempre rejeitado é difícil (é random 10%)
-  // então apenas verificamos que CONFIRMED e AWAITING_PAYMENT aparecem
   const res = await api.get(`/marketplace/orders/establishment/${ESTAB_ID}`);
   const orders: any[] = await res.json();
   const statuses = orders.map((o) => o.status);
-  // nenhum PAYMENT_FAILED ou CANCELLED deve aparecer
   expect(
     statuses.every((s) => ["CONFIRMED", "AWAITING_PAYMENT"].includes(s)),
   ).toBe(true);

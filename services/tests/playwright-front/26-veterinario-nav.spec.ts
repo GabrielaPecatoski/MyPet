@@ -45,14 +45,13 @@ test("home do vet exibe toggles de atendimento (online, 24h, domicílio)", async
   page,
 }) => {
   await bootAndLogin(page, vet.email, vet.password);
-  await waitForText(page, "Ative para aparecer aos clientes"); // subtítulo do toggle online (offline)
+  await waitForText(page, "Ative para aparecer aos clientes");
   await expectText(page, "Emergências 24h desativado");
   await expectText(page, "Atendimento domiciliar inativo");
 });
 test("toggle de emergência 24h muda estado", async ({ page }) => {
   await bootAndLogin(page, vet.email, vet.password);
   await waitForText(page, "Emergências 24h desativado");
-  // O card todo é tappável (GestureDetector) → texto vira aria-label; clicar via byText.
   await byText(page, "Emergências 24h desativado")
     .first()
     .click({ force: true });
@@ -60,7 +59,7 @@ test("toggle de emergência 24h muda estado", async ({ page }) => {
 });
 test("aba Agenda exibe abas Hoje / Amanhã / Semana", async ({ page }) => {
   await bootAndLogin(page, vet.email, vet.password);
-  await pollTap(page, /^Agenda$/, "Hoje"); // "Ver agenda" (no-op) intercepta o seletor por substring
+  await pollTap(page, /^Agenda$/, "Hoje");
   await expectText(page, "Hoje");
   await expectText(page, "Amanhã");
   await expectText(page, "Semana");
@@ -81,7 +80,7 @@ test("agenda tab Hoje mostra estado vazio (sem consultas mockadas)", async ({
 });
 test("aba Chamados exibe estado vazio", async ({ page }) => {
   await bootAndLogin(page, vet.email, vet.password);
-  await pollTap(page, /^Chamados$/, "Nenhum chamado ativo"); // card "Emergências 24h" (subtítulo "...chamados urgentes") intercepta o seletor por substring
+  await pollTap(page, /^Chamados$/, "Nenhum chamado ativo");
   await expectText(page, "Chamados de emergência");
 });
 test("aba Pacientes exibe estado vazio com busca", async ({ page }) => {

@@ -6,7 +6,7 @@ import {
 } from "@vet/vet/infra/database/schemas/vet-emergency-calls.schema";
 import { and, desc, eq, gt, sql } from "drizzle-orm";
 
-const CALL_TTL_MS = 10 * 60 * 1000; // 10 minutes
+const CALL_TTL_MS = 10 * 60 * 1000;
 
 @Injectable()
 export class VetEmergencyCallsRepository implements OnModuleInit {

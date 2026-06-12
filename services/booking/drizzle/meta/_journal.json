@@ -15,6 +15,13 @@
       "when": 1780936667683,
       "tag": "0001_even_beyonder",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1781277288526,
+      "tag": "0002_steep_blindfold",
+      "breakpoints": true
     }
   ]
 }
