@@ -9,6 +9,7 @@ export class User {
   private _cpf!: string;
   private _role!: UserRole;
   private _permissions!: string[];
+  private _photoUrl?: string | null;
   private readonly _createdAt?: Date;
   private readonly _updatedAt?: Date;
 
@@ -26,6 +27,7 @@ export class User {
   get cpf(): string { return this._cpf; }
   get role(): UserRole { return this._role; }
   get permissions(): string[] { return this._permissions; }
+  get photoUrl(): string | null | undefined { return this._photoUrl; }
   get createdAt(): Date | undefined { return this._createdAt; }
   get updatedAt(): Date | undefined { return this._updatedAt; }
 
@@ -36,6 +38,7 @@ export class User {
   withCpf(cpf: string) { this._cpf = cpf; return this; }
   withRole(role: UserRole) { this._role = role; return this; }
   withPermissions(permissions: string[]) { this._permissions = permissions; return this; }
+  withPhotoUrl(photoUrl: string | null) { this._photoUrl = photoUrl; return this; }
 
   static restore(props?: {
     id?: string;
@@ -46,6 +49,7 @@ export class User {
     cpf: string;
     role: UserRole;
     permissions: string[];
+    photoUrl?: string | null;
     createdAt?: Date;
     updatedAt?: Date;
   }): User | null {
@@ -58,6 +62,7 @@ export class User {
     user._cpf = props.cpf;
     user._role = props.role;
     user._permissions = props.permissions;
+    user._photoUrl = props.photoUrl;
     return user;
   }
 }

@@ -9,6 +9,7 @@ export class UserDto {
   @ApiProperty() cpf: string;
   @ApiProperty() role: string;
   @ApiProperty() permissions: string[];
+  @ApiProperty() photoUrl: string | null;
   @ApiProperty() createdAt: Date | undefined;
 
   private constructor(
@@ -19,6 +20,7 @@ export class UserDto {
     cpf: string,
     role: string,
     permissions: string[],
+    photoUrl: string | null,
     createdAt: Date | undefined,
   ) {
     this.id = id;
@@ -28,6 +30,7 @@ export class UserDto {
     this.cpf = cpf;
     this.role = role;
     this.permissions = permissions;
+    this.photoUrl = photoUrl;
     this.createdAt = createdAt;
   }
 
@@ -41,6 +44,7 @@ export class UserDto {
       user.cpf,
       user.role,
       user.permissions,
+      user.photoUrl ?? null,
       user.createdAt,
     );
   }

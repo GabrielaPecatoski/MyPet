@@ -12,8 +12,17 @@ class AuthService {
     required String token,
     required String name,
     required String phone,
+    String? photoUrl,
   }) =>
-      ApiService.patch('/auth/me', {'name': name, 'phone': phone}, token: token)
+      ApiService.patch(
+        '/auth/me',
+        {
+          'name': name,
+          'phone': phone,
+          if (photoUrl != null) 'photoUrl': photoUrl,
+        },
+        token: token,
+      )
           .then((v) => v as Map<String, dynamic>);
 
   static Future<void> deleteMe({required String token}) =>

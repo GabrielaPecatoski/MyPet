@@ -17,6 +17,11 @@ export class UpdateUserDto {
   @IsString()
   phone?: string;
 
+  @ApiPropertyOptional({ example: "data:image/jpeg;base64,..." })
+  @IsOptional()
+  @IsString()
+  photoUrl?: string;
+
   @ApiPropertyOptional({ example: "novasenha123", minLength: 6 })
   @IsOptional()
   @IsString()

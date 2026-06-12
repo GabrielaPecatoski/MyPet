@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -15,14 +16,17 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _pickImage() async {
-    if (kIsWeb) return;
     final picker = ImagePicker();
     final picked =
         await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
     if (picked != null && mounted) {
       final auth = context.read<AuthProvider>();
       if (auth.user != null) {
-        auth.updateUser(auth.user!.copyWith(photoPath: picked.path));
+        final bytes = await picked.readAsBytes();
+        auth.updateUser(auth.user!.copyWith(
+          photoPath: kIsWeb ? null : picked.path,
+          photoUrl: 'data:image/jpeg;base64,${base64Encode(bytes)}',
+        ));
       }
     }
   }
@@ -79,7 +83,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthProvider>().user;
-    final photo = user?.photoPath;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -104,17 +107,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     children: [
                       GestureDetector(
                         onTap: _pickImage,
-                        child: CircleAvatar(
-                          radius: 34,
-                          backgroundColor: AppColors.primaryLight,
-                          backgroundImage: (!kIsWeb && photo != null)
-                              ? FileImage(File(photo))
-                              : null,
-                          child: (kIsWeb || photo == null)
-                              ? const Icon(Icons.person,
-                                  size: 34, color: AppColors.primary)
-                              : null,
-                        ),
+                        child: _buildAvatar(user),
                       ),
                       Positioned(
                         bottom: 0,
@@ -241,6 +234,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
         onTap: onTap,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
       );
+
+  Widget _buildAvatar(user) {
+    final photoPath = user?.photoPath;
+    if (!kIsWeb && photoPath != null && photoPath.isNotEmpty) {
+      return CircleAvatar(
+        radius: 34,
+        backgroundColor: AppColors.primaryLight,
+        backgroundImage: FileImage(File(photoPath)),
+      );
+    }
+
+    final photoUrl = user?.photoUrl;
+    if (photoUrl != null && photoUrl.isNotEmpty) {
+      if (photoUrl.startsWith('data:image/')) {
+        final bytes = base64Decode(photoUrl.split(',').last);
+        return CircleAvatar(
+          radius: 34,
+          backgroundColor: AppColors.primaryLight,
+          backgroundImage: MemoryImage(bytes),
+        );
+      }
+      return CircleAvatar(
+        radius: 34,
+        backgroundColor: AppColors.primaryLight,
+        backgroundImage: NetworkImage(photoUrl),
+      );
+    }
+
+    return CircleAvatar(
+      radius: 34,
+      backgroundColor: AppColors.primaryLight,
+      child: const Icon(Icons.person, size: 34, color: AppColors.primary),
+    );
+  }
 
   Widget _itemDanger(IconData icon, String label, VoidCallback onTap) =>
       ListTile(

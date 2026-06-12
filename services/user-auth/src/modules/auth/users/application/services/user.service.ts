@@ -52,6 +52,7 @@ export class UserService {
     if (dto.name) user.withName(dto.name);
     if (dto.email) user.withEmail(dto.email.toLowerCase());
     if (dto.phone) user.withPhone(dto.phone);
+    if (dto.photoUrl !== undefined) user.withPhotoUrl(dto.photoUrl);
     if (dto.password) {
       const hashed = await bcrypt.hash(dto.password, 10);
       user.withPassword(hashed);

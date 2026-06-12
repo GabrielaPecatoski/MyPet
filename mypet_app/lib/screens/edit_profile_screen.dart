@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -19,7 +21,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nomeCtrl;
   late TextEditingController _telefoneCtrl;
+  Uint8List? _imageBytes;
   String? _newPhotoPath;
+  String? _existingPhotoUrl;
 
   @override
   void initState() {
@@ -27,6 +31,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final user = context.read<AuthProvider>().user;
     _nomeCtrl = TextEditingController(text: user?.name ?? '');
     _telefoneCtrl = TextEditingController(text: user?.phone ?? '');
+    _existingPhotoUrl = user?.photoUrl;
   }
 
   @override
@@ -37,29 +42,39 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Future<void> _pickPhoto() async {
-    if (kIsWeb) return;
     final picker = ImagePicker();
     final picked =
         await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
     if (picked != null && mounted) {
-      setState(() => _newPhotoPath = picked.path);
+      final bytes = await picked.readAsBytes();
+      setState(() {
+        _imageBytes = bytes;
+        _newPhotoPath = kIsWeb ? null : picked.path;
+      });
     }
   }
 
   Future<void> _salvar() async {
     if (!_formKey.currentState!.validate()) return;
     final auth = context.read<AuthProvider>();
+    final photoUrl = _imageBytes != null
+        ? 'data:image/jpeg;base64,${base64Encode(_imageBytes!)}'
+        : _existingPhotoUrl;
 
     final ok = await auth.updateProfile(
       name: _nomeCtrl.text.trim(),
       phone: _telefoneCtrl.text.trim(),
+      photoUrl: photoUrl,
     );
 
     if (!mounted) return;
 
     if (ok) {
-      if (_newPhotoPath != null) {
-        auth.updateUser(auth.user!.copyWith(photoPath: _newPhotoPath));
+      if (_newPhotoPath != null && auth.user != null) {
+        auth.updateUser(auth.user!.copyWith(
+          photoPath: _newPhotoPath,
+          photoUrl: photoUrl,
+        ));
       }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -93,7 +108,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final user = auth.user;
-    final photoPath = _newPhotoPath ?? user?.photoPath;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -107,41 +121,30 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            if (!kIsWeb)
-              Center(
-                child: GestureDetector(
-                  onTap: _pickPhoto,
-                  child: Stack(
-                    children: [
-                      CircleAvatar(
-                        radius: 52,
-                        backgroundColor: AppColors.primaryLight,
-                        backgroundImage:
-                            photoPath != null ? FileImage(File(photoPath)) : null,
-                        child: photoPath == null
-                            ? const Icon(Icons.person,
-                                size: 52, color: AppColors.primary)
-                            : null,
-                      ),
-                      Positioned(
-                        bottom: 2,
-                        right: 2,
-                        child: Container(
-                          padding: const EdgeInsets.all(7),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: const Icon(Icons.camera_alt,
-                              color: Colors.white, size: 14),
+            Center(
+              child: GestureDetector(
+                onTap: _pickPhoto,
+                child: Stack(
+                  children: [
+                    _buildAvatar(user),
+                    Positioned(
+                      bottom: 2,
+                      right: 2,
+                      child: Container(
+                        padding: const EdgeInsets.all(7),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          borderRadius: BorderRadius.circular(20),
                         ),
+                        child: const Icon(Icons.camera_alt,
+                            color: Colors.white, size: 14),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
-            if (!kIsWeb) const SizedBox(height: 24),
-
+            ),
+            const SizedBox(height: 24),
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -239,6 +242,45 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 fontWeight: FontWeight.w600,
                 color: AppColors.dark)),
       );
+
+  Widget _buildAvatar(user) {
+    if (_imageBytes != null) {
+      return CircleAvatar(
+        radius: 52,
+        backgroundColor: AppColors.primaryLight,
+        backgroundImage: MemoryImage(_imageBytes!),
+      );
+    }
+    final photoPath = _newPhotoPath ?? user?.photoPath;
+    if (!kIsWeb && photoPath != null && photoPath.isNotEmpty) {
+      return CircleAvatar(
+        radius: 52,
+        backgroundColor: AppColors.primaryLight,
+        backgroundImage: FileImage(File(photoPath)),
+      );
+    }
+    final photoUrl = _existingPhotoUrl;
+    if (photoUrl != null && photoUrl.isNotEmpty) {
+      if (photoUrl.startsWith('data:image/')) {
+        final bytes = base64Decode(photoUrl.split(',').last);
+        return CircleAvatar(
+          radius: 52,
+          backgroundColor: AppColors.primaryLight,
+          backgroundImage: MemoryImage(bytes),
+        );
+      }
+      return CircleAvatar(
+        radius: 52,
+        backgroundColor: AppColors.primaryLight,
+        backgroundImage: NetworkImage(photoUrl),
+      );
+    }
+    return CircleAvatar(
+      radius: 52,
+      backgroundColor: AppColors.primaryLight,
+      child: const Icon(Icons.person, size: 52, color: AppColors.primary),
+    );
+  }
 
   Widget _field(
     TextEditingController ctrl, {
