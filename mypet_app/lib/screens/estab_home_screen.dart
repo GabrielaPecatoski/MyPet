@@ -30,12 +30,12 @@ class _EstabHomeScreenState extends State<EstabHomeScreen>
     super.dispose();
   }
 
-  Future<void> _load() async {
+  Future<void> _load({bool force = false}) async {
     final auth = context.read<AuthProvider>();
     if (auth.token == null || auth.user == null) return;
 
     final estabProvider = context.read<EstablishmentProvider>();
-    if (estabProvider.establishment == null) {
+    if (force || estabProvider.establishment == null) {
       await estabProvider.loadByOwner(
         token: auth.token!,
         ownerId: auth.user!.id,
@@ -179,7 +179,7 @@ class _EstabHomeScreenState extends State<EstabHomeScreen>
                           ),
                   ),
 
-                  const _ServicosTab(),
+                  _ServicosTab(onRetry: () => _load(force: true)),
                 ],
               ),
             ),
@@ -352,7 +352,8 @@ class _AgendCard extends StatelessWidget {
 }
 
 class _ServicosTab extends StatelessWidget {
-  const _ServicosTab();
+  final VoidCallback onRetry;
+  const _ServicosTab({required this.onRetry});
 
   Future<void> _showAddServico(BuildContext context) async {
     final nomeCtrl = TextEditingController();
@@ -535,8 +536,36 @@ class _ServicosTab extends StatelessWidget {
           const Center(
             child: Padding(
               padding: EdgeInsets.all(32),
-              child:
-                  CircularProgressIndicator(color: AppColors.primary),
+              child: CircularProgressIndicator(color: AppColors.primary),
+            ),
+          )
+        else if (estab.establishment == null)
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.greyLight),
+            ),
+            child: Center(
+              child: Column(
+                children: [
+                  const Icon(Icons.wifi_off, color: AppColors.greyLight, size: 36),
+                  const SizedBox(height: 8),
+                  const Text('Não foi possível carregar',
+                      style: TextStyle(color: AppColors.grey)),
+                  const SizedBox(height: 12),
+                  ElevatedButton.icon(
+                    onPressed: onRetry,
+                    icon: const Icon(Icons.refresh, size: 16, color: Colors.white),
+                    label: const Text('Tentar novamente', style: TextStyle(color: Colors.white, fontSize: 13)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary, elevation: 0,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                  ),
+                ],
+              ),
             ),
           )
         else if (services.isEmpty)

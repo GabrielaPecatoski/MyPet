@@ -1,8 +1,25 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../core/constants.dart';
+import 'api_service.dart';
 
 class AuthService {
+  static Future<Map<String, dynamic>> getMe({required String token}) =>
+      ApiService.get('/auth/me', token: token)
+          .then((v) => v as Map<String, dynamic>);
+
+  static Future<Map<String, dynamic>> updateMe({
+    required String token,
+    required String name,
+    required String phone,
+  }) =>
+      ApiService.patch('/auth/me', {'name': name, 'phone': phone}, token: token)
+          .then((v) => v as Map<String, dynamic>);
+
+  static Future<void> deleteMe({required String token}) =>
+      ApiService.delete('/auth/me', token: token);
+
+
   static Future<Map<String, dynamic>> login({
     required String email,
     required String password,
@@ -59,35 +76,5 @@ class AuthService {
 
     final message = data['message'];
     throw Exception(message is List ? message.first : message ?? 'Erro ao criar conta');
-  }
-
-  static Future<Map<String, dynamic>> updateProfile({
-    required String token,
-    required String name,
-    String? photoUrl,
-  }) async {
-    final body = <String, dynamic>{
-      'name': name,
-    };
-    if (photoUrl != null) body['photoUrl'] = photoUrl;
-    final response = await http
-        .patch(
-          Uri.parse('${ApiConstants.baseUrl}${ApiConstants.usersEndpoint}/profile'),
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer $token',
-          },
-          body: jsonEncode(body),
-        )
-        .timeout(const Duration(seconds: 10));
-
-    final data = jsonDecode(response.body) as Map<String, dynamic>;
-
-    if (response.statusCode == 200 || response.statusCode == 204) {
-      return data.isNotEmpty ? data : {};
-    }
-
-    final message = data['message'];
-    throw Exception(message is List ? message.first : message ?? 'Erro ao atualizar perfil');
   }
 }

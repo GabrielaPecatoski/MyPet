@@ -1,7 +1,7 @@
 services:
 
   postgres:
-    image: postgres:15
+    image: postgres:16
     container_name: mypet-postgres
     environment:
       POSTGRES_USER: postgres
@@ -14,18 +14,6 @@ services:
       - ./docker/init-dbs.sql:/docker-entrypoint-initdb.d/init-dbs.sql
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U postgres']
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  consul:
-    image: consul:1.15
-    container_name: mypet-consul
-    ports:
-      - '8500:8500'
-    command: agent -dev -ui -client=0.0.0.0
-    healthcheck:
-      test: ['CMD', 'consul', 'members']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -43,178 +31,209 @@ services:
       - rabbitmq_data:/var/lib/rabbitmq
     healthcheck:
       test: ['CMD', 'rabbitmq-diagnostics', 'ping']
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: 15s
+      timeout: 30s
+      retries: 10
+      start_period: 90s
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: mypet-nginx
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      # - ./docker/nginx/certs:/etc/nginx/certs:ro
+    depends_on:
+      - api-gateway
+    restart: unless-stopped
 
   api-gateway:
-    build: ./api-gateway
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: api-gateway
+        SERVICE_PORT: 3000
     container_name: mypet-gateway
-    ports:
-      - '3000:3000'
     environment:
       PORT: 3000
-      JWT_SECRET: mypet_super_secret_change_in_production
-      AUTH_SERVICE_URL: http://auth-service:3001
-      USER_PET_SERVICE_URL: http://user-pet-service:3002
-      ESTABLISHMENT_SERVICE_URL: http://establishment-service:3003
-      MARKETPLACE_SERVICE_URL: http://marketplace-service:3004
-      BOOKING_SERVICE_URL: http://booking-service:3005
-      NOTIFICATION_SERVICE_URL: http://notification-service:3006
-      REVIEW_SERVICE_URL: http://review-service:3007
+      JWT_SECRET: ${JWT_SECRET}
+      AUTH_SERVICE_URL: http://user-auth:3001
+      USER_PET_SERVICE_URL: http://user-pet:3002
+      ESTABLISHMENT_SERVICE_URL: http://establishment:3003
+      MARKETPLACE_SERVICE_URL: http://marketplace:3004
+      BOOKING_SERVICE_URL: http://booking:3005
+      NOTIFICATION_SERVICE_URL: http://notification:3006
+      REVIEW_SERVICE_URL: http://review:3007
+      FAQ_SERVICE_URL: http://faq:3008
       THROTTLE_TTL: 60000
       THROTTLE_LIMIT: 100
     depends_on:
-      consul:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     restart: unless-stopped
 
-  auth-service:
-    build: ./auth-service
+  user-auth:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: user-auth
+        SERVICE_PORT: 3001
     container_name: mypet-auth
-    ports:
-      - '3001:3001'
     environment:
       PORT: 3001
       DATABASE_URL: postgresql://postgres:root@postgres:5432/mypet_auth
-      JWT_SECRET: mypet_super_secret_change_in_production
-      CONSUL_HOST: consul
-      CONSUL_PORT: 8500
+      JWT_SECRET: ${JWT_SECRET}
+      RABBITMQ_URL: amqp://mypet:mypet123@rabbitmq:5672
     depends_on:
       postgres:
         condition: service_healthy
-      consul:
+      rabbitmq:
         condition: service_healthy
     restart: unless-stopped
 
-  user-pet-service:
-    build: ./user-pet-service
+  user-pet:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: user-pet
+        SERVICE_PORT: 3002
     container_name: mypet-user-pet
-    ports:
-      - '3002:3002'
     environment:
       PORT: 3002
       DATABASE_URL: postgresql://postgres:root@postgres:5432/mypet_users
-      JWT_SECRET: mypet_super_secret_change_in_production
-      CONSUL_HOST: consul
-      CONSUL_PORT: 8500
+      JWT_SECRET: ${JWT_SECRET}
+      RABBITMQ_URL: amqp://mypet:mypet123@rabbitmq:5672
     depends_on:
       postgres:
         condition: service_healthy
-      consul:
+      rabbitmq:
         condition: service_healthy
     restart: unless-stopped
 
-  establishment-service:
-    build: ./establishment-service
+  establishment:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: establishment
+        SERVICE_PORT: 3003
     container_name: mypet-establishment
-    ports:
-      - '3003:3003'
     environment:
       PORT: 3003
       DATABASE_URL: postgresql://postgres:root@postgres:5432/mypet_estab
-      JWT_SECRET: mypet_super_secret_change_in_production
-      CONSUL_HOST: consul
-      CONSUL_PORT: 8500
+      JWT_SECRET: ${JWT_SECRET}
+      RABBITMQ_URL: amqp://mypet:mypet123@rabbitmq:5672
     depends_on:
       postgres:
         condition: service_healthy
-      consul:
+      rabbitmq:
         condition: service_healthy
     restart: unless-stopped
 
-  marketplace-service:
-    build: ./marketplace-service
+  marketplace:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: marketplace
+        SERVICE_PORT: 3004
     container_name: mypet-marketplace
-    ports:
-      - '3004:3004'
     environment:
       PORT: 3004
       DATABASE_URL: postgresql://postgres:root@postgres:5432/mypet_market
-      CONSUL_HOST: consul
-      CONSUL_PORT: 8500
+      JWT_SECRET: ${JWT_SECRET}
+      RABBITMQ_URL: amqp://mypet:mypet123@rabbitmq:5672
     depends_on:
       postgres:
         condition: service_healthy
-      consul:
+      rabbitmq:
         condition: service_healthy
     restart: unless-stopped
 
-  booking-service:
-    build: ./booking-service
+  booking:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: booking
+        SERVICE_PORT: 3005
     container_name: mypet-booking
-    ports:
-      - '3005:3005'
     environment:
       PORT: 3005
       DATABASE_URL: postgresql://postgres:root@postgres:5432/mypet_booking
+      JWT_SECRET: ${JWT_SECRET}
       RABBITMQ_URL: amqp://mypet:mypet123@rabbitmq:5672
-      CONSUL_HOST: consul
-      CONSUL_PORT: 8500
     depends_on:
       postgres:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
-      consul:
-        condition: service_healthy
     restart: unless-stopped
 
-  notification-service:
-    build: ./notification-service
+  notification:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: notification
+        SERVICE_PORT: 3006
     container_name: mypet-notification
-    ports:
-      - '3006:3006'
     environment:
       PORT: 3006
       DATABASE_URL: postgresql://postgres:root@postgres:5432/mypet_notif
+      JWT_SECRET: ${JWT_SECRET}
       RABBITMQ_URL: amqp://mypet:mypet123@rabbitmq:5672
-      CONSUL_HOST: consul
-      CONSUL_PORT: 8500
     depends_on:
       postgres:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
-      consul:
-        condition: service_healthy
     restart: unless-stopped
 
-  review-service:
-    build: ./review-service
+  review:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: review
+        SERVICE_PORT: 3007
     container_name: mypet-review
-    ports:
-      - '3007:3007'
     environment:
       PORT: 3007
       DATABASE_URL: postgresql://postgres:root@postgres:5432/mypet_review
+      JWT_SECRET: ${JWT_SECRET}
       RABBITMQ_URL: amqp://mypet:mypet123@rabbitmq:5672
-      CONSUL_HOST: consul
-      CONSUL_PORT: 8500
     depends_on:
       postgres:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
-      consul:
-        condition: service_healthy
     restart: unless-stopped
 
-  faq-service:
-    build: ./faq-service
+  faq:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: faq
+        SERVICE_PORT: 3008
     container_name: mypet-faq
-    ports:
-      - '3008:3008'
     environment:
       PORT: 3008
       DATABASE_URL: postgresql://postgres:root@postgres:5432/mypet_faq
-      ADMIN_SECRET: mypet_admin_secret
-      CONSUL_HOST: consul
-      CONSUL_PORT: 8500
+      JWT_SECRET: ${JWT_SECRET}
+      RABBITMQ_URL: amqp://mypet:mypet123@rabbitmq:5672
     depends_on:
       postgres:
         condition: service_healthy
-      consul:
+      rabbitmq:
         condition: service_healthy
     restart: unless-stopped
 

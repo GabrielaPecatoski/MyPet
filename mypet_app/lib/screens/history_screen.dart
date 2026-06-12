@@ -17,7 +17,7 @@ class HistoryScreen extends StatefulWidget {
 
 class _HistoryScreenState extends State<HistoryScreen> {
   List<AppointmentModel> _history = [];
-  final Set<String> _reviewed = {};
+  final Set<String> _reviewedBookingIds = {};
   bool _loading = false;
 
   @override
@@ -63,6 +63,15 @@ class _HistoryScreenState extends State<HistoryScreen> {
         _history = all2.where((b) => b.status == 'CONCLUIDO').toList()
           ..sort((a, b) => b.date.compareTo(a.date));
       });
+
+      try {
+        final myReviews = await ReviewService.getMyReviews(token: auth.token!);
+        setState(() {
+          _reviewedBookingIds.addAll(
+            myReviews.where((r) => r.bookingId.isNotEmpty).map((r) => r.bookingId),
+          );
+        });
+      } catch (_) {}
     } catch (_) {
     } finally {
       setState(() => _loading = false);
@@ -129,9 +138,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       itemCount: _history.length,
                       itemBuilder: (ctx, i) => _HistoryCard(
                         appointment: _history[i],
-                        reviewed: _reviewed.contains(_history[i].id),
+                        reviewed: _reviewedBookingIds.contains(_history[i].id),
                         onReviewed: () =>
-                            setState(() => _reviewed.add(_history[i].id)),
+                            setState(() => _reviewedBookingIds.add(_history[i].id)),
                       ),
                     ),
             ),
@@ -393,8 +402,6 @@ class _HistoryCard extends StatelessWidget {
                         final auth = context.read<AuthProvider>();
                         try {
                           await ReviewService.submitReview(
-                            userId: auth.user?.id ?? '',
-                            userName: auth.user?.name ?? 'Usuário',
                             establishmentId: appointment.establishmentId,
                             bookingId: appointment.id,
                             rating: selectedRating,

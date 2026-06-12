@@ -1,5 +1,5 @@
-import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -15,6 +15,7 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _pickImage() async {
+    if (kIsWeb) return;
     final picker = ImagePicker();
     final picked =
         await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
@@ -26,9 +27,59 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  Future<void> _deleteAccount() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          'Excluir conta',
+          style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.dark),
+        ),
+        content: const Text(
+          'Tem certeza? Esta ação é irreversível e todos os seus dados serão removidos.',
+          style: TextStyle(color: AppColors.grey),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar',
+                style: TextStyle(color: AppColors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.danger,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
+            ),
+            child: const Text('Excluir',
+                style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final ok = await context.read<AuthProvider>().deleteAccount();
+    if (!mounted) return;
+    if (ok) {
+      Navigator.pushReplacementNamed(context, '/login');
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Erro ao excluir conta. Tente novamente.'),
+          backgroundColor: AppColors.danger,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthProvider>().user;
+    final photo = user?.photoPath;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -53,7 +104,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     children: [
                       GestureDetector(
                         onTap: _pickImage,
-                        child: _buildAvatar(),
+                        child: CircleAvatar(
+                          radius: 34,
+                          backgroundColor: AppColors.primaryLight,
+                          backgroundImage: (!kIsWeb && photo != null)
+                              ? FileImage(File(photo))
+                              : null,
+                          child: (kIsWeb || photo == null)
+                              ? const Icon(Icons.person,
+                                  size: 34, color: AppColors.primary)
+                              : null,
+                        ),
                       ),
                       Positioned(
                         bottom: 0,
@@ -131,6 +192,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   _div(),
                   _item(Icons.help_outline_rounded, 'Ajuda',
                       () => Navigator.pushNamed(context, '/help')),
+                  _div(),
+                  _itemDanger(Icons.delete_outline, 'Excluir Conta',
+                      _deleteAccount),
                 ],
               ),
             ),
@@ -166,40 +230,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildAvatar() {
-    final user = context.read<AuthProvider>().user;
-    final photoUrl = user?.photoUrl;
-    final photoPath = user?.photoPath;
-
-    if (photoPath != null && photoPath.isNotEmpty) {
-      return CircleAvatar(
-        radius: 34,
-        backgroundColor: AppColors.primaryLight,
-        backgroundImage: FileImage(File(photoPath)),
-      );
-    }
-    if (photoUrl != null && photoUrl.isNotEmpty) {
-      if (photoUrl.startsWith('data:image/')) {
-        final bytes = base64Decode(photoUrl.split(',').last);
-        return CircleAvatar(
-          radius: 34,
-          backgroundColor: AppColors.primaryLight,
-          backgroundImage: MemoryImage(bytes),
-        );
-      }
-      return CircleAvatar(
-        radius: 34,
-        backgroundColor: AppColors.primaryLight,
-        backgroundImage: NetworkImage(photoUrl),
-      );
-    }
-    return CircleAvatar(
-      radius: 34,
-      backgroundColor: AppColors.primaryLight,
-      child: const Icon(Icons.person, size: 34, color: AppColors.primary),
-    );
-  }
-
   Widget _item(IconData icon, String label, VoidCallback onTap) => ListTile(
         leading: Icon(icon, color: AppColors.dark, size: 22),
         title: Text(label,
@@ -208,6 +238,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 fontWeight: FontWeight.w500,
                 color: AppColors.dark)),
         trailing: const Icon(Icons.chevron_right, color: AppColors.grey, size: 20),
+        onTap: onTap,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+      );
+
+  Widget _itemDanger(IconData icon, String label, VoidCallback onTap) =>
+      ListTile(
+        leading: Icon(icon, color: AppColors.danger, size: 22),
+        title: Text(label,
+            style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: AppColors.danger)),
+        trailing:
+            const Icon(Icons.chevron_right, color: AppColors.danger, size: 20),
         onTap: onTap,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
       );

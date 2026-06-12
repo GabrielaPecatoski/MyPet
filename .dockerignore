@@ -1,0 +1,9 @@
+node_modules/
+mypet_app/
+.git/
+melhorar/
+*.log
+.env
+dist/
+services/*/dist/
+services/*/node_modules/

@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../core/colors.dart';
+import '../models/estab_stats.dart';
+import '../providers/auth_provider.dart';
+import '../providers/establishment_provider.dart';
+import '../services/stats_service.dart';
 import '../widgets/mypet_app_bar.dart';
 
 class EstabEstatisticasScreen extends StatefulWidget {
@@ -10,30 +15,66 @@ class EstabEstatisticasScreen extends StatefulWidget {
 }
 
 class _EstabEstatisticasScreenState extends State<EstabEstatisticasScreen> {
-  final double _totalReceita = 8_450.00;
-  final double _receitaMes = 2_130.00;
-  final double _ticketMedio = 87.50;
-  final int _agendamentosTotal = 96;
-  final int _agendamentosMes = 24;
-  final double _avaliacaoMedia = 4.7;
-  final int _totalAvaliacoes = 38;
+  EstabStatsModel? _stats;
+  bool _loading = false;
+  String? _error;
 
-  final List<_MonthBar> _ultimos6Meses = [
-    _MonthBar('Nov', 980),
-    _MonthBar('Dez', 1240),
-    _MonthBar('Jan', 870),
-    _MonthBar('Fev', 1560),
-    _MonthBar('Mar', 1800),
-    _MonthBar('Abr', 2130),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
 
-  final List<_ServiceStat> _servicos = [
-    _ServiceStat('Banho e Tosa', 42, AppColors.primary),
-    _ServiceStat('Consulta Vet.', 18, AppColors.success),
-    _ServiceStat('Hospedagem', 14, const Color(0xFF6366F1)),
-    _ServiceStat('Adestramento', 12, AppColors.warning),
-    _ServiceStat('Outros', 10, AppColors.grey),
-  ];
+  Future<void> _load() async {
+    if (_loading || _stats != null) return;
+    if (!mounted) return;
+
+    final auth = context.read<AuthProvider>();
+    final estabProvider = context.read<EstablishmentProvider>();
+    final token = auth.token;
+    final estabId = estabProvider.establishmentId;
+
+    if (token == null || estabId == null) return;
+
+    setState(() { _loading = true; _error = null; });
+
+    try {
+      final stats = await StatsService.fetchEstabStats(
+        estabId: estabId,
+        token: token,
+      );
+      if (mounted) setState(() { _stats = stats; _loading = false; });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = 'Não foi possível carregar as estatísticas';
+          _loading = false;
+        });
+      }
+    }
+  }
+
+  List<_MonthBar> get _ultimos6Meses {
+    if (_stats == null) return [];
+    return _stats!.last6Months
+        .map((m) => _MonthBar(m.month, m.value))
+        .toList();
+  }
+
+  List<_ServiceStat> get _servicos {
+    if (_stats == null) return [];
+    final colors = [
+      AppColors.primary,
+      AppColors.success,
+      const Color(0xFF6366F1),
+      AppColors.warning,
+      AppColors.grey,
+    ];
+    return _stats!.topServices.asMap().entries.map((e) {
+      final color = colors[e.key < colors.length ? e.key : colors.length - 1];
+      return _ServiceStat(e.value.name, e.value.count, color);
+    }).toList();
+  }
 
   double get _maxBarValue =>
       _ultimos6Meses.fold(0, (m, b) => b.value > m ? b.value : m);
@@ -43,143 +84,194 @@ class _EstabEstatisticasScreenState extends State<EstabEstatisticasScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: const MypetAppBar(showBack: false),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 8),
-            const Text('Estatísticas',
-                style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.dark)),
-            const SizedBox(height: 4),
-            const Text('Visão geral do seu negócio',
-                style: TextStyle(fontSize: 13, color: AppColors.grey)),
-            const SizedBox(height: 20),
-
-            Row(
-              children: [
-                Expanded(
-                  child: _KpiCard(
-                    label: 'Faturamento total',
-                    value: 'R\$ ${_fmt(_totalReceita)}',
-                    icon: Icons.attach_money,
-                    color: AppColors.primary,
-                    sub: 'desde o início',
+      body: Consumer<EstablishmentProvider>(
+        builder: (context, estabProv, _) {
+          if (_loading || estabProv.isLoading) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (_stats == null && estabProv.establishmentId != null && _error == null) {
+            if (!_loading) {
+              WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+            }
+            return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+          }
+          if (_error != null) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(_error!,
+                      style: const TextStyle(color: AppColors.grey)),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: _load,
+                    child: const Text('Tentar novamente'),
                   ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _KpiCard(
-                    label: 'Este mês',
-                    value: 'R\$ ${_fmt(_receitaMes)}',
-                    icon: Icons.trending_up,
-                    color: AppColors.success,
-                    sub: '+12% vs mês anterior',
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: _KpiCard(
-                    label: 'Ticket médio',
-                    value: 'R\$ ${_ticketMedio.toStringAsFixed(2)}',
-                    icon: Icons.receipt_long_outlined,
-                    color: const Color(0xFF6366F1),
-                    sub: 'por atendimento',
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _KpiCard(
-                    label: 'Agendamentos',
-                    value: '$_agendamentosTotal',
-                    icon: Icons.calendar_today_outlined,
-                    color: AppColors.warning,
-                    sub: '$_agendamentosMes este mês',
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: const [
-                  BoxShadow(
-                      color: Colors.black12,
-                      blurRadius: 6,
-                      offset: Offset(0, 2)),
                 ],
               ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFF3CD),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.star,
-                        color: Color(0xFFFFC107), size: 26),
+            );
+          }
+          if (_stats == null) {
+            return const Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
+            );
+          }
+          return RefreshIndicator(
+            onRefresh: _load,
+            child: _buildContent(),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildContent() {
+    final stats = _stats!;
+    final estab = context.read<EstablishmentProvider>().establishment;
+    final avgRating = estab?.rating ?? 0.0;
+    final totalReviews = estab?.reviewCount ?? 0;
+    return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 8),
+          const Text('Estatísticas',
+              style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.dark)),
+          const SizedBox(height: 4),
+          const Text('Visão geral do seu negócio',
+              style: TextStyle(fontSize: 13, color: AppColors.grey)),
+          const SizedBox(height: 20),
+
+          Row(
+            children: [
+              Expanded(
+                child: _KpiCard(
+                  label: 'Faturamento total',
+                  value: 'R\$ ${_fmt(stats.totalRevenue)}',
+                  icon: Icons.attach_money,
+                  color: AppColors.primary,
+                  sub: 'desde o início',
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _KpiCard(
+                  label: 'Este mês',
+                  value: 'R\$ ${_fmt(stats.monthRevenue)}',
+                  icon: Icons.trending_up,
+                  color: AppColors.success,
+                  sub: 'concluídos no mês',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _KpiCard(
+                  label: 'Ticket médio',
+                  value: 'R\$ ${stats.avgTicket.toStringAsFixed(2)}',
+                  icon: Icons.receipt_long_outlined,
+                  color: const Color(0xFF6366F1),
+                  sub: 'por atendimento',
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _KpiCard(
+                  label: 'Agendamentos',
+                  value: '${stats.totalBookings}',
+                  icon: Icons.calendar_today_outlined,
+                  color: AppColors.warning,
+                  sub: '${stats.monthBookings} este mês',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: const [
+                BoxShadow(
+                    color: Colors.black12,
+                    blurRadius: 6,
+                    offset: Offset(0, 2)),
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF3CD),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('Avaliação média',
-                            style: TextStyle(
-                                fontSize: 13, color: AppColors.grey)),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              _avaliacaoMedia.toStringAsFixed(1),
-                              style: const TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.dark),
-                            ),
-                            const SizedBox(width: 6),
-                            Padding(
+                  child: const Icon(Icons.star,
+                      color: Color(0xFFFFC107), size: 26),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Avaliação média',
+                          style: TextStyle(
+                              fontSize: 13, color: AppColors.grey)),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            avgRating.toStringAsFixed(1),
+                            style: const TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.dark),
+                          ),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Padding(
                               padding: const EdgeInsets.only(bottom: 3),
                               child: Text(
-                                '/ 5.0  •  $_totalAvaliacoes avaliações',
+                                '/ 5.0  •  $totalReviews avaliações',
                                 style: const TextStyle(
                                     fontSize: 12, color: AppColors.grey),
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                          ],
-                        ),
-                      ],
-                    ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                  Row(
-                    children: List.generate(5, (i) {
-                      final full = i < _avaliacaoMedia.floor();
-                      return Icon(
-                        full ? Icons.star : Icons.star_border,
-                        color: const Color(0xFFFFC107),
-                        size: 16,
-                      );
-                    }),
-                  ),
-                ],
-              ),
+                ),
+                Row(
+                  children: List.generate(5, (i) {
+                    final full = i < avgRating.floor();
+                    return Icon(
+                      full ? Icons.star : Icons.star_border,
+                      color: const Color(0xFFFFC107),
+                      size: 16,
+                    );
+                  }),
+                ),
+              ],
             ),
+          ),
 
-            const SizedBox(height: 20),
+          const SizedBox(height: 20),
 
+          if (_ultimos6Meses.isNotEmpty)
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -206,7 +298,8 @@ class _EstabEstatisticasScreenState extends State<EstabEstatisticasScreen> {
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: _ultimos6Meses.map((b) {
-                        final ratio = b.value / _maxBarValue;
+                        final max = _maxBarValue > 0 ? _maxBarValue : 1;
+                        final ratio = b.value / max;
                         final isLast = b == _ultimos6Meses.last;
                         return Expanded(
                           child: Padding(
@@ -215,7 +308,7 @@ class _EstabEstatisticasScreenState extends State<EstabEstatisticasScreen> {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.end,
                               children: [
-                                if (isLast)
+                                if (isLast && b.value > 0)
                                   Padding(
                                     padding: const EdgeInsets.only(bottom: 4),
                                     child: Text(
@@ -264,8 +357,9 @@ class _EstabEstatisticasScreenState extends State<EstabEstatisticasScreen> {
               ),
             ),
 
-            const SizedBox(height: 20),
+          if (_ultimos6Meses.isNotEmpty) const SizedBox(height: 20),
 
+          if (_servicos.isNotEmpty)
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -288,8 +382,9 @@ class _EstabEstatisticasScreenState extends State<EstabEstatisticasScreen> {
                           color: AppColors.dark)),
                   const SizedBox(height: 16),
                   ..._servicos.map((s) {
-                    final pct = s.count /
+                    final total =
                         _servicos.fold(0, (sum, x) => sum + x.count);
+                    final pct = total > 0 ? s.count / total : 0.0;
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 12),
                       child: Column(
@@ -323,7 +418,7 @@ class _EstabEstatisticasScreenState extends State<EstabEstatisticasScreen> {
                           ClipRRect(
                             borderRadius: BorderRadius.circular(4),
                             child: LinearProgressIndicator(
-                              value: pct,
+                              value: pct.toDouble(),
                               backgroundColor: AppColors.greyLight,
                               valueColor:
                                   AlwaysStoppedAnimation(s.color),
@@ -338,8 +433,9 @@ class _EstabEstatisticasScreenState extends State<EstabEstatisticasScreen> {
               ),
             ),
 
-            const SizedBox(height: 20),
+          if (_servicos.isNotEmpty) const SizedBox(height: 20),
 
+          if (stats.monthRevenue > 0)
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -375,9 +471,9 @@ class _EstabEstatisticasScreenState extends State<EstabEstatisticasScreen> {
                                 fontSize: 12,
                                 color: Colors.white70)),
                         Text(
-                          'R\$ ${_fmt(_receitaMes * 1.12)}',
+                          'R\$ ${_fmt(stats.monthRevenue * 1.12)}',
                           style: const TextStyle(
-                              fontSize: 22,
+                              fontSize: 18,
                               fontWeight: FontWeight.bold,
                               color: Colors.white),
                         ),
@@ -392,8 +488,19 @@ class _EstabEstatisticasScreenState extends State<EstabEstatisticasScreen> {
                 ],
               ),
             ),
-          ],
-        ),
+
+          if (stats.totalBookings == 0)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                child: Text(
+                  'Nenhum agendamento encontrado ainda.',
+                  style:
+                      const TextStyle(fontSize: 13, color: AppColors.grey),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -448,16 +555,22 @@ class _KpiCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                   fontWeight: FontWeight.bold, fontSize: 17, color: color)),
           const SizedBox(height: 2),
           Text(label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
                   color: AppColors.dark)),
           const SizedBox(height: 1),
           Text(sub,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style:
                   const TextStyle(fontSize: 10, color: AppColors.grey)),
         ],

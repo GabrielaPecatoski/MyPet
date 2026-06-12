@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/colors.dart';
-import '../core/constants.dart';
+import '../models/product.dart';
 import '../providers/cart_provider.dart';
-import '../services/api_service.dart';
+import '../providers/loja_provider.dart';
 import '../widgets/mypet_app_bar.dart';
+import 'product_detail_screen.dart';
 
 class ProdutosScreen extends StatefulWidget {
   const ProdutosScreen({super.key});
@@ -14,14 +15,14 @@ class ProdutosScreen extends StatefulWidget {
 }
 
 class _ProdutosScreenState extends State<ProdutosScreen> {
-  List<dynamic> _products = [];
-  bool _loading = true;
   final _searchCtrl = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _loadProducts();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<LojaProvider>().loadProducts();
+    });
   }
 
   @override
@@ -30,36 +31,9 @@ class _ProdutosScreenState extends State<ProdutosScreen> {
     super.dispose();
   }
 
-  Future<void> _loadProducts({String? search}) async {
-    setState(() => _loading = true);
-    try {
-      final path = search != null && search.isNotEmpty
-          ? '${ApiConstants.productsEndpoint}?search=$search'
-          : ApiConstants.productsEndpoint;
-      final data = await ApiService.get(path);
-      setState(() {
-        _products = data as List<dynamic>;
-        _loading = false;
-      });
-    } catch (_) {
-      setState(() {
-        _products = [
-          {'id': 'prod-001', 'name': 'Areia Sanitária Gatos', 'brand': 'PetLove', 'price': 32.90, 'unit': '4kg'},
-          {'id': 'prod-002', 'name': 'Areia Sanitária Gatos', 'brand': 'PetLove', 'price': 28.90, 'unit': '3kg'},
-          {'id': 'prod-003', 'name': 'Ração Premium Cães', 'brand': 'Royal Canin', 'price': 89.90, 'unit': '3kg'},
-          {'id': 'prod-004', 'name': 'Shampoo Pet', 'brand': 'PetShop Brasil', 'price': 24.90, 'unit': '500ml'},
-          {'id': 'prod-005', 'name': 'Coleira Anti-Pulga', 'brand': 'Seresto', 'price': 45.00, 'unit': 'Un'},
-          {'id': 'prod-006', 'name': 'Brinquedo Corda', 'brand': 'PetFun', 'price': 19.90, 'unit': 'Un'},
-          {'id': 'prod-007', 'name': 'Ração Gatos Sênior', 'brand': 'Purina', 'price': 75.00, 'unit': '2kg'},
-          {'id': 'prod-008', 'name': 'Comedouro Inox', 'brand': 'PetLife', 'price': 35.00, 'unit': 'Un'},
-        ];
-        _loading = false;
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
+    final loja = context.watch<LojaProvider>();
     final cart = context.watch<CartProvider>();
 
     return Scaffold(
@@ -122,9 +96,9 @@ class _ProdutosScreenState extends State<ProdutosScreen> {
                         hintStyle: TextStyle(color: AppColors.grey),
                         border: InputBorder.none,
                       ),
-                      onSubmitted: (v) => _loadProducts(search: v),
+                      onSubmitted: (v) => context.read<LojaProvider>().loadProducts(search: v),
                       onChanged: (v) {
-                        if (v.isEmpty) _loadProducts();
+                        if (v.isEmpty) context.read<LojaProvider>().loadProducts();
                       },
                     ),
                   ),
@@ -134,7 +108,7 @@ class _ProdutosScreenState extends State<ProdutosScreen> {
                           size: 18, color: AppColors.grey),
                       onPressed: () {
                         _searchCtrl.clear();
-                        _loadProducts();
+                        context.read<LojaProvider>().loadProducts();
                       },
                     ),
                 ],
@@ -142,11 +116,11 @@ class _ProdutosScreenState extends State<ProdutosScreen> {
             ),
           ),
           Expanded(
-            child: _loading
+            child: loja.isLoadingProducts
                 ? const Center(
                     child: CircularProgressIndicator(
                         color: AppColors.primary))
-                : _products.isEmpty
+                : loja.products.isEmpty
                     ? const Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -170,28 +144,31 @@ class _ProdutosScreenState extends State<ProdutosScreen> {
                           mainAxisSpacing: 12,
                           childAspectRatio: 0.78,
                         ),
-                        itemCount: _products.length,
+                        itemCount: loja.products.length,
                         itemBuilder: (ctx, i) {
-                          final p = _products[i];
+                          final p = loja.products[i] as Map<String, dynamic>;
                           return _ProductCard(
                             product: p,
                             cartQty: cart.quantityOf(p['id'] as String),
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const ProductDetailScreen(),
+                                settings: RouteSettings(
+                                  arguments: ProductModel.fromJson(p),
+                                ),
+                              ),
+                            ),
                             onAdd: () {
                               context
                                   .read<CartProvider>()
-                                  .add(p as Map<String, dynamic>);
-                              ScaffoldMessenger.of(context)
-                                  .showSnackBar(SnackBar(
-                                content:
-                                    Text('${p['name']} adicionado!'),
+                                  .add(p);
+                              final messenger = ScaffoldMessenger.of(context);
+                              messenger.clearSnackBars();
+                              messenger.showSnackBar(SnackBar(
+                                content: Text('${p['name']} adicionado!'),
                                 backgroundColor: AppColors.success,
-                                duration: const Duration(seconds: 1),
-                                action: SnackBarAction(
-                                  label: 'Carrinho',
-                                  textColor: Colors.white,
-                                  onPressed: () => Navigator.pushNamed(
-                                      context, '/cart'),
-                                ),
+                                duration: const Duration(milliseconds: 800),
                               ));
                             },
                           );
@@ -208,15 +185,19 @@ class _ProductCard extends StatelessWidget {
   final dynamic product;
   final int cartQty;
   final VoidCallback onAdd;
+  final VoidCallback onTap;
 
   const _ProductCard(
       {required this.product,
       required this.cartQty,
-      required this.onAdd});
+      required this.onAdd,
+      required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -305,6 +286,7 @@ class _ProductCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }

@@ -2,6 +2,38 @@ import '../models/faq.dart';
 import 'api_service.dart';
 
 class FaqService {
+  static const _adminHeaders = {'x-admin-secret': 'mypet_admin_secret'};
+
+  static Future<List<Map<String, dynamic>>> adminGetAll() async {
+    final data = await ApiService.get('/faq/admin/all', headers: _adminHeaders);
+    return (data as List).cast<Map<String, dynamic>>();
+  }
+
+  static Future<List<Map<String, dynamic>>> adminGetQuestions() async {
+    final data = await ApiService.get('/faq/questions/admin/all', headers: _adminHeaders);
+    return (data as List).cast<Map<String, dynamic>>();
+  }
+
+  static Future<void> adminAnswerQuestion(String id, String answer) =>
+      ApiService.put('/faq/questions/admin/$id/answer', {'answer': answer},
+          headers: _adminHeaders);
+
+  static Future<void> adminCloseQuestion(String id) =>
+      ApiService.put('/faq/questions/admin/$id/close', {}, headers: _adminHeaders);
+
+  static Future<void> adminCreateFaq(
+          String question, String answer, String category) =>
+      ApiService.post('/faq/admin',
+          {'question': question, 'answer': answer, 'category': category},
+          headers: _adminHeaders);
+
+  static Future<void> adminUpdateFaq(String id, Map<String, dynamic> data) =>
+      ApiService.put('/faq/admin/$id', data, headers: _adminHeaders);
+
+  static Future<void> adminDeleteFaq(String id) =>
+      ApiService.delete('/faq/admin/$id', headers: _adminHeaders);
+
+
   static final List<FaqItem> _fallback = [
     const FaqItem(id: 'l1', category: 'Agendamento', order: 1, active: true,
       question: 'Como faço para agendar um serviço?',
@@ -92,21 +124,13 @@ class FaqService {
   }
 
   static Future<UserQuestion?> submitQuestion({
-    required String userId,
-    required String userName,
-    required String userRole,
     required String question,
     String? token,
   }) async {
     try {
       final data = await ApiService.post(
         '/faq/questions',
-        {
-          'userId': userId,
-          'userName': userName,
-          'userRole': userRole,
-          'question': question,
-        },
+        {'question': question},
         token: token,
       );
       return UserQuestion.fromJson(data as Map<String, dynamic>);

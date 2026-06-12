@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "../../dist",
+    "rootDir": "../..",
+    "paths": {
+      "@shared/*": ["../../shared/src/*"],
+      "@auth/*": ["./src/modules/auth/*"]
+    }
+  },
+  "include": ["src/**/*.ts", "../../shared/src/**/*.ts"]
+}

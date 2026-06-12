@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/colors.dart';
@@ -9,6 +10,7 @@ import '../providers/auth_provider.dart';
 import '../providers/booking_provider.dart';
 import '../services/api_service.dart';
 import '../services/availability_service.dart';
+import '../services/establishment_service.dart';
 import '../widgets/mypet_app_bar.dart';
 
 class ScheduleScreen extends StatefulWidget {
@@ -20,13 +22,16 @@ class ScheduleScreen extends StatefulWidget {
 
 class _ScheduleScreenState extends State<ScheduleScreen> {
   PetModel? _selectedPet;
-  ServiceModel? _selectedService;
+  List<ServiceModel> _selectedServices = [];
   DateTime? _selectedDate;
   String? _selectedTime;
   List<PetModel> _pets = [];
   bool _loadingPets = false;
+  List<ServiceModel> _services = [];
+  bool _loadingServices = false;
   List<TimeSlotModel> _slots = [];
   bool _loadingSlots = false;
+  bool _servicesLoaded = false;
 
   static const _weekdays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
   static const _months = [
@@ -38,6 +43,28 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadPets());
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_servicesLoaded) {
+      _servicesLoaded = true;
+      final establishment =
+          ModalRoute.of(context)?.settings.arguments as EstablishmentModel?;
+      if (establishment != null) _loadServices(establishment.id);
+    }
+  }
+
+  Future<void> _loadServices(String estabId) async {
+    setState(() => _loadingServices = true);
+    try {
+      final svcs = await EstablishmentService.fetchServices(estabId);
+      if (mounted) setState(() => _services = svcs);
+    } catch (_) {
+    } finally {
+      if (mounted) setState(() => _loadingServices = false);
+    }
   }
 
   Future<void> _loadPets() async {
@@ -74,8 +101,17 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         estabId: establishment.id,
         date: dateStr,
       );
-    } catch (_) {
+    } catch (e) {
       _slots = [];
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erro ao buscar horários: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 6),
+          ),
+        );
+      }
     } finally {
       setState(() => _loadingSlots = false);
     }
@@ -93,12 +129,12 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
   Future<void> _confirmar(EstablishmentModel? establishment) async {
     if (_selectedPet == null ||
-        _selectedService == null ||
+        _selectedServices.isEmpty ||
         _selectedDate == null ||
         _selectedTime == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Selecione o pet, serviço, data e horário'),
+          content: Text('Selecione o pet, pelo menos um serviço, data e horário'),
           backgroundColor: AppColors.warning,
           behavior: SnackBarBehavior.floating,
         ),
@@ -118,48 +154,36 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       int.parse(timeParts[1]),
     );
 
+    final totalPrice = _selectedServices.fold<double>(0, (s, svc) => s + svc.price);
+    final serviceNameDisplay = _selectedServices.map((s) => s.name).join(', ');
+
     final booking = await context.read<BookingProvider>().createBooking(
           token: auth.token!,
-          userId: auth.user!.id,
           userName: auth.user!.name,
           petId: _selectedPet!.id,
           petName: _selectedPet!.name,
-          serviceName: _selectedService!.name,
+          serviceName: serviceNameDisplay,
           establishmentId: establishment?.id ?? '',
           establishmentName: establishment?.name ?? '',
           scheduledAt: scheduledAt,
-          price: _selectedService!.price,
+          price: totalPrice,
+          services: _selectedServices,
         );
 
     if (!mounted) return;
 
     if (booking != null) {
-      if (establishment != null) {
-        final dateStr =
-            '${_selectedDate!.year}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}';
-        try {
-          await AvailabilityService.blockSlot(
-            token: auth.token!,
-            estabId: establishment.id,
-            date: dateStr,
-            time: _selectedTime!,
-            reason: 'Agendado',
-          );
-        } catch (_) {
-        }
-      }
-
       showDialog(
         context: context,
+        barrierDismissible: false,
         builder: (ctx) => AlertDialog(
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: const Row(
             children: [
-              Icon(Icons.check_circle, color: AppColors.success),
+              Icon(Icons.payment, color: AppColors.primary),
               SizedBox(width: 8),
-              Text('Solicitado!',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
+              Text('Quase lá!', style: TextStyle(fontWeight: FontWeight.bold)),
             ],
           ),
           content: Column(
@@ -167,7 +191,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _confirmRow('Pet:', _selectedPet!.name),
-              _confirmRow('Serviço:', _selectedService!.name),
+              _confirmRow('Serviço(s):', _selectedServices.map((s) => s.name).join(', ')),
               _confirmRow(
                 'Data:',
                 '${_weekdays[_selectedDate!.weekday % 7]}, ${_selectedDate!.day} ${_months[_selectedDate!.month - 1]}',
@@ -175,10 +199,10 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               _confirmRow('Horário:', _selectedTime!),
               _confirmRow(
                   'Valor:',
-                  'R\$ ${_selectedService!.price.toStringAsFixed(2)}'),
+                  'R\$ ${_selectedServices.fold<double>(0, (s, svc) => s + svc.price).toStringAsFixed(2)}'),
               const SizedBox(height: 8),
               const Text(
-                'Aguarde a confirmação do estabelecimento.',
+                'Realize o pagamento para confirmar o agendamento.',
                 style: TextStyle(fontSize: 12, color: AppColors.grey),
               ),
             ],
@@ -189,17 +213,33 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               child: ElevatedButton(
                 onPressed: () {
                   Navigator.pop(ctx);
-                  Navigator.pushNamedAndRemoveUntil(
-                      context, '/home', (r) => false,
-                      arguments: 1);
+                  Navigator.pushNamed(
+                    context,
+                    '/pagamento-agendamento',
+                    arguments: booking,
+                  );
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10)),
                 ),
-                child: const Text('Ver Agenda',
+                child: const Text('Pagar Agora',
                     style: TextStyle(color: Colors.white)),
+              ),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  Navigator.pushNamedAndRemoveUntil(
+                      context, '/home', (r) => false,
+                      arguments: 1);
+                },
+                child: const Text('Pagar depois',
+                    style: TextStyle(color: AppColors.grey)),
               ),
             ),
           ],
@@ -308,14 +348,30 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
                 const SizedBox(height: 24),
 
-                _sectionTitle('Selecione o serviço'),
+                _sectionTitle('Selecione os serviços'),
                 const SizedBox(height: 10),
-                if (establishment != null && establishment.services.isNotEmpty)
-                  ...establishment.services.map((s) => _ServiceSelectCard(
-                        service: s,
-                        selected: _selectedService?.id == s.id,
-                        onTap: () => setState(() => _selectedService = s),
-                      ))
+                if (_loadingServices)
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(16),
+                      child: CircularProgressIndicator(color: AppColors.primary),
+                    ),
+                  )
+                else if (_services.isNotEmpty)
+                  ..._services.map((s) {
+                    final sel = _selectedServices.any((x) => x.id == s.id);
+                    return _ServiceSelectCard(
+                      service: s,
+                      selected: sel,
+                      onTap: () => setState(() {
+                        if (sel) {
+                          _selectedServices.removeWhere((x) => x.id == s.id);
+                        } else {
+                          _selectedServices.add(s);
+                        }
+                      }),
+                    );
+                  })
                 else
                   Container(
                     padding: const EdgeInsets.all(16),
@@ -327,6 +383,30 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                     child: const Text(
                       'Nenhum serviço disponível.',
                       style: TextStyle(color: AppColors.grey),
+                    ),
+                  ),
+                if (_selectedServices.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryLight,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Total: ${_selectedServices.length} serviço(s)',
+                            style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600),
+                          ),
+                          Text(
+                            'R\$ ${_selectedServices.fold<double>(0, (s, svc) => s + svc.price).toStringAsFixed(2)}',
+                            style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 15),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
 
@@ -672,6 +752,22 @@ class _PetSelectCard extends StatelessWidget {
   const _PetSelectCard(
       {required this.pet, required this.selected, required this.onTap});
 
+  Widget _buildPetAvatar(PetModel pet, double radius) {
+    final url = pet.imageUrl;
+    if (url != null && url.isNotEmpty) {
+      if (url.startsWith('data:image/')) {
+        final bytes = base64Decode(url.split(',').last);
+        return CircleAvatar(radius: radius, backgroundImage: MemoryImage(bytes));
+      }
+      return CircleAvatar(radius: radius, backgroundImage: NetworkImage(url));
+    }
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: AppColors.primaryLight,
+      child: Text(pet.typeIcon, style: TextStyle(fontSize: radius * 0.9)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -702,11 +798,7 @@ class _PetSelectCard extends StatelessWidget {
         ),
         child: Row(
           children: [
-            CircleAvatar(
-              radius: 22,
-              backgroundColor: AppColors.primaryLight,
-              child: Text(pet.typeIcon, style: const TextStyle(fontSize: 20)),
-            ),
+            _buildPetAvatar(pet, 22),
             const SizedBox(width: 12),
             Expanded(
               child: Column(

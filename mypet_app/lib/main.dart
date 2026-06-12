@@ -5,6 +5,19 @@ import 'providers/auth_provider.dart';
 import 'providers/booking_provider.dart';
 import 'providers/cart_provider.dart';
 import 'providers/establishment_provider.dart';
+import 'providers/history_provider.dart';
+import 'providers/home_provider.dart';
+import 'providers/loja_provider.dart';
+import 'providers/notifications_provider.dart';
+import 'providers/pagamento_provider.dart';
+import 'providers/pet_provider.dart';
+import 'repositories/catalog_repository.dart';
+import 'repositories/establishment_list_repository.dart';
+import 'repositories/history_repository.dart';
+import 'repositories/notification_repository.dart';
+import 'repositories/orders_repository.dart';
+import 'repositories/payment_repository.dart';
+import 'repositories/pet_repository.dart';
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
@@ -20,18 +33,31 @@ import 'screens/help_screen.dart';
 import 'screens/estab_help_screen.dart';
 import 'screens/carrinho_screen.dart';
 import 'screens/pagamento_screen.dart';
+import 'screens/pagamento_agendamento_screen.dart';
 import 'screens/main_navigation.dart';
 import 'screens/estab_navigation.dart';
+import 'screens/estab_edit_screen.dart';
 import 'screens/admin_screen.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => BookingProvider()),
-        ChangeNotifierProvider(create: (_) => CartProvider()),
+        ChangeNotifierProxyProvider<AuthProvider, CartProvider>(
+          create: (_) => CartProvider(),
+          update: (_, auth, cart) => cart!..update(auth),
+        ),
         ChangeNotifierProvider(create: (_) => EstablishmentProvider()),
+        ChangeNotifierProvider(create: (_) => PagamentoProvider(PaymentRepository())),
+        ChangeNotifierProvider(create: (_) => HomeProvider(EstablishmentListRepository())),
+        ChangeNotifierProvider(create: (_) => PetProvider(PetRepository())),
+        ChangeNotifierProvider(create: (_) => HistoryProvider(HistoryRepository())),
+        ChangeNotifierProvider(create: (_) => NotificationsProvider(NotificationRepository())),
+        ChangeNotifierProvider(create: (_) => LojaProvider(CatalogRepository(), OrdersRepository())),
       ],
       child: const MyPetApp(),
     ),
@@ -67,6 +93,7 @@ class MyPetApp extends StatelessWidget {
           return MainNavigation(initialIndex: idx ?? 0);
         },
         '/estab-home':    (_) => const EstabNavigation(),
+        '/estab-edit':    (_) => const EstabEditScreen(),
         '/admin':         (_) => const AdminScreen(),
         '/edit-profile':  (_) => const EditProfileScreen(),
         '/history':       (_) => const HistoryScreen(),
@@ -78,8 +105,9 @@ class MyPetApp extends StatelessWidget {
         '/tracking':      (_) => const TrackingScreen(),
         '/help':          (_) => const HelpScreen(),
         '/estab-help':    (_) => const EstabHelpScreen(),
-        '/cart':          (_) => const CarrinhoScreen(),
-        '/payment':       (_) => const PagamentoScreen(),
+        '/cart':                    (_) => const CarrinhoScreen(),
+        '/payment':                 (_) => const PagamentoScreen(),
+        '/pagamento-agendamento':   (_) => const PagamentoAgendamentoScreen(),
       },
     );
   }

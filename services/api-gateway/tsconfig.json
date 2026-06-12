@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "../..",
+    "outDir": "../../dist",
+    "ignoreDeprecations": "5.0",
+    "paths": {
+      "@gateway/*": ["./src/*"]
+    }
+  },
+  "include": ["src/**/*.ts"]
+}
