@@ -108,7 +108,6 @@ class _EstabProfileScreenState extends State<EstabProfileScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // ── Owner card ──────────────────────────────────────────────────
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -189,7 +188,6 @@ class _EstabProfileScreenState extends State<EstabProfileScreen> {
             ),
             const SizedBox(height: 16),
 
-            // ── Establishment card ───────────────────────────────────────────
             if (estab != null)
               Container(
                 padding: const EdgeInsets.all(16),
@@ -265,7 +263,6 @@ class _EstabProfileScreenState extends State<EstabProfileScreen> {
               ),
             const SizedBox(height: 16),
 
-            // ── Menu ────────────────────────────────────────────────────────
             Container(
               decoration: BoxDecoration(
                 color: Colors.white,

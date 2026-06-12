@@ -50,6 +50,7 @@ class MypetAppBar extends StatelessWidget implements PreferredSizeWidget {
                     Align(
                       alignment: Alignment.centerLeft,
                       child: IconButton(
+                        tooltip: 'Voltar',
                         icon: Icon(Icons.chevron_left,
                             size: 28, color: isPurple ? Colors.white : AppColors.dark),
                         onPressed: onBack ?? () => Navigator.pop(context),

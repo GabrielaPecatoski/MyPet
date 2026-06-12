@@ -35,6 +35,7 @@ export class AppModule implements NestModule {
         { path: "marketplace/*path", method: RequestMethod.GET },
         { path: "faq", method: RequestMethod.ALL },
         { path: "faq/*path", method: RequestMethod.ALL },
+        { path: "reviews/establishment/*path", method: RequestMethod.GET },
         { path: "health", method: RequestMethod.GET },
       )
       .forRoutes("*path");

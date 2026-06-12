@@ -14,6 +14,9 @@ export class BookingDto {
   @ApiProperty() scheduledAt: Date;
   @ApiProperty() price: number;
   @ApiProperty() status: string;
+  @ApiProperty() paymentStatus: string;
+  @ApiPropertyOptional() paymentMethod?: string;
+  @ApiPropertyOptional() expiresAt?: Date;
   @ApiProperty() createdAt: Date | undefined;
 
   private constructor(b: Booking) {
@@ -29,7 +32,12 @@ export class BookingDto {
     this.scheduledAt = b.scheduledAt;
     this.price = b.price;
     this.status = b.status;
+    this.paymentStatus = b.paymentStatus;
+    this.paymentMethod = b.paymentMethod;
     this.createdAt = b.createdAt;
+    if (b.status === "AGUARDANDO_PAGAMENTO" && b.createdAt) {
+      this.expiresAt = new Date(b.createdAt.getTime() + 60 * 60 * 1000);
+    }
   }
 
   static fromBooking(b: Booking | null): BookingDto | null {

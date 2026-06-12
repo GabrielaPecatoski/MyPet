@@ -175,15 +175,15 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     if (booking != null) {
       showDialog(
         context: context,
+        barrierDismissible: false,
         builder: (ctx) => AlertDialog(
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: const Row(
             children: [
-              Icon(Icons.check_circle, color: AppColors.success),
+              Icon(Icons.payment, color: AppColors.primary),
               SizedBox(width: 8),
-              Text('Solicitado!',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
+              Text('Quase lá!', style: TextStyle(fontWeight: FontWeight.bold)),
             ],
           ),
           content: Column(
@@ -202,7 +202,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                   'R\$ ${_selectedServices.fold<double>(0, (s, svc) => s + svc.price).toStringAsFixed(2)}'),
               const SizedBox(height: 8),
               const Text(
-                'Aguarde a confirmação do estabelecimento.',
+                'Realize o pagamento para confirmar o agendamento.',
                 style: TextStyle(fontSize: 12, color: AppColors.grey),
               ),
             ],
@@ -213,17 +213,33 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               child: ElevatedButton(
                 onPressed: () {
                   Navigator.pop(ctx);
-                  Navigator.pushNamedAndRemoveUntil(
-                      context, '/home', (r) => false,
-                      arguments: 1);
+                  Navigator.pushNamed(
+                    context,
+                    '/pagamento-agendamento',
+                    arguments: booking,
+                  );
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10)),
                 ),
-                child: const Text('Ver Agenda',
+                child: const Text('Pagar Agora',
                     style: TextStyle(color: Colors.white)),
+              ),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  Navigator.pushNamedAndRemoveUntil(
+                      context, '/home', (r) => false,
+                      arguments: 1);
+                },
+                child: const Text('Pagar depois',
+                    style: TextStyle(color: AppColors.grey)),
               ),
             ),
           ],

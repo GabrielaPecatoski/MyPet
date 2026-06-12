@@ -2,9 +2,9 @@ import 'package:flutter/foundation.dart';
 
 class ApiConstants {
   static String get baseUrl {
-    if (kIsWeb) return 'http://localhost:3000';
-    if (defaultTargetPlatform == TargetPlatform.android) return 'http://10.0.2.2:3000';
-    return 'http://localhost:3000';
+    if (kIsWeb) return 'http://localhost';
+    if (defaultTargetPlatform == TargetPlatform.android) return 'http://10.0.2.2';
+    return 'http://localhost';
   }
 
   static const loginEndpoint = '/auth/login';
@@ -13,9 +13,11 @@ class ApiConstants {
   static const productsEndpoint = '/marketplace/products';
   static const cartEndpoint = '/marketplace/cart';
   static const ordersEndpoint = '/marketplace/orders';
+  static const paymentsEndpoint = '/marketplace/payments';
 
   static const petsEndpoint = '/pets/user';
   static const bookingsEndpoint = '/bookings';
+  static const bookingPaymentEndpoint = '/bookings/{id}/pay';
   static const establishmentsEndpoint = '/establishments';
   static const reviewsEndpoint = '/reviews';
 }

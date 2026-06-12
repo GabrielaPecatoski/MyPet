@@ -139,4 +139,24 @@ class BookingService {
     } catch (_) {}
     throw Exception(msg);
   }
+
+  static Future<AppointmentModel> markAsPaid({
+    required String token,
+    required String bookingId,
+    String method = 'PIX',
+  }) async {
+    final res = await http
+        .patch(
+          Uri.parse('${ApiConstants.baseUrl}/bookings/$bookingId/pay'),
+          headers: _headers(token),
+          body: jsonEncode({'method': method}),
+        )
+        .timeout(const Duration(seconds: 15));
+    final data = jsonDecode(res.body);
+    if (res.statusCode == 200) {
+      final booking = data['booking'] as Map<String, dynamic>? ?? data;
+      return AppointmentModel.fromJson(booking);
+    }
+    throw Exception(data['message'] ?? 'Erro ao registrar pagamento');
+  }
 }

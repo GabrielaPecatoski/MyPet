@@ -179,16 +179,17 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   'price': product.price,
                   'unit': product.unit,
                 }, _qty);
+                final nav = Navigator.of(context);
                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                   content: Text(
                       '$_qty ${_qty == 1 ? 'unidade adicionada' : 'unidades adicionadas'} ao carrinho'),
                   backgroundColor: AppColors.success,
-                  duration: const Duration(seconds: 2),
+                  behavior: SnackBarBehavior.floating,
+                  duration: const Duration(milliseconds: 1200),
                   action: SnackBarAction(
                     label: 'Ver carrinho',
                     textColor: Colors.white,
-                    onPressed: () =>
-                        Navigator.pushNamed(context, '/cart'),
+                    onPressed: () => nav.pushNamed('/cart'),
                   ),
                 ));
                 setState(() => _qty = 1);

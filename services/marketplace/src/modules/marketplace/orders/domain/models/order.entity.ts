@@ -1,4 +1,4 @@
-export type OrderStatus = "PENDING" | "CONFIRMED" | "DELIVERED" | "CANCELLED";
+export type OrderStatus = "AGUARDANDO_PAGAMENTO" | "PENDING" | "CONFIRMED" | "DELIVERED" | "CANCELLED";
 
 export class Order {
   private readonly _id?: string;

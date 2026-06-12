@@ -91,6 +91,16 @@ export class BookingsController {
     return this.bookingService.updateStatus(id, body.status);
   }
 
+  @Patch(":id/pay")
+  @RequirePermissions(Permission.BOOKINGS_WRITE)
+  @ApiOperation({ summary: "Processar pagamento do agendamento" })
+  async pay(
+    @Param("id") id: string,
+    @Body() body: { method: string; cardNumber?: string; installments?: number },
+  ) {
+    return this.bookingService.pay(id, body.method, body.cardNumber, body.installments);
+  }
+
   @Patch(":id/cancel")
   @RequirePermissions(Permission.BOOKINGS_WRITE)
   @ApiOperation({ summary: "Cancelar agendamento" })

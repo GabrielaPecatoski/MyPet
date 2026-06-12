@@ -1,4 +1,6 @@
-export type BookingStatus = "PENDENTE" | "CONFIRMADO" | "RECUSADO" | "CANCELADO" | "CONCLUIDO";
+export type BookingStatus = "AGUARDANDO_PAGAMENTO" | "PENDENTE" | "CONFIRMADO" | "RECUSADO" | "CANCELADO" | "CONCLUIDO";
+
+export type PaymentStatus = "NONE" | "AUTHORIZED" | "CAPTURED" | "REFUNDED";
 
 export interface BookingServiceItem {
   id: string;
@@ -20,6 +22,8 @@ export class Booking {
   private _scheduledAt!: Date;
   private _price!: number;
   private _status!: BookingStatus;
+  private _paymentStatus!: PaymentStatus;
+  private _paymentMethod?: string;
   private readonly _createdAt?: Date;
   private readonly _updatedAt?: Date;
 
@@ -45,10 +49,17 @@ export class Booking {
   get scheduledAt(): Date { return this._scheduledAt; }
   get price(): number { return this._price; }
   get status(): BookingStatus { return this._status; }
+  get paymentStatus(): PaymentStatus { return this._paymentStatus; }
+  get paymentMethod(): string | undefined { return this._paymentMethod; }
   get createdAt(): Date | undefined { return this._createdAt; }
   get updatedAt(): Date | undefined { return this._updatedAt; }
 
   withStatus(status: BookingStatus) { this._status = status; return this; }
+  withPayment(paymentStatus: PaymentStatus, method?: string) {
+    this._paymentStatus = paymentStatus;
+    if (method !== undefined) this._paymentMethod = method;
+    return this;
+  }
 
   static restore(props?: {
     id?: string;
@@ -63,6 +74,8 @@ export class Booking {
     scheduledAt: Date;
     price: number;
     status: BookingStatus;
+    paymentStatus?: PaymentStatus | null;
+    paymentMethod?: string | null;
     createdAt?: Date;
     updatedAt?: Date;
   }): Booking | null {
@@ -79,6 +92,8 @@ export class Booking {
     b._scheduledAt = props.scheduledAt;
     b._price = props.price;
     b._status = props.status as BookingStatus;
+    b._paymentStatus = (props.paymentStatus as PaymentStatus) ?? "NONE";
+    b._paymentMethod = props.paymentMethod ?? undefined;
     return b;
   }
 }
