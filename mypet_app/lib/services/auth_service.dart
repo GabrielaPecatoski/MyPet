@@ -1,8 +1,25 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../core/constants.dart';
+import 'api_service.dart';
 
 class AuthService {
+  static Future<Map<String, dynamic>> getMe({required String token}) =>
+      ApiService.get('/auth/me', token: token)
+          .then((v) => v as Map<String, dynamic>);
+
+  static Future<Map<String, dynamic>> updateMe({
+    required String token,
+    required String name,
+    required String phone,
+  }) =>
+      ApiService.patch('/auth/me', {'name': name, 'phone': phone}, token: token)
+          .then((v) => v as Map<String, dynamic>);
+
+  static Future<void> deleteMe({required String token}) =>
+      ApiService.delete('/auth/me', token: token);
+
+
   static Future<Map<String, dynamic>> login({
     required String email,
     required String password,

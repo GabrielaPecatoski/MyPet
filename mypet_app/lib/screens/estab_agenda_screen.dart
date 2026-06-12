@@ -54,6 +54,10 @@ class _EstabAgendaScreenState extends State<EstabAgendaScreen> {
       );
     }
 
+    for (var i = 0; i < 20 && estabProvider.establishmentId == null && mounted; i++) {
+      await Future.delayed(const Duration(milliseconds: 150));
+    }
+
     final estabId = estabProvider.establishmentId;
     if (estabId != null && mounted) {
       context.read<BookingProvider>().loadEstabBookings(
@@ -107,10 +111,10 @@ class _EstabAgendaScreenState extends State<EstabAgendaScreen> {
           msg = 'Agendamento confirmado!';
           color = AppColors.success;
         case 'CONCLUIDO':
-          msg = 'Serviço concluído!';
+          msg = 'Serviço concluído! Pagamento liberado.';
           color = AppColors.primary;
         default:
-          msg = 'Agendamento recusado';
+          msg = 'Agendamento recusado. Valor estornado ao cliente.';
           color = AppColors.danger;
       }
     }
@@ -434,6 +438,28 @@ class _ApptCard extends StatelessWidget {
                             const SizedBox(height: 4),
                             _row(Icons.attach_money,
                                 'R\$ ${ap.price.toStringAsFixed(2)}'),
+                          ],
+                          if (ap.isRetido) ...[
+                            const SizedBox(height: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: AppColors.success.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.verified_outlined, size: 13, color: AppColors.success),
+                                  SizedBox(width: 4),
+                                  Text('Pagamento confirmado',
+                                      style: TextStyle(
+                                          fontSize: 11,
+                                          color: AppColors.success,
+                                          fontWeight: FontWeight.w600)),
+                                ],
+                              ),
+                            ),
                           ],
 
                           if (ap.isPendente) ...[

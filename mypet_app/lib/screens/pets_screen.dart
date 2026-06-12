@@ -199,16 +199,20 @@ class _PetsScreenState extends State<PetsScreen> {
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 12),
-            child: GestureDetector(
-              onTap: _addPet,
-              child: Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: AppColors.primary,
-                  borderRadius: BorderRadius.circular(18),
+            child: Semantics(
+              label: 'Adicionar pet',
+              button: true,
+              child: GestureDetector(
+                onTap: _addPet,
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: const Icon(Icons.add, color: Colors.white, size: 22),
                 ),
-                child: const Icon(Icons.add, color: Colors.white, size: 22),
               ),
 <<<<<<< HEAD
             ),
@@ -323,27 +327,38 @@ class _PetAvatar extends StatelessWidget {
   final double radius;
   const _PetAvatar({required this.pet, required this.radius});
 
+  Widget _placeholder() => CircleAvatar(
+        radius: radius,
+        backgroundColor: AppColors.primaryLight,
+        child: Text(pet.typeIcon, style: TextStyle(fontSize: radius * 0.85)),
+      );
+
   @override
   Widget build(BuildContext context) {
     final url = pet.imageUrl;
-    if (url != null && url.isNotEmpty) {
-      if (url.startsWith('data:image/')) {
-        final base64Str = url.split(',').last;
-        final bytes = base64Decode(base64Str);
-        return CircleAvatar(
-          radius: radius,
-          backgroundImage: MemoryImage(bytes),
-        );
-      }
+    if (url == null || url.isEmpty) return _placeholder();
+
+    if (url.startsWith('data:image/')) {
+      final base64Str = url.split(',').last;
+      final bytes = base64Decode(base64Str);
       return CircleAvatar(
         radius: radius,
-        backgroundImage: NetworkImage(url),
+        backgroundImage: MemoryImage(bytes),
       );
     }
-    return CircleAvatar(
-      radius: radius,
-      backgroundColor: AppColors.primaryLight,
-      child: Text(pet.typeIcon, style: TextStyle(fontSize: radius * 0.85)),
+
+    return ClipOval(
+      child: SizedBox(
+        width: radius * 2,
+        height: radius * 2,
+        child: Image.network(
+          url,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _placeholder(),
+          loadingBuilder: (_, child, progress) =>
+              progress == null ? child : _placeholder(),
+        ),
+      ),
     );
   }
 }
@@ -418,7 +433,7 @@ class _PetCard extends StatelessWidget {
             icon: const Icon(Icons.edit_outlined,
                 color: AppColors.primary, size: 20),
             onPressed: onEdit,
-            tooltip: 'Editar',
+            tooltip: 'Editar pet',
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
           ),
@@ -427,7 +442,7 @@ class _PetCard extends StatelessWidget {
             icon: const Icon(Icons.delete_outline,
                 color: AppColors.danger, size: 20),
             onPressed: onDelete,
-            tooltip: 'Remover',
+            tooltip: 'Remover pet',
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
           ),

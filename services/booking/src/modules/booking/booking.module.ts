@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { BookingService } from "@booking/bookings/application/services/booking.service";
+import { ExpiredBookingScheduler } from "@booking/bookings/application/services/expired-booking.scheduler";
 import { AvailabilityService } from "@booking/availability/application/services/availability.service";
 import { BOOKING_REPOSITORY } from "@booking/bookings/domain/repositories/booking-repository.interface";
 import { SCHEDULE_REPOSITORY, BLOCKED_SLOT_REPOSITORY } from "@booking/availability/domain/repositories/availability-repository.interface";
@@ -11,6 +12,7 @@ import { BookingsController, AvailabilityController } from "@booking/bookings/in
   controllers: [BookingsController, AvailabilityController],
   providers: [
     BookingService,
+    ExpiredBookingScheduler,
     AvailabilityService,
     DrizzleBookingRepository,
     DrizzleScheduleRepository,
