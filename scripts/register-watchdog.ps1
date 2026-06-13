@@ -1,9 +1,11 @@
 param([switch]$Remove)
 
 $taskName = 'MyPetLocalhostWatchdog'
+$launcher = Join-Path $env:LOCALAPPDATA 'mypet-watchdog.vbs'
 
 if ($Remove) {
   Unregister-ScheduledTask -TaskName $taskName -Confirm:$false -ErrorAction SilentlyContinue
+  Remove-Item $launcher -Force -ErrorAction SilentlyContinue
   Write-Host "Tarefa '$taskName' removida."
   return
 }
@@ -26,16 +28,20 @@ if ($l) {
 '@
 
 $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($logic))
-$action = New-ScheduledTaskAction -Execute 'powershell.exe' `
-  -Argument "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -EncodedCommand $encoded"
+
+$vbs = 'CreateObject("WScript.Shell").Run "powershell.exe -NoProfile -ExecutionPolicy Bypass -EncodedCommand ' + $encoded + '", 0, False'
+Set-Content -Path $launcher -Value $vbs -Encoding ascii
+
+$action = New-ScheduledTaskAction -Execute 'wscript.exe' -Argument "//B //Nologo `"$launcher`""
 $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) `
   -RepetitionInterval (New-TimeSpan -Minutes 5) -RepetitionDuration (New-TimeSpan -Days 3650)
 $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
   -ExecutionTimeLimit (New-TimeSpan -Minutes 2) -MultipleInstances IgnoreNew
 
 Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Settings $settings `
-  -Description 'Mata o wslrelay zumbi quando ele trava ::1:80 e derruba http://localhost (MyPet) - logica embutida, nao depende de arquivo' -Force | Out-Null
+  -Description 'Mata o wslrelay zumbi quando ele trava ::1:80 e derruba http://localhost (MyPet) - sem janela (wscript), nao depende do repo' -Force | Out-Null
 
-Write-Host "Tarefa '$taskName' registrada (auto-suficiente, roda a cada 5 min)."
+Write-Host "Tarefa '$taskName' registrada (invisivel via wscript, roda a cada 5 min)."
+Write-Host "Lancador: $launcher"
 Write-Host "Log: $env:LOCALAPPDATA\mypet-watchdog.log"
 Write-Host "Para remover: powershell -File scripts\register-watchdog.ps1 -Remove"
