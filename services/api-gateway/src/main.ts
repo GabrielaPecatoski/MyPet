@@ -2,7 +2,8 @@ import { Logger } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module";
 import helmet from "helmet";
-import { createProxyMiddleware } from "http-proxy-middleware";
+import * as express from "express";
+import { createProxyMiddleware, fixRequestBody } from "http-proxy-middleware";
 import type { NextFunction, Request, Response } from "express";
 
 const ROUTES = [
@@ -28,9 +29,11 @@ const CORS_HEADERS = {
 
 async function bootstrap() {
   const logger = new Logger("Bootstrap");
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { bodyParser: false });
 
   app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
+  app.use(express.json({ limit: "10mb" }));
+  app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
   const expressApp = app.getHttpAdapter().getInstance();
 
@@ -52,6 +55,7 @@ async function bootstrap() {
         changeOrigin: true,
         pathRewrite: (path: string) => `/v1${route.prefix}${path}`,
         on: {
+          proxyReq: fixRequestBody,
           proxyRes: (_proxyRes: unknown, _req: unknown, res: Response) => {
             Object.entries(CORS_HEADERS).forEach(([k, v]) => res.setHeader(k, v));
           },
