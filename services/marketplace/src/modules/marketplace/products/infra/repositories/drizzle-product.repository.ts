@@ -49,8 +49,7 @@ export class DrizzleProductRepository implements ProductRepository {
 
   async delete(id: string): Promise<void> {
     await this.drizzleService.db
-      .update(productsSchema)
-      .set({ active: false })
+      .delete(productsSchema)
       .where(eq(productsSchema.id, id));
   }
 
@@ -67,10 +66,13 @@ export class DrizzleProductRepository implements ProductRepository {
     const baseQuery = this.drizzleService.db.select().from(productsSchema);
     const rows = search
       ? await baseQuery.where(
-          or(
-            ilike(productsSchema.name, `%${search}%`),
-            ilike(productsSchema.category, `%${search}%`),
-            ilike(productsSchema.brand, `%${search}%`),
+          and(
+            eq(productsSchema.active, true),
+            or(
+              ilike(productsSchema.name, `%${search}%`),
+              ilike(productsSchema.category, `%${search}%`),
+              ilike(productsSchema.brand, `%${search}%`),
+            ),
           ),
         )
       : await baseQuery.where(eq(productsSchema.active, true));
@@ -81,12 +83,7 @@ export class DrizzleProductRepository implements ProductRepository {
     const rows = await this.drizzleService.db
       .select()
       .from(productsSchema)
-      .where(
-        and(
-          eq(productsSchema.establishmentId, establishmentId),
-          eq(productsSchema.active, true),
-        ),
-      );
+      .where(eq(productsSchema.establishmentId, establishmentId));
     return rows.map((r) => Product.restore(r)!);
   }
 
@@ -97,9 +94,12 @@ export class DrizzleProductRepository implements ProductRepository {
     const { page, limit } = params;
     const offset = (page - 1) * limit;
     const whereClause = search
-      ? or(
-          ilike(productsSchema.name, `%${search}%`),
-          ilike(productsSchema.category, `%${search}%`),
+      ? and(
+          eq(productsSchema.active, true),
+          or(
+            ilike(productsSchema.name, `%${search}%`),
+            ilike(productsSchema.category, `%${search}%`),
+          ),
         )
       : eq(productsSchema.active, true);
 
