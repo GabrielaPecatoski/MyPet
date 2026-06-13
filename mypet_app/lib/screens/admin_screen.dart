@@ -201,8 +201,13 @@ class _AdminScreenState extends State<AdminScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isWide = MediaQuery.of(context).size.width > 600;
     final pendingComplaints = _complaints.where((c) => c.status == 'PENDENTE').length;
     final pendingQuestions = _userQuestions.where((q) => (q as Map)['status'] == 'PENDENTE').length;
+    final badges = {
+      1: pendingComplaints,
+      4: pendingQuestions,
+    };
 
     final pages = [
       _PainelPage(
@@ -247,6 +252,21 @@ class _AdminScreenState extends State<AdminScreen> {
       ),
     ];
 
+    if (isWide) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        body: Row(children: [
+          _AdminSidebar(
+            selectedIndex: _selectedIndex,
+            badges: badges,
+            onTap: (i) => setState(() => _selectedIndex = i),
+            onLogout: _logout,
+          ),
+          Expanded(child: pages[_selectedIndex]),
+        ]),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: _selectedIndex == 0
@@ -261,11 +281,82 @@ class _AdminScreenState extends State<AdminScreen> {
         currentIndex: _selectedIndex,
         items: adminNavItems,
         onTap: (i) => setState(() => _selectedIndex = i),
-        badges: {
-          1: pendingComplaints,
-          4: pendingQuestions,
-        },
+        badges: badges,
       ),
+    );
+  }
+}
+
+class _AdminSidebar extends StatelessWidget {
+  final int selectedIndex;
+  final Map<int, int> badges;
+  final ValueChanged<int> onTap;
+  final VoidCallback onLogout;
+
+  const _AdminSidebar({
+    required this.selectedIndex,
+    required this.badges,
+    required this.onTap,
+    required this.onLogout,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 220,
+      color: Colors.white,
+      child: Column(children: [
+        Container(
+          height: 64,
+          color: AppColors.primary,
+          child: Center(
+            child: Image.asset('assets/images/logo branca.png', height: 30, fit: BoxFit.contain),
+          ),
+        ),
+        Expanded(
+          child: NavigationRail(
+            backgroundColor: Colors.white,
+            minWidth: 220,
+            selectedIndex: selectedIndex,
+            onDestinationSelected: onTap,
+            labelType: NavigationRailLabelType.all,
+            selectedIconTheme: const IconThemeData(color: AppColors.primary),
+            unselectedIconTheme: const IconThemeData(color: AppColors.grey),
+            selectedLabelTextStyle: const TextStyle(
+              color: AppColors.primary,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+            unselectedLabelTextStyle: const TextStyle(color: AppColors.grey, fontSize: 12),
+            destinations: adminNavItems.asMap().entries.map((entry) {
+              final item = entry.value;
+              final badge = badges[entry.key] ?? 0;
+
+              return NavigationRailDestination(
+                icon: _badgeIcon(item.icon, badge),
+                selectedIcon: _badgeIcon(item.activeIcon, badge),
+                label: Text(item.label),
+              );
+            }).toList(),
+          ),
+        ),
+        const Divider(height: 1),
+        ListTile(
+          leading: const Icon(Icons.logout, color: AppColors.danger),
+          title: const Text('Sair', style: TextStyle(color: AppColors.danger, fontWeight: FontWeight.w600)),
+          onTap: onLogout,
+        ),
+      ]),
+    );
+  }
+
+  Widget _badgeIcon(IconData icon, int count) {
+    if (count <= 0) return Icon(icon);
+
+    return Badge.count(
+      count: count,
+      backgroundColor: AppColors.danger,
+      child: Icon(icon),
     );
   }
 }
