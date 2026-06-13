@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../core/colors.dart';
 import '../models/product.dart';
 import '../providers/cart_provider.dart';
+import '../widgets/app_image.dart';
 import '../widgets/mypet_app_bar.dart';
 
 class ProductDetailScreen extends StatefulWidget {
@@ -211,19 +212,13 @@ class _ProductImage extends StatelessWidget {
       height: 220,
       width: double.infinity,
       color: AppColors.primaryLight,
-      child: imageUrl != null
-          ? Image.network(
-              imageUrl!,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => const Center(
-                child: Icon(Icons.shopping_bag,
-                    color: AppColors.primary, size: 72),
-              ),
-            )
-          : const Center(
-              child: Icon(Icons.shopping_bag,
-                  color: AppColors.primary, size: 72),
-            ),
+      child: AppImage(
+        url: imageUrl,
+        fit: BoxFit.cover,
+        fallback: const Center(
+          child: Icon(Icons.shopping_bag, color: AppColors.primary, size: 72),
+        ),
+      ),
     );
   }
 }

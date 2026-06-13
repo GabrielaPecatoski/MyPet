@@ -1,10 +1,14 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'dart:convert';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../core/colors.dart';
 import '../models/product.dart';
 import '../providers/auth_provider.dart';
 import '../providers/establishment_products_provider.dart';
 import '../repositories/establishment_products_repository.dart';
+import '../widgets/app_image.dart';
 import '../widgets/mypet_app_bar.dart';
 import 'establishment_orders_view.dart';
 
@@ -97,6 +101,7 @@ class _EstabProdutosViewState extends State<_EstabProdutosView> {
     final descCtrl = TextEditingController(text: product?.description ?? '');
     final unitCtrl = TextEditingController(text: product?.unit ?? 'Un');
     String category = product?.category ?? 'Higiene';
+    String? imageData = product?.imageUrl;
 
     showModalBottomSheet(
       context: context,
@@ -129,6 +134,14 @@ class _EstabProdutosViewState extends State<_EstabProdutosView> {
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                       color: AppColors.dark),
+                ),
+                const SizedBox(height: 20),
+
+                Center(
+                  child: _ProductImagePicker(
+                    initial: imageData,
+                    onChanged: (url) => imageData = url,
+                  ),
                 ),
                 const SizedBox(height: 20),
 
@@ -219,6 +232,7 @@ class _EstabProdutosViewState extends State<_EstabProdutosView> {
                         'stock': stock,
                       };
                       if (desc.isNotEmpty) fields['description'] = desc;
+                      if (imageData != null) fields['imageUrl'] = imageData;
                       Navigator.pop(ctx);
                       if (product == null) {
                         await provider.create(fields);
@@ -525,6 +539,101 @@ class _EstabProdutosViewState extends State<_EstabProdutosView> {
   }
 }
 
+class _ProductImagePicker extends StatefulWidget {
+  final String? initial;
+  final ValueChanged<String> onChanged;
+  const _ProductImagePicker({this.initial, required this.onChanged});
+
+  @override
+  State<_ProductImagePicker> createState() => _ProductImagePickerState();
+}
+
+class _ProductImagePickerState extends State<_ProductImagePicker> {
+  String? _imageData;
+
+  @override
+  void initState() {
+    super.initState();
+    _imageData = widget.initial;
+  }
+
+  Future<void> _pick(ImageSource source) async {
+    if (kIsWeb) return;
+    final picked = await ImagePicker().pickImage(
+        source: source, imageQuality: 75, maxWidth: 800, maxHeight: 800);
+    if (picked == null) return;
+    final bytes = await picked.readAsBytes();
+    final url = 'data:image/jpeg;base64,${base64Encode(bytes)}';
+    setState(() => _imageData = url);
+    widget.onChanged(url);
+  }
+
+  void _showOptions() {
+    if (kIsWeb) return;
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined,
+                  color: AppColors.estab),
+              title: const Text('Galeria de fotos'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _pick(ImageSource.gallery);
+              },
+            ),
+            ListTile(
+              leading:
+                  const Icon(Icons.camera_alt_outlined, color: AppColors.estab),
+              title: const Text('Câmera'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _pick(ImageSource.camera);
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: _showOptions,
+      child: Container(
+        width: 96,
+        height: 96,
+        decoration: BoxDecoration(
+          color: AppColors.background,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.greyLight),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: AppImage(
+          url: _imageData,
+          fit: BoxFit.cover,
+          fallback: const Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.add_a_photo_outlined, color: AppColors.estab, size: 26),
+              SizedBox(height: 6),
+              Text('Foto', style: TextStyle(fontSize: 11, color: AppColors.grey)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _StatChip extends StatelessWidget {
   final String label;
   final IconData icon;
@@ -602,7 +711,13 @@ class _ProductCard extends StatelessWidget {
                       color: categoryColor.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Icon(categoryIcon, color: categoryColor, size: 26),
+                    clipBehavior: Clip.antiAlias,
+                    child: AppImage(
+                      url: product.imageUrl,
+                      fit: BoxFit.cover,
+                      fallback:
+                          Icon(categoryIcon, color: categoryColor, size: 26),
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(

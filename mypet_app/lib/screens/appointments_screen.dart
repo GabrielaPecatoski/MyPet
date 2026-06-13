@@ -7,6 +7,7 @@ import '../providers/auth_provider.dart';
 import '../providers/booking_provider.dart';
 import '../providers/user_reviews_provider.dart';
 import '../repositories/user_reviews_repository.dart';
+import '../widgets/attendance_photos.dart';
 import '../widgets/mypet_app_bar.dart';
 
 class AgendaScreen extends StatelessWidget {
@@ -559,6 +560,24 @@ class _BookingCardState extends State<_BookingCard> {
                 _row(Icons.calendar_today_outlined, _formatDate(ap.date)),
                 const SizedBox(height: 6),
                 _row(Icons.access_time_outlined, ap.time),
+
+                if (ap.attendancePhotos.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      const Icon(Icons.photo_camera_outlined,
+                          size: 15, color: AppColors.grey),
+                      const SizedBox(width: 6),
+                      Text('Fotos do atendimento (${ap.attendancePhotos.length})',
+                          style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.dark)),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  AttendancePhotosGrid(photos: ap.attendancePhotos),
+                ],
 
                 if (ap.price > 0) ...[
                   const SizedBox(height: 10),

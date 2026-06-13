@@ -20,6 +20,7 @@ class AppointmentModel {
   final DateTime? expiresAt;
   final String? driverId;
   final String? driverName;
+  final List<String> attendancePhotos;
 
   AppointmentModel({
     required this.id,
@@ -43,6 +44,7 @@ class AppointmentModel {
     this.expiresAt,
     this.driverId,
     this.driverName,
+    this.attendancePhotos = const [],
   });
 
   factory AppointmentModel.fromJson(Map<String, dynamic> json) {
@@ -73,6 +75,10 @@ class AppointmentModel {
           : null,
       driverId: json['driverId'] as String?,
       driverName: json['driverName'] as String?,
+      attendancePhotos: (json['attendancePhotos'] as List?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          const [],
     );
   }
 

@@ -50,6 +50,7 @@ export class DrizzleBookingRepository implements BookingRepository {
         paymentStatus: b.paymentStatus,
         paymentMethod: b.paymentMethod ?? null,
         reminderSentAt: b.reminderSentAt ?? null,
+        attendancePhotos: b.attendancePhotosJson ?? null,
         updatedAt: new Date(),
       })
       .where(eq(bookingsSchema.id, b.id!));

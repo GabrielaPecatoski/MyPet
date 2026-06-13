@@ -6,6 +6,7 @@ import '../providers/auth_provider.dart';
 import '../providers/cart_provider.dart';
 import '../providers/store_provider.dart';
 import '../core/order_status.dart';
+import '../widgets/app_image.dart';
 import '../widgets/mypet_app_bar.dart';
 import '../widgets/order_progress_bar.dart';
 
@@ -213,10 +214,15 @@ class _ProductCard extends StatelessWidget {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Expanded(child: ClipRRect(
             borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
-            child: product['imageUrl'] != null
-                ? Image.network(product['imageUrl'] as String, fit: BoxFit.cover, width: double.infinity)
-                : Container(color: AppColors.primaryLight,
+            child: SizedBox(
+              width: double.infinity,
+              child: AppImage(
+                url: product['imageUrl'] as String?,
+                fit: BoxFit.cover,
+                fallback: Container(color: AppColors.primaryLight,
                     child: const Center(child: Icon(Icons.pets, size: 40, color: AppColors.primary))),
+              ),
+            ),
           )),
           Padding(
             padding: const EdgeInsets.all(10),

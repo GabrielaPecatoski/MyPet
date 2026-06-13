@@ -12,6 +12,7 @@ export class BookingDto {
   @ApiProperty() petName: string;
   @ApiProperty() serviceName: string;
   @ApiPropertyOptional() services?: BookingServiceItem[];
+  @ApiPropertyOptional() attendancePhotos?: string[];
   @ApiPropertyOptional() establishmentId?: string;
   @ApiProperty() establishmentName: string;
   @ApiPropertyOptional() driverId?: string;
@@ -35,6 +36,8 @@ export class BookingDto {
     this.petName = b.petName;
     this.serviceName = b.serviceName;
     this.services = b.services.length > 0 ? b.services : undefined;
+    this.attendancePhotos =
+      b.attendancePhotos.length > 0 ? b.attendancePhotos : undefined;
     this.establishmentId = b.establishmentId;
     this.establishmentName = b.establishmentName;
     this.driverId = b.driverId;

@@ -165,6 +165,30 @@ class BookingService {
     throw Exception(msg);
   }
 
+  static Future<AppointmentModel> setAttendancePhotos({
+    required String token,
+    required String bookingId,
+    required List<String> photos,
+  }) async {
+    final res = await http
+        .patch(
+          Uri.parse('${ApiConstants.baseUrl}/bookings/$bookingId/photos'),
+          headers: _headers(token),
+          body: jsonEncode({'photos': photos}),
+        )
+        .timeout(const Duration(seconds: 30));
+    if (res.statusCode == 200 || res.statusCode == 201) {
+      return AppointmentModel.fromJson(
+          jsonDecode(res.body) as Map<String, dynamic>);
+    }
+    String msg = 'Erro ao salvar fotos do atendimento';
+    try {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      msg = data['message'] as String? ?? msg;
+    } catch (_) {}
+    throw Exception(msg);
+  }
+
   static Future<AppointmentModel> markAsPaid({
     required String token,
     required String bookingId,

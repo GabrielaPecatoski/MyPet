@@ -5,6 +5,7 @@ import '../models/appointment.dart';
 import '../providers/auth_provider.dart';
 import '../providers/booking_provider.dart';
 import '../providers/establishment_provider.dart';
+import '../widgets/attendance_photos.dart';
 import '../widgets/mypet_app_bar.dart';
 
 class EstabAgendaScreen extends StatefulWidget {
@@ -108,6 +109,21 @@ class _EstabAgendaScreenState extends State<EstabAgendaScreen> {
       content: Text(msg),
       backgroundColor: color,
     ));
+  }
+
+  Future<void> _managePhotos(AppointmentModel booking) async {
+    final auth = context.read<AuthProvider>();
+    if (auth.token == null) return;
+    final result = await showAttendancePhotosSheet(
+      context,
+      token: auth.token!,
+      bookingId: booking.id,
+      initial: booking.attendancePhotos,
+      accent: AppColors.estab,
+    );
+    if (result != null && mounted) {
+      await _load();
+    }
   }
 
   void _prevWeek() =>
@@ -296,7 +312,8 @@ class _EstabAgendaScreenState extends State<EstabAgendaScreen> {
                       itemCount: dayBookings.length,
                       itemBuilder: (_, i) => _ApptCard(
                           appointment: dayBookings[i],
-                          onUpdateStatus: _updateStatus),
+                          onUpdateStatus: _updateStatus,
+                          onManagePhotos: _managePhotos),
                     ),
             ),
           ),
@@ -309,9 +326,12 @@ class _EstabAgendaScreenState extends State<EstabAgendaScreen> {
 class _ApptCard extends StatelessWidget {
   final AppointmentModel appointment;
   final Future<void> Function(AppointmentModel, String) onUpdateStatus;
+  final Future<void> Function(AppointmentModel) onManagePhotos;
 
   const _ApptCard(
-      {required this.appointment, required this.onUpdateStatus});
+      {required this.appointment,
+      required this.onUpdateStatus,
+      required this.onManagePhotos});
 
   Color get _statusColor {
     switch (appointment.status) {
@@ -504,13 +524,43 @@ class _ApptCard extends StatelessWidget {
                             ]),
                           ],
 
-                          if (ap.isConfirmado) ...[
+                          if (ap.isConfirmado || ap.isACaminho ||
+                              ap.effectiveStatus == 'CONCLUIDO') ...[
                             const SizedBox(height: 12),
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton.icon(
+                                onPressed: () => onManagePhotos(ap),
+                                icon: const Icon(Icons.photo_camera_outlined,
+                                    size: 16),
+                                label: Text(
+                                    ap.attendancePhotos.isEmpty
+                                        ? 'Fotos do atendimento'
+                                        : 'Fotos do atendimento (${ap.attendancePhotos.length})',
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w600)),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: AppColors.estab,
+                                  side: const BorderSide(color: AppColors.estab),
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 8),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10)),
+                                ),
+                              ),
+                            ),
+                          ],
+
+                          if (ap.isConfirmado) ...[
+                            const SizedBox(height: 8),
                             SizedBox(
                               width: double.infinity,
                               child: ElevatedButton.icon(
                                 onPressed: () async {
                                   await onUpdateStatus(ap, 'CONCLUIDO');
+                                  if (context.mounted) {
+                                    await onManagePhotos(ap);
+                                  }
                                   if (context.mounted) {
                                     _showAvaliarClienteDialog(context, ap);
                                   }

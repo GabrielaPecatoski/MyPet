@@ -328,6 +328,17 @@ export class BookingService {
     return this.updateStatus(id, "CONCLUIDO");
   }
 
+  async setAttendancePhotos(
+    id: string,
+    photos: string[],
+  ): Promise<BookingDto> {
+    const booking = await this.repo.findById(id);
+    if (!booking) throw new NotFoundException("Agendamento não encontrado");
+    booking.withAttendancePhotos(photos);
+    await this.repo.update(booking);
+    return BookingDto.fromBooking(booking)!;
+  }
+
   async remove(id: string): Promise<void> {
     const booking = await this.repo.findById(id);
     if (!booking) throw new NotFoundException("Agendamento não encontrado");

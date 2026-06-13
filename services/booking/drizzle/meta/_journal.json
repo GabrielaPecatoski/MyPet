@@ -22,6 +22,13 @@
       "when": 1781277288526,
       "tag": "0002_steep_blindfold",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1781371753582,
+      "tag": "0003_fuzzy_eternity",
+      "breakpoints": true
     }
   ]
 }

@@ -5,6 +5,7 @@ import '../models/appointment.dart';
 import '../providers/auth_provider.dart';
 import '../providers/vet_profile_provider.dart';
 import '../services/booking_service.dart';
+import '../widgets/attendance_photos.dart';
 
 class VetAgendaScreen extends StatefulWidget {
   const VetAgendaScreen({super.key});
@@ -67,6 +68,21 @@ class _VetAgendaScreenState extends State<VetAgendaScreen>
       if (mounted) setState(() => _bookings = []);
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _managePhotos(AppointmentModel booking) async {
+    final token = context.read<AuthProvider>().token;
+    if (token == null) return;
+    final result = await showAttendancePhotosSheet(
+      context,
+      token: token,
+      bookingId: booking.id,
+      initial: booking.attendancePhotos,
+      accent: AppColors.vet,
+    );
+    if (result != null && mounted) {
+      await _load();
     }
   }
 
@@ -249,7 +265,8 @@ class _VetAgendaScreenState extends State<VetAgendaScreen>
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: items.length,
-        itemBuilder: (_, i) => _VetBookingCard(ap: items[i]),
+        itemBuilder: (_, i) =>
+            _VetBookingCard(ap: items[i], onManagePhotos: _managePhotos),
       ),
     );
   }
@@ -257,7 +274,8 @@ class _VetAgendaScreenState extends State<VetAgendaScreen>
 
 class _VetBookingCard extends StatelessWidget {
   final AppointmentModel ap;
-  const _VetBookingCard({required this.ap});
+  final Future<void> Function(AppointmentModel) onManagePhotos;
+  const _VetBookingCard({required this.ap, required this.onManagePhotos});
 
   static const _green = Color(0xFF16A34A);
 
@@ -333,6 +351,30 @@ class _VetBookingCard extends StatelessWidget {
           if (ap.price > 0) ...[
             const SizedBox(height: 4),
             _row(Icons.attach_money, 'R\$ ${ap.price.toStringAsFixed(2)}'),
+          ],
+          if (ap.isConfirmado ||
+              ap.isACaminho ||
+              ap.effectiveStatus == 'CONCLUIDO') ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => onManagePhotos(ap),
+                icon: const Icon(Icons.photo_camera_outlined, size: 16),
+                label: Text(
+                    ap.attendancePhotos.isEmpty
+                        ? 'Fotos do atendimento'
+                        : 'Fotos do atendimento (${ap.attendancePhotos.length})',
+                    style: const TextStyle(fontWeight: FontWeight.w600)),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.vet,
+                  side: const BorderSide(color: AppColors.vet),
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            ),
           ],
         ],
       ),

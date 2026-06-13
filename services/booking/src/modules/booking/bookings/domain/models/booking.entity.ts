@@ -23,6 +23,7 @@ export class Booking {
   private _petName!: string;
   private _serviceName!: string;
   private _servicesJson?: string;
+  private _attendancePhotos?: string;
   private _establishmentId?: string;
   private _establishmentName!: string;
   private _driverId?: string;
@@ -70,6 +71,17 @@ export class Booking {
     if (!this._servicesJson) return [];
     try {
       return JSON.parse(this._servicesJson);
+    } catch {
+      return [];
+    }
+  }
+  get attendancePhotosJson(): string | undefined {
+    return this._attendancePhotos;
+  }
+  get attendancePhotos(): string[] {
+    if (!this._attendancePhotos) return [];
+    try {
+      return JSON.parse(this._attendancePhotos);
     } catch {
       return [];
     }
@@ -133,6 +145,10 @@ export class Booking {
     this._reminderSentAt = at;
     return this;
   }
+  withAttendancePhotos(photos: string[]) {
+    this._attendancePhotos = JSON.stringify(photos);
+    return this;
+  }
 
   static restore(props?: {
     id?: string;
@@ -142,6 +158,7 @@ export class Booking {
     petName: string;
     serviceName: string;
     servicesJson?: string | null;
+    attendancePhotos?: string | null;
     establishmentId?: string | null;
     establishmentName?: string | null;
     driverId?: string | null;
@@ -166,6 +183,7 @@ export class Booking {
     b._petName = props.petName;
     b._serviceName = props.serviceName;
     b._servicesJson = props.servicesJson ?? undefined;
+    b._attendancePhotos = props.attendancePhotos ?? undefined;
     b._establishmentId = props.establishmentId ?? undefined;
     b._establishmentName = props.establishmentName ?? "";
     b._driverId = props.driverId ?? undefined;

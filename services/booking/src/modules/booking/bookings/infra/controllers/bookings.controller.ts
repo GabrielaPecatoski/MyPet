@@ -135,6 +135,16 @@ export class BookingsController {
     return this.bookingService.complete(id);
   }
 
+  @Patch(":id/photos")
+  @RequirePermissions(Permission.BOOKINGS_WRITE)
+  @ApiOperation({ summary: "Definir fotos do atendimento" })
+  async setAttendancePhotos(
+    @Param("id") id: string,
+    @Body() body: { photos: string[] },
+  ): Promise<BookingDto> {
+    return this.bookingService.setAttendancePhotos(id, body.photos ?? []);
+  }
+
   @Delete(":id")
   @HttpCode(HttpStatus.NO_CONTENT)
   @RequirePermissions(Permission.BOOKINGS_DELETE)
