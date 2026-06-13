@@ -60,14 +60,37 @@ class _EstabPedidosBodyState extends State<_EstabPedidosBody> {
     }
   }
 
+  // abas por status; pedidos aguardando pagamento/cancelados não aparecem aqui
+  static const _filters = ['Preparando', 'A caminho', 'Prontos', 'Entregues'];
+  int _filterIdx = 0;
+
+  bool _matches(int idx, Map<String, dynamic> o) {
+    final status = o['status'] as String? ?? '';
+    final pickup = (o['deliveryMethod'] as String? ?? 'PICKUP') == 'PICKUP';
+    switch (idx) {
+      case 0:
+        return status == 'ENVIANDO';
+      case 1:
+        return status == 'A_CAMINHO' && !pickup;
+      case 2:
+        return status == 'A_CAMINHO' && pickup;
+      case 3:
+        return status == 'FINALIZADO';
+      default:
+        return false;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<EstablishmentOrdersProvider>();
-    final orders = provider.orders;
     if (provider.isLoading) {
       return const Center(child: CircularProgressIndicator(color: AppColors.estab));
     }
-    if (orders.isEmpty) {
+    final visible = provider.orders
+        .where((o) => List.generate(_filters.length, (i) => i).any((i) => _matches(i, o)))
+        .toList();
+    if (visible.isEmpty) {
       return RefreshIndicator(
         onRefresh: _load,
         color: AppColors.estab,
@@ -81,14 +104,62 @@ class _EstabPedidosBodyState extends State<_EstabPedidosBody> {
         ]),
       );
     }
-    return RefreshIndicator(
-      onRefresh: _load,
-      color: AppColors.estab,
-      child: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: orders.length,
-        itemBuilder: (_, i) => _EstabOrderCard(order: orders[i], onAdvance: () => _advance(orders[i])),
-      ),
+    final filtered = visible.where((o) => _matches(_filterIdx, o)).toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          height: 56,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            children: List.generate(_filters.length, (i) {
+              final count = visible.where((o) => _matches(i, o)).length;
+              final sel = _filterIdx == i;
+              return Padding(
+                padding: EdgeInsets.only(right: i < _filters.length - 1 ? 8 : 0),
+                child: FilterChip(
+                  label: Text(count > 0 ? '${_filters[i]} ($count)' : _filters[i]),
+                  selected: sel,
+                  onSelected: (_) => setState(() => _filterIdx = i),
+                  showCheckmark: false,
+                  backgroundColor: Colors.white,
+                  selectedColor: AppColors.estab.withValues(alpha: 0.12),
+                  labelStyle: TextStyle(
+                    color: sel ? AppColors.estab : AppColors.grey,
+                    fontWeight: sel ? FontWeight.w600 : FontWeight.normal,
+                    fontSize: 13,
+                  ),
+                  shape: StadiumBorder(
+                    side: BorderSide(color: sel ? AppColors.estab : AppColors.greyLight),
+                  ),
+                ),
+              );
+            }),
+          ),
+        ),
+        const Divider(height: 1, color: AppColors.greyLight),
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: _load,
+            color: AppColors.estab,
+            child: filtered.isEmpty
+                ? ListView(children: [
+                    const SizedBox(height: 80),
+                    Center(
+                      child: Text('Nenhum pedido em "${_filters[_filterIdx]}".',
+                          style: const TextStyle(color: AppColors.grey)),
+                    ),
+                  ])
+                : ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: filtered.length,
+                    itemBuilder: (_, i) => _EstabOrderCard(
+                        order: filtered[i], onAdvance: () => _advance(filtered[i])),
+                  ),
+          ),
+        ),
+      ],
     );
   }
 }
