@@ -14,6 +14,7 @@ class OrderProgressBar extends StatelessWidget {
     final currentIdx = OrderTracking.indexOf(status);
 
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: List.generate(steps.length, (i) {
         final done = i <= currentIdx;
         final color = done ? OrderTracking.color(steps[i]) : AppColors.greyLight;
