@@ -1,4 +1,6 @@
-const BASE = "http://localhost:3000";
+// Gateway local (npm run start) por padrão; use SEED_BASE=http://127.0.0.1
+// para semear contra a stack Docker (via Nginx).
+const BASE = process.env.SEED_BASE ?? "http://localhost:3000";
 
 async function post(path, body, token) {
   const headers = { "Content-Type": "application/json" };
@@ -14,6 +16,67 @@ async function post(path, body, token) {
   } catch {
     return { status: res.status, data: text };
   }
+}
+
+async function get(path, token) {
+  const headers = {};
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  const res = await fetch(`${BASE}${path}`, { headers });
+  const text = await res.text();
+  try {
+    return { status: res.status, data: JSON.parse(text) };
+  } catch {
+    return { status: res.status, data: text };
+  }
+}
+
+const FAQS = [
+  {
+    question: "Como agendar um serviço?",
+    answer:
+      "Abra o estabelecimento desejado, toque em Agendar Serviço, escolha o pet, o serviço e um horário disponível.",
+    category: "Agendamento",
+  },
+  {
+    question: "Posso cancelar ou remarcar um agendamento?",
+    answer:
+      "Sim. Na aba Agenda, abra o agendamento e toque em Cancelar. Pagamentos retidos são estornados automaticamente.",
+    category: "Agendamento",
+  },
+  {
+    question: "Como acompanho meu pedido na loja?",
+    answer:
+      "Na Loja, vá em Pedidos para ver o status e a barra de progresso da entrega em tempo real.",
+    category: "Loja",
+  },
+  {
+    question: "Quais formas de pagamento são aceitas?",
+    answer: "PIX, cartão de crédito e débito, boleto e dinheiro na retirada.",
+    category: "Pagamento",
+  },
+  {
+    question: "Como me torno um estabelecimento parceiro?",
+    answer:
+      "Cadastre-se como Vendedor, crie o seu estabelecimento no perfil e comece a oferecer produtos e serviços.",
+    category: "Conta",
+  },
+];
+
+async function seedFaqs(adminToken) {
+  const { data: existentes } = await get("/faq");
+  const jaTem = new Set(
+    (Array.isArray(existentes) ? existentes : []).map((f) => f.question),
+  );
+  let novas = 0;
+  for (const faq of FAQS) {
+    if (jaTem.has(faq.question)) continue;
+    const { status } = await post("/faq/admin", faq, adminToken);
+    if (status === 201 || status === 200) {
+      console.log(`    + FAQ: ${faq.question}`);
+      novas++;
+    }
+  }
+  console.log(`  ✓ FAQs semeadas: ${novas} nova(s), ${jaTem.size} já existiam`);
 }
 
 async function register(user) {
@@ -64,7 +127,7 @@ async function main() {
   console.log("\n🌱 Iniciando seed...\n");
 
   console.log("👤 Admin");
-  await register({
+  const admin = await register({
     name: "Administrador",
     email: "admin@mypet.com",
     password: "admin123",
@@ -72,6 +135,9 @@ async function main() {
     cpf: "000.000.000-01",
     role: "ADMIN",
   });
+
+  console.log("\n❓ FAQ");
+  await seedFaqs(admin.accessToken);
 
   console.log("\n🏪 Vendedor 1 — Pet Shop Patinhas");
   const v1 = await register({
