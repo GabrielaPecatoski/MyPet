@@ -1,6 +1,16 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { IsArray, IsDateString, IsNotEmpty, IsNumber, IsOptional, IsString, Min, ValidateNested } from "class-validator";
 import { Type } from "class-transformer";
+import {
+  IsArray,
+  IsBoolean,
+  IsDateString,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+  ValidateNested,
+} from "class-validator";
 
 export class ServiceItemDto {
   @ApiProperty() @IsString() @IsNotEmpty() id!: string;
@@ -13,11 +23,16 @@ export class CreateBookingDto {
   @ApiProperty() @IsString() @IsNotEmpty() petId!: string;
   @ApiProperty() @IsString() @IsNotEmpty() petName!: string;
   @ApiProperty() @IsString() @IsNotEmpty() serviceName!: string;
-  @ApiProperty() @IsString() @IsNotEmpty() establishmentId!: string;
-  @ApiProperty() @IsString() @IsNotEmpty() establishmentName!: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() establishmentId?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() establishmentName?: string;
   @ApiProperty() @IsDateString() scheduledAt!: string;
   @ApiPropertyOptional() @IsOptional() @IsNumber() @Min(0) price?: number;
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() priceVariable?: boolean;
   @ApiPropertyOptional() @IsOptional() @IsString() userName?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() driverId?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() driverName?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() vetId?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() vetName?: string;
   @ApiPropertyOptional({ type: [ServiceItemDto] })
   @IsOptional()
   @IsArray()

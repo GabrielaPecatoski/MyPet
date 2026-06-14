@@ -1,7 +1,7 @@
 class WorkingDayModel {
-  final int dayOfWeek; // 0=Sun, 1=Mon...6=Sat
-  final String startTime; // "08:00"
-  final String endTime;   // "18:00"
+  final int dayOfWeek;
+  final String startTime;
+  final String endTime;
   final bool isOpen;
 
   const WorkingDayModel({

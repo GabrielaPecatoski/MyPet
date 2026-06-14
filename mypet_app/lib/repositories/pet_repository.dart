@@ -23,8 +23,8 @@ class PetRepository implements IPetRepository {
 
   @override
   Future<PetModel> update(String petId, Map<String, dynamic> data, {String? token}) async {
-    final res = await ApiService.patch('/pets/$petId', data, token: token);
-    return PetModel.fromJson(res as Map<String, dynamic>);
+    await ApiService.patch('/pets/$petId', data, token: token);
+    return PetModel.fromJson({...data, 'id': petId});
   }
 
   @override

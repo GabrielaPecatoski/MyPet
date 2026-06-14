@@ -14,7 +14,7 @@ class _TrackingScreenState extends State<TrackingScreen>
     with TickerProviderStateMixin {
   late AnimationController _pulseCtrl;
   late Animation<double> _pulseAnim;
-  int _currentStep = 2; // simula "Em Andamento"
+  int _currentStep = 2;
   int _elapsedMin = 0;
   Timer? _timer;
 

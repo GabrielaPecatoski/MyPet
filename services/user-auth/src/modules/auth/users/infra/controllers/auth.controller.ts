@@ -1,19 +1,28 @@
 import { CreateUserDto } from "@auth/users/application/dto/create-user.dto";
 import { LoginDto } from "@auth/users/application/dto/login.dto";
+import { UpdateUserDto } from "@auth/users/application/dto/update-user.dto";
 import { UserDto } from "@auth/users/application/dto/user.dto";
 import { AuthService } from "@auth/users/application/services/auth.service";
 import { UserService } from "@auth/users/application/services/user.service";
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Patch, Post } from "@nestjs/common";
-import { UpdateUserDto } from "@auth/users/application/dto/update-user.dto";
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Patch,
+  Post,
+} from "@nestjs/common";
 import {
   ApiBearerAuth,
   ApiOperation,
   ApiTags,
   ApiUnauthorizedResponse,
 } from "@nestjs/swagger";
+import type { AuthenticatedUser } from "@shared/infra/auth/interfaces/authenticated-user.interface";
 import { CurrentUser } from "@shared/infra/decorators/current-user.decorator";
 import { Public } from "@shared/infra/decorators/public.decorator";
-import type { AuthenticatedUser } from "@shared/infra/auth/interfaces/authenticated-user.interface";
 
 @ApiTags("auth")
 @Controller("auth")

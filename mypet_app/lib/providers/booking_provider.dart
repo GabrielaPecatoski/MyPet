@@ -63,11 +63,16 @@ class BookingProvider extends ChangeNotifier {
     required String petId,
     required String petName,
     required String serviceName,
-    required String establishmentId,
-    required String establishmentName,
+    String? establishmentId,
+    String? establishmentName,
     required DateTime scheduledAt,
     double price = 0,
+    bool priceVariable = false,
     List<ServiceModel>? services,
+    String? driverId,
+    String? driverName,
+    String? vetId,
+    String? vetName,
   }) async {
     _loading = true;
     _error = null;
@@ -83,7 +88,12 @@ class BookingProvider extends ChangeNotifier {
         establishmentName: establishmentName,
         scheduledAt: scheduledAt,
         price: price,
+        priceVariable: priceVariable,
         services: services,
+        driverId: driverId,
+        driverName: driverName,
+        vetId: vetId,
+        vetName: vetName,
       );
       _bookings.add(booking);
       _loading = false;

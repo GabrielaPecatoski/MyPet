@@ -9,9 +9,12 @@ class HistoryProvider extends ChangeNotifier {
 
   List<AppointmentModel> _history = [];
   bool _loading = false;
+  final Set<String> _reviewedBookingIds = {};
 
   List<AppointmentModel> get history => _history;
   bool get isLoading => _loading;
+  Set<String> get reviewedBookingIds => _reviewedBookingIds;
+  bool isReviewed(String bookingId) => _reviewedBookingIds.contains(bookingId);
 
   Future<void> load(String userId, {String? token}) async {
     _loading = true;
@@ -35,8 +38,39 @@ class HistoryProvider extends ChangeNotifier {
           .where((b) => b.status == 'CONCLUIDO')
           .toList()
         ..sort((a, b) => b.date.compareTo(a.date));
+
+      if (token != null) {
+        try {
+          _reviewedBookingIds
+              .addAll(await _repository.reviewedBookingIds(token: token));
+        } catch (_) {}
+      }
     } catch (_) {}
     _loading = false;
     notifyListeners();
+  }
+
+  Future<bool> submitReview({
+    required String establishmentId,
+    required String bookingId,
+    required int rating,
+    String? comment,
+    required String token,
+  }) async {
+    var ok = true;
+    try {
+      await _repository.submitReview(
+        establishmentId: establishmentId,
+        bookingId: bookingId,
+        rating: rating,
+        comment: comment,
+        token: token,
+      );
+    } catch (_) {
+      ok = false;
+    }
+    _reviewedBookingIds.add(bookingId);
+    notifyListeners();
+    return ok;
   }
 }

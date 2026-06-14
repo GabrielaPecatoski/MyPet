@@ -1,17 +1,35 @@
 import { FaqItem } from "@faq/faqs/domain/models/faq-item.entity";
-import { FAQ_REPOSITORY, type FaqRepository } from "@faq/faqs/domain/repositories/faq-repository.interface";
-import { QUESTION_REPOSITORY, type QuestionRepository } from "@faq/questions/domain/repositories/question-repository.interface";
+import {
+  FAQ_REPOSITORY,
+  type FaqRepository,
+} from "@faq/faqs/domain/repositories/faq-repository.interface";
 import { UserQuestion } from "@faq/questions/domain/models/user-question.entity";
+import {
+  QUESTION_REPOSITORY,
+  type QuestionRepository,
+} from "@faq/questions/domain/repositories/question-repository.interface";
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 
-export interface CreateFaqDto { question: string; answer: string; category?: string; targetRole?: string; order?: number; active?: boolean; }
-export interface CreateQuestionDto { question: string; userName: string; userRole?: string; }
+export interface CreateFaqDto {
+  question: string;
+  answer: string;
+  category?: string;
+  targetRole?: string;
+  order?: number;
+  active?: boolean;
+}
+export interface CreateQuestionDto {
+  question: string;
+  userName: string;
+  userRole?: string;
+}
 
 @Injectable()
 export class FaqService {
   constructor(
     @Inject(FAQ_REPOSITORY) private readonly faqRepo: FaqRepository,
-    @Inject(QUESTION_REPOSITORY) private readonly questionRepo: QuestionRepository,
+    @Inject(QUESTION_REPOSITORY)
+    private readonly questionRepo: QuestionRepository,
   ) {}
 
   async createFaq(dto: CreateFaqDto): Promise<void> {
@@ -64,7 +82,10 @@ export class FaqService {
     await this.faqRepo.update(item);
   }
 
-  async submitQuestion(userId: string, dto: CreateQuestionDto): Promise<void> {
+  async submitQuestion(
+    userId: string,
+    dto: CreateQuestionDto,
+  ): Promise<UserQuestion> {
     const q = UserQuestion.restore({
       userId,
       userName: dto.userName,
@@ -72,7 +93,7 @@ export class FaqService {
       question: dto.question,
       status: "PENDENTE",
     })!;
-    await this.questionRepo.create(q);
+    return this.questionRepo.create(q);
   }
 
   async listQuestions(status?: string) {
