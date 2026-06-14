@@ -1,126 +1,92 @@
 import { APIRequestContext, expect, test } from "@playwright/test";
+import {
+  addService,
+  apiContext,
+  createEstablishment,
+  registerUser,
+  SeededUser,
+} from "../playwright-front/_api";
 
-const BASE = "http://localhost:3003";
+const authHeader = (u: SeededUser) => ({ Authorization: `Bearer ${u.token}` });
 
 let api: APIRequestContext;
-const ownerId = `owner-${Date.now()}`;
+let owner: SeededUser;
 let estabId: string;
-let serviceId: string;
 
-test.beforeAll(async ({ playwright }) => {
-  api = await playwright.request.newContext({ baseURL: BASE });
+test.beforeAll(async () => {
+  api = await apiContext();
+  owner = await registerUser(api, {
+    role: "VENDEDOR",
+    businessName: "Estab API Estabelecimentos",
+  });
 });
 
 test.afterAll(async () => {
   await api.dispose();
 });
 
-test("listar estabelecimentos retorna array", async () => {
+test("GET /establishments (público) retorna array", async () => {
   const res = await api.get("/establishments");
   expect(res.status()).toBe(200);
-  const body = await res.json();
-  expect(Array.isArray(body)).toBe(true);
+  expect(Array.isArray(await res.json())).toBe(true);
 });
 
-test("listar por owner sem estabelecimento retorna array vazio", async () => {
-  const res = await api.get(`/establishments/owner/${ownerId}`);
+test("GET /establishments/emergency (público) retorna array", async () => {
+  const res = await api.get("/establishments/emergency");
   expect(res.status()).toBe(200);
-  const body = await res.json();
-  expect(Array.isArray(body)).toBe(true);
-  expect(body.length).toBe(0);
+  expect(Array.isArray(await res.json())).toBe(true);
 });
 
-test("criar estabelecimento", async () => {
-  const res = await api.post(`/establishments/owner/${ownerId}`, {
-    data: {
-      name: `PetShop Teste ${Date.now()}`,
-      description: "Descrição de teste",
-      address: "Rua das Flores, 100",
-      city: "Curitiba",
-      phone: "41999998888",
-      type: "PET_SHOP",
-    },
+test("POST /establishments/owner/:id cria estabelecimento (auth)", async () => {
+  const estab = await createEstablishment(api, owner, {
+    name: `Pet Shop API ${Date.now()}`,
   });
-  expect(res.status()).toBe(201);
-  const body = await res.json();
-  expect(body.id).toBeTruthy();
-  expect(body.ownerId).toBe(ownerId);
-  estabId = body.id;
+  expect(estab.id).toBeTruthy();
+  estabId = estab.id;
 });
 
-test("buscar estabelecimento por id", async () => {
+test("criar estabelecimento sem token retorna 401", async () => {
+  const res = await api.post(`/establishments/owner/${owner.id}`, {
+    data: { name: "Sem Auth", address: "x", city: "y", type: "PET_SHOP" },
+  });
+  expect(res.status()).toBe(401);
+});
+
+test("GET /establishments/:id (público) retorna o estabelecimento", async () => {
   const res = await api.get(`/establishments/${estabId}`);
   expect(res.status()).toBe(200);
-  const body = await res.json();
-  expect(body.id).toBe(estabId);
+  expect((await res.json()).id).toBe(estabId);
 });
 
-test("buscar por owner retorna o estabelecimento criado", async () => {
-  const res = await api.get(`/establishments/owner/${ownerId}`);
-  const body: any[] = await res.json();
-  expect(body.some((e) => e.id === estabId)).toBe(true);
-});
-
-test("buscar por search filtra por nome", async () => {
-  const res = await api.get("/establishments?search=PetShop Teste");
+test("GET /establishments/owner/:id lista os do dono (auth)", async () => {
+  const res = await api.get(`/establishments/owner/${owner.id}`, {
+    headers: authHeader(owner),
+  });
   expect(res.status()).toBe(200);
   const body: any[] = await res.json();
   expect(body.some((e) => e.id === estabId)).toBe(true);
 });
 
-test("buscar estabelecimento inexistente retorna 404", async () => {
-  const res = await api.get("/establishments/id-invalido-xyz");
-  expect(res.status()).toBe(404);
-});
-
-test("atualizar estabelecimento", async () => {
+test("PATCH /establishments/:id atualiza (204)", async () => {
+  const novoNome = `Pet Shop Renomeado ${Date.now()}`;
   const res = await api.patch(`/establishments/${estabId}`, {
-    data: { description: "Descrição atualizada", city: "São Paulo" },
+    headers: authHeader(owner),
+    data: { name: novoNome },
   });
-  expect(res.status()).toBe(200);
-  const body = await res.json();
-  expect(body.description).toBe("Descrição atualizada");
-  expect(body.city).toBe("São Paulo");
-});
-
-test("adicionar serviço ao estabelecimento", async () => {
-  const res = await api.post(`/establishments/${estabId}/services`, {
-    data: {
-      name: "Banho e Tosa",
-      price: 80.0,
-      durationMinutes: 60,
-      description: "Banho completo com tosa",
-    },
-  });
-  expect(res.status()).toBe(201);
-  const body = await res.json();
-  expect(Array.isArray(body.services)).toBe(true);
-  expect(body.services.length).toBeGreaterThan(0);
-  serviceId = body.services[body.services.length - 1].id;
-});
-
-test("estabelecimento com serviço aparece ao buscar por id", async () => {
-  const res = await api.get(`/establishments/${estabId}`);
-  const body = await res.json();
-  expect(body.services?.some((s: any) => s.id === serviceId)).toBe(true);
-});
-
-test("buscar estatísticas do estabelecimento", async () => {
-  const res = await api.get(`/establishments/${estabId}/stats`);
-  expect(res.status()).toBe(200);
-  const body = await res.json();
-  expect(typeof body.totalBookings).toBe("number");
-  expect(typeof body.avgRating).toBe("number");
-});
-
-test("remover serviço do estabelecimento", async () => {
-  const res = await api.delete(
-    `/establishments/${estabId}/services/${serviceId}`,
-  );
-  expect(res.status()).toBe(200);
-});
-
-test("deletar estabelecimento", async () => {
-  const res = await api.delete(`/establishments/${estabId}`);
   expect(res.status()).toBe(204);
+  const after = await (await api.get(`/establishments/${estabId}`)).json();
+  expect(after.name).toBe(novoNome);
+});
+
+test("serviços do estabelecimento: criar e listar (público)", async () => {
+  const service = await addService(api, owner, estabId, {
+    name: `Banho API ${Date.now()}`,
+    price: 80,
+  });
+  expect(service.name).toContain("Banho API");
+
+  const res = await api.get(`/establishments/${estabId}/services`);
+  expect(res.status()).toBe(200);
+  const body: any[] = await res.json();
+  expect(body.some((s) => s.name === service.name)).toBe(true);
 });

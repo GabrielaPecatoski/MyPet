@@ -13,7 +13,8 @@ export default defineConfig({
   ],
   outputDir: "services/tests/test-results",
   use: {
-    baseURL: "http://localhost:3004",
+    // backend real via Nginx (mesmo gateway que o app usa)
+    baseURL: process.env.API_BASE ?? "http://127.0.0.1",
     extraHTTPHeaders: { "Content-Type": "application/json" },
   },
 });

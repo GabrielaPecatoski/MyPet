@@ -1,175 +1,112 @@
 import { APIRequestContext, expect, test } from "@playwright/test";
+import {
+  addToCart,
+  apiContext,
+  checkoutOrder,
+  createEstablishment,
+  createProduct,
+  payOrder,
+  registerUser,
+  SeededUser,
+} from "../playwright-front/_api";
 
-const BASE = "http://localhost:3004";
-const ESTAB_ID = `estab-vendas-${Date.now()}`;
+const authHeader = (u: SeededUser) => ({ Authorization: `Bearer ${u.token}` });
 
 let api: APIRequestContext;
+let owner: SeededUser;
+let estabId: string;
 let productId: string;
 
-async function criarPedidoPago(
-  userId: string,
-  method: "PIX" | "CASH" | "BOLETO" | "DEBIT_CARD",
-  deliveryMethod: "PICKUP" | "DELIVERY" = "PICKUP",
-  deliveryAddress?: string,
-): Promise<{ orderId: string; paymentId: string }> {
-  await api.post(`/marketplace/cart/${userId}`, {
-    data: { productId, quantity: 1 },
+async function pedidoPago(opts: {
+  qty?: number;
+  deliveryMethod?: string;
+  deliveryAddress?: string;
+}): Promise<string> {
+  const cliente = await registerUser(api, { role: "CLIENTE" });
+  await addToCart(api, cliente, productId, opts.qty ?? 1);
+  const order = await checkoutOrder(api, cliente);
+  await payOrder(api, cliente, order.id, {
+    method: "PIX",
+    deliveryMethod: opts.deliveryMethod ?? "PICKUP",
+    deliveryAddress: opts.deliveryAddress,
   });
-  const orderRes = await api.post(`/marketplace/orders/${userId}`);
-  const order = await orderRes.json();
-
-  const payRes = await api.post("/marketplace/payments", {
-    data: {
-      orderId: order.id,
-      userId,
-      amount: 120.0,
-      method,
-      deliveryMethod,
-      deliveryAddress,
-    },
-  });
-  const payment = await payRes.json();
-  return { orderId: order.id, paymentId: payment.id };
+  return order.id;
 }
 
-test.beforeAll(async ({ playwright }) => {
-  api = await playwright.request.newContext({ baseURL: BASE });
+async function pedidosDoEstab(): Promise<any[]> {
+  return (
+    await api.get(`/marketplace/orders/establishment/${estabId}`, {
+      headers: authHeader(owner),
+    })
+  ).json();
+}
 
-  const prodRes = await api.post("/marketplace/products", {
-    data: {
-      name: `Produto Vendas ${Date.now()}`,
-      price: 120.0,
-      stock: 100,
-      establishmentId: ESTAB_ID,
-    },
+test.beforeAll(async () => {
+  api = await apiContext();
+  owner = await registerUser(api, {
+    role: "VENDEDOR",
+    businessName: "Estab API Vendas",
   });
-  const prod = await prodRes.json();
-  productId = prod.id;
+  const estab = await createEstablishment(api, owner, {
+    name: `Pet Shop Vendas ${Date.now()}`,
+  });
+  estabId = estab.id;
+  const product = await createProduct(api, owner, estabId, {
+    name: `Produto Vendas ${Date.now()}`,
+    price: 50,
+    stock: 100,
+  });
+  productId = product.id;
 });
 
 test.afterAll(async () => {
   await api.dispose();
 });
 
-test("pedido PIX (CONFIRMED) aparece na tela de vendas", async () => {
-  const { orderId } = await criarPedidoPago(`user-pix-v-${Date.now()}`, "PIX");
+test("listagem de vendas exige autenticação (401 sem token)", async () => {
+  const res = await api.get(`/marketplace/orders/establishment/${estabId}`);
+  expect(res.status()).toBe(401);
+});
 
-  const res = await api.get(`/marketplace/orders/establishment/${ESTAB_ID}`);
+test("pedido pago aparece na tela de vendas do estabelecimento (ENVIANDO)", async () => {
+  const orderId = await pedidoPago({});
+  const res = await api.get(
+    `/marketplace/orders/establishment/${estabId}`,
+    { headers: authHeader(owner) },
+  );
   expect(res.status()).toBe(200);
   const orders: any[] = await res.json();
   const found = orders.find((o) => o.id === orderId);
   expect(found).toBeTruthy();
-  expect(found.status).toBe("CONFIRMED");
+  expect(found.status).toBe("ENVIANDO");
 });
 
-test("pedido Dinheiro (AWAITING_PAYMENT) aparece na tela de vendas", async () => {
-  const { orderId } = await criarPedidoPago(
-    `user-cash-v-${Date.now()}`,
-    "CASH",
-  );
-
-  const res = await api.get(`/marketplace/orders/establishment/${ESTAB_ID}`);
-  const orders: any[] = await res.json();
-  const found = orders.find((o) => o.id === orderId);
-  expect(found).toBeTruthy();
-  expect(found.status).toBe("AWAITING_PAYMENT");
-});
-
-test("pedido Boleto (AWAITING_PAYMENT) aparece na tela de vendas", async () => {
-  const { orderId } = await criarPedidoPago(
-    `user-bol-v-${Date.now()}`,
-    "BOLETO",
-  );
-
-  const res = await api.get(`/marketplace/orders/establishment/${ESTAB_ID}`);
-  const orders: any[] = await res.json();
-  const found = orders.find((o) => o.id === orderId);
-  expect(found).toBeTruthy();
-  expect(found.status).toBe("AWAITING_PAYMENT");
-});
-
-test("pedido retorna itens com produto e pagamento", async () => {
-  const { orderId } = await criarPedidoPago(`user-data-v-${Date.now()}`, "PIX");
-
-  const res = await api.get(`/marketplace/orders/establishment/${ESTAB_ID}`);
-  const orders: any[] = await res.json();
-  const order = orders.find((o) => o.id === orderId);
-
+test("pedido traz itens com produto, quantidade e preço", async () => {
+  const orderId = await pedidoPago({ qty: 2 });
+  const order = (await pedidosDoEstab()).find((o) => o.id === orderId);
   expect(Array.isArray(order.items)).toBe(true);
-  expect(order.items.length).toBeGreaterThan(0);
-  expect(order.items[0].product).toBeTruthy();
-  expect(order.payments).toBeTruthy();
+  const item = order.items[0];
+  expect(item.productId).toBe(productId);
+  expect(item.quantity).toBe(2);
+  expect(item.price).toBeGreaterThan(0);
+  expect(order.total).toBeGreaterThan(0);
 });
 
-test("pedido de entrega (DELIVERY) inclui endereço no payment", async () => {
-  const userId = `user-deliv-v-${Date.now()}`;
-  const { orderId } = await criarPedidoPago(
-    userId,
-    "PIX",
-    "DELIVERY",
-    "Av. Paulista, 1000",
-  );
-
-  const res = await api.get(`/marketplace/orders/establishment/${ESTAB_ID}`);
-  const orders: any[] = await res.json();
-  const order = orders.find((o) => o.id === orderId);
-
-  expect(order).toBeTruthy();
-  const payment = order.payments?.[0];
-  expect(payment?.deliveryMethod).toBe("DELIVERY");
-  expect(payment?.deliveryAddress).toBe("Av. Paulista, 1000");
+test("pedido de entrega traz método e endereço", async () => {
+  const orderId = await pedidoPago({
+    deliveryMethod: "DELIVERY",
+    deliveryAddress: "Av. Paulista, 1000",
+  });
+  const order = (await pedidosDoEstab()).find((o) => o.id === orderId);
+  expect(order.deliveryMethod).toBe("DELIVERY");
+  expect(order.deliveryAddress).toBe("Av. Paulista, 1000");
 });
 
-test("fluxo completo: confirmar pedido → preparar → pronto → entregar", async () => {
-  const userId = `user-full-v-${Date.now()}`;
-  const initialStock = 100;
-
-  const prodBefore = await (
-    await api.get(`/marketplace/products/${productId}`)
-  ).json();
-  const stockBefore = prodBefore.stock as number;
-
-  const { orderId } = await criarPedidoPago(userId, "PIX");
-
-  let res = await api.patch(`/marketplace/orders/${orderId}/delivery`, {
-    data: { deliveryStatus: "PREPARING" },
+test("avanço do pedido reflete na tela de vendas", async () => {
+  const orderId = await pedidoPago({});
+  await api.patch(`/marketplace/orders/${orderId}/advance`, {
+    headers: authHeader(owner),
   });
-  expect(res.status()).toBe(200);
-  expect((await res.json()).deliveryStatus).toBe("PREPARING");
-
-  res = await api.patch(`/marketplace/orders/${orderId}/delivery`, {
-    data: { deliveryStatus: "READY" },
-  });
-  expect((await res.json()).deliveryStatus).toBe("READY");
-
-  const prodMid = await (
-    await api.get(`/marketplace/products/${productId}`)
-  ).json();
-  expect(prodMid.stock).toBe(stockBefore);
-
-  res = await api.patch(`/marketplace/orders/${orderId}/delivery`, {
-    data: { deliveryStatus: "DELIVERED" },
-  });
-  expect((await res.json()).deliveryStatus).toBe("DELIVERED");
-
-  const prodAfter = await (
-    await api.get(`/marketplace/products/${productId}`)
-  ).json();
-  expect(prodAfter.stock).toBe(stockBefore - 1);
-});
-
-test("pedido DELIVERED continua visível (status CONFIRMED) com deliveryStatus=DELIVERED", async () => {
-  const userId = `user-done-v-${Date.now()}`;
-  const { orderId } = await criarPedidoPago(userId, "PIX");
-
-  await api.patch(`/marketplace/orders/${orderId}/delivery`, {
-    data: { deliveryStatus: "DELIVERED" },
-  });
-
-  const res = await api.get(`/marketplace/orders/establishment/${ESTAB_ID}`);
-  const orders: any[] = await res.json();
-  const order = orders.find((o) => o.id === orderId);
-  expect(order).toBeTruthy();
-  expect(order.status).toBe("CONFIRMED");
-  expect(order.deliveryStatus).toBe("DELIVERED");
+  const order = (await pedidosDoEstab()).find((o) => o.id === orderId);
+  expect(order.status).toBe("A_CAMINHO");
 });

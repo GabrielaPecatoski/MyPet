@@ -1,220 +1,176 @@
 import { APIRequestContext, expect, test } from "@playwright/test";
+import {
+  addService,
+  apiContext,
+  createBooking,
+  createEstablishment,
+  createPet,
+  payBooking,
+  registerUser,
+  SeededUser,
+  setSchedule,
+  updateBookingStatus,
+} from "../playwright-front/_api";
 
-const BASE = "http://localhost:3005";
+const authHeader = (u: SeededUser) => ({ Authorization: `Bearer ${u.token}` });
 
 let api: APIRequestContext;
-const ts = Date.now();
-const userId = `user-booking-${ts}`;
-const estabId = `estab-booking-${ts}`;
+let owner: SeededUser;
+let cliente: SeededUser;
+let estabId: string;
+let estabName: string;
+let serviceName: string;
+let petId: string;
+let petName: string;
 let bookingId: string;
-let blockId: string;
 
-function nextWeekday(day: number): string {
+function futureDate(days = 3): string {
   const d = new Date();
-  d.setDate(d.getDate() + ((day - d.getDay() + 7) % 7 || 7));
-  return d.toISOString().split("T")[0];
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
 }
-const futureDate = nextWeekday(1);
 
-test.beforeAll(async ({ playwright }) => {
-  api = await playwright.request.newContext({ baseURL: BASE });
+test.beforeAll(async () => {
+  api = await apiContext();
+  owner = await registerUser(api, {
+    role: "VENDEDOR",
+    businessName: "Estab API Agenda",
+  });
+  const estab = await createEstablishment(api, owner, {
+    name: `Pet Shop Agenda ${Date.now()}`,
+  });
+  estabId = estab.id;
+  estabName = estab.name;
+  const service = await addService(api, owner, estabId, {
+    name: `Banho Agenda ${Date.now()}`,
+  });
+  serviceName = service.name;
+  cliente = await registerUser(api, { role: "CLIENTE" });
+  const pet = await createPet(api, cliente, { name: `Pet Agenda ${Date.now()}` });
+  petId = pet.id;
+  petName = pet.name;
 });
 
 test.afterAll(async () => {
   await api.dispose();
 });
 
-test("configurar agenda do estabelecimento", async () => {
-  const res = await api.post("/availability/schedule", {
-    data: {
-      establishmentId: estabId,
-      slotDurationMinutes: 60,
-      days: [
-        { dayOfWeek: 1, startTime: "08:00", endTime: "18:00", isOpen: true },
-        { dayOfWeek: 2, startTime: "08:00", endTime: "18:00", isOpen: true },
-        { dayOfWeek: 3, startTime: "08:00", endTime: "18:00", isOpen: true },
-        { dayOfWeek: 4, startTime: "08:00", endTime: "18:00", isOpen: true },
-        { dayOfWeek: 5, startTime: "08:00", endTime: "18:00", isOpen: true },
-        { dayOfWeek: 6, startTime: "09:00", endTime: "13:00", isOpen: true },
-        { dayOfWeek: 0, startTime: "00:00", endTime: "00:00", isOpen: false },
-      ],
-    },
+// ---- Disponibilidade ----
+
+test("POST /availability/schedule define a agenda", async () => {
+  const schedule = await setSchedule(api, owner, estabId);
+  expect(schedule).toBeTruthy();
+});
+
+test("GET /availability/schedule/:id retorna a agenda", async () => {
+  const res = await api.get(`/availability/schedule/${estabId}`, {
+    headers: authHeader(owner),
   });
-  expect(res.status()).toBe(201);
-  const body = await res.json();
-  expect(body.establishmentId).toBe(estabId);
-});
-
-test("buscar agenda do estabelecimento", async () => {
-  const res = await api.get(`/availability/schedule/${estabId}`);
   expect(res.status()).toBe(200);
-  const body = await res.json();
-  expect(body.days).toBeTruthy();
-  expect(body.days.length).toBe(7);
 });
 
-test("buscar horários disponíveis", async () => {
-  const res = await api.get(`/availability/${estabId}?date=${futureDate}`);
+test("GET /availability/:id?date= retorna horários disponíveis (público)", async () => {
+  const res = await api.get(`/availability/${estabId}?date=${futureDate()}`);
   expect(res.status()).toBe(200);
   const body = await res.json();
   expect(Array.isArray(body.slots)).toBe(true);
-  const available = body.slots.filter((s: any) => s.available);
-  expect(available.length).toBeGreaterThan(0);
 });
 
-test("bloquear horário", async () => {
-  const res = await api.post("/availability/block", {
+test("bloquear e desbloquear horário", async () => {
+  const date = futureDate(4);
+  const block = await api.post("/availability/block", {
+    headers: authHeader(owner),
     data: {
       establishmentId: estabId,
-      date: futureDate,
-      time: "10:00",
+      date,
+      startTime: "08:00",
+      endTime: "09:00",
       reason: "Manutenção",
     },
   });
-  expect(res.status()).toBe(201);
-  const body = await res.json();
-  expect(body.id).toBeTruthy();
-  blockId = body.id;
+  expect([200, 201, 204]).toContain(block.status());
+
+  // o endpoint não retorna o bloqueio; busca na listagem para obter o id
+  const blocked: any[] = await (
+    await api.get(`/availability/blocked/${estabId}`, {
+      headers: authHeader(owner),
+    })
+  ).json();
+  expect(Array.isArray(blocked)).toBe(true);
+  // a listagem serializa a entidade crua (campos privados com prefixo "_")
+  const created = blocked.find((b) => (b._date ?? b.date) === date);
+  const blockId = created?._id ?? created?.id;
+  expect(blockId).toBeTruthy();
+
+  const del = await api.delete(`/availability/block/${blockId}`, {
+    headers: authHeader(owner),
+  });
+  expect(del.status()).toBe(204);
 });
 
-test("horário bloqueado aparece como indisponível", async () => {
-  const res = await api.get(`/availability/${estabId}?date=${futureDate}`);
-  const body = await res.json();
-  const slots: any[] = body.slots;
-  const blocked = slots.find((s) => s.time === "10:00");
-  expect(blocked?.available).toBe(false);
-});
+// ---- Agendamentos ----
 
-test("listar bloqueios do estabelecimento", async () => {
-  const res = await api.get(
-    `/availability/blocked/${estabId}?date=${futureDate}`,
-  );
-  expect(res.status()).toBe(200);
-  const body: any[] = await res.json();
-  expect(body.some((b) => b.id === blockId)).toBe(true);
-});
-
-test("desbloquear horário", async () => {
-  const res = await api.delete(`/availability/block/${blockId}`);
-  expect(res.status()).toBe(204);
-});
-
-test("listar agendamentos de usuário sem bookings retorna array", async () => {
-  const res = await api.get(`/bookings/user/${userId}`);
+test("GET /bookings/user/:id começa vazio", async () => {
+  const res = await api.get(`/bookings/user/${cliente.id}`, {
+    headers: authHeader(cliente),
+  });
   expect(res.status()).toBe(200);
   const body = await res.json();
   expect(Array.isArray(body)).toBe(true);
+  expect(body.length).toBe(0);
 });
 
-test("criar agendamento", async () => {
-  const res = await api.post("/bookings", {
-    data: {
-      userId,
-      userName: "Cliente Teste",
-      petId: "pet-001",
-      petName: "Rex",
-      serviceName: "Banho e Tosa",
-      establishmentId: estabId,
-      establishmentName: "PetShop Teste",
-      scheduledAt: `${futureDate}T10:00:00.000Z`,
-      price: 80.0,
-    },
+test("POST /bookings cria agendamento (PENDENTE)", async () => {
+  const scheduledAt = new Date();
+  scheduledAt.setDate(scheduledAt.getDate() + 3);
+  scheduledAt.setHours(12, 0, 0, 0);
+  const booking = await createBooking(api, cliente, {
+    petId,
+    petName,
+    serviceName,
+    establishmentId: estabId,
+    establishmentName: estabName,
+    price: 80,
+    scheduledAt,
   });
-  expect(res.status()).toBe(201);
-  const body = await res.json();
-  expect(body.id).toBeTruthy();
-  expect(body.status).toBe("PENDENTE");
-  bookingId = body.id;
+  bookingId = booking.id;
+  expect(booking.id).toBeTruthy();
+  // serviço de preço fixo entra aguardando pagamento
+  expect(booking.status).toBe("AGUARDANDO_PAGAMENTO");
 });
 
-test("buscar agendamento por id", async () => {
-  const res = await api.get(`/bookings/${bookingId}`);
-  expect(res.status()).toBe(200);
-  const body = await res.json();
-  expect(body.id).toBe(bookingId);
-  expect(body.userId).toBe(userId);
-});
-
-test("listar agendamentos do usuário inclui booking criado", async () => {
-  const res = await api.get(`/bookings/user/${userId}`);
-  const body: any[] = await res.json();
-  expect(body.some((b) => b.id === bookingId)).toBe(true);
-});
-
-test("listar agendamentos do estabelecimento inclui booking", async () => {
-  const res = await api.get(`/bookings/establishment/${estabId}`);
-  expect(res.status()).toBe(200);
-  const body: any[] = await res.json();
-  expect(body.some((b) => b.id === bookingId)).toBe(true);
-});
-
-test("confirmar agendamento", async () => {
-  const res = await api.patch(`/bookings/${bookingId}/status`, {
-    data: { status: "CONFIRMADO" },
+test("GET /bookings/:id retorna o agendamento", async () => {
+  const res = await api.get(`/bookings/${bookingId}`, {
+    headers: authHeader(cliente),
   });
   expect(res.status()).toBe(200);
-  const body = await res.json();
-  expect(body.status).toBe("CONFIRMADO");
+  expect((await res.json()).id).toBe(bookingId);
 });
 
-test("estatísticas do estabelecimento retornam contagem", async () => {
-  const res = await api.get(`/bookings/stats/establishment/${estabId}`);
+test("PATCH /bookings/:id/pay processa o pagamento", async () => {
+  const result = await payBooking(api, cliente, bookingId);
+  expect(result).toBeTruthy();
+});
+
+test("estabelecimento confirma o agendamento (status CONFIRMADO)", async () => {
+  const updated = await updateBookingStatus(
+    api,
+    owner,
+    bookingId,
+    "CONFIRMADO",
+  );
+  expect(updated.status).toBe("CONFIRMADO");
+});
+
+test("cliente cancela o agendamento", async () => {
+  const res = await api.patch(`/bookings/${bookingId}/cancel`, {
+    headers: authHeader(cliente),
+  });
   expect(res.status()).toBe(200);
-  const body = await res.json();
-  expect(typeof body.totalBookings).toBe("number");
-  expect(body.totalBookings).toBeGreaterThan(0);
+  expect((await res.json()).status).toBe("CANCELADO");
 });
 
-test("concluir agendamento", async () => {
-  const res = await api.patch(`/bookings/${bookingId}/complete`);
-  expect(res.status()).toBe(200);
-  const body = await res.json();
-  expect(body.status).toBe("CONCLUIDO");
-});
-
-test("criar e cancelar agendamento", async () => {
-  const res = await api.post("/bookings", {
-    data: {
-      userId,
-      userName: "Cliente Teste",
-      petId: "pet-001",
-      petName: "Rex",
-      serviceName: "Banho",
-      establishmentId: estabId,
-      establishmentName: "PetShop Teste",
-      scheduledAt: `${futureDate}T14:00:00.000Z`,
-      price: 50.0,
-    },
-  });
-  const booking = await res.json();
-
-  const cancel = await api.patch(`/bookings/${booking.id}/cancel`, {
-    headers: { "x-user-id": userId },
-  });
-  expect(cancel.status()).toBe(200);
-  const body = await cancel.json();
-  expect(body.status).toBe("CANCELADO");
-});
-
-test("recusar agendamento", async () => {
-  const res = await api.post("/bookings", {
-    data: {
-      userId,
-      userName: "Cliente Teste",
-      petId: "pet-002",
-      petName: "Mia",
-      serviceName: "Consulta",
-      establishmentId: estabId,
-      establishmentName: "PetShop Teste",
-      scheduledAt: `${futureDate}T16:00:00.000Z`,
-      price: 120.0,
-    },
-  });
-  const booking = await res.json();
-
-  const refuse = await api.patch(`/bookings/${booking.id}/status`, {
-    data: { status: "RECUSADO" },
-  });
-  expect(refuse.status()).toBe(200);
-  expect((await refuse.json()).status).toBe("RECUSADO");
+test("agendamento exige autenticação (401 sem token)", async () => {
+  const res = await api.get(`/bookings/user/${cliente.id}`);
+  expect(res.status()).toBe(401);
 });

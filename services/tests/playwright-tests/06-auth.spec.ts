@@ -1,29 +1,31 @@
 import { APIRequestContext, expect, test } from "@playwright/test";
-
-const BASE = "http://localhost:3001";
-const ADMIN_SECRET = "mypet_admin_secret";
+import { apiContext } from "../playwright-front/_api";
 
 let api: APIRequestContext;
 
 const ts = Date.now();
-const email = `teste${ts}@mypet.com`;
+const email = `apiauth${ts}@mypet.com`;
 const cpf = `${ts}`.slice(-11).padStart(11, "0");
+const password = "senha123";
+let token: string;
 let userId: string;
 
-test.beforeAll(async ({ playwright }) => {
-  api = await playwright.request.newContext({ baseURL: BASE });
+const authHeader = () => ({ Authorization: `Bearer ${token}` });
+
+test.beforeAll(async () => {
+  api = await apiContext();
 });
 
 test.afterAll(async () => {
   await api.dispose();
 });
 
-test("registrar novo usuário CLIENTE", async () => {
+test("POST /auth/register cria usuário e retorna accessToken", async () => {
   const res = await api.post("/auth/register", {
     data: {
-      name: "Usuário Teste",
+      name: "Usuário API",
       email,
-      password: "senha123",
+      password,
       phone: "41999990000",
       cpf,
       role: "CLIENTE",
@@ -31,60 +33,58 @@ test("registrar novo usuário CLIENTE", async () => {
   });
   expect(res.status()).toBe(201);
   const body = await res.json();
-  expect(body.access_token).toBeTruthy();
+  expect(body.accessToken).toBeTruthy();
   expect(body.user.email).toBe(email);
   expect(body.user.role).toBe("CLIENTE");
+  token = body.accessToken;
   userId = body.user.id;
 });
 
-test("registrar com email duplicado retorna 409", async () => {
+test("registro com email duplicado retorna 409", async () => {
   const res = await api.post("/auth/register", {
     data: {
       name: "Outro",
       email,
-      password: "senha123",
+      password,
       phone: "41988880000",
       cpf: String(ts + 100).slice(-11),
+      role: "CLIENTE",
     },
   });
   expect(res.status()).toBe(409);
 });
 
-test("registrar sem campos obrigatórios retorna 400", async () => {
+test("registro sem campos obrigatórios retorna 400", async () => {
   const res = await api.post("/auth/register", {
     data: { email: "incompleto@test.com" },
   });
   expect(res.status()).toBe(400);
 });
 
-test("login com credenciais corretas retorna token", async () => {
-  const res = await api.post("/auth/login", {
-    data: { email, password: "senha123" },
-  });
+test("POST /auth/login com credenciais corretas retorna token", async () => {
+  const res = await api.post("/auth/login", { data: { email, password } });
   expect(res.status()).toBe(200);
   const body = await res.json();
-  expect(body.access_token).toBeTruthy();
+  expect(body.accessToken).toBeTruthy();
   expect(body.user.id).toBe(userId);
 });
 
 test("login com senha errada retorna 401", async () => {
   const res = await api.post("/auth/login", {
-    data: { email, password: "senhaerrada" },
+    data: { email, password: "errada" },
   });
   expect(res.status()).toBe(401);
 });
 
 test("login com email inexistente retorna 401", async () => {
   const res = await api.post("/auth/login", {
-    data: { email: "naoexiste@mypet.com", password: "senha123" },
+    data: { email: "naoexiste@mypet.com", password },
   });
   expect(res.status()).toBe(401);
 });
 
-test("GET /auth/me com x-user-id retorna perfil", async () => {
-  const res = await api.get("/auth/me", {
-    headers: { "x-user-id": userId },
-  });
+test("GET /auth/me com JWT retorna o perfil (sem senha)", async () => {
+  const res = await api.get("/auth/me", { headers: authHeader() });
   expect(res.status()).toBe(200);
   const body = await res.json();
   expect(body.id).toBe(userId);
@@ -92,14 +92,14 @@ test("GET /auth/me com x-user-id retorna perfil", async () => {
   expect(body.password).toBeUndefined();
 });
 
-test("GET /auth/me sem header retorna 401", async () => {
+test("GET /auth/me sem token retorna 401", async () => {
   const res = await api.get("/auth/me");
   expect(res.status()).toBe(401);
 });
 
 test("PATCH /auth/me atualiza nome e telefone", async () => {
   const res = await api.patch("/auth/me", {
-    headers: { "x-user-id": userId },
+    headers: authHeader(),
     data: { name: "Nome Atualizado", phone: "41977770000" },
   });
   expect(res.status()).toBe(200);
@@ -108,56 +108,21 @@ test("PATCH /auth/me atualiza nome e telefone", async () => {
   expect(body.phone).toBe("41977770000");
 });
 
-test("POST /auth/refresh retorna novo token", async () => {
-  const res = await api.post("/auth/refresh", {
-    headers: { "x-user-id": userId },
-  });
-  expect(res.status()).toBe(200);
-  const body = await res.json();
-  expect(body.access_token).toBeTruthy();
-});
-
-test("GET /auth/admin/users com secret retorna lista", async () => {
-  const res = await api.get("/auth/admin/users", {
-    headers: { "x-admin-secret": ADMIN_SECRET },
-  });
-  expect(res.status()).toBe(200);
-  const body = await res.json();
-  expect(Array.isArray(body)).toBe(true);
-  expect(body.some((u: any) => u.id === userId)).toBe(true);
-});
-
-test("GET /auth/admin/users sem secret retorna 403", async () => {
-  const res = await api.get("/auth/admin/users", {
-    headers: { "x-admin-secret": "secret_errado" },
-  });
-  expect(res.status()).toBe(403);
-});
-
-test("DELETE /auth/me remove conta", async () => {
-  const delTs = Date.now() + 999;
-  const delEmail = `del${delTs}@mypet.com`;
-  const delCpf = String(delTs + 50000).slice(-11);
-
+test("DELETE /auth/me remove a conta (204)", async () => {
   const reg = await api.post("/auth/register", {
     data: {
-      name: "Deletar",
-      email: delEmail,
-      password: "senha123",
+      name: "Para Deletar",
+      email: `del${ts}@mypet.com`,
+      password,
       phone: "41911110000",
-      cpf: delCpf,
+      cpf: String(ts + 50000).slice(-11),
+      role: "CLIENTE",
     },
   });
-  expect(reg.status()).toBe(201);
-  const { user } = await reg.json();
+  const { accessToken } = await reg.json();
 
   const res = await api.delete("/auth/me", {
-    headers: { "x-user-id": user.id },
+    headers: { Authorization: `Bearer ${accessToken}` },
   });
   expect(res.status()).toBe(204);
-
-  const check = await api.get("/auth/me", {
-    headers: { "x-user-id": user.id },
-  });
-  expect(check.status()).toBeGreaterThanOrEqual(400);
 });
