@@ -271,6 +271,20 @@ export async function updateBookingStatus(
     "updateBookingStatus",
   );
 }
+export async function setAttendancePhotos(
+  api: APIRequestContext,
+  actor: SeededUser,
+  bookingId: string,
+  photos: string[],
+): Promise<any> {
+  return ok(
+    await api.patch(`/bookings/${bookingId}/photos`, {
+      headers: auth(actor),
+      data: { photos },
+    }),
+    "setAttendancePhotos",
+  );
+}
 export async function getBooking(
   api: APIRequestContext,
   user: SeededUser,

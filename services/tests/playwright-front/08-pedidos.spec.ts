@@ -1,4 +1,4 @@
-import { APIRequestContext, expect, test } from "@playwright/test";
+import { APIRequestContext, test } from "@playwright/test";
 import {
   apiContext,
   createEstablishment,
@@ -8,12 +8,12 @@ import {
 } from "./_api";
 import {
   bootAndLogin,
-  button,
+  byText,
   expectText,
   openClientTab,
   openLojaSearch,
   pollTap,
-  tapButton,
+  waitForText,
 } from "./_helpers";
 
 let api: APIRequestContext;
@@ -47,12 +47,14 @@ test("estabelecimento acompanha e avança o pedido até finalizado", async ({
   await seedPaidOrder(api, owner, estabId);
   await bootAndLogin(page, owner.email, owner.password);
   await openClientTab(page, "Produtos", "Pedidos");
+  // pedido pago entra em "Preparando" (ENVIANDO) com o botão "Saiu para entrega"
   await pollTap(page, "Pedidos", "Saiu para entrega");
-  await pollTap(page, "Saiu para entrega", "Finalizar pedido");
-  await tapButton(page, "Finalizar pedido");
-  await expect
-    .poll(async () => button(page, "Finalizar pedido").count(), {
-      timeout: 40_000,
-    })
-    .toBe(0);
+  await byText(page, "Saiu para entrega").first().click({ force: true });
+  // ao sair para entrega o pedido migra para a aba "A caminho"
+  await byText(page, "A caminho").first().click({ force: true });
+  await waitForText(page, "Finalizar pedido");
+  await byText(page, "Finalizar pedido").first().click({ force: true });
+  // finalizado, o pedido passa para a aba "Entregues"
+  await byText(page, "Entregues").first().click({ force: true });
+  await waitForText(page, "Pedido finalizado");
 });

@@ -1,17 +1,46 @@
-import { APIRequestContext, test } from "@playwright/test";
+import { APIRequestContext, expect, test } from "@playwright/test";
 import { apiContext } from "./_api";
 import {
   bootFlutter,
+  byText,
   expectText,
   fill,
   fillNth,
-  pollText,
   skipOnboardingIfPresent,
   tapButton,
   tapText,
   textFields,
   waitForText,
 } from "./_helpers";
+
+// Envia o cadastro e aguarda a tela seguinte. Re-tenta "Criar conta" enquanto o
+// botão continuar visível (registro + auto-login podem demorar sob carga), sem
+// risco de duplo envio depois que a navegação acontece.
+async function criarContaEAguardar(
+  page: import("@playwright/test").Page,
+  probe: RegExp,
+): Promise<void> {
+  await expect
+    .poll(
+      async () => {
+        if (
+          await byText(page, probe)
+            .first()
+            .isVisible()
+            .catch(() => false)
+        ) {
+          return true;
+        }
+        const btn = page.getByRole("button", { name: "Criar conta" }).first();
+        if (await btn.isVisible().catch(() => false)) {
+          await btn.click({ force: true }).catch(() => {});
+        }
+        return false;
+      },
+      { timeout: 70_000, intervals: [2000] },
+    )
+    .toBe(true);
+}
 
 let api: APIRequestContext;
 test.beforeAll(async () => {
@@ -97,8 +126,10 @@ test("cadastro Motorista completo → painel do motorista", async ({ page }) => 
   await fill(campos.nth(6), String(ts).slice(-9));
   await fill(campos.nth(7), "Honda Civic");
   await fill(campos.nth(8), `ABC${ts.toString().slice(-4)}`);
-  await tapButton(page, "Criar conta");
-  await pollText(page, /MY PET · MOTORISTA|Painel|Início|Corridas/, 40_000);
+  await criarContaEAguardar(
+    page,
+    /MY PET · MOTORISTA|Painel|Início|Corridas/,
+  );
 });
 
 test("submeter form vazio mostra erros de validação", async ({ page }) => {

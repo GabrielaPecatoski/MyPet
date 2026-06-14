@@ -1,40 +1,5 @@
 import { APIRequestContext, test } from "@playwright/test";
 import {
-  bootAndLogin,
-  byText,
-  expectText,
-  fill,
-  leafByText,
-  pollTap,
-  scrollToText,
-  tapButton,
-  tapText,
-  waitForText,
-} from "./_helpers";
-
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-async function pollForSlots(
-  page: import("@playwright/test").Page,
-  timeoutMs: number,
-): Promise<boolean> {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    const found: boolean = await page
-      .evaluate(() =>
-        Array.from(
-          document.querySelectorAll('flt-semantics[role="button"]'),
-        ).some((el) => /^\d{2}:\d{2}$/.test((el.textContent ?? "").trim())),
-      )
-      .catch(() => false);
-    if (found) return true;
-    await page.mouse.move(640, 450);
-    await page.mouse.wheel(0, 300);
-    await sleep(500);
-  }
-  return false;
-}
-
-import {
   addService,
   addVariableService,
   apiContext,
@@ -44,6 +9,16 @@ import {
   SeededUser,
   setSchedule,
 } from "./_api";
+import {
+  bootAndLogin,
+  leafByText,
+  scrollToText,
+  tapButton,
+  waitForText,
+} from "./_helpers";
+
+const MESES = /(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)/;
+const HORARIO = /^\d{1,2}:\d{2}$/;
 
 let api: APIRequestContext;
 let owner: SeededUser;
@@ -79,6 +54,17 @@ test.beforeAll(async () => {
 test.afterAll(async () => {
   await api.dispose();
 });
+
+// Seleciona uma data futura (sempre com slots, independente da hora atual) e o
+// primeiro horário disponível — mesmo padrão estável do spec 04-agendamento.
+async function escolherDataEHorario(
+  page: import("@playwright/test").Page,
+): Promise<void> {
+  await page.getByRole("button", { name: MESES }).nth(3).click();
+  const slot = page.getByRole("button", { name: HORARIO }).first();
+  await slot.waitFor({ state: "visible", timeout: 20_000 });
+  await slot.click();
+}
 
 test("cliente consegue ver clínica veterinária na home com filtro Veterinário", async ({
   page,
@@ -125,31 +111,7 @@ test("cliente agenda consulta com preço fixo → dialog de pagamento", async ({
   await scrollToText(page, /Consulta E2E/, 20);
   await leafByText(page, "Consulta E2E").first().click({ force: true });
 
-  await page.mouse.wheel(0, 300);
-  await sleep(500);
-  await page
-    .locator('flt-semantics[role="button"]')
-    .filter({ hasText: "Hoje" })
-    .first()
-    .click({ force: true });
-
-  const slotFound = await pollForSlots(page, 30000);
-
-  if (!slotFound) {
-    await page
-      .locator('flt-semantics[role="button"]')
-      .filter({ hasText: /jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez/ })
-      .nth(1)
-      .click({ force: true });
-    if (!(await pollForSlots(page, 40000)))
-      throw new Error("Nenhum slot disponível para amanhã");
-  }
-
-  await page
-    .locator('flt-semantics[role="button"]')
-    .filter({ hasText: /^\d{2}:\d{2}$/ })
-    .first()
-    .click({ force: true });
+  await escolherDataEHorario(page);
 
   await tapButton(page, "Confirmar Agendamento");
   await waitForText(page, /Quase lá|Pagar Agora|Ver Minha Agenda/, 30_000);
@@ -191,31 +153,7 @@ test("cliente agenda consulta preço variável → dialog sem pagamento", async 
     .first()
     .click({ force: true });
 
-  await page.mouse.wheel(0, 300);
-  await sleep(500);
-  await page
-    .locator('flt-semantics[role="button"]')
-    .filter({ hasText: "Hoje" })
-    .first()
-    .click({ force: true });
-
-  const slotFoundVar = await pollForSlots(page, 30000);
-
-  if (!slotFoundVar) {
-    await page
-      .locator('flt-semantics[role="button"]')
-      .filter({ hasText: /jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez/ })
-      .nth(1)
-      .click({ force: true });
-    if (!(await pollForSlots(page, 40000)))
-      throw new Error("Nenhum slot disponível para amanhã");
-  }
-
-  await page
-    .locator('flt-semantics[role="button"]')
-    .filter({ hasText: /^\d{2}:\d{2}$/ })
-    .first()
-    .click({ force: true });
+  await escolherDataEHorario(page);
 
   await tapButton(page, "Confirmar Agendamento");
   await waitForText(page, /Ver Minha Agenda|Sob consulta|Quase lá/, 30_000);

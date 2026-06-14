@@ -27,6 +27,8 @@ class _EstabPedidosBody extends StatefulWidget {
 }
 
 class _EstabPedidosBodyState extends State<_EstabPedidosBody> {
+  String? _loadedEstabId;
+
   @override
   void initState() {
     super.initState();
@@ -36,13 +38,9 @@ class _EstabPedidosBodyState extends State<_EstabPedidosBody> {
   Future<void> _load() async {
     final auth = context.read<AuthProvider>();
     final estabProvider = context.read<EstablishmentProvider>();
-
-    for (var i = 0; i < 20 && estabProvider.establishmentId == null && mounted; i++) {
-      await Future.delayed(const Duration(milliseconds: 150));
-    }
-    if (!mounted) return;
     final estabId = estabProvider.establishmentId;
     if (estabId == null || auth.token == null) return;
+    _loadedEstabId = estabId;
     await context
         .read<EstablishmentOrdersProvider>()
         .load(estabId: estabId, token: auth.token!);
@@ -84,6 +82,21 @@ class _EstabPedidosBodyState extends State<_EstabPedidosBody> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<EstablishmentOrdersProvider>();
+
+    // Carrega assim que o estabelecimento ficar disponível (load lento/race).
+    final estabId = context.watch<EstablishmentProvider>().establishmentId;
+    final token = context.read<AuthProvider>().token;
+    if (estabId != null && token != null && _loadedEstabId != estabId) {
+      _loadedEstabId = estabId;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          context
+              .read<EstablishmentOrdersProvider>()
+              .load(estabId: estabId, token: token);
+        }
+      });
+    }
+
     if (provider.isLoading) {
       return const Center(child: CircularProgressIndicator(color: AppColors.estab));
     }

@@ -12,6 +12,7 @@ import {
 import {
   bootAndLogin,
   expectText,
+  leafByText,
   openClientTab,
   pollText,
   scrollToText,
@@ -19,6 +20,22 @@ import {
   tapText,
   waitForText,
 } from "./_helpers";
+
+// Abre a clínica veterinária a partir do filtro "Veterinário" da home — caminho
+// estável (a veterinária não fica na listagem padrão de pet shops).
+async function abrirVeterinaria(
+  page: import("@playwright/test").Page,
+  estabNome: string,
+): Promise<void> {
+  await leafByText(page, "Veterinário").first().click({ force: true });
+  await waitForText(
+    page,
+    /Clínicas e Pet shops|Veterinários disponíveis/,
+    30_000,
+  );
+  await scrollToText(page, estabNome, 40);
+  await tapText(page, estabNome);
+}
 
 const MESES = /(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)/;
 const HORARIO = /^\d{1,2}:\d{2}$/;
@@ -58,8 +75,7 @@ test('serviço com preço variável mostra "Sob consulta" na tela de agendamento
 }) => {
   await bootAndLogin(page, cliente.email, cliente.password);
   await page.waitForTimeout(2000);
-  await scrollToText(page, estabNome);
-  await tapText(page, estabNome);
+  await abrirVeterinaria(page, estabNome);
   await waitForText(page, "Agendar Serviço");
   await tapButton(page, "Agendar Serviço");
   await waitForText(page, "Selecione o pet");
@@ -71,8 +87,7 @@ test("agendar serviço veterinário variável não exige pagamento e vai direto 
 }) => {
   await bootAndLogin(page, cliente.email, cliente.password);
   await page.waitForTimeout(2000);
-  await scrollToText(page, estabNome);
-  await tapText(page, estabNome);
+  await abrirVeterinaria(page, estabNome);
   await waitForText(page, "Agendar Serviço");
   await tapButton(page, "Agendar Serviço");
   await waitForText(page, "Selecione o pet");

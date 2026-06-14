@@ -17,6 +17,7 @@ class EstabAgendaScreen extends StatefulWidget {
 
 class _EstabAgendaScreenState extends State<EstabAgendaScreen> {
   DateTime _selectedDate = DateTime.now();
+  String? _bookingsEstabId;
 
   static const _weekdayShort = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
   static const _monthNames = [
@@ -50,17 +51,16 @@ class _EstabAgendaScreenState extends State<EstabAgendaScreen> {
       );
     }
 
-    for (var i = 0; i < 20 && estabProvider.establishmentId == null && mounted; i++) {
-      await Future.delayed(const Duration(milliseconds: 150));
-    }
-
     final estabId = estabProvider.establishmentId;
     if (estabId != null && mounted) {
+      _bookingsEstabId = estabId;
       context.read<BookingProvider>().loadEstabBookings(
             token: auth.token!,
             estabId: estabId,
           );
     }
+    // Se o estabelecimento ainda não está disponível (load lento), o build
+    // dispara o carregamento reativamente assim que o id aparecer.
   }
 
   List<AppointmentModel> _dayBookingsFor(List<AppointmentModel> all) {
@@ -135,6 +135,22 @@ class _EstabAgendaScreenState extends State<EstabAgendaScreen> {
   Widget build(BuildContext context) {
     final booking = context.watch<BookingProvider>();
     final estab = context.watch<EstablishmentProvider>();
+
+    // Carrega os agendamentos assim que o estabelecimento ficar disponível
+    // (o load inicial pode correr antes do id existir, sob carga/lentidão).
+    final estabId = estab.establishmentId;
+    final token = context.read<AuthProvider>().token;
+    if (estabId != null && token != null && _bookingsEstabId != estabId) {
+      _bookingsEstabId = estabId;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          context
+              .read<BookingProvider>()
+              .loadEstabBookings(token: token, estabId: estabId);
+        }
+      });
+    }
+
     final all = booking.bookings;
     final dayBookings = _dayBookingsFor(all);
     final week = _weekDays;
