@@ -5,6 +5,7 @@ import '../models/driver.dart';
 import '../models/veterinarian.dart';
 import '../services/api_service.dart';
 import '../services/driver_service.dart';
+import '../services/storage_service.dart';
 import '../services/veterinarian_service.dart';
 
 class AdminProvider extends ChangeNotifier {
@@ -200,4 +201,8 @@ class AdminProvider extends ChangeNotifier {
     await _loadPendingVerifications();
     notifyListeners();
   }
+
+  Future<String?> cnhPhoto(String cpf) => StorageService.getCnhPhoto(cpf);
+
+  Future<String?> crmvPhoto(String cpf) => StorageService.getCrmvPhoto(cpf);
 }

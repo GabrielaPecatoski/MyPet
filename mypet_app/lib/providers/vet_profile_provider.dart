@@ -1,6 +1,11 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import '../core/constants.dart';
+import '../models/appointment.dart';
 import '../models/emergency_call.dart';
 import '../models/veterinarian.dart';
+import '../services/booking_service.dart';
+import '../services/sse/sse_client.dart';
 import '../services/veterinarian_service.dart';
 
 class VetProfileProvider extends ChangeNotifier {
@@ -9,6 +14,7 @@ class VetProfileProvider extends ChangeNotifier {
   bool _updating = false;
   String? _error;
   List<EmergencyCallModel> _pendingCalls = [];
+  SseSubscription? _emergencyStream;
 
   VeterinarianModel? get vet => _vet;
   bool get loading => _loading;
@@ -93,10 +99,46 @@ class VetProfileProvider extends ChangeNotifier {
     }
   }
 
+  Future<List<AppointmentModel>> fetchBookings({
+    required String token,
+    required String vetId,
+  }) {
+    return BookingService.fetchVetBookings(token: token, vetId: vetId);
+  }
+
+  void startEmergencyStream({
+    required String token,
+    required void Function() onCall,
+  }) {
+    stopEmergencyStream();
+    final vet = _vet;
+    if (vet == null) return;
+    final url =
+        '${ApiConstants.baseUrl}/notifications/stream/${vet.id}?token=$token';
+    _emergencyStream = connectSse(url, (data) {
+      try {
+        final event = jsonDecode(data) as Map<String, dynamic>;
+        if (event['type'] == 'EMERGENCY_VET_CALL') onCall();
+      } catch (_) {}
+    });
+  }
+
+  void stopEmergencyStream() {
+    _emergencyStream?.close();
+    _emergencyStream = null;
+  }
+
   void clear() {
     _vet = null;
     _error = null;
     _pendingCalls = [];
+    stopEmergencyStream();
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    stopEmergencyStream();
+    super.dispose();
   }
 }

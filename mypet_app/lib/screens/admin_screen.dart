@@ -9,7 +9,6 @@ import '../models/driver.dart';
 import '../models/veterinarian.dart';
 import '../providers/admin_provider.dart';
 import '../providers/auth_provider.dart';
-import '../services/storage_service.dart';
 import '../widgets/app_bottom_nav.dart';
 import '../widgets/mypet_app_bar.dart';
 
@@ -2198,12 +2197,13 @@ class _VerificacoesPageState extends State<_VerificacoesPage>
   }
 
   Future<void> _loadPhotos() async {
+    final admin = context.read<AdminProvider>();
     for (final d in widget.pendingDrivers) {
-      final path = await StorageService.getCnhPhoto(d.cpf);
+      final path = await admin.cnhPhoto(d.cpf);
       if (path != null && mounted) setState(() => _cnhPhotos[d.cpf] = path);
     }
     for (final v in widget.pendingVets) {
-      final path = await StorageService.getCrmvPhoto(v.cpf);
+      final path = await admin.crmvPhoto(v.cpf);
       if (path != null && mounted) setState(() => _crmvPhotos[v.cpf] = path);
     }
   }

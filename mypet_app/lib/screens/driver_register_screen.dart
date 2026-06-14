@@ -8,7 +8,6 @@ import '../models/driver.dart';
 import '../providers/auth_provider.dart';
 import '../providers/driver_register_provider.dart';
 import '../repositories/driver_register_repository.dart';
-import '../services/storage_service.dart';
 import '../widgets/mypet_app_bar.dart';
 
 class MotoristaRegisterScreen extends StatelessWidget {
@@ -95,12 +94,10 @@ class _MotoristaRegisterViewState extends State<_MotoristaRegisterView> {
       vehicleType: _vehicleType,
       vehicleModel: _vehicleModelCtrl.text.trim(),
       vehiclePlate: _vehiclePlateCtrl.text.trim().toUpperCase(),
+      cnhPhotoPath: _cnhPhotoPath,
     );
     if (!mounted) return;
     if (driver != null) {
-      if (_cnhPhotoPath != null) {
-        await StorageService.saveCnhPhoto(cpf, _cnhPhotoPath!);
-      }
       _showSuccess(driver);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(

@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
@@ -7,11 +6,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../core/colors.dart';
-import '../core/constants.dart';
 import '../models/emergency_call.dart';
 import '../providers/auth_provider.dart';
 import '../providers/vet_profile_provider.dart';
-import '../services/sse/sse_client.dart';
 
 class VetHomeScreen extends StatefulWidget {
   const VetHomeScreen({super.key});
@@ -26,7 +23,7 @@ class _VetHomeScreenState extends State<VetHomeScreen> {
   static const _orange    = Color(0xFFF97316);
 
   Timer? _pollTimer;
-  SseSubscription? _sse;
+  VetProfileProvider? _vetVm;
   bool _alarmVisible = false;
   EmergencyCallModel? _incomingCall;
 
@@ -37,9 +34,15 @@ class _VetHomeScreenState extends State<VetHomeScreen> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _vetVm = context.read<VetProfileProvider>();
+  }
+
+  @override
   void dispose() {
     _pollTimer?.cancel();
-    _sse?.close();
+    _vetVm?.stopEmergencyStream();
     super.dispose();
   }
 
@@ -55,28 +58,15 @@ class _VetHomeScreenState extends State<VetHomeScreen> {
 
   void _resetPollTimer() {
     _pollTimer?.cancel();
-    _sse?.close();
-    _sse = null;
-    final vm = context.read<VetProfileProvider>();
-    if (!vm.atende24h || vm.vet == null) return;
-
-    _connectSse();
-    _pollTimer = Timer.periodic(const Duration(seconds: 15), (_) => _checkEmergencyCalls());
-    _checkEmergencyCalls();
-  }
-
-  void _connectSse() {
     final auth = context.read<AuthProvider>();
     final vm = context.read<VetProfileProvider>();
-    if (auth.token == null || vm.vet == null) return;
-    final url =
-        '${ApiConstants.baseUrl}/notifications/stream/${vm.vet!.id}?token=${auth.token}';
-    _sse = connectSse(url, (data) {
-      try {
-        final event = jsonDecode(data) as Map<String, dynamic>;
-        if (event['type'] == 'EMERGENCY_VET_CALL') _checkEmergencyCalls();
-      } catch (_) {}
-    });
+    vm.stopEmergencyStream();
+    if (!vm.atende24h || vm.vet == null || auth.token == null) return;
+
+    vm.startEmergencyStream(
+        token: auth.token!, onCall: _checkEmergencyCalls);
+    _pollTimer = Timer.periodic(const Duration(seconds: 15), (_) => _checkEmergencyCalls());
+    _checkEmergencyCalls();
   }
 
   Future<void> _checkEmergencyCalls() async {

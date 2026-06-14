@@ -201,8 +201,12 @@ class AuthProvider extends ChangeNotifier {
     required String cpf,
     required String crmv,
     String? especialidade,
+    String? crmvPhotoPath,
   }) async {
     if (_token == null) return 'Token ausente';
+    if (crmvPhotoPath != null) {
+      await StorageService.saveCrmvPhoto(cpf, crmvPhotoPath);
+    }
     try {
       await VeterinarianService.register(
         token: _token!,

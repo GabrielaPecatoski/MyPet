@@ -5,7 +5,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../core/colors.dart';
 import '../providers/auth_provider.dart';
-import '../services/storage_service.dart';
 class RegisterScreen extends StatefulWidget {
   final int initialTipo;
   const RegisterScreen({super.key, this.initialTipo = 0});
@@ -177,10 +176,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
       especialidade: _especialidadeVetCtrl.text.trim().isEmpty
           ? null
           : _especialidadeVetCtrl.text.trim(),
+      crmvPhotoPath: _crmvPhotoPath,
     );
-    if (_crmvPhotoPath != null) {
-      await StorageService.saveCrmvPhoto(cpf, _crmvPhotoPath);
-    }
     if (err != null && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('Conta criada, mas erro ao salvar perfil vet: $err'),

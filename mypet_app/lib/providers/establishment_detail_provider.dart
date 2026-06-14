@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import '../models/availability.dart';
 import '../models/establishment.dart';
 import '../models/review.dart';
+import '../models/veterinarian.dart';
 import '../repositories/establishment_detail_repository.dart';
+import '../services/veterinarian_service.dart';
 
 class EstablishmentDetailProvider extends ChangeNotifier {
   final IEstablishmentDetailRepository _repository;
@@ -11,11 +13,13 @@ class EstablishmentDetailProvider extends ChangeNotifier {
 
   List<ServiceModel> _services = [];
   List<ReviewModel> _reviews = [];
+  List<VeterinarianModel> _vets = [];
   ScheduleModel? _schedule;
   bool _reviewsLoading = true;
 
   List<ServiceModel> get services => _services;
   List<ReviewModel> get reviews => _reviews;
+  List<VeterinarianModel> get vets => _vets;
   ScheduleModel? get schedule => _schedule;
   bool get reviewsLoading => _reviewsLoading;
 
@@ -31,7 +35,17 @@ class EstablishmentDetailProvider extends ChangeNotifier {
       _loadServices(estabId),
       _loadReviews(estabId, token: token),
       if (token != null) _loadSchedule(estabId, token: token),
+      if (token != null) _loadVets(estabId, token: token),
     ]);
+  }
+
+  Future<void> _loadVets(String estabId, {required String token}) async {
+    try {
+      final vets = await VeterinarianService.fetchByEstablishment(
+          token: token, establishmentId: estabId);
+      _vets = vets.where((v) => v.isAtivo).toList();
+      notifyListeners();
+    } catch (_) {}
   }
 
   Future<void> _loadServices(String estabId) async {

@@ -50,4 +50,25 @@ class EmergencyProvider extends ChangeNotifier {
   Future<void> loadAll({String token = ''}) async {
     await Future.wait([loadEstabs(), loadVets(token: token)]);
   }
+
+  Future<bool> callVet({
+    required String token,
+    required String vetId,
+    required String callerName,
+    required String callerPhone,
+    String? petDescription,
+  }) async {
+    try {
+      await VeterinarianService.callVet(
+        token: token,
+        vetId: vetId,
+        callerName: callerName,
+        callerPhone: callerPhone,
+        petDescription: petDescription,
+      );
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
 }

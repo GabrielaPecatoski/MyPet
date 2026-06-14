@@ -6,7 +6,6 @@ import '../models/establishment.dart';
 import '../models/veterinarian.dart';
 import '../providers/auth_provider.dart';
 import '../providers/emergency_provider.dart';
-import '../services/veterinarian_service.dart';
 import '../widgets/mypet_app_bar.dart';
 
 class EmergenciaScreen extends StatefulWidget {
@@ -58,23 +57,23 @@ class _EmergenciaScreenState extends State<EmergenciaScreen>
 
     if (confirmed != true || !mounted) return;
 
-    try {
-      HapticFeedback.heavyImpact();
-      await VeterinarianService.callVet(
-        token: token,
-        vetId: vet.id,
-        callerName: callerName,
-        callerPhone: phoneCtrl.text.trim(),
-        petDescription: petCtrl.text.trim().isEmpty ? null : petCtrl.text.trim(),
-      );
-      if (!mounted) return;
+    HapticFeedback.heavyImpact();
+    final ok = await context.read<EmergencyProvider>().callVet(
+          token: token,
+          vetId: vet.id,
+          callerName: callerName,
+          callerPhone: phoneCtrl.text.trim(),
+          petDescription:
+              petCtrl.text.trim().isEmpty ? null : petCtrl.text.trim(),
+        );
+    if (!mounted) return;
+    if (ok) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         content: Text('Chamado enviado! O veterinário foi alertado.'),
         backgroundColor: AppColors.success,
         behavior: SnackBarBehavior.floating,
       ));
-    } catch (_) {
-      if (!mounted) return;
+    } else {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         content: Text('Erro ao enviar chamado. Tente ligar diretamente.'),
         backgroundColor: AppColors.danger,

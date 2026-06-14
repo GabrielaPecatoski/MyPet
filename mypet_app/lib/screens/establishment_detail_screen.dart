@@ -8,7 +8,6 @@ import '../models/veterinarian.dart';
 import '../providers/auth_provider.dart';
 import '../providers/establishment_detail_provider.dart';
 import '../repositories/establishment_detail_repository.dart';
-import '../services/veterinarian_service.dart';
 import '../widgets/app_bottom_nav.dart';
 import '../widgets/mypet_app_bar.dart';
 import 'schedule_screen.dart' show ScheduleArgs;
@@ -37,7 +36,6 @@ class _EstablishmentDetailView extends StatefulWidget {
 class _EstablishmentDetailViewState
     extends State<_EstablishmentDetailView> {
   bool _loaded = false;
-  List<VeterinarianModel> _vets = [];
 
   @override
   void didChangeDependencies() {
@@ -47,17 +45,7 @@ class _EstablishmentDetailViewState
       _loaded = true;
       final token = context.read<AuthProvider>().token;
       context.read<EstablishmentDetailProvider>().load(e.id, token: token);
-      _loadVets(e.id, token);
     }
-  }
-
-  Future<void> _loadVets(String estabId, String? token) async {
-    if (token == null) return;
-    try {
-      final vets = await VeterinarianService.fetchByEstablishment(
-          token: token, establishmentId: estabId);
-      if (mounted) setState(() => _vets = vets.where((v) => v.isAtivo).toList());
-    } catch (_) {}
   }
 
   String _fmtTime(String t) {
@@ -101,6 +89,7 @@ class _EstablishmentDetailViewState
     final schedule = provider.schedule;
     final liveRating = provider.liveRating;
     final liveReviewCount = provider.liveReviewCount;
+    final vets = provider.vets;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -201,8 +190,8 @@ class _EstablishmentDetailViewState
                   ),
                 ),
 
-              if (_vets.isNotEmpty)
-                SliverToBoxAdapter(child: _vetsSection(e)),
+              if (vets.isNotEmpty)
+                SliverToBoxAdapter(child: _vetsSection(e, vets)),
 
               SliverToBoxAdapter(
                 child: Padding(
@@ -457,7 +446,7 @@ class _EstablishmentDetailViewState
     );
   }
 
-  Widget _vetsSection(EstablishmentModel e) {
+  Widget _vetsSection(EstablishmentModel e, List<VeterinarianModel> vets) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
       child: Column(
@@ -467,7 +456,7 @@ class _EstablishmentDetailViewState
               style: TextStyle(
                   fontSize: 17, fontWeight: FontWeight.bold, color: AppColors.dark)),
           const SizedBox(height: 8),
-          ..._vets.map((v) => Container(
+          ...vets.map((v) => Container(
                 margin: const EdgeInsets.only(bottom: 10),
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(

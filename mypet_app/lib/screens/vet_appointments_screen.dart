@@ -4,7 +4,6 @@ import '../core/colors.dart';
 import '../models/appointment.dart';
 import '../providers/auth_provider.dart';
 import '../providers/vet_profile_provider.dart';
-import '../services/booking_service.dart';
 import '../widgets/attendance_photos.dart';
 
 class VetAgendaScreen extends StatefulWidget {
@@ -62,7 +61,7 @@ class _VetAgendaScreenState extends State<VetAgendaScreen>
     }
     if (mounted) setState(() => _loading = true);
     try {
-      final data = await BookingService.fetchVetBookings(token: token, vetId: vetId);
+      final data = await vetVm.fetchBookings(token: token, vetId: vetId);
       if (mounted) setState(() => _bookings = data);
     } catch (_) {
       if (mounted) setState(() => _bookings = []);

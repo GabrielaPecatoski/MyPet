@@ -45,6 +45,54 @@ Flutter App (web · Android · desktop)
 | user-driver | 3009 | mypet_driver | Motoristas (cadastro PENDENTE → aprovação do admin) |
 | user-vet | 3010 | mypet_vet | Veterinários, disponibilidade 24h, chamados de emergência |
 
+## App Flutter — Arquitetura (MVVM) e padrões
+
+O app (`mypet_app/`) segue **MVVM**, com camadas explícitas e regra de negócio fora da interface.
+
+### Camadas MVVM
+
+| Camada | Pasta | Responsabilidade |
+|---|---|---|
+| **Model** | `lib/models/` | Entidades + `factory fromJson` (ex.: `EstablishmentModel`, `UserModel`) |
+| **View** | `lib/screens/` · `lib/widgets/` | Só renderiza e captura interação; observa o ViewModel via `context.watch` |
+| **ViewModel** | `lib/providers/` | `ChangeNotifier` com estado (loading / erro / dados) e ações; não concentra UI |
+| Repository | `lib/repositories/` | Abstrai a origem dos dados (interface + implementação) |
+| Service | `lib/services/` | HTTP (`ApiService`), armazenamento (`StorageService`), SSE |
+
+Fluxo: **View → ViewModel (Provider) → Repository → Service (HTTP/SSE) → Model**.
+
+Exemplo concreto: a `HomeScreen` apenas observa o estado; o `HomeProvider.load()` busca os dados pelo `EstablishmentListRepository`, que chama `ApiService.get('/establishments')` e converte a resposta em `EstablishmentModel`. A tela não tem regra de negócio — só decide o que mostrar a partir do estado do ViewModel.
+
+### Padrão de projeto adotado
+
+- **Observer / reatividade (padrão principal)** — `provider` + `ChangeNotifier` / `notifyListeners()`. As Views se inscrevem (`context.watch`) e reagem automaticamente às mudanças de estado do ViewModel. Os ViewModels são registrados em `lib/main.dart` via `MultiProvider`.
+- **Repository** — interface (`IEstablishmentListRepository`) desacopla o ViewModel da fonte de dados.
+- **Factory** — `factory Model.fromJson(...)` em todos os models converte o JSON da API em objetos de domínio.
+- **Singleton (acesso estático)** — `ApiService` e `StorageService` expõem operações estáticas; `SharedPreferences.getInstance()` reaproveita a mesma instância.
+
+### Comunicação com API
+
+- Cliente HTTP central em `lib/services/api_service.dart` (pacote `http`), com **timeout de 15s** e helpers `get/post/patch/put/delete`.
+- `baseUrl` resolve por plataforma (web `127.0.0.1` · Android `10.0.2.2` · desktop `localhost`) — `lib/core/constants.dart`.
+- **Os três estados são tratados na interface** (ex.: `lib/screens/home_screen.dart`):
+  - *Carregamento* → `CircularProgressIndicator`
+  - *Sucesso* → lista renderizada (com estado vazio tratado)
+  - *Erro* → ícone offline + mensagem + botão **"Tentar novamente"**; falhas de rede/timeout são detectadas por `ApiService.isNetworkError`.
+
+### Armazenamento local
+
+- **`shared_preferences`** via `lib/services/storage_service.dart`.
+- Persiste o **token JWT**, o **usuário logado** (serializado em JSON) e caminhos de fotos (CNH/CRMV/veículo).
+- **Recuperação ao reabrir o app**: a `SplashScreen` chama `AuthProvider.loadFromStorage()` no boot, restaurando a sessão sem exigir novo login.
+
+### Rodar apenas o app
+
+```powershell
+cd mypet_app
+flutter pub get
+flutter run -d chrome   # requer a stack no ar (ver "Como rodar")
+```
+
 ## Pré-requisitos
 
 - Docker Desktop 24+
