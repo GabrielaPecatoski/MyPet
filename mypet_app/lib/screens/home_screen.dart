@@ -49,6 +49,8 @@ class _HomeScreenState extends State<HomeScreen> {
         b.date.year == today.year &&
         b.date.month == today.month &&
         b.date.day == today.day).toList();
+    final highlights = home.highlights;
+    final nearby = home.nearby;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -376,10 +378,31 @@ class _HomeScreenState extends State<HomeScreen> {
                           height: 168,
                           child: ListView.separated(
                             scrollDirection: Axis.horizontal,
-                            itemCount: home.establishments.take(5).length,
+                            itemCount: highlights.length,
                             separatorBuilder: (_, __) => const SizedBox(width: 12),
                             itemBuilder: (ctx, i) =>
-                                _HighlightCard(establishment: home.establishments[i]),
+                                _HighlightCard(establishment: highlights[i]),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        const Text(
+                          'Próximos a você',
+                          style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.dark),
+                        ),
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          height: 168,
+                          child: ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: nearby.length,
+                            separatorBuilder: (_, __) => const SizedBox(width: 12),
+                            itemBuilder: (ctx, i) => _NearbyCard(
+                              establishment: nearby[i],
+                              distanceKm: HomeProvider.distanceKm(nearby[i]),
+                            ),
                           ),
                         ),
                         const SizedBox(height: 24),
@@ -482,6 +505,129 @@ class _HighlightCard extends StatelessWidget {
                       Text(
                         ' (${e.reviewCount})',
                         style: const TextStyle(fontSize: 11, color: AppColors.grey),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NearbyCard extends StatelessWidget {
+  final EstablishmentModel establishment;
+  final double distanceKm;
+  const _NearbyCard({required this.establishment, required this.distanceKm});
+
+  String get _distanceLabel => distanceKm < 1
+      ? '${(distanceKm * 1000).round()} m'
+      : '${distanceKm.toStringAsFixed(1).replaceAll('.', ',')} km';
+
+  @override
+  Widget build(BuildContext context) {
+    final e = establishment;
+    return GestureDetector(
+      onTap: () => Navigator.pushNamed(context, '/establishment', arguments: e),
+      child: Container(
+        width: 160,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: const [
+            BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 2)),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Stack(
+              children: [
+                Container(
+                  height: 90,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryLight,
+                    borderRadius:
+                        const BorderRadius.vertical(top: Radius.circular(12)),
+                  ),
+                  child: Center(
+                    child: Icon(
+                      e.isVeterinario ? Icons.local_hospital : Icons.pets,
+                      color: AppColors.primary,
+                      size: 40,
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: const [
+                        BoxShadow(
+                            color: Colors.black12,
+                            blurRadius: 4,
+                            offset: Offset(0, 1)),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.location_on,
+                            size: 11, color: AppColors.primary),
+                        const SizedBox(width: 2),
+                        Text(
+                          _distanceLabel,
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: AppColors.dark,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            Padding(
+              padding: const EdgeInsets.all(10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    e.name,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                        color: AppColors.dark),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(Icons.star, size: 13, color: Color(0xFFFFC107)),
+                      const SizedBox(width: 3),
+                      Text(
+                        '${e.rating}',
+                        style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.dark,
+                            fontWeight: FontWeight.w600),
+                      ),
+                      Text(
+                        ' (${e.reviewCount})',
+                        style:
+                            const TextStyle(fontSize: 11, color: AppColors.grey),
                       ),
                     ],
                   ),

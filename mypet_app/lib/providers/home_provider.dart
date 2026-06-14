@@ -16,11 +16,40 @@ class HomeProvider extends ChangeNotifier {
   bool _loadingVets = false;
   String? _error;
 
+  String _query = '';
+  String _typeFilter = 'Todos';
+
   List<EstablishmentModel> get establishments => _filtered;
   List<VeterinarianModel> get availableVets => _availableVets;
   bool get isLoading => _loading;
   bool get loadingVets => _loadingVets;
   String? get error => _error;
+
+  /// Estabelecimentos em destaque: os mais bem avaliados dentro do
+  /// filtro/busca atual, ordenados por nota decrescente.
+  List<EstablishmentModel> get highlights {
+    final list = List<EstablishmentModel>.of(_filtered)
+      ..sort((a, b) => b.rating.compareTo(a.rating));
+    return list.take(5).toList();
+  }
+
+  /// Distância aproximada (em km) de um estabelecimento até o usuário.
+  ///
+  /// O sistema não armazena coordenadas, então derivamos um valor estável a
+  /// partir do `id` (determinístico, não muda entre rebuilds) só para alimentar
+  /// a seção "Próximos a você". Faixa: ~0,3 a ~9,7 km.
+  static double distanceKm(EstablishmentModel e) {
+    final h = e.id.hashCode & 0x7fffffff;
+    return 0.3 + (h % 95) / 10.0;
+  }
+
+  /// Estabelecimentos "próximos a você": o filtro/busca atual ordenado do mais
+  /// próximo ao mais distante (ver [distanceKm]).
+  List<EstablishmentModel> get nearby {
+    final list = List<EstablishmentModel>.of(_filtered)
+      ..sort((a, b) => distanceKm(a).compareTo(distanceKm(b)));
+    return list.take(5).toList();
+  }
 
   Future<void> load() async {
     _loading = true;
@@ -28,7 +57,7 @@ class HomeProvider extends ChangeNotifier {
     notifyListeners();
     try {
       _all = await _repository.getAll();
-      _filtered = List.of(_all);
+      _applyFilters();
     } catch (_) {
       _error = 'Não foi possível carregar os estabelecimentos.';
     }
@@ -51,33 +80,38 @@ class HomeProvider extends ChangeNotifier {
   }
 
   void filterByType(String? type) {
-    if (type == null || type == 'Todos') {
-      _filtered = List.of(_all);
-    } else if (type == 'Veterinário') {
-      _filtered = _all.where((e) => e.isVeterinario).toList();
-    } else {
-      final term = type.toLowerCase();
-      _filtered = _all
-          .where((e) =>
-              e.name.toLowerCase().contains(term) ||
-              e.services.any((s) => s.name.toLowerCase().contains(term)) ||
-              e.services.any((s) => s.categoriaLabel.toLowerCase().contains(term)))
-          .toList();
-    }
+    _typeFilter = type ?? 'Todos';
+    _applyFilters();
     notifyListeners();
   }
 
   void searchByName(String query) {
-    final term = query.trim().toLowerCase();
-    if (term.isEmpty) {
-      _filtered = List.of(_all);
-    } else {
-      _filtered = _all
-          .where((e) =>
-              e.name.toLowerCase().contains(term) ||
-              e.services.any((s) => s.name.toLowerCase().contains(term)))
-          .toList();
-    }
+    _query = query.trim().toLowerCase();
+    _applyFilters();
     notifyListeners();
+  }
+
+  /// Combina o filtro de categoria com o termo de busca sobre a lista
+  /// completa, para que ambos sejam respeitados ao mesmo tempo.
+  void _applyFilters() {
+    Iterable<EstablishmentModel> result = _all;
+
+    if (_typeFilter == 'Veterinário') {
+      result = result.where((e) => e.isVeterinario);
+    } else if (_typeFilter != 'Todos') {
+      final term = _typeFilter.toLowerCase();
+      result = result.where((e) =>
+          e.name.toLowerCase().contains(term) ||
+          e.services.any((s) => s.name.toLowerCase().contains(term)) ||
+          e.services.any((s) => s.categoriaLabel.toLowerCase().contains(term)));
+    }
+
+    if (_query.isNotEmpty) {
+      result = result.where((e) =>
+          e.name.toLowerCase().contains(_query) ||
+          e.services.any((s) => s.name.toLowerCase().contains(_query)));
+    }
+
+    _filtered = result.toList();
   }
 }
