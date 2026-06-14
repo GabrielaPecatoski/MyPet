@@ -119,13 +119,15 @@ class _HomeScreenState extends State<HomeScreen> {
                               offset: Offset(0, 2)),
                         ],
                       ),
-                      child: const Row(
+                      child: Row(
                         children: [
-                          Icon(Icons.search, color: AppColors.grey),
-                          SizedBox(width: 8),
+                          const Icon(Icons.search, color: AppColors.grey),
+                          const SizedBox(width: 8),
                           Expanded(
                             child: TextField(
-                              decoration: InputDecoration(
+                              onChanged: (v) =>
+                                  context.read<HomeProvider>().searchByName(v),
+                              decoration: const InputDecoration(
                                 hintText: 'Buscar pet shop, clínica...',
                                 hintStyle:
                                     TextStyle(color: AppColors.grey, fontSize: 14),

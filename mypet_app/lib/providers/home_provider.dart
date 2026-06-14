@@ -66,4 +66,18 @@ class HomeProvider extends ChangeNotifier {
     }
     notifyListeners();
   }
+
+  void searchByName(String query) {
+    final term = query.trim().toLowerCase();
+    if (term.isEmpty) {
+      _filtered = List.of(_all);
+    } else {
+      _filtered = _all
+          .where((e) =>
+              e.name.toLowerCase().contains(term) ||
+              e.services.any((s) => s.name.toLowerCase().contains(term)))
+          .toList();
+    }
+    notifyListeners();
+  }
 }
