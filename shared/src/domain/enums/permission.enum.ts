@@ -50,6 +50,14 @@ export enum Permission {
   NOTIFICATIONS_READ = "notifications:read",
   NOTIFICATIONS_WRITE = "notifications:write",
 
+  DRIVERS_READ = "drivers:read",
+  DRIVERS_WRITE = "drivers:write",
+  DRIVERS_DELETE = "drivers:delete",
+
+  VETS_READ = "vets:read",
+  VETS_WRITE = "vets:write",
+  VETS_DELETE = "vets:delete",
+
   ADMIN_READ = "admin:read",
   ADMIN_WRITE = "admin:write",
 }
@@ -84,6 +92,12 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     Permission.CART_WRITE,
     Permission.ORDERS_READ,
     Permission.ORDERS_WRITE,
+    Permission.DRIVERS_READ,
+    Permission.DRIVERS_WRITE,
+    Permission.DRIVERS_DELETE,
+    Permission.VETS_READ,
+    Permission.VETS_WRITE,
+    Permission.VETS_DELETE,
   ],
   CLIENTE: [
     Permission.PETS_READ,
@@ -106,6 +120,7 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     Permission.QUESTIONS_READ,
     Permission.QUESTIONS_WRITE,
     Permission.NOTIFICATIONS_READ,
+    Permission.VETS_READ,
   ],
   MOTORISTA: [
     Permission.BOOKINGS_READ,
@@ -115,6 +130,8 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     Permission.FAQ_READ,
     Permission.QUESTIONS_READ,
     Permission.QUESTIONS_WRITE,
+    Permission.DRIVERS_READ,
+    Permission.DRIVERS_WRITE,
   ],
   VETERINARIO: [
     Permission.BOOKINGS_READ,
@@ -128,5 +145,7 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     Permission.QUESTIONS_WRITE,
     Permission.NOTIFICATIONS_READ,
     Permission.NOTIFICATIONS_WRITE,
+    Permission.VETS_READ,
+    Permission.VETS_WRITE,
   ],
 };
