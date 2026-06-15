@@ -1,8 +1,5 @@
 import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import {
-  Complaint,
-  type ComplaintStatus,
-} from "@review/complaints/domain/models/complaint.entity";
+import { Complaint } from "@review/complaints/domain/models/complaint.entity";
 import {
   COMPLAINT_REPOSITORY,
   type ComplaintRepository,
@@ -138,6 +135,11 @@ export class ReviewService {
   async getComplaintsByEstablishment(establishmentId: string) {
     const complaints =
       await this.complaintRepo.findByEstablishmentId(establishmentId);
+    return complaints.map(this._toComplaintDto);
+  }
+
+  async getComplaintsByUser(userId: string) {
+    const complaints = await this.complaintRepo.findByUserId(userId);
     return complaints.map(this._toComplaintDto);
   }
 

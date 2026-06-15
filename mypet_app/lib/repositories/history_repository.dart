@@ -1,6 +1,7 @@
 import '../models/appointment.dart';
 import '../services/api_service.dart';
 import '../services/booking_service.dart';
+import '../services/complaint_service.dart';
 import '../services/review_service.dart';
 
 abstract class IHistoryRepository {
@@ -12,6 +13,15 @@ abstract class IHistoryRepository {
     required String bookingId,
     required int rating,
     String? comment,
+    required String token,
+  });
+  Future<Set<String>> complainedBookingIds({required String token});
+  Future<void> submitComplaint({
+    required String establishmentId,
+    required String bookingId,
+    required String subject,
+    required String description,
+    String? category,
     required String token,
   });
 }
@@ -52,6 +62,33 @@ class HistoryRepository implements IHistoryRepository {
         bookingId: bookingId,
         rating: rating,
         comment: comment,
+        token: token,
+      );
+
+  @override
+  Future<Set<String>> complainedBookingIds({required String token}) async {
+    final complaints = await ComplaintService.fetchMine(token: token);
+    return complaints
+        .where((c) => (c.bookingId ?? '').isNotEmpty)
+        .map((c) => c.bookingId!)
+        .toSet();
+  }
+
+  @override
+  Future<void> submitComplaint({
+    required String establishmentId,
+    required String bookingId,
+    required String subject,
+    required String description,
+    String? category,
+    required String token,
+  }) =>
+      ComplaintService.create(
+        establishmentId: establishmentId,
+        bookingId: bookingId,
+        subject: subject,
+        description: description,
+        category: category,
         token: token,
       );
 }

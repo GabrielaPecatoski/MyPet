@@ -118,6 +118,14 @@ export class ReviewsController {
     return this.reviewService.getComplaintsByEstablishment(id);
   }
 
+  @Get("complaints/user/me")
+  @ApiBearerAuth()
+  @RequirePermissions(Permission.COMPLAINTS_READ)
+  @ApiOperation({ summary: "Reclamações do usuário autenticado" })
+  async getMyComplaints(@CurrentUser() user: AuthenticatedUser) {
+    return this.reviewService.getComplaintsByUser(user.sub);
+  }
+
   @Post("complaints")
   @ApiBearerAuth()
   @RequirePermissions(Permission.COMPLAINTS_WRITE)

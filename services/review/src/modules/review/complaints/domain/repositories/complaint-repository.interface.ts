@@ -9,4 +9,5 @@ export interface ComplaintRepository {
   findById(id: string): Promise<Complaint | null>;
   findAll(status?: string): Promise<Complaint[]>;
   findByEstablishmentId(establishmentId: string): Promise<Complaint[]>;
+  findByUserId(userId: string): Promise<Complaint[]>;
 }

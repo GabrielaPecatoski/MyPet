@@ -10,11 +10,15 @@ class HistoryProvider extends ChangeNotifier {
   List<AppointmentModel> _history = [];
   bool _loading = false;
   final Set<String> _reviewedBookingIds = {};
+  final Set<String> _complainedBookingIds = {};
 
   List<AppointmentModel> get history => _history;
   bool get isLoading => _loading;
   Set<String> get reviewedBookingIds => _reviewedBookingIds;
   bool isReviewed(String bookingId) => _reviewedBookingIds.contains(bookingId);
+  Set<String> get complainedBookingIds => _complainedBookingIds;
+  bool isComplained(String bookingId) =>
+      _complainedBookingIds.contains(bookingId);
 
   Future<void> load(String userId, {String? token}) async {
     _loading = true;
@@ -44,6 +48,10 @@ class HistoryProvider extends ChangeNotifier {
           _reviewedBookingIds
               .addAll(await _repository.reviewedBookingIds(token: token));
         } catch (_) {}
+        try {
+          _complainedBookingIds
+              .addAll(await _repository.complainedBookingIds(token: token));
+        } catch (_) {}
       }
     } catch (_) {}
     _loading = false;
@@ -70,6 +78,32 @@ class HistoryProvider extends ChangeNotifier {
       ok = false;
     }
     _reviewedBookingIds.add(bookingId);
+    notifyListeners();
+    return ok;
+  }
+
+  Future<bool> submitComplaint({
+    required String establishmentId,
+    required String bookingId,
+    required String subject,
+    required String description,
+    String? category,
+    required String token,
+  }) async {
+    var ok = true;
+    try {
+      await _repository.submitComplaint(
+        establishmentId: establishmentId,
+        bookingId: bookingId,
+        subject: subject,
+        description: description,
+        category: category,
+        token: token,
+      );
+    } catch (_) {
+      ok = false;
+    }
+    if (ok) _complainedBookingIds.add(bookingId);
     notifyListeners();
     return ok;
   }

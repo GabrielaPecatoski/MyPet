@@ -91,6 +91,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       itemBuilder: (ctx, i) => _HistoryCard(
                         appointment: history[i],
                         reviewed: provider.isReviewed(history[i].id),
+                        complained: provider.isComplained(history[i].id),
                       ),
                     ),
             ),
@@ -101,9 +102,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
 class _HistoryCard extends StatelessWidget {
   final AppointmentModel appointment;
   final bool reviewed;
+  final bool complained;
   const _HistoryCard({
     required this.appointment,
     required this.reviewed,
+    required this.complained,
   });
 
   @override
@@ -235,13 +238,25 @@ class _HistoryCard extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () {},
-                  icon: const Icon(Icons.report_outlined,
-                      size: 16, color: AppColors.danger),
-                  label: const Text('Reclamar',
-                      style: TextStyle(color: AppColors.danger)),
+                  onPressed:
+                      complained ? null : () => _showReclamarDialog(context),
+                  icon: Icon(
+                    complained ? Icons.report : Icons.report_outlined,
+                    size: 16,
+                    color: complained ? AppColors.greyLight : AppColors.danger,
+                  ),
+                  label: Text(
+                    complained ? 'Reclamado' : 'Reclamar',
+                    style: TextStyle(
+                        color: complained
+                            ? AppColors.greyLight
+                            : AppColors.danger),
+                  ),
                   style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: AppColors.danger),
+                    side: BorderSide(
+                        color: complained
+                            ? AppColors.greyLight
+                            : AppColors.danger),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8)),
                     padding: const EdgeInsets.symmetric(vertical: 10),
@@ -384,4 +399,156 @@ class _HistoryCard extends StatelessWidget {
       ),
     );
   }
+
+  void _showReclamarDialog(BuildContext context) {
+    const categories = [
+      'Atendimento',
+      'Qualidade do serviço',
+      'Cobrança',
+      'Higiene',
+      'Atraso',
+      'Outro',
+    ];
+    String selectedCategory = categories.first;
+    final subjectCtrl = TextEditingController();
+    final descriptionCtrl = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Abrir Reclamação',
+              style:
+                  TextStyle(fontWeight: FontWeight.bold, color: AppColors.dark)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Conte o que houve com o serviço em ${appointment.establishmentName}. Nossa equipe vai analisar.',
+                  style: const TextStyle(color: AppColors.grey, fontSize: 13),
+                ),
+                const SizedBox(height: 16),
+                const Text('Categoria',
+                    style: TextStyle(
+                        color: AppColors.dark,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500)),
+                const SizedBox(height: 6),
+                DropdownButtonFormField<String>(
+                  initialValue: selectedCategory,
+                  isExpanded: true,
+                  decoration: _fieldDecoration(),
+                  items: categories
+                      .map((c) =>
+                          DropdownMenuItem(value: c, child: Text(c)))
+                      .toList(),
+                  onChanged: (v) => setDialogState(
+                      () => selectedCategory = v ?? categories.first),
+                ),
+                const SizedBox(height: 14),
+                const Text('Assunto',
+                    style: TextStyle(
+                        color: AppColors.dark,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500)),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: subjectCtrl,
+                  maxLength: 80,
+                  decoration: _fieldDecoration(hint: 'Resumo da reclamação'),
+                ),
+                const SizedBox(height: 6),
+                const Text('Descrição',
+                    style: TextStyle(
+                        color: AppColors.dark,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500)),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: descriptionCtrl,
+                  maxLines: 4,
+                  decoration:
+                      _fieldDecoration(hint: 'Descreva o que aconteceu'),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () async {
+                  final subject = subjectCtrl.text.trim();
+                  final description = descriptionCtrl.text.trim();
+                  if (subject.isEmpty || description.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content:
+                            Text('Preencha o assunto e a descrição.'),
+                        backgroundColor: AppColors.danger,
+                      ),
+                    );
+                    return;
+                  }
+                  Navigator.pop(ctx);
+                  final auth = context.read<AuthProvider>();
+                  final ok =
+                      await context.read<HistoryProvider>().submitComplaint(
+                            establishmentId: appointment.establishmentId,
+                            bookingId: appointment.id,
+                            subject: subject,
+                            description: description,
+                            category: selectedCategory,
+                            token: auth.token ?? '',
+                          );
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(ok
+                            ? 'Reclamação enviada! Acompanhe o status em Minhas Reclamações.'
+                            : 'Não foi possível enviar a reclamação. Tente novamente.'),
+                        backgroundColor:
+                            ok ? AppColors.success : AppColors.danger,
+                      ),
+                    );
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.danger,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  elevation: 0,
+                ),
+                child: const Text('Enviar Reclamação',
+                    style: TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.w600)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  InputDecoration _fieldDecoration({String? hint}) => InputDecoration(
+        hintText: hint,
+        filled: true,
+        fillColor: AppColors.background,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: AppColors.greyLight),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: AppColors.greyLight),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: AppColors.primary),
+        ),
+      );
 }

@@ -5,6 +5,7 @@ import 'providers/admin_provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/booking_provider.dart';
 import 'providers/cart_provider.dart';
+import 'providers/complaints_provider.dart';
 import 'providers/driver_profile_provider.dart';
 import 'providers/emergency_provider.dart';
 import 'providers/establishment_provider.dart';
@@ -17,6 +18,7 @@ import 'providers/payment_provider.dart';
 import 'providers/pet_provider.dart';
 import 'providers/vet_profile_provider.dart';
 import 'repositories/catalog_repository.dart';
+import 'repositories/complaints_repository.dart';
 import 'repositories/establishment_list_repository.dart';
 import 'repositories/history_repository.dart';
 import 'repositories/notification_repository.dart';
@@ -29,6 +31,7 @@ import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/edit_profile_screen.dart';
 import 'screens/history_screen.dart';
+import 'screens/my_complaints_screen.dart';
 import 'screens/notifications_screen.dart';
 import 'screens/establishment_detail_screen.dart';
 import 'screens/schedule_screen.dart';
@@ -72,6 +75,7 @@ void main() {
         ChangeNotifierProvider(create: (_) => HomeProvider(EstablishmentListRepository())),
         ChangeNotifierProvider(create: (_) => PetProvider(PetRepository())),
         ChangeNotifierProvider(create: (_) => HistoryProvider(HistoryRepository())),
+        ChangeNotifierProvider(create: (_) => ComplaintsProvider(ComplaintsRepository())),
         ChangeNotifierProvider(create: (_) => NotificationsProvider(NotificationRepository())),
         ChangeNotifierProvider(create: (_) => LojaProvider(CatalogRepository(), OrdersRepository())),
         ChangeNotifierProvider(create: (_) => DriverProfileProvider()),
@@ -123,6 +127,7 @@ class MyPetApp extends StatelessWidget {
         '/admin':         (_) => const AdminScreen(),
         '/edit-profile':  (_) => const EditProfileScreen(),
         '/history':       (_) => const HistoryScreen(),
+        '/minhas-reclamacoes': (_) => const MyComplaintsScreen(),
         '/notifications': (_) => const NotificationsScreen(),
         '/establishment': (_) => const EstablishmentDetailScreen(),
         '/schedule':      (_) => const ScheduleScreen(),

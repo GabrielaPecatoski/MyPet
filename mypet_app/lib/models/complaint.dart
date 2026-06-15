@@ -10,6 +10,7 @@ class ComplaintModel {
   final String status;
   final String? response;
   final DateTime createdAt;
+  final DateTime? updatedAt;
 
   ComplaintModel({
     required this.id,
@@ -23,9 +24,28 @@ class ComplaintModel {
     required this.status,
     this.response,
     required this.createdAt,
+    this.updatedAt,
   });
 
   bool get isPendente => status == 'PENDENTE';
+  bool get isEmAnalise => status == 'EM_ANALISE';
+  bool get isResolvida => status == 'RESOLVIDA';
+  bool get isRejeitada => status == 'REJEITADA';
+
+  String get statusLabel {
+    switch (status) {
+      case 'PENDENTE':
+        return 'Aberta';
+      case 'EM_ANALISE':
+        return 'Em análise';
+      case 'RESOLVIDA':
+        return 'Resolvida';
+      case 'REJEITADA':
+        return 'Rejeitada';
+      default:
+        return status;
+    }
+  }
 
   factory ComplaintModel.fromJson(Map<String, dynamic> json) => ComplaintModel(
         id: json['id'] as String? ?? '',
@@ -39,5 +59,6 @@ class ComplaintModel {
         status: json['status'] as String? ?? 'PENDENTE',
         response: json['response'] as String?,
         createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ?? DateTime.now(),
+        updatedAt: DateTime.tryParse(json['updatedAt'] as String? ?? ''),
       );
 }

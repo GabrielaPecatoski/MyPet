@@ -90,4 +90,20 @@ export class DrizzleComplaintRepository implements ComplaintRepository {
         })!,
     );
   }
+
+  async findByUserId(userId: string): Promise<Complaint[]> {
+    const rows = await this.drizzleService.db
+      .select()
+      .from(complaintsSchema)
+      .where(eq(complaintsSchema.userId, userId));
+    return rows.map(
+      (r) =>
+        Complaint.restore({
+          ...r,
+          status: r.status as ComplaintStatus,
+          bookingId: r.bookingId ?? undefined,
+          response: r.response ?? undefined,
+        })!,
+    );
+  }
 }
