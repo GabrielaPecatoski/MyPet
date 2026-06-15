@@ -324,6 +324,27 @@ export async function getEstablishmentReviews(
     "getEstablishmentReviews",
   );
 }
+export async function getMyComplaints(
+  api: APIRequestContext,
+  user: SeededUser,
+): Promise<any[]> {
+  return ok(
+    await api.get("/reviews/complaints/user/me", { headers: auth(user) }),
+    "getMyComplaints",
+  );
+}
+export async function resolveComplaint(
+  api: APIRequestContext,
+  admin: SeededUser,
+  complaintId: string,
+): Promise<any> {
+  return ok(
+    await api.patch(`/reviews/admin/complaints/${complaintId}/resolve`, {
+      headers: auth(admin),
+    }),
+    "resolveComplaint",
+  );
+}
 export async function addToCart(
   api: APIRequestContext,
   cliente: SeededUser,
