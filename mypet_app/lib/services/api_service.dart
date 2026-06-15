@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import '../core/constants.dart';
 
 class ApiService {
-  static const _timeout = Duration(seconds: 6);
+  static const _timeout = Duration(seconds: 15);
 
   static Map<String, String> _headers({
     String? token,
@@ -45,7 +45,7 @@ class ApiService {
             body: jsonEncode(body))
         .timeout(_timeout);
     if (res.statusCode >= 200 && res.statusCode < 300) {
-      if (res.body.isEmpty) return {};
+      if (res.body.isEmpty) return <String, dynamic>{};
       return jsonDecode(res.body);
     }
     throw Exception('Erro ${res.statusCode}: ${res.body}');
@@ -64,7 +64,7 @@ class ApiService {
             body: jsonEncode(body))
         .timeout(_timeout);
     if (res.statusCode >= 200 && res.statusCode < 300) {
-      if (res.body.isEmpty) return {};
+      if (res.body.isEmpty) return <String, dynamic>{};
       return jsonDecode(res.body);
     }
     throw Exception('Erro ${res.statusCode}: ${res.body}');
@@ -83,7 +83,7 @@ class ApiService {
             body: jsonEncode(body))
         .timeout(_timeout);
     if (res.statusCode >= 200 && res.statusCode < 300) {
-      if (res.body.isEmpty) return {};
+      if (res.body.isEmpty) return <String, dynamic>{};
       return jsonDecode(res.body);
     }
     throw Exception('Erro ${res.statusCode}: ${res.body}');

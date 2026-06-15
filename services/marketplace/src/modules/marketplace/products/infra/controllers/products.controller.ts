@@ -15,6 +15,7 @@ import {
 } from "@nestjs/common";
 import {
   ApiBearerAuth,
+  ApiCreatedResponse,
   ApiNoContentResponse,
   ApiOperation,
   ApiQuery,
@@ -61,14 +62,14 @@ export class ProductsController {
   }
 
   @Post()
-@ApiBearerAuth()
-@HttpCode(HttpStatus.CREATED)
-@RequirePermissions(Permission.PRODUCTS_WRITE)
-@ApiOperation({ summary: "Criar produto" })
-@ApiCreatedResponse({ description: "Produto criado", type: ProductDto })
-async create(@Body() body: CreateProductDto): Promise<ProductDto> {
-  return this.productService.create(body);
-}
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.CREATED)
+  @RequirePermissions(Permission.PRODUCTS_WRITE)
+  @ApiOperation({ summary: "Criar produto" })
+  @ApiCreatedResponse({ description: "Produto criado", type: ProductDto })
+  async create(@Body() body: CreateProductDto): Promise<ProductDto> {
+    return this.productService.create(body);
+  }
 
   @Patch(":id")
   @HttpCode(HttpStatus.NO_CONTENT)
@@ -76,7 +77,10 @@ async create(@Body() body: CreateProductDto): Promise<ProductDto> {
   @RequirePermissions(Permission.PRODUCTS_WRITE)
   @ApiOperation({ summary: "Atualizar produto" })
   @ApiNoContentResponse({ description: "Produto atualizado" })
-  async update(@Param("id") id: string, @Body() body: Partial<CreateProductDto>) {
+  async update(
+    @Param("id") id: string,
+    @Body() body: Partial<CreateProductDto>,
+  ) {
     return this.productService.update(id, body);
   }
 

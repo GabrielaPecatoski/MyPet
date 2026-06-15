@@ -1,4 +1,12 @@
-export type BookingStatus = "PENDENTE" | "CONFIRMADO" | "RECUSADO" | "CANCELADO" | "CONCLUIDO";
+export type BookingStatus =
+  | "AGUARDANDO_PAGAMENTO"
+  | "PENDENTE"
+  | "CONFIRMADO"
+  | "RECUSADO"
+  | "CANCELADO"
+  | "CONCLUIDO";
+
+export type PaymentStatus = "NONE" | "AUTHORIZED" | "CAPTURED" | "REFUNDED";
 
 export interface BookingServiceItem {
   id: string;
@@ -15,11 +23,20 @@ export class Booking {
   private _petName!: string;
   private _serviceName!: string;
   private _servicesJson?: string;
-  private _establishmentId!: string;
+  private _attendancePhotos?: string;
+  private _establishmentId?: string;
   private _establishmentName!: string;
+  private _driverId?: string;
+  private _driverName?: string;
+  private _vetId?: string;
+  private _vetName?: string;
   private _scheduledAt!: Date;
   private _price!: number;
+  private _priceVariable!: boolean;
   private _status!: BookingStatus;
+  private _paymentStatus!: PaymentStatus;
+  private _paymentMethod?: string;
+  private _reminderSentAt?: Date;
   private readonly _createdAt?: Date;
   private readonly _updatedAt?: Date;
 
@@ -29,26 +46,109 @@ export class Booking {
     this._updatedAt = updatedAt;
   }
 
-  get id(): string | undefined { return this._id; }
-  get userId(): string { return this._userId; }
-  get userName(): string { return this._userName; }
-  get petId(): string { return this._petId; }
-  get petName(): string { return this._petName; }
-  get serviceName(): string { return this._serviceName; }
-  get servicesJson(): string | undefined { return this._servicesJson; }
+  get id(): string | undefined {
+    return this._id;
+  }
+  get userId(): string {
+    return this._userId;
+  }
+  get userName(): string {
+    return this._userName;
+  }
+  get petId(): string {
+    return this._petId;
+  }
+  get petName(): string {
+    return this._petName;
+  }
+  get serviceName(): string {
+    return this._serviceName;
+  }
+  get servicesJson(): string | undefined {
+    return this._servicesJson;
+  }
   get services(): BookingServiceItem[] {
     if (!this._servicesJson) return [];
-    try { return JSON.parse(this._servicesJson); } catch { return []; }
+    try {
+      return JSON.parse(this._servicesJson);
+    } catch {
+      return [];
+    }
   }
-  get establishmentId(): string { return this._establishmentId; }
-  get establishmentName(): string { return this._establishmentName; }
-  get scheduledAt(): Date { return this._scheduledAt; }
-  get price(): number { return this._price; }
-  get status(): BookingStatus { return this._status; }
-  get createdAt(): Date | undefined { return this._createdAt; }
-  get updatedAt(): Date | undefined { return this._updatedAt; }
+  get attendancePhotosJson(): string | undefined {
+    return this._attendancePhotos;
+  }
+  get attendancePhotos(): string[] {
+    if (!this._attendancePhotos) return [];
+    try {
+      return JSON.parse(this._attendancePhotos);
+    } catch {
+      return [];
+    }
+  }
+  get establishmentId(): string | undefined {
+    return this._establishmentId;
+  }
+  get establishmentName(): string {
+    return this._establishmentName;
+  }
+  get driverId(): string | undefined {
+    return this._driverId;
+  }
+  get driverName(): string | undefined {
+    return this._driverName;
+  }
+  get vetId(): string | undefined {
+    return this._vetId;
+  }
+  get vetName(): string | undefined {
+    return this._vetName;
+  }
+  get scheduledAt(): Date {
+    return this._scheduledAt;
+  }
+  get price(): number {
+    return this._price;
+  }
+  get priceVariable(): boolean {
+    return this._priceVariable;
+  }
+  get status(): BookingStatus {
+    return this._status;
+  }
+  get paymentStatus(): PaymentStatus {
+    return this._paymentStatus;
+  }
+  get paymentMethod(): string | undefined {
+    return this._paymentMethod;
+  }
+  get reminderSentAt(): Date | undefined {
+    return this._reminderSentAt;
+  }
+  get createdAt(): Date | undefined {
+    return this._createdAt;
+  }
+  get updatedAt(): Date | undefined {
+    return this._updatedAt;
+  }
 
-  withStatus(status: BookingStatus) { this._status = status; return this; }
+  withStatus(status: BookingStatus) {
+    this._status = status;
+    return this;
+  }
+  withPayment(paymentStatus: PaymentStatus, method?: string) {
+    this._paymentStatus = paymentStatus;
+    if (method !== undefined) this._paymentMethod = method;
+    return this;
+  }
+  withReminderSent(at: Date) {
+    this._reminderSentAt = at;
+    return this;
+  }
+  withAttendancePhotos(photos: string[]) {
+    this._attendancePhotos = JSON.stringify(photos);
+    return this;
+  }
 
   static restore(props?: {
     id?: string;
@@ -58,11 +158,20 @@ export class Booking {
     petName: string;
     serviceName: string;
     servicesJson?: string | null;
-    establishmentId: string;
-    establishmentName: string;
+    attendancePhotos?: string | null;
+    establishmentId?: string | null;
+    establishmentName?: string | null;
+    driverId?: string | null;
+    driverName?: string | null;
+    vetId?: string | null;
+    vetName?: string | null;
     scheduledAt: Date;
     price: number;
+    priceVariable?: boolean | null;
     status: BookingStatus;
+    paymentStatus?: PaymentStatus | null;
+    paymentMethod?: string | null;
+    reminderSentAt?: Date | null;
     createdAt?: Date;
     updatedAt?: Date;
   }): Booking | null {
@@ -74,11 +183,20 @@ export class Booking {
     b._petName = props.petName;
     b._serviceName = props.serviceName;
     b._servicesJson = props.servicesJson ?? undefined;
-    b._establishmentId = props.establishmentId;
-    b._establishmentName = props.establishmentName;
+    b._attendancePhotos = props.attendancePhotos ?? undefined;
+    b._establishmentId = props.establishmentId ?? undefined;
+    b._establishmentName = props.establishmentName ?? "";
+    b._driverId = props.driverId ?? undefined;
+    b._driverName = props.driverName ?? undefined;
+    b._vetId = props.vetId ?? undefined;
+    b._vetName = props.vetName ?? undefined;
     b._scheduledAt = props.scheduledAt;
     b._price = props.price;
+    b._priceVariable = props.priceVariable ?? false;
     b._status = props.status as BookingStatus;
+    b._paymentStatus = (props.paymentStatus as PaymentStatus) ?? "NONE";
+    b._paymentMethod = props.paymentMethod ?? undefined;
+    b._reminderSentAt = props.reminderSentAt ?? undefined;
     return b;
   }
 }

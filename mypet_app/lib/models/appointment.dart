@@ -12,8 +12,15 @@ class AppointmentModel {
   final String establishmentAddress;
   final DateTime date;
   final String time;
-  final String status; // PENDENTE, CONFIRMADO, RECUSADO, CANCELADO, CONCLUIDO
+  final String status;
   final double price;
+  final bool priceVariable;
+  final String paymentStatus;
+  final String? paymentMethod;
+  final DateTime? expiresAt;
+  final String? driverId;
+  final String? driverName;
+  final List<String> attendancePhotos;
 
   AppointmentModel({
     required this.id,
@@ -31,6 +38,13 @@ class AppointmentModel {
     required this.time,
     required this.status,
     required this.price,
+    this.priceVariable = false,
+    this.paymentStatus = 'NONE',
+    this.paymentMethod,
+    this.expiresAt,
+    this.driverId,
+    this.driverName,
+    this.attendancePhotos = const [],
   });
 
   factory AppointmentModel.fromJson(Map<String, dynamic> json) {
@@ -53,28 +67,79 @@ class AppointmentModel {
       time: '$hour:$min',
       status: json['status'] ?? 'PENDENTE',
       price: (json['price'] ?? 0).toDouble(),
+      priceVariable: json['priceVariable'] as bool? ?? false,
+      paymentStatus: json['paymentStatus'] as String? ?? 'NONE',
+      paymentMethod: json['paymentMethod'] as String?,
+      expiresAt: json['expiresAt'] != null
+          ? DateTime.tryParse(json['expiresAt'] as String)
+          : null,
+      driverId: json['driverId'] as String?,
+      driverName: json['driverName'] as String?,
+      attendancePhotos: (json['attendancePhotos'] as List?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          const [],
     );
   }
 
+  String get effectiveStatus {
+    if (status == 'CONFIRMADO' || status == 'A_CAMINHO') {
+      if (DateTime.now().isAfter(date.add(const Duration(hours: 4)))) {
+        return 'CONCLUIDO';
+      }
+    }
+    return status;
+  }
+
+  bool get isPago      => paymentStatus == 'AUTHORIZED' || paymentStatus == 'CAPTURED';
+  bool get isRetido    => paymentStatus == 'AUTHORIZED';
+  bool get isEstornado => paymentStatus == 'REFUNDED';
+  bool get isCapturado => paymentStatus == 'CAPTURED';
+
+  bool get isAguardandoPagamento =>
+      !priceVariable &&
+      !isPago &&
+      !isEstornado &&
+      status == 'AGUARDANDO_PAGAMENTO';
+
   String get statusLabel {
-    switch (status) {
-      case 'PENDENTE':   return 'Pendente';
+    if (isAguardandoPagamento) return 'Aguardando Pagamento';
+    switch (effectiveStatus) {
+      case 'PENDENTE':   return 'Aguardando confirmação';
       case 'CONFIRMADO': return 'Confirmado';
+      case 'A_CAMINHO':  return 'A caminho';
       case 'RECUSADO':   return 'Recusado';
       case 'CANCELADO':  return 'Cancelado';
       case 'CONCLUIDO':  return 'Concluído';
-      default:           return status;
+      default:           return effectiveStatus;
     }
   }
 
+  String? get pagamentoLabel {
+    if (isEstornado) return 'Valor estornado';
+    if (isCapturado) return 'Pagamento concluído';
+    if (isRetido) return 'Pagamento retido';
+    return null;
+  }
+
   bool get isPendente   => status == 'PENDENTE';
-  bool get isConfirmado => status == 'CONFIRMADO';
+  bool get isConfirmado => effectiveStatus == 'CONFIRMADO';
+  bool get isACaminho   => effectiveStatus == 'A_CAMINHO';
+  bool get isActive     => isAguardandoPagamento || isPendente || isConfirmado || isACaminho;
+
+  bool get canPay {
+    if (isPago) return false;
+    if (!isPendente && !isConfirmado && !isACaminho) return false;
+    return date.difference(DateTime.now()).inMinutes > 60;
+  }
 
   bool get canCancel {
-    if (status == 'PENDENTE') return true;
-    if (status == 'CONFIRMADO') {
+    if (status == 'AGUARDANDO_PAGAMENTO' || status == 'PENDENTE') return true;
+    if (status == 'CONFIRMADO' || status == 'A_CAMINHO') {
       final now = DateTime.now();
-      return date.year == now.year && date.month == now.month && date.day == now.day;
+      return date.year == now.year &&
+          date.month == now.month &&
+          date.day == now.day;
     }
     return false;
   }

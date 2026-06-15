@@ -14,18 +14,28 @@ export class EstabServiceService {
     private readonly repo: EstabServiceRepository,
   ) {}
 
-  async addService(establishmentId: string, dto: CreateServiceDto): Promise<void> {
+  async addService(
+    establishmentId: string,
+    dto: CreateServiceDto,
+  ): Promise<void> {
+    const priceVariable = dto.priceVariable ?? false;
     const service = EstabService.restore({
       establishmentId,
       name: dto.name,
-      price: dto.price,
+      price: priceVariable ? 0 : (dto.price ?? 0),
+      priceVariable,
       durationMinutes: dto.durationMinutes,
       description: dto.description ?? "",
+      categoria: dto.categoria ?? "outros",
+      imagemUrl: dto.imagemUrl,
+      ativo: dto.ativo ?? true,
     })!;
     await this.repo.create(service);
   }
 
-  async findByEstablishment(establishmentId: string): Promise<EstabServiceDto[]> {
+  async findByEstablishment(
+    establishmentId: string,
+  ): Promise<EstabServiceDto[]> {
     const rows = await this.repo.findByEstablishmentId(establishmentId);
     return rows.map((s) => EstabServiceDto.fromService(s)!);
   }

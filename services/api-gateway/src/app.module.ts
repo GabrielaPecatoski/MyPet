@@ -1,9 +1,14 @@
-import { MiddlewareConsumer, Module, NestModule, RequestMethod } from "@nestjs/common";
+import {
+  MiddlewareConsumer,
+  Module,
+  NestModule,
+  RequestMethod,
+} from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { JwtModule } from "@nestjs/jwt";
 import { ThrottlerModule } from "@nestjs/throttler";
-import { AuthGuardMiddleware } from "./auth/auth-guard.middleware";
 import { AuthController } from "./auth/auth.controller";
+import { AuthGuardMiddleware } from "./auth/auth-guard.middleware";
 import { HealthController } from "./health/health.controller";
 
 @Module({
@@ -16,7 +21,8 @@ import { HealthController } from "./health/health.controller";
       },
     ]),
     JwtModule.register({
-      secret: process.env.JWT_SECRET ?? "mypet_super_secret_change_in_production",
+      secret:
+        process.env.JWT_SECRET ?? "mypet_super_secret_change_in_production",
     }),
   ],
   controllers: [AuthController, HealthController],
@@ -35,6 +41,7 @@ export class AppModule implements NestModule {
         { path: "marketplace/*path", method: RequestMethod.GET },
         { path: "faq", method: RequestMethod.ALL },
         { path: "faq/*path", method: RequestMethod.ALL },
+        { path: "reviews/establishment/*path", method: RequestMethod.GET },
         { path: "health", method: RequestMethod.GET },
       )
       .forRoutes("*path");

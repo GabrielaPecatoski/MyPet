@@ -1,7 +1,7 @@
+import { Injectable } from "@nestjs/common";
 import { Pet } from "@pets/pets/domain/models/pet.entity";
 import type { PetRepository } from "@pets/pets/domain/repositories/pet-repository.interface";
 import { petsSchema } from "@pets/pets/infra/database/schemas/pet.schema";
-import { Injectable } from "@nestjs/common";
 import { DrizzleService } from "@shared/infra/database/drizzle.service";
 import type { PaginationParams } from "@shared/infra/hateoas";
 import { eq, sql } from "drizzle-orm";
@@ -46,7 +46,9 @@ export class DrizzlePetRepository implements PetRepository {
   }
 
   async delete(id: string): Promise<void> {
-    await this.drizzleService.db.delete(petsSchema).where(eq(petsSchema.id, id));
+    await this.drizzleService.db
+      .delete(petsSchema)
+      .where(eq(petsSchema.id, id));
   }
 
   async findById(id: string): Promise<Pet | null> {
@@ -66,13 +68,21 @@ export class DrizzlePetRepository implements PetRepository {
     return rows.map((r) => Pet.restore(r)!);
   }
 
-  async findAllPaginated(params: PaginationParams): Promise<{ rows: Pet[]; total: number }> {
+  async findAllPaginated(
+    params: PaginationParams,
+  ): Promise<{ rows: Pet[]; total: number }> {
     const { page, limit } = params;
     const offset = (page - 1) * limit;
 
     const [rows, [countResult]] = await Promise.all([
-      this.drizzleService.db.select().from(petsSchema).limit(limit).offset(offset),
-      this.drizzleService.db.select({ count: sql<number>`count(*)::int` }).from(petsSchema),
+      this.drizzleService.db
+        .select()
+        .from(petsSchema)
+        .limit(limit)
+        .offset(offset),
+      this.drizzleService.db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(petsSchema),
     ]);
 
     return {

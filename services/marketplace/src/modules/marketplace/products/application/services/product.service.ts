@@ -15,8 +15,8 @@ export class ProductService {
     private readonly repo: ProductRepository,
   ) {}
 
-async create(dto: CreateProductDto): Promise<ProductDto> {
-  const product = Product.restore({ 
+  async create(dto: CreateProductDto): Promise<ProductDto> {
+    const product = Product.restore({
       establishmentId: dto.establishmentId,
       name: dto.name,
       brand: dto.brand ?? "",
@@ -26,10 +26,11 @@ async create(dto: CreateProductDto): Promise<ProductDto> {
       description: dto.description ?? "",
       stock: dto.stock ?? 0,
       imageUrl: dto.imageUrl,
-      active: true, })!;
-  const created = await this.repo.create(product);
-  return ProductDto.fromProduct(created)!;
-}
+      active: true,
+    })!;
+    const created = await this.repo.create(product);
+    return ProductDto.fromProduct(created)!;
+  }
 
   async findAll(search?: string): Promise<ProductDto[]> {
     const rows = await this.repo.findAll(search);
@@ -41,9 +42,17 @@ async create(dto: CreateProductDto): Promise<ProductDto> {
     return rows.map((p) => ProductDto.fromProduct(p)!);
   }
 
-  async listPaginated(params: PaginationParams, search?: string): Promise<PaginatedResult<ProductDto>> {
+  async listPaginated(
+    params: PaginationParams,
+    search?: string,
+  ): Promise<PaginatedResult<ProductDto>> {
     const { rows, total } = await this.repo.findAllPaginated(params, search);
-    return { data: rows.map((p) => ProductDto.fromProduct(p)!), total, page: params.page, limit: params.limit };
+    return {
+      data: rows.map((p) => ProductDto.fromProduct(p)!),
+      total,
+      page: params.page,
+      limit: params.limit,
+    };
   }
 
   async findById(id: string): Promise<ProductDto | null> {

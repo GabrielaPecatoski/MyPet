@@ -1,0 +1,39 @@
+import { APIRequestContext, test } from "@playwright/test";
+import {
+  apiContext,
+  SeededUser,
+  seedBooking,
+  seedFullEstablishment,
+} from "./_api";
+import {
+  bootAndLogin,
+  expectText,
+  openClientTab,
+  tapButton,
+  tapText,
+} from "./_helpers";
+
+let api: APIRequestContext;
+let owner: SeededUser;
+let estab: { id: string; name: string };
+test.beforeAll(async () => {
+  api = await apiContext();
+  const seed = await seedFullEstablishment(api);
+  owner = seed.owner;
+  estab = seed.estab;
+});
+test.afterAll(async () => {
+  await api.dispose();
+});
+test("cliente cancela um agendamento pago e o valor é estornado", async ({
+  page,
+}) => {
+  const seed = await seedBooking(api, owner, estab, { pay: true });
+  await bootAndLogin(page, seed.cliente.email, seed.cliente.password);
+  await openClientTab(page, "Agenda", seed.pet.name);
+  await tapButton(page, "Cancelar agendamento");
+  await tapButton(page, "Cancelar", true);
+  await expectText(page, "Agendamento cancelado");
+  await tapText(page, "Histórico");
+  await expectText(page, "Valor estornado");
+});

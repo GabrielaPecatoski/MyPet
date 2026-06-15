@@ -3,9 +3,7 @@ import 'package:provider/provider.dart';
 import '../core/colors.dart';
 import '../models/appointment.dart';
 import '../providers/auth_provider.dart';
-import '../services/api_service.dart';
-import '../services/booking_service.dart';
-import '../services/review_service.dart';
+import '../providers/history_provider.dart';
 import '../widgets/app_bottom_nav.dart';
 import '../widgets/mypet_app_bar.dart';
 
@@ -16,10 +14,6 @@ class HistoryScreen extends StatefulWidget {
 }
 
 class _HistoryScreenState extends State<HistoryScreen> {
-  List<AppointmentModel> _history = [];
-  final Set<String> _reviewedBookingIds = {};
-  bool _loading = false;
-
   @override
   void initState() {
     super.initState();
@@ -29,57 +23,15 @@ class _HistoryScreenState extends State<HistoryScreen> {
   Future<void> _load() async {
     final auth = context.read<AuthProvider>();
     if (auth.token == null || auth.user == null) return;
-    setState(() => _loading = true);
-    try {
-      final data = await ApiService.get(
-        '/bookings/user/${auth.user!.id}',
-        token: auth.token,
-      );
-      final list = data as List;
-      final all = list.map((e) => AppointmentModel.fromJson(e)).toList();
-
-      final now = DateTime.now();
-      for (final b in all) {
-        if (b.status == 'CONFIRMADO' &&
-            now.difference(b.date).inHours >= 4) {
-          try {
-            await BookingService.updateStatus(
-              token: auth.token!,
-              bookingId: b.id,
-              status: 'CONCLUIDO',
-            );
-          } catch (_) {}
-        }
-      }
-
-      final data2 = await ApiService.get(
-        '/bookings/user/${auth.user!.id}',
-        token: auth.token,
-      );
-      final all2 =
-          (data2 as List).map((e) => AppointmentModel.fromJson(e)).toList();
-
-      setState(() {
-        _history = all2.where((b) => b.status == 'CONCLUIDO').toList()
-          ..sort((a, b) => b.date.compareTo(a.date));
-      });
-
-      try {
-        final myReviews = await ReviewService.getMyReviews(token: auth.token!);
-        setState(() {
-          _reviewedBookingIds.addAll(
-            myReviews.where((r) => r.bookingId.isNotEmpty).map((r) => r.bookingId),
-          );
-        });
-      } catch (_) {}
-    } catch (_) {
-    } finally {
-      setState(() => _loading = false);
-    }
+    await context
+        .read<HistoryProvider>()
+        .load(auth.user!.id, token: auth.token);
   }
 
   @override
   Widget build(BuildContext context) {
+    final provider = context.watch<HistoryProvider>();
+    final history = provider.history;
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: const MypetAppBar(showBack: true),
@@ -96,12 +48,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
           }
         },
       ),
-      body: _loading
+      body: provider.isLoading
           ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
           : RefreshIndicator(
               onRefresh: _load,
               color: AppColors.primary,
-              child: _history.isEmpty
+              child: history.isEmpty
                   ? ListView(
                       children: [
                         const SizedBox(height: 80),
@@ -135,12 +87,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     )
                   : ListView.builder(
                       padding: const EdgeInsets.all(16),
-                      itemCount: _history.length,
+                      itemCount: history.length,
                       itemBuilder: (ctx, i) => _HistoryCard(
-                        appointment: _history[i],
-                        reviewed: _reviewedBookingIds.contains(_history[i].id),
-                        onReviewed: () =>
-                            setState(() => _reviewedBookingIds.add(_history[i].id)),
+                        appointment: history[i],
+                        reviewed: provider.isReviewed(history[i].id),
                       ),
                     ),
             ),
@@ -151,11 +101,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
 class _HistoryCard extends StatelessWidget {
   final AppointmentModel appointment;
   final bool reviewed;
-  final VoidCallback onReviewed;
   const _HistoryCard({
     required this.appointment,
     required this.reviewed,
-    required this.onReviewed,
   });
 
   @override
@@ -400,19 +348,15 @@ class _HistoryCard extends StatelessWidget {
                     : () async {
                         Navigator.pop(ctx);
                         final auth = context.read<AuthProvider>();
-                        try {
-                          await ReviewService.submitReview(
-                            establishmentId: appointment.establishmentId,
-                            bookingId: appointment.id,
-                            rating: selectedRating,
-                            comment: commentCtrl.text.trim().isEmpty
-                                ? null
-                                : commentCtrl.text.trim(),
-                            token: auth.token,
-                          );
-                        } catch (_) {
-                        }
-                        onReviewed();
+                        await context.read<HistoryProvider>().submitReview(
+                              establishmentId: appointment.establishmentId,
+                              bookingId: appointment.id,
+                              rating: selectedRating,
+                              comment: commentCtrl.text.trim().isEmpty
+                                  ? null
+                                  : commentCtrl.text.trim(),
+                              token: auth.token ?? '',
+                            );
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(

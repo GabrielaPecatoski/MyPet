@@ -1,7 +1,3 @@
-import { CreatePetDto } from "@pets/pets/application/dto/create-pet.dto";
-import { PetDto } from "@pets/pets/application/dto/pet.dto";
-import { UpdatePetDto } from "@pets/pets/application/dto/update-pet.dto";
-import { PetService } from "@pets/pets/application/services/pet.service";
 import {
   Body,
   Controller,
@@ -20,10 +16,14 @@ import {
   ApiOperation,
   ApiTags,
 } from "@nestjs/swagger";
+import { CreatePetDto } from "@pets/pets/application/dto/create-pet.dto";
+import { PetDto } from "@pets/pets/application/dto/pet.dto";
+import { UpdatePetDto } from "@pets/pets/application/dto/update-pet.dto";
+import { PetService } from "@pets/pets/application/services/pet.service";
 import { Permission } from "@shared/domain/enums/permission.enum";
-import { RequirePermissions } from "@shared/infra/decorators/permissions.decorator";
-import { CurrentUser } from "@shared/infra/decorators/current-user.decorator";
 import type { AuthenticatedUser } from "@shared/infra/auth/interfaces/authenticated-user.interface";
+import { CurrentUser } from "@shared/infra/decorators/current-user.decorator";
+import { RequirePermissions } from "@shared/infra/decorators/permissions.decorator";
 import { HateoasItem } from "@shared/infra/hateoas";
 
 @ApiTags("pets")

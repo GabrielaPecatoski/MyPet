@@ -1,4 +1,11 @@
-import { doublePrecision, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  doublePrecision,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+} from "drizzle-orm/pg-core";
 
 export const bookingsSchema = pgTable("bookings", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -8,11 +15,20 @@ export const bookingsSchema = pgTable("bookings", {
   petName: text("pet_name").notNull(),
   serviceName: text("service_name").notNull(),
   servicesJson: text("services_json"),
-  establishmentId: uuid("establishment_id").notNull(),
-  establishmentName: text("establishment_name").notNull(),
+  attendancePhotos: text("attendance_photos"),
+  establishmentId: uuid("establishment_id"),
+  establishmentName: text("establishment_name").notNull().default(""),
+  driverId: uuid("driver_id"),
+  driverName: text("driver_name"),
+  vetId: uuid("vet_id"),
+  vetName: text("vet_name"),
   scheduledAt: timestamp("scheduled_at", { withTimezone: true }).notNull(),
   price: doublePrecision("price").notNull().default(0),
+  priceVariable: boolean("price_variable").notNull().default(false),
   status: text("status").notNull().default("PENDENTE"),
+  paymentStatus: text("payment_status").notNull().default("NONE"),
+  paymentMethod: text("payment_method"),
+  reminderSentAt: timestamp("reminder_sent_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });

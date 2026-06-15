@@ -13,14 +13,13 @@ class BookingProvider extends ChangeNotifier {
   String? get error => _error;
 
   List<AppointmentModel> get confirmados =>
-      _bookings.where((b) => b.status == 'CONFIRMADO').toList();
+      _bookings.where((b) => b.isConfirmado || b.isACaminho).toList();
 
   List<AppointmentModel> get pendentes =>
-      _bookings.where((b) => b.status == 'PENDENTE').toList();
+      _bookings.where((b) => b.isPendente || b.isAguardandoPagamento).toList();
 
-  List<AppointmentModel> get ativos => _bookings
-      .where((b) => b.status == 'PENDENTE' || b.status == 'CONFIRMADO')
-      .toList();
+  List<AppointmentModel> get ativos =>
+      _bookings.where((b) => b.isActive).toList();
 
   List<AppointmentModel> get historico => _bookings
       .where((b) => b.status == 'CONCLUIDO' || b.status == 'CANCELADO' || b.status == 'RECUSADO')
@@ -64,11 +63,16 @@ class BookingProvider extends ChangeNotifier {
     required String petId,
     required String petName,
     required String serviceName,
-    required String establishmentId,
-    required String establishmentName,
+    String? establishmentId,
+    String? establishmentName,
     required DateTime scheduledAt,
     double price = 0,
+    bool priceVariable = false,
     List<ServiceModel>? services,
+    String? driverId,
+    String? driverName,
+    String? vetId,
+    String? vetName,
   }) async {
     _loading = true;
     _error = null;
@@ -84,7 +88,12 @@ class BookingProvider extends ChangeNotifier {
         establishmentName: establishmentName,
         scheduledAt: scheduledAt,
         price: price,
+        priceVariable: priceVariable,
         services: services,
+        driverId: driverId,
+        driverName: driverName,
+        vetId: vetId,
+        vetName: vetName,
       );
       _bookings.add(booking);
       _loading = false;
@@ -102,6 +111,24 @@ class BookingProvider extends ChangeNotifier {
     _error = null;
     try {
       final updated = await BookingService.cancelBooking(token: token, bookingId: bookingId);
+      final idx = _bookings.indexWhere((b) => b.id == bookingId);
+      if (idx != -1) _bookings[idx] = updated;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _error = e.toString().replaceAll('Exception: ', '');
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> markAsPaid({
+    required String token,
+    required String bookingId,
+  }) async {
+    _error = null;
+    try {
+      final updated = await BookingService.markAsPaid(token: token, bookingId: bookingId);
       final idx = _bookings.indexWhere((b) => b.id == bookingId);
       if (idx != -1) _bookings[idx] = updated;
       notifyListeners();

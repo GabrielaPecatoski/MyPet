@@ -50,6 +50,7 @@ class MypetAppBar extends StatelessWidget implements PreferredSizeWidget {
                     Align(
                       alignment: Alignment.centerLeft,
                       child: IconButton(
+                        tooltip: 'Voltar',
                         icon: Icon(Icons.chevron_left,
                             size: 28, color: isPurple ? Colors.white : AppColors.dark),
                         onPressed: onBack ?? () => Navigator.pop(context),
@@ -132,7 +133,7 @@ class EstabPurpleHeader extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF7B3FF2), Color(0xFF5B2FBF)],
+          colors: [Color(0xFF0284C7), Color(0xFF0EA5E9)],
         ),
       ),
       padding: EdgeInsets.fromLTRB(

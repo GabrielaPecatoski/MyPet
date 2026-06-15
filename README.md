@@ -1,27 +1,34 @@
 # MyPet
 
-Plataforma de serviços para pets composta por um app Flutter multiplataforma e dez microsserviços NestJS orquestrados via Docker Compose.
+Plataforma de serviços para pets: app Flutter multiplataforma + 12 microsserviços NestJS (Clean Architecture/DDD, Drizzle ORM) orquestrados via Docker Compose, com Nginx na frente e RabbitMQ entre os serviços.
 
 ---
 
 ## Arquitetura
 
 ```
-Flutter App (web · Windows · Android)
-        │
+Flutter App (web · Android · desktop)
+        │  http://localhost (web usa 127.0.0.1; Android usa 10.0.2.2)
         ▼
-  API Gateway :3000  ──── JWT · CORS · Rate limit
+     Nginx :80
         │
-  ┌─────┼──────────────────────────────────────────────┐
-  │     │                                              │
-auth  user-pet  establishment  marketplace  booking  notification  review  faq  chat
-:3001  :3002      :3003          :3004       :3005      :3006       :3007  :3008 :3009
-  │     │                                              │
-  └─────┴──────────── PostgreSQL :5433 ────────────────┘
-                      RabbitMQ   :5672
+  API Gateway :3000 ─── JWT · CORS · Rate limit
+        │
+  ┌─────┴────────────────────────────────────────────────────────┐
+  user-auth  user-pet  establishment  marketplace  booking        │
+   :3001      :3002      :3003          :3004       :3005         │
+  notification  review   faq    user-driver   user-vet   chat    │
+   :3006        :3007   :3008     :3009        :3010      :3011  │
+  └───────────────┬──────────────────────────────────────────────┘
+            PostgreSQL :5433 (um banco por serviço)
+            RabbitMQ   :5672 (eventos entre serviços)
 ```
 
-Cada microsserviço tem seu próprio banco PostgreSQL. RabbitMQ transporta eventos entre booking, notification, marketplace e review. O chat usa Socket.IO (WebSocket) em tempo real e o serviço de notificações expõe um stream SSE para o app Flutter.
+- Cada serviço tem banco próprio e segue `domain / application / infra` por feature.
+- RabbitMQ transporta eventos (booking, marketplace, notificações, chamados de emergência).
+- O notification-service expõe **SSE** (`GET /notifications/stream/:userId?token=`) — toda notificação criada vira push em tempo real. É assim que o alarme de emergência do veterinário dispara em <1s (com polling de 15s como fallback).
+- O chat-service usa **Socket.IO** (WebSocket) para mensagens em tempo real entre cliente e estabelecimento.
+- `shared/` concentra guards (JWT + permissões RBAC), Drizzle, RabbitMQ e contratos de eventos, importado por todos os serviços.
 
 ---
 
@@ -30,15 +37,54 @@ Cada microsserviço tem seu próprio banco PostgreSQL. RabbitMQ transporta event
 | Serviço | Porta | Banco | Responsabilidade |
 |---|---|---|---|
 | api-gateway | 3000 | — | Roteamento, auth JWT, rate limit, proxy WS |
-| user-auth | 3001 | mypet_auth | Login, registro, emissão de token |
-| user-pet | 3002 | mypet_users | Perfil de usuário e cadastro de pets |
-| establishment | 3003 | mypet_estab | Cadastro e gestão de estabelecimentos e serviços |
-| marketplace | 3004 | mypet_market | Catálogo de produtos, carrinho e pedidos |
-| booking | 3005 | mypet_booking | Agendamentos e disponibilidade |
+| user-auth | 3001 | mypet_auth | Login, registro, JWT com permissões |
+| user-pet | 3002 | mypet_users | Pets do usuário |
+| establishment | 3003 | mypet_estab | Estabelecimentos, serviços, vínculos com vets |
+| marketplace | 3004 | mypet_market | Produtos, carrinho, pedidos, pagamento |
+| booking | 3005 | mypet_booking | Agendamentos, disponibilidade, escrow de pagamento |
 | notification | 3006 | mypet_notif | Push (FCM), e-mail (Nodemailer) e SSE stream |
 | review | 3007 | mypet_review | Avaliações e reclamações de estabelecimentos |
-| faq | 3008 | mypet_faq | Perguntas frequentes gerenciadas pelo admin |
-| chat | 3009 | mypet_chat | Mensagens em tempo real via Socket.IO |
+| faq | 3008 | mypet_faq | Central de ajuda (admin) |
+| user-driver | 3009 | mypet_driver | Motoristas (cadastro PENDENTE → aprovação do admin) |
+| user-vet | 3010 | mypet_vet | Veterinários, disponibilidade 24h, chamados de emergência |
+| chat | 3011 | mypet_chat | Mensagens em tempo real via Socket.IO |
+
+---
+
+## App Flutter — Arquitetura (MVVM) e padrões
+
+O app (`mypet_app/`) segue **MVVM**, com camadas explícitas e regra de negócio fora da interface.
+
+### Camadas MVVM
+
+| Camada | Pasta | Responsabilidade |
+|---|---|---|
+| **Model** | `lib/models/` | Entidades + `factory fromJson` (ex.: `EstablishmentModel`, `UserModel`) |
+| **View** | `lib/screens/` · `lib/widgets/` | Só renderiza e captura interação; observa o ViewModel via `context.watch` |
+| **ViewModel** | `lib/providers/` | `ChangeNotifier` com estado (loading / erro / dados) e ações; não concentra UI |
+| Repository | `lib/repositories/` | Abstrai a origem dos dados (interface + implementação) |
+| Service | `lib/services/` | HTTP (`ApiService`), armazenamento (`StorageService`), SSE |
+
+Fluxo: **View → ViewModel (Provider) → Repository → Service (HTTP/SSE) → Model**.
+
+### Padrões de projeto
+
+- **Observer** — `provider` + `ChangeNotifier` / `notifyListeners()`. As Views se inscrevem (`context.watch`) e reagem automaticamente às mudanças de estado do ViewModel.
+- **Repository** — interface desacopla o ViewModel da fonte de dados.
+- **Factory** — `factory Model.fromJson(...)` em todos os models converte o JSON da API em objetos de domínio.
+- **Singleton (acesso estático)** — `ApiService` e `StorageService` expõem operações estáticas.
+
+### Comunicação com API
+
+- Cliente HTTP central em `lib/services/api_service.dart` (pacote `http`), com **timeout de 15s**.
+- `baseUrl` resolve por plataforma (web `127.0.0.1` · Android `10.0.2.2` · desktop `localhost`) — `lib/core/constants.dart`.
+- Os três estados são tratados na interface: *Carregamento* → `CircularProgressIndicator` · *Sucesso* → lista · *Erro* → botão **"Tentar novamente"**.
+
+### Armazenamento local
+
+- **`shared_preferences`** via `lib/services/storage_service.dart`.
+- Persiste o **token JWT** e o **usuário logado** (serializado em JSON).
+- **Recuperação ao reabrir o app**: a `SplashScreen` chama `AuthProvider.loadFromStorage()` no boot, restaurando a sessão sem exigir novo login.
 
 ---
 
@@ -46,37 +92,39 @@ Cada microsserviço tem seu próprio banco PostgreSQL. RabbitMQ transporta event
 
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) 24+
 - [Flutter SDK](https://docs.flutter.dev/get-started/install) 3.11+
-- Node.js 18+ (só para rodar localmente sem Docker)
+- Node.js 18+ (instalação única de dependências na raiz — não há node_modules por serviço)
 
 ---
 
-## Rodar com Docker (recomendado)
-
-### Script automático (Windows)
+## Como rodar
 
 ```powershell
-.\start.ps1
+# 1. dependências (npm raiz + flutter pub get)
+.\scripts\setup.ps1
+
+# 2. stack completa (Docker: infra + serviços + nginx)
+.\scripts\start.ps1
+
+# 3. app
+cd mypet_app
+flutter run -d chrome
 ```
 
-O script sobe toda a stack, aguarda os serviços iniciarem e exibe o status de saúde de cada um com resultado colorido (OK / ERRO). Requer Docker Desktop em execução.
+O `start.ps1` cria o `.env` a partir do `.env.example` na primeira execução, espera o Docker Desktop, sobe os containers e aguarda o Nginx responder. Schema do banco é aplicado no startup de cada container (`drizzle-kit push`).
 
-### Manual
+> Dica: rodando `scripts\register-watchdog.ps1` uma vez, os comandos também ficam disponíveis como atalhos de terminal — basta digitar `start`, `setup`, `migrations` ou `fix-localhost`.
+
+### Sem Docker (desenvolvimento)
 
 ```bash
-# Subir toda a stack (infraestrutura + 10 serviços)
-docker compose up -d --build
-
-# Verificar saúde de cada serviço
-curl http://localhost:3000/health   # gateway
-curl http://localhost:3001/health   # auth
-# ... portas 3002–3009 seguem o mesmo padrão
+docker compose up -d postgres rabbitmq nginx   # só infra
+npm start                                      # todos os serviços em watch mode
+npm run db:seed                                # dados de exemplo
 ```
-
-Aguarde ~60 segundos na primeira execução para os serviços terminarem as migrations e o seed inicial.
 
 ### Variáveis de ambiente
 
-Cada serviço lê um arquivo `.env` na sua pasta (use o `.env.example` como base). Os valores padrão já estão configurados no `docker-compose.yml` para uso local. Para produção, sobrescreva:
+Cada serviço lê um arquivo `.env` na sua pasta (use o `.env.example` como base). Para produção, sobrescreva:
 
 | Variável | Serviços | Descrição |
 |---|---|---|
@@ -89,46 +137,17 @@ Cada serviço lê um arquivo `.env` na sua pasta (use o `.env.example` como base
 
 ---
 
-## Rodar localmente (sem Docker)
+## Funcionalidades principais
 
-```bash
-# 1. Instalar dependências de todos os serviços
-npm install
+**Cliente** — pets, marketplace (carrinho/pedidos/pagamento), agendamento de serviços, emergência veterinária, chat com estabelecimento, avaliações, notificações, FAQ.
 
-# 2. Subir apenas a infraestrutura (banco e fila)
-docker compose up -d postgres rabbitmq
+**Estabelecimento** — painel, produtos, agenda (confirma/recusa/conclui), horários, vínculo de veterinários e motoristas, pedidos com avanço de status.
 
-# 3. Executar migrations em todos os bancos
-npm run db:migrate:all
+**Veterinário** — cadastro com aprovação do admin, toggles online/24h/domicílio, agenda própria, **alarme de emergência em tempo real** (overlay + sirene via RabbitMQ→SSE).
 
-# 4. Popular seed inicial
-npm run db:seed
+**Motorista** — cadastro com aprovação, transporte vinculado a agendamentos.
 
-# 5. Iniciar todos os serviços em paralelo
-npm start
-```
-
----
-
-## App Flutter
-
-```bash
-cd mypet_app
-
-# Web
-flutter run -d chrome
-
-# Windows desktop
-flutter run -d windows
-
-# Android (emulador)
-flutter run -d android
-```
-
-O app detecta a plataforma automaticamente e aponta para o gateway correto:
-
-- Web e desktop → `http://localhost:3000`
-- Android emulator → `http://10.0.2.2:3000`
+**Admin** — aprovação de vets/motoristas, reclamações, cadastros, estatísticas, FAQ.
 
 ---
 
@@ -170,39 +189,73 @@ O app detecta a plataforma automaticamente e aponta para o gateway correto:
 
 ---
 
-## Scripts disponíveis (raiz)
+## Scripts npm (raiz)
 
 | Comando | Descrição |
 |---|---|
-| `npm start` | Inicia todos os serviços em paralelo com saída colorida |
+| `npm start` | Todos os serviços em paralelo (watch) |
 | `npm run start:<serviço>` | Inicia um serviço específico (ex: `start:booking`) |
-| `npm run db:migrate:all` | Executa migrations em todos os bancos |
-| `npm run db:seed` | Popula dados iniciais |
+| `npm run db:migrate:all` | Migrations de todos os serviços |
+| `npm run db:seed` | Seed via API real |
 | `npm run test:notification` | Testes unitários do serviço de notificação |
 | `npm run test:booking` | Testes unitários do serviço de agendamento |
 | `npm run test:backend` | Todos os testes backend (notification + booking) |
 | `npm run test:flutter` | Testes unitários do app Flutter |
 | `npm run test:all` | Backend + Flutter |
-| `npm run typecheck:all` | Verifica tipos TypeScript de todos os serviços |
-| `npm run check:all` | Biome check (lint + format) |
+| `npm run typecheck:all` | `tsc --noEmit` em todos os serviços |
+| `npm run check:all` | Biome (lint + format) no repo |
 | `npm run validate:all` | check:all + typecheck:all |
+
+---
+
+## Scripts PowerShell (`scripts/`)
+
+| Script | Descrição |
+|---|---|
+| `start.ps1` | Sobe a stack inteira e espera ficar saudável |
+| `setup.ps1` | Instala dependências (npm raiz + Flutter) |
+| `run_migrations.ps1` | Migrations dos serviços com banco |
+| `fix-localhost.ps1` | Mata zumbis de porta |
+| `register-watchdog.ps1` | Registra tarefa agendada que mata o wslrelay zumbi a cada 5 min |
 
 ---
 
 ## Testes
 
+### Unitários (backend)
+
 ```bash
-# Backend — notification (C9/C35): SSE stream, heartbeat, handler RabbitMQ
+# notification (C9/C35): SSE stream, heartbeat, handler RabbitMQ
 npx jest --config services/notification/jest.config.js
 
-# Backend — booking (C36): entity, service, campos petBreed/petAge
+# booking (C36): entity, service, campos petBreed/petAge
 npx jest --config services/booking/jest.config.js
 
-# Chat (C37): Socket.IO E2E (requer serviço rodando na porta 3009)
-node services/chat/test/chat.e2e.js
+# todos de uma vez
+npm run test:backend
+```
 
-# Flutter — models, providers, chat
+### Chat E2E (C37) — Socket.IO
+
+```bash
+# requer serviço de chat rodando na porta 3011
+node services/chat/test/chat.e2e.js
+```
+
+### Flutter
+
+```bash
 cd mypet_app && flutter test --reporter compact
+```
+
+### Playwright (E2E completo)
+
+Suíte de ~180 testes que dirige a **UI real do Flutter Web contra o backend real** (sem mocks), em `services/tests/playwright-front/`.
+
+```powershell
+# pré-requisitos: stack no ar + build web do app
+cd mypet_app; flutter build web --base-href "/"; cd ..
+npx playwright test --config playwright.front.config.ts
 ```
 
 ---
@@ -221,13 +274,14 @@ MyPet/
 │   ├── notification/      # Push (FCM), e-mail e SSE stream
 │   ├── review/            # Avaliações e reclamações
 │   ├── faq/               # Perguntas frequentes
-│   └── chat/              # Chat em tempo real (Socket.IO)
+│   ├── user-driver/       # Motoristas
+│   ├── user-vet/          # Veterinários e emergências
+│   ├── chat/              # Chat em tempo real (Socket.IO)
+│   └── tests/             # Suíte Playwright E2E
 ├── shared/                # Código compartilhado (auth, DB, messaging, HATEOAS)
 ├── mypet_app/             # App Flutter
-├── tests/
-│   └── e2e/               # Testes E2E Playwright
-├── scripts/               # seed.mjs e utilitários
-├── docker/                # init-dbs.sql (criação dos bancos)
+├── scripts/               # Automação (start, setup, migrations, watchdog)
+├── docker/                # nginx, init-dbs.sql
 ├── docker-compose.yml     # Orquestração completa
 ├── package.json           # Scripts do monorepo e dependências compartilhadas
 └── biome.json             # Configuração de lint e formatação
@@ -246,7 +300,7 @@ MyPet/
 | Real-time | Socket.IO (chat) + SSE via rxjs (notificações) |
 | Push | Firebase Cloud Messaging (FCM) |
 | E-mail | Nodemailer |
-| Frontend | Flutter 3.11 + Provider |
-| Containerização | Docker Compose |
-| Testes | Jest 30 + ts-jest + flutter_test + Playwright |
+| Frontend | Flutter 3.11 + Provider (MVVM) |
+| Containerização | Docker Compose + Nginx |
+| Testes | Jest 30 + ts-jest + flutter_test + Playwright (~180 E2E) |
 | Lint/Format | Biome 2.4 |

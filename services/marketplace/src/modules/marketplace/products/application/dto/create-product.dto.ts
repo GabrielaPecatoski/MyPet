@@ -1,5 +1,12 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { IsBoolean, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from "class-validator";
+import {
+  IsBoolean,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+} from "class-validator";
 
 export class CreateProductDto {
   @ApiPropertyOptional() @IsOptional() @IsString() establishmentId?: string;

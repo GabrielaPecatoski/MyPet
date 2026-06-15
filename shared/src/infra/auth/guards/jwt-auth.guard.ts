@@ -1,5 +1,3 @@
-import { IS_PUBLIC_KEY } from "@shared/infra/decorators/public.decorator";
-import type { AuthenticatedUser } from "@shared/infra/auth/interfaces/authenticated-user.interface";
 import {
   CanActivate,
   ExecutionContext,
@@ -8,6 +6,8 @@ import {
 } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import { JwtService } from "@nestjs/jwt";
+import type { AuthenticatedUser } from "@shared/infra/auth/interfaces/authenticated-user.interface";
+import { IS_PUBLIC_KEY } from "@shared/infra/decorators/public.decorator";
 import type { Request } from "express";
 
 @Injectable()

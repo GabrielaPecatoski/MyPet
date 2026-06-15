@@ -40,28 +40,53 @@ class BookingService {
     return list.map((e) => AppointmentModel.fromJson(e as Map<String, dynamic>)).toList();
   }
 
+  static Future<List<AppointmentModel>> fetchVetBookings({
+    required String token,
+    required String vetId,
+  }) async {
+    final res = await http
+        .get(
+          Uri.parse('${ApiConstants.baseUrl}/bookings/vet/$vetId'),
+          headers: _headers(token),
+        )
+        .timeout(const Duration(seconds: 8));
+    if (res.statusCode != 200) throw Exception('Erro ao buscar agendamentos');
+    final list = jsonDecode(res.body) as List;
+    return list.map((e) => AppointmentModel.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
   static Future<AppointmentModel> createBooking({
     required String token,
     required String userName,
     required String petId,
     required String petName,
     required String serviceName,
-    required String establishmentId,
-    required String establishmentName,
+    String? establishmentId,
+    String? establishmentName,
     required DateTime scheduledAt,
     double price = 0,
+    bool priceVariable = false,
     List<ServiceModel>? services,
+    String? driverId,
+    String? driverName,
+    String? vetId,
+    String? vetName,
   }) async {
     final body = <String, dynamic>{
       'userName': userName,
       'petId': petId,
       'petName': petName,
       'serviceName': serviceName,
-      'establishmentId': establishmentId,
-      'establishmentName': establishmentName,
       'scheduledAt': scheduledAt.toIso8601String(),
       'price': price,
+      'priceVariable': priceVariable,
     };
+    if (establishmentId != null) body['establishmentId'] = establishmentId;
+    if (establishmentName != null) body['establishmentName'] = establishmentName;
+    if (driverId != null) body['driverId'] = driverId;
+    if (driverName != null) body['driverName'] = driverName;
+    if (vetId != null) body['vetId'] = vetId;
+    if (vetName != null) body['vetName'] = vetName;
     if (services != null && services.isNotEmpty) {
       body['services'] = services
           .map((s) => {
@@ -138,5 +163,49 @@ class BookingService {
       msg = data['message'] as String? ?? msg;
     } catch (_) {}
     throw Exception(msg);
+  }
+
+  static Future<AppointmentModel> setAttendancePhotos({
+    required String token,
+    required String bookingId,
+    required List<String> photos,
+  }) async {
+    final res = await http
+        .patch(
+          Uri.parse('${ApiConstants.baseUrl}/bookings/$bookingId/photos'),
+          headers: _headers(token),
+          body: jsonEncode({'photos': photos}),
+        )
+        .timeout(const Duration(seconds: 30));
+    if (res.statusCode == 200 || res.statusCode == 201) {
+      return AppointmentModel.fromJson(
+          jsonDecode(res.body) as Map<String, dynamic>);
+    }
+    String msg = 'Erro ao salvar fotos do atendimento';
+    try {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      msg = data['message'] as String? ?? msg;
+    } catch (_) {}
+    throw Exception(msg);
+  }
+
+  static Future<AppointmentModel> markAsPaid({
+    required String token,
+    required String bookingId,
+    String method = 'PIX',
+  }) async {
+    final res = await http
+        .patch(
+          Uri.parse('${ApiConstants.baseUrl}/bookings/$bookingId/pay'),
+          headers: _headers(token),
+          body: jsonEncode({'method': method}),
+        )
+        .timeout(const Duration(seconds: 15));
+    final data = jsonDecode(res.body);
+    if (res.statusCode == 200) {
+      final booking = data['booking'] as Map<String, dynamic>? ?? data;
+      return AppointmentModel.fromJson(booking);
+    }
+    throw Exception(data['message'] ?? 'Erro ao registrar pagamento');
   }
 }
