@@ -5,9 +5,11 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  MessageEvent,
   Param,
   Patch,
   Post,
+  Sse,
 } from "@nestjs/common";
 import {
   ApiBearerAuth,
@@ -20,6 +22,7 @@ import { NotificationService } from "@notification/application/services/notifica
 import { Permission } from "@shared/domain/enums/permission.enum";
 import { RequirePermissions } from "@shared/infra/decorators/permissions.decorator";
 import { Public } from "@shared/infra/decorators/public.decorator";
+import { Observable } from "rxjs";
 
 @ApiTags("notifications")
 @Controller("notifications")
@@ -32,6 +35,13 @@ export class NotificationsController {
   @ApiOperation({ summary: "Health check" })
   health() {
     return { status: "ok", service: "notification-service" };
+  }
+
+  @Sse("stream/:userId")
+  @Public()
+  @ApiOperation({ summary: "SSE stream de notificações em tempo real" })
+  stream(@Param("userId") userId: string): Observable<MessageEvent> {
+    return this.notificationService.getStream(userId) as Observable<MessageEvent>;
   }
 
   @Post()

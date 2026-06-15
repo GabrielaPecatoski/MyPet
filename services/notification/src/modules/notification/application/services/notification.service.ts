@@ -5,6 +5,8 @@ import {
   type NotificationRepository,
 } from "@notification/domain/repositories/notification-repository.interface";
 import { DeviceTokenRepository } from "@notification/infra/repositories/device-token.repository";
+import { Observable, Subject, interval, merge } from "rxjs";
+import { filter, map } from "rxjs/operators";
 
 export interface CreateNotificationDto {
   userId: string;
@@ -13,8 +15,15 @@ export interface CreateNotificationDto {
   type: string;
 }
 
+interface SseEvent {
+  userId: string;
+  data: object;
+}
+
 @Injectable()
 export class NotificationService {
+  private readonly _bus = new Subject<SseEvent>();
+
   constructor(
     @Inject(NOTIFICATION_REPOSITORY)
     private readonly notificationRepo: NotificationRepository,
@@ -28,7 +37,23 @@ export class NotificationService {
       body: dto.body,
       type: dto.type,
     });
-    return this.notificationRepo.create(notification);
+    const saved = await this.notificationRepo.create(notification);
+    this._bus.next({
+      userId: dto.userId,
+      data: { type: dto.type, title: dto.title, body: dto.body, id: saved.id },
+    });
+    return saved;
+  }
+
+  getStream(userId: string): Observable<{ data: object }> {
+    const events$ = this._bus.pipe(
+      filter((e) => e.userId === userId),
+      map((e) => ({ data: e.data })),
+    );
+    const heartbeat$ = interval(25_000).pipe(
+      map(() => ({ data: { type: "ping" } })),
+    );
+    return merge(events$, heartbeat$);
   }
 
   async listByUser(userId: string): Promise<Notification[]> {

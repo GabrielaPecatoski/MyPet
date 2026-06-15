@@ -21,9 +21,12 @@ export class ServiceItemDto {
 export class CreateBookingDto {
   @ApiProperty() @IsString() @IsNotEmpty() petId!: string;
   @ApiProperty() @IsString() @IsNotEmpty() petName!: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() petBreed?: string;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() @Min(0) petAge?: number;
   @ApiProperty() @IsString() @IsNotEmpty() serviceName!: string;
   @ApiProperty() @IsString() @IsNotEmpty() establishmentId!: string;
   @ApiProperty() @IsString() @IsNotEmpty() establishmentName!: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() establishmentAddress?: string;
   @ApiProperty() @IsDateString() scheduledAt!: string;
   @ApiPropertyOptional() @IsOptional() @IsNumber() @Min(0) price?: number;
   @ApiPropertyOptional() @IsOptional() @IsString() userName?: string;

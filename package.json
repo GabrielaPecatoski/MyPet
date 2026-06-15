@@ -28,7 +28,12 @@
     "start:chat": "npm run start:dev --prefix services/chat",
     "start": "concurrently --kill-others-on-fail --prefix \"[{name}]\" --names \"gateway,auth,pets,estab,market,booking,notif,review,faq\" --prefix-colors \"blue,magenta,cyan,green,yellow,red,white,gray,brightBlue\" \"npm run start:dev --prefix services/api-gateway\" \"npm run start:dev --prefix services/user-auth\" \"npm run start:dev --prefix services/user-pet\" \"npm run start:dev --prefix services/establishment\" \"npm run start:dev --prefix services/marketplace\" \"npm run start:dev --prefix services/booking\" \"npm run start:dev --prefix services/notification\" \"npm run start:dev --prefix services/review\" \"npm run start:dev --prefix services/faq\"",
     "db:migrate:all": "npm run db:migrate --prefix services/user-auth && npm run db:migrate --prefix services/user-pet && npm run db:migrate --prefix services/establishment && npm run db:migrate --prefix services/marketplace && npm run db:migrate --prefix services/booking && npm run db:migrate --prefix services/review && npm run db:migrate --prefix services/faq && npm run db:migrate --prefix services/notification && npm run db:migrate --prefix services/chat",
-    "db:seed": "node scripts/seed.mjs"
+    "db:seed": "node scripts/seed.mjs",
+    "test:notification": "jest --config services/notification/jest.config.js --passWithNoTests",
+    "test:booking": "jest --config services/booking/jest.config.js --passWithNoTests",
+    "test:backend": "npm run test:notification && npm run test:booking",
+    "test:flutter": "flutter test --reporter compact",
+    "test:all": "npm run test:backend && npm run test:flutter --prefix mypet_app"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

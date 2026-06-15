@@ -62,6 +62,7 @@ export class BookingService implements OnModuleInit, OnModuleDestroy {
           {
             bookingId: booking.id,
             userId: booking.userId,
+            userEmail: booking.userEmail,
             serviceName: booking.serviceName,
             establishmentName: booking.establishmentName,
             scheduledAt: booking.scheduledAt.toISOString(),
@@ -91,12 +92,16 @@ export class BookingService implements OnModuleInit, OnModuleDestroy {
     const booking = Booking.restore({
       userId,
       userName: dto.userName ?? userEmail,
+      userEmail,
       petId: dto.petId,
       petName: dto.petName,
+      petBreed: dto.petBreed,
+      petAge: dto.petAge,
       serviceName: displayName,
       servicesJson: services ? JSON.stringify(services) : undefined,
       establishmentId: dto.establishmentId,
       establishmentName: dto.establishmentName,
+      establishmentAddress: dto.establishmentAddress,
       scheduledAt: new Date(dto.scheduledAt),
       price: totalPrice,
       status: "PENDENTE",
@@ -108,6 +113,7 @@ export class BookingService implements OnModuleInit, OnModuleDestroy {
       {
         bookingId: booking.id!,
         establishmentId: booking.establishmentId,
+        establishmentName: booking.establishmentName,
         clientName: booking.userName,
         userEmail,
         serviceName: booking.serviceName,
@@ -144,8 +150,11 @@ export class BookingService implements OnModuleInit, OnModuleDestroy {
         {
           bookingId: booking.id!,
           userId: booking.userId,
+          userEmail: booking.userEmail,
           status,
           establishmentName: booking.establishmentName,
+          serviceName: booking.serviceName,
+          scheduledAt: booking.scheduledAt.toISOString(),
         },
       );
     } else if (status === "CONCLUIDO") {
@@ -155,6 +164,7 @@ export class BookingService implements OnModuleInit, OnModuleDestroy {
         {
           bookingId: booking.id!,
           userId: booking.userId,
+          userEmail: booking.userEmail,
           establishmentName: booking.establishmentName,
           serviceName: booking.serviceName,
         },
@@ -166,6 +176,7 @@ export class BookingService implements OnModuleInit, OnModuleDestroy {
         {
           bookingId: booking.id!,
           userId: booking.userId,
+          userEmail: booking.userEmail,
           serviceName: booking.serviceName,
           establishmentName: booking.establishmentName,
         },

@@ -559,7 +559,9 @@ class _BookingCard extends StatelessWidget {
                       final conv = await chat.openOrCreateConversation(
                         bookingId: ap.id,
                         clientId: auth.user?.id ?? ap.userId,
+                        clientName: auth.user?.name ?? ap.userName,
                         establishmentId: ap.establishmentId,
+                        establishmentName: ap.establishmentName,
                         token: auth.token!,
                       );
                       if (!context.mounted) return;
