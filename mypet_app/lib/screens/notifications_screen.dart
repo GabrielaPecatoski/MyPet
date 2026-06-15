@@ -47,16 +47,41 @@ class NotificationsScreen extends StatefulWidget {
 class _NotificationsScreenState extends State<NotificationsScreen> {
   List<_AppNotification> _notifications = [];
   bool _loading = false;
+  bool _hasUnread = false;
+
+  // Guardados para uso no dispose (sem acesso ao context).
+  String? _userId;
+  String? _token;
+  late NotificationsProvider _notifProvider;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _notifProvider = context.read<NotificationsProvider>();
+      _load();
+    });
+  }
+
+  @override
+  void dispose() {
+    // Marca todas como lidas ao sair — o usuário já as visualizou.
+    if (_hasUnread && _userId != null && _token != null) {
+      ApiService.patch(
+        '/notifications/user/$_userId/read-all',
+        {},
+        token: _token,
+      ).ignore();
+      _notifProvider.clearUnread();
+    }
+    super.dispose();
   }
 
   Future<void> _load() async {
     final auth = context.read<AuthProvider>();
     if (auth.token == null || auth.user == null) return;
+    _userId = auth.user!.id;
+    _token = auth.token;
     setState(() => _loading = true);
     try {
       final data = await ApiService.get(
@@ -64,19 +89,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         token: auth.token,
       );
       final list = data as List;
-      setState(() {
-        _notifications =
-            list.map((e) => _AppNotification.fromJson(e as Map<String, dynamic>)).toList();
-      });
-      // Mark all as read on the backend then clear the local badge counter.
-      await ApiService.patch(
-        '/notifications/user/${auth.user!.id}/read-all',
-        {},
-        token: auth.token,
-      );
-      if (mounted) {
-        context.read<NotificationsProvider>().clearUnread();
-      }
+      final notifications = list
+          .map((e) => _AppNotification.fromJson(e as Map<String, dynamic>))
+          .toList();
+      // Verifica se há não-lidas para decidir se chamamos markAllRead no dispose.
+      _hasUnread = notifications.any((n) => !n.read);
+      setState(() => _notifications = notifications);
+      // NÃO marca como lidas aqui — o usuário ainda está vendo a tela.
+      // O dispose cuida disso quando o usuário sair.
     } catch (_) {
     } finally {
       if (mounted) setState(() => _loading = false);

@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { Conversation } from "../../domain/models/conversation.entity";
 import { Message, SenderRole } from "../../domain/models/message.entity";
 import {
@@ -23,11 +23,19 @@ export class ChatService {
     bookingId: string,
     clientId: string,
     establishmentId: string,
+    clientName?: string,
+    establishmentName?: string,
   ): Promise<{ conversation: Conversation; created: boolean }> {
     const existing = await this.conversationRepo.findByBookingId(bookingId);
     if (existing) return { conversation: existing, created: false };
 
-    const conversation = Conversation.create({ bookingId, clientId, establishmentId });
+    const conversation = Conversation.create({
+      bookingId,
+      clientId,
+      clientName,
+      establishmentId,
+      establishmentName,
+    });
     const saved = await this.conversationRepo.create(conversation);
     return { conversation: saved, created: true };
   }
@@ -39,7 +47,7 @@ export class ChatService {
   async listConversations(
     userId: string,
     role: string,
-  ): Promise<Array<{ conversation: Conversation; lastMessage: Message | null }>> {
+  ): Promise<Array<{ conversation: Conversation; lastMessage: Message | null; unreadCount: number }>> {
     const conversations =
       role === "CLIENTE"
         ? await this.conversationRepo.findByClientId(userId)
@@ -47,8 +55,11 @@ export class ChatService {
 
     return Promise.all(
       conversations.map(async (conversation) => {
-        const lastMessage = await this.messageRepo.findLastByConversationId(conversation.id);
-        return { conversation, lastMessage };
+        const [lastMessage, unreadCount] = await Promise.all([
+          this.messageRepo.findLastByConversationId(conversation.id),
+          this.messageRepo.countUnread(conversation.id, userId),
+        ]);
+        return { conversation, lastMessage, unreadCount };
       }),
     );
   }
@@ -61,6 +72,9 @@ export class ChatService {
   ): Promise<{ messages: Message[]; total: number; page: number; limit: number }> {
     const conv = await this.conversationRepo.findById(conversationId);
     if (!conv) throw new NotFoundException("Conversa não encontrada");
+    if (conv.clientId !== userId && conv.establishmentId !== userId) {
+      throw new ForbiddenException("Acesso negado a esta conversa");
+    }
 
     const offset = (page - 1) * limit;
     const [messages, total] = await Promise.all([
@@ -84,5 +98,9 @@ export class ChatService {
     const saved = await this.messageRepo.create(message);
     await this.conversationRepo.touch(conversationId, saved.createdAt);
     return saved;
+  }
+
+  async markMessagesRead(conversationId: string, readerId: string): Promise<void> {
+    await this.messageRepo.markReadByConversation(conversationId, readerId);
   }
 }

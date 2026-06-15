@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/colors.dart';
 import '../models/conversation_model.dart';
+import '../models/message_model.dart';
 import '../providers/auth_provider.dart';
 import '../providers/chat_provider.dart';
-import '../widgets/mypet_app_bar.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -18,11 +18,13 @@ class _ChatScreenState extends State<ChatScreen> {
   final _scrollCtrl = ScrollController();
   ConversationModel? _conv;
   String? _userId;
+  int _prevMessageCount = 0;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _init());
+    _scrollCtrl.addListener(_onScroll);
   }
 
   void _init() {
@@ -32,10 +34,20 @@ class _ChatScreenState extends State<ChatScreen> {
     context.read<ChatProvider>().joinRoom(_conv!.id);
   }
 
+  void _onScroll() {
+    if (_scrollCtrl.position.pixels <= 80 && !context.read<ChatProvider>().loadingMore) {
+      final token = context.read<AuthProvider>().token;
+      if (token != null && _conv != null) {
+        context.read<ChatProvider>().loadMoreMessages(_conv!.id, token);
+      }
+    }
+  }
+
   @override
   void dispose() {
     context.read<ChatProvider>().leaveRoom();
     _ctrl.dispose();
+    _scrollCtrl.removeListener(_onScroll);
     _scrollCtrl.dispose();
     super.dispose();
   }
@@ -45,17 +57,20 @@ class _ChatScreenState extends State<ChatScreen> {
     if (text.isEmpty || _conv == null) return;
     context.read<ChatProvider>().sendMessage(_conv!.id, text);
     _ctrl.clear();
-    _scrollToBottom();
   }
 
-  void _scrollToBottom() {
+  void _scrollToBottom({bool animated = true}) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollCtrl.hasClients) {
-        _scrollCtrl.animateTo(
-          _scrollCtrl.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 250),
-          curve: Curves.easeOut,
-        );
+        if (animated) {
+          _scrollCtrl.animateTo(
+            _scrollCtrl.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOut,
+          );
+        } else {
+          _scrollCtrl.jumpTo(_scrollCtrl.position.maxScrollExtent);
+        }
       }
     });
   }
@@ -63,17 +78,104 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     final chat = context.watch<ChatProvider>();
+    final auth = context.read<AuthProvider>();
     final messages = chat.messages;
 
-    if (messages.isNotEmpty) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+    // Show error snackbar when chat emits an error
+    if (chat.error != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(chat.error!),
+            backgroundColor: AppColors.danger,
+          ),
+        );
+        chat.clearError();
+      });
     }
+
+    // Scroll to bottom only when new messages arrive
+    if (messages.length > _prevMessageCount) {
+      _prevMessageCount = messages.length;
+      _scrollToBottom(animated: _prevMessageCount == messages.length);
+    }
+
+    final partnerId = _conv != null
+        ? (_conv!.clientId == (_userId ?? '') ? _conv!.establishmentId : _conv!.clientId)
+        : null;
+    final partnerOnline = partnerId != null ? chat.isPartnerOnline(partnerId) : false;
+    final partnerName = _conv != null
+        ? _conv!.partnerName(auth.user?.id ?? '')
+        : 'Chat';
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: const MypetAppBar(showBack: true),
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 1,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppColors.dark),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Row(
+          children: [
+            Stack(
+              children: [
+                CircleAvatar(
+                  radius: 18,
+                  backgroundColor: AppColors.primaryLight,
+                  child: const Icon(Icons.pets, color: AppColors.primary, size: 18),
+                ),
+                if (partnerId != null)
+                  Positioned(
+                    right: 0,
+                    bottom: 0,
+                    child: Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: partnerOnline ? AppColors.success : AppColors.grey,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 1.5),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(width: 10),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  partnerName.isNotEmpty ? partnerName : 'Chat',
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.dark,
+                  ),
+                ),
+                Text(
+                  partnerOnline ? 'online' : 'offline',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: partnerOnline ? AppColors.success : AppColors.grey,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
       body: Column(
         children: [
+          if (chat.loadingMore)
+            const LinearProgressIndicator(
+              backgroundColor: AppColors.primaryLight,
+              color: AppColors.primary,
+              minHeight: 2,
+            ),
           Expanded(
             child: chat.loadingMessages
                 ? const Center(child: CircularProgressIndicator())
@@ -93,10 +195,17 @@ class _ChatScreenState extends State<ChatScreen> {
                         itemBuilder: (ctx, i) {
                           final msg = messages[i];
                           final isMine = msg.senderId == _userId;
-                          return _MessageBubble(
-                              content: msg.content,
-                              isMine: isMine,
-                              time: msg.createdAt);
+                          final showDateSep = i == 0 ||
+                              !_sameDay(messages[i - 1].createdAt, msg.createdAt);
+                          return Column(
+                            children: [
+                              if (showDateSep) _DateSeparator(date: msg.createdAt),
+                              _MessageBubble(
+                                msg: msg,
+                                isMine: isMine,
+                              ),
+                            ],
+                          );
                         },
                       ),
           ),
@@ -124,6 +233,9 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
     );
   }
+
+  bool _sameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
 
   Widget _buildInputBar(ChatProvider chat) {
     return Container(
@@ -169,19 +281,54 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 }
 
-class _MessageBubble extends StatelessWidget {
-  final String content;
-  final bool isMine;
-  final DateTime time;
-
-  const _MessageBubble({
-    required this.content,
-    required this.isMine,
-    required this.time,
-  });
+class _DateSeparator extends StatelessWidget {
+  final DateTime date;
+  const _DateSeparator({required this.date});
 
   @override
   Widget build(BuildContext context) {
+    final now = DateTime.now();
+    String label;
+    final diff = DateTime(now.year, now.month, now.day)
+        .difference(DateTime(date.year, date.month, date.day))
+        .inDays;
+    if (diff == 0) {
+      label = 'Hoje';
+    } else if (diff == 1) {
+      label = 'Ontem';
+    } else {
+      label =
+          '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Row(
+        children: [
+          const Expanded(child: Divider(color: AppColors.greyLight)),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: Text(
+              label,
+              style: const TextStyle(fontSize: 11, color: AppColors.grey),
+            ),
+          ),
+          const Expanded(child: Divider(color: AppColors.greyLight)),
+        ],
+      ),
+    );
+  }
+}
+
+class _MessageBubble extends StatelessWidget {
+  final MessageModel msg;
+  final bool isMine;
+
+  const _MessageBubble({required this.msg, required this.isMine});
+
+  @override
+  Widget build(BuildContext context) {
+    final time = msg.createdAt;
     final timeStr =
         '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
 
@@ -210,21 +357,36 @@ class _MessageBubble extends StatelessWidget {
               isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
           children: [
             Text(
-              content,
+              msg.content,
               style: TextStyle(
                 fontSize: 14,
                 color: isMine ? Colors.white : AppColors.dark,
               ),
             ),
             const SizedBox(height: 3),
-            Text(
-              timeStr,
-              style: TextStyle(
-                fontSize: 10,
-                color: isMine
-                    ? Colors.white.withValues(alpha: 0.75)
-                    : AppColors.grey,
-              ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  timeStr,
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: isMine
+                        ? Colors.white.withValues(alpha: 0.75)
+                        : AppColors.grey,
+                  ),
+                ),
+                if (isMine) ...[
+                  const SizedBox(width: 4),
+                  Icon(
+                    msg.isRead ? Icons.done_all : Icons.done,
+                    size: 13,
+                    color: msg.isRead
+                        ? Colors.white
+                        : Colors.white.withValues(alpha: 0.6),
+                  ),
+                ],
+              ],
             ),
           ],
         ),

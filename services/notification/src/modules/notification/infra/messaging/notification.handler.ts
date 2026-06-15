@@ -24,6 +24,7 @@ import { RabbitMQService } from "@shared/infra/messaging/rabbitmq.service";
 interface BookingCreatedPayload {
   bookingId: string;
   establishmentId: string;
+  establishmentName: string;
   clientName: string;
   userEmail?: string;
   serviceName: string;
@@ -33,13 +34,17 @@ interface BookingCreatedPayload {
 interface BookingStatusUpdatedPayload {
   bookingId: string;
   userId: string;
+  userEmail?: string;
   status: string;
   establishmentName: string;
+  serviceName?: string;
+  scheduledAt?: string;
 }
 
 interface BookingCanceledPayload {
   bookingId: string;
   userId: string;
+  userEmail?: string;
   serviceName: string;
   establishmentName: string;
 }
@@ -54,6 +59,7 @@ interface BookingCompletedPayload {
 interface BookingReminderPayload {
   bookingId: string;
   userId: string;
+  userEmail?: string;
   serviceName: string;
   establishmentName: string;
   scheduledAt: string;
@@ -182,10 +188,10 @@ export class NotificationHandler implements OnModuleInit {
           `${data.clientName} agendou ${data.serviceName}`,
         );
         if (data.userEmail) {
-          await this.mailService.sendBookingConfirmed(
+          await this.mailService.sendBookingReceived(
             data.userEmail,
             data.serviceName,
-            "seu pet shop",
+            data.establishmentName,
             new Date(data.scheduledAt).toLocaleString("pt-BR"),
           );
         }
@@ -208,6 +214,22 @@ export class NotificationHandler implements OnModuleInit {
           `Reserva ${label}`,
           `Sua reserva em ${data.establishmentName} foi ${label}.`,
         );
+        if (data.userEmail && data.serviceName) {
+          if (isConfirmed && data.scheduledAt) {
+            await this.mailService.sendBookingConfirmed(
+              data.userEmail,
+              data.serviceName,
+              data.establishmentName,
+              new Date(data.scheduledAt).toLocaleString("pt-BR"),
+            );
+          } else if (!isConfirmed) {
+            await this.mailService.sendBookingCancelled(
+              data.userEmail,
+              data.serviceName,
+              data.establishmentName,
+            );
+          }
+        }
         break;
       }
 
@@ -224,6 +246,13 @@ export class NotificationHandler implements OnModuleInit {
           "Agendamento cancelado",
           `${data.serviceName} em ${data.establishmentName} foi cancelado.`,
         );
+        if (data.userEmail) {
+          await this.mailService.sendBookingCancelled(
+            data.userEmail,
+            data.serviceName,
+            data.establishmentName,
+          );
+        }
         break;
       }
 

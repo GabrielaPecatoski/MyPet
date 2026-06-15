@@ -9,6 +9,8 @@ export interface MessageRepository {
   ): Promise<Message[]>;
   findLastByConversationId(conversationId: string): Promise<Message | null>;
   countByConversationId(conversationId: string): Promise<number>;
+  markReadByConversation(conversationId: string, readerId: string): Promise<void>;
+  countUnread(conversationId: string, userId: string): Promise<number>;
 }
 
 export const MESSAGE_REPO = Symbol("MessageRepository");

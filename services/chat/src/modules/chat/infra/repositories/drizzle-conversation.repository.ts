@@ -14,7 +14,9 @@ export class DrizzleConversationRepository implements ConversationRepository {
       id: row.id,
       bookingId: row.bookingId,
       clientId: row.clientId,
+      clientName: row.clientName,
       establishmentId: row.establishmentId,
+      establishmentName: row.establishmentName,
       lastMessageAt: row.lastMessageAt ?? null,
       createdAt: row.createdAt,
     });
@@ -59,7 +61,9 @@ export class DrizzleConversationRepository implements ConversationRepository {
         id: conversation.id,
         bookingId: conversation.bookingId,
         clientId: conversation.clientId,
+        clientName: conversation.clientName,
         establishmentId: conversation.establishmentId,
+        establishmentName: conversation.establishmentName,
         lastMessageAt: conversation.lastMessageAt,
         createdAt: conversation.createdAt,
       })

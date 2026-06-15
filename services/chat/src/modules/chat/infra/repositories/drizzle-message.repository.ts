@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { DrizzleService } from "@shared/infra/database/drizzle.service";
-import { asc, count, desc, eq } from "drizzle-orm";
+import { and, asc, count, desc, eq, isNull, ne } from "drizzle-orm";
 import { Message, SenderRole } from "../../domain/models/message.entity";
 import { MessageRepository } from "../../domain/repositories/message-repository.interface";
 import { messagesSchema } from "../database/schemas/message.schema";
@@ -67,6 +67,33 @@ export class DrizzleMessageRepository implements MessageRepository {
       .select({ count: count() })
       .from(messagesSchema)
       .where(eq(messagesSchema.conversationId, conversationId));
+    return Number(row?.count ?? 0);
+  }
+
+  async markReadByConversation(conversationId: string, readerId: string): Promise<void> {
+    await this.drizzle.db
+      .update(messagesSchema)
+      .set({ readAt: new Date() })
+      .where(
+        and(
+          eq(messagesSchema.conversationId, conversationId),
+          ne(messagesSchema.senderId, readerId),
+          isNull(messagesSchema.readAt),
+        ),
+      );
+  }
+
+  async countUnread(conversationId: string, userId: string): Promise<number> {
+    const [row] = await this.drizzle.db
+      .select({ count: count() })
+      .from(messagesSchema)
+      .where(
+        and(
+          eq(messagesSchema.conversationId, conversationId),
+          ne(messagesSchema.senderId, userId),
+          isNull(messagesSchema.readAt),
+        ),
+      );
     return Number(row?.count ?? 0);
   }
 }

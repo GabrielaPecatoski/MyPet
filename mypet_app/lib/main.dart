@@ -1,3 +1,4 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'core/colors.dart';
@@ -29,8 +30,14 @@ import 'screens/estab_navigation.dart';
 import 'screens/estab_edit_screen.dart';
 import 'screens/admin_screen.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Inicializa Firebase silenciosamente — requer google-services.json (Android)
+  // e GoogleService-Info.plist (iOS). Execute: flutterfire configure
+  try {
+    await Firebase.initializeApp();
+  } catch (_) {}
 
   runApp(
     MultiProvider(

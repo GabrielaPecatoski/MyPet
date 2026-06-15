@@ -84,6 +84,12 @@ class _ConversationTile extends StatelessWidget {
     final timeStr = conv.lastMessageAt != null
         ? _formatTime(conv.lastMessageAt!)
         : '';
+    final auth = context.read<AuthProvider>();
+    final partner = conv.partnerName(auth.user?.id ?? '');
+    final displayName = partner.isNotEmpty
+        ? partner
+        : 'Agendamento • ${conv.bookingId.substring(0, 8)}';
+    final hasUnread = conv.unreadCount > 0;
 
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -91,25 +97,56 @@ class _ConversationTile extends StatelessWidget {
       leading: CircleAvatar(
         radius: 26,
         backgroundColor: AppColors.primaryLight,
-        child:
-            const Icon(Icons.pets, color: AppColors.primary, size: 24),
+        child: const Icon(Icons.pets, color: AppColors.primary, size: 24),
       ),
       title: Text(
-        'Agendamento • ${conv.bookingId.substring(0, 8)}',
-        style: const TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 14,
-            color: AppColors.dark),
+        displayName,
+        style: TextStyle(
+          fontWeight: hasUnread ? FontWeight.w700 : FontWeight.w600,
+          fontSize: 14,
+          color: AppColors.dark,
+        ),
       ),
       subtitle: Text(
         last?.content ?? 'Sem mensagens',
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: const TextStyle(fontSize: 12, color: AppColors.grey),
+        style: TextStyle(
+          fontSize: 12,
+          color: hasUnread ? AppColors.dark : AppColors.grey,
+          fontWeight: hasUnread ? FontWeight.w500 : FontWeight.normal,
+        ),
       ),
-      trailing: Text(
-        timeStr,
-        style: const TextStyle(fontSize: 11, color: AppColors.grey),
+      trailing: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Text(
+            timeStr,
+            style: TextStyle(
+              fontSize: 11,
+              color: hasUnread ? AppColors.primary : AppColors.grey,
+            ),
+          ),
+          if (hasUnread) ...[
+            const SizedBox(height: 4),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                conv.unreadCount > 99 ? '99+' : '${conv.unreadCount}',
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ],
       ),
       onTap: () => Navigator.pushNamed(
         context,

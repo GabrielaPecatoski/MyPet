@@ -34,6 +34,28 @@ class MessageModel {
 
   bool get isRead => readAt != null;
 
+  static const _unset = Object();
+
+  MessageModel copyWith({
+    String? id,
+    String? conversationId,
+    String? senderId,
+    String? senderRole,
+    String? content,
+    Object? readAt = _unset,
+    DateTime? createdAt,
+  }) {
+    return MessageModel(
+      id: id ?? this.id,
+      conversationId: conversationId ?? this.conversationId,
+      senderId: senderId ?? this.senderId,
+      senderRole: senderRole ?? this.senderRole,
+      content: content ?? this.content,
+      readAt: identical(readAt, _unset) ? this.readAt : readAt as DateTime?,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
   Map<String, dynamic> toJson() => {
         'id': id,
         'conversationId': conversationId,

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../core/colors.dart';
 import '../models/appointment.dart';
 import '../providers/auth_provider.dart';
+import '../providers/chat_provider.dart';
 import '../services/api_service.dart';
 import '../widgets/mypet_app_bar.dart';
 
@@ -28,6 +29,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
 
   int _currentStep = 0;
   int _elapsedMin = 0;
+  bool _serviceStarted = false;
   bool _isCancelled = false;
   String? _cancelLabel;
 
@@ -61,8 +63,9 @@ class _TrackingScreenState extends State<TrackingScreen> {
       case 'CONFIRMADO':
         _currentStep = 1;
         _isCancelled = false;
-        _elapsedMin =
-            DateTime.now().difference(date).inMinutes.clamp(0, 999);
+        final diff = DateTime.now().difference(date).inMinutes;
+        _serviceStarted = diff >= 0;
+        _elapsedMin = diff.abs().clamp(0, 999);
       case 'CONCLUIDO':
         _currentStep = 2;
         _isCancelled = false;
@@ -119,6 +122,33 @@ class _TrackingScreenState extends State<TrackingScreen> {
 
   double get _progressValue => (_currentStep + 1) / _steps.length;
 
+  Future<void> _openChat() async {
+    if (_ap == null) return;
+    final auth = context.read<AuthProvider>();
+    final chat = context.read<ChatProvider>();
+    if (auth.token == null) return;
+    try {
+      final conv = await chat.openOrCreateConversation(
+        bookingId: _ap!.id,
+        clientId: auth.user?.id ?? _ap!.userId,
+        clientName: auth.user?.name ?? _ap!.userName,
+        establishmentId: _ap!.establishmentId,
+        establishmentName: _ap!.establishmentName,
+        token: auth.token!,
+      );
+      if (!mounted) return;
+      Navigator.pushNamed(context, '/chat', arguments: conv);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Não foi possível abrir o chat'),
+          backgroundColor: AppColors.danger,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final ap = _ap ??
@@ -130,6 +160,15 @@ class _TrackingScreenState extends State<TrackingScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: const MypetAppBar(showBack: true),
+      floatingActionButton: (_ap != null && _ap!.isConfirmado)
+          ? FloatingActionButton.extended(
+              backgroundColor: AppColors.primary,
+              icon: const Icon(Icons.chat_bubble_outline, color: Colors.white),
+              label: const Text('Mensagem',
+                  style: TextStyle(color: Colors.white)),
+              onPressed: _openChat,
+            )
+          : null,
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -243,7 +282,9 @@ class _TrackingScreenState extends State<TrackingScreen> {
                           size: 13, color: AppColors.primary),
                       const SizedBox(width: 4),
                       Text(
-                        '$_elapsedMin min',
+                        _serviceStarted
+                            ? 'há $_elapsedMin min'
+                            : 'Em $_elapsedMin min',
                         style: const TextStyle(
                             fontSize: 12,
                             color: AppColors.primary,

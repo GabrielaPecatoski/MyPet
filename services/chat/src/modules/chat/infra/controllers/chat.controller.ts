@@ -23,7 +23,9 @@ function toConversationDto(c: Conversation) {
     id: c.id,
     bookingId: c.bookingId,
     clientId: c.clientId,
+    clientName: c.clientName,
     establishmentId: c.establishmentId,
+    establishmentName: c.establishmentName,
     lastMessageAt: c.lastMessageAt,
     createdAt: c.createdAt,
   };
@@ -57,6 +59,8 @@ export class ChatController {
       body.bookingId,
       body.clientId,
       body.establishmentId,
+      body.clientName,
+      body.establishmentName,
     );
     return { conversation: toConversationDto(result.conversation), created: result.created };
   }
@@ -68,9 +72,10 @@ export class ChatController {
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<object[]> {
     const items = await this.chatService.listConversations(user.sub, user.role);
-    return items.map(({ conversation, lastMessage }) => ({
+    return items.map(({ conversation, lastMessage, unreadCount }) => ({
       ...toConversationDto(conversation),
       lastMessage: lastMessage ? toMessageDto(lastMessage) : null,
+      unreadCount,
     }));
   }
 

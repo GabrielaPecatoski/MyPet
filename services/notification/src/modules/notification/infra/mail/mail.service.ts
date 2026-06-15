@@ -45,6 +45,24 @@ export class MailService implements OnModuleInit {
     );
   }
 
+  async sendBookingReceived(
+    to: string,
+    serviceName: string,
+    establishmentName: string,
+    scheduledAt: string,
+  ): Promise<void> {
+    await this.send(
+      to,
+      "Solicitação de agendamento recebida ⏳",
+      `<h2>Recebemos sua solicitação!</h2>
+       <p><strong>Serviço:</strong> ${serviceName}</p>
+       <p><strong>Estabelecimento:</strong> ${establishmentName}</p>
+       <p><strong>Data/Hora:</strong> ${scheduledAt}</p>
+       <p>Aguardando confirmação do estabelecimento. Você será notificado em breve.</p>
+       <br><p>Equipe MyPet</p>`,
+    );
+  }
+
   async sendBookingConfirmed(
     to: string,
     serviceName: string,

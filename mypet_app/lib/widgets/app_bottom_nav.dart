@@ -97,7 +97,7 @@ class AppBottomNav extends StatelessWidget {
                                 decoration: const BoxDecoration(color: AppColors.danger, shape: BoxShape.circle),
                                 constraints: const BoxConstraints(minWidth: 14, minHeight: 14),
                                 child: Text(
-                                  '${badges[i]}',
+                                  badges[i]! > 99 ? '99+' : '${badges[i]}',
                                   style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
                                   textAlign: TextAlign.center,
                                 ),

@@ -6,6 +6,8 @@ class ChatRepository {
     required String bookingId,
     required String clientId,
     required String establishmentId,
+    String? clientName,
+    String? establishmentName,
     required String token,
   }) async {
     final data = await ApiService.post(
@@ -14,6 +16,9 @@ class ChatRepository {
         'bookingId': bookingId,
         'clientId': clientId,
         'establishmentId': establishmentId,
+        if (clientName != null && clientName.isNotEmpty) 'clientName': clientName,
+        if (establishmentName != null && establishmentName.isNotEmpty)
+          'establishmentName': establishmentName,
       },
       token: token,
     );
