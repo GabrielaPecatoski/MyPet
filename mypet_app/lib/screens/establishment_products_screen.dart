@@ -4,10 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../core/colors.dart';
+import '../core/order_status.dart';
 import '../models/product.dart';
+import '../models/product_history_entry.dart';
 import '../providers/auth_provider.dart';
 import '../providers/establishment_products_provider.dart';
+import '../providers/product_history_provider.dart';
 import '../repositories/establishment_products_repository.dart';
+import '../repositories/orders_repository.dart';
 import '../widgets/app_image.dart';
 import '../widgets/mypet_app_bar.dart';
 import 'establishment_orders_view.dart';
@@ -61,6 +65,28 @@ class _EstabProdutosViewState extends State<_EstabProdutosView> {
   }
 
   void _editProduct(ProductModel p) => _showProductDialog(product: p);
+
+  void _showSalesHistory(ProductModel p) {
+    final auth = context.read<AuthProvider>();
+    final estabId = context.read<EstablishmentProductsProvider>().estabId;
+    if (estabId == null) return;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (_) => ChangeNotifierProvider(
+        create: (_) => ProductHistoryProvider(OrdersRepository())
+          ..loadForStore(
+            productId: p.id,
+            establishmentId: estabId,
+            token: auth.token,
+          ),
+        child: _SalesHistorySheet(product: p),
+      ),
+    );
+  }
 
   Future<void> _deleteProduct(ProductModel p) async {
     final ok = await showDialog<bool>(
@@ -523,6 +549,7 @@ class _EstabProdutosViewState extends State<_EstabProdutosView> {
                             onEdit: () => _editProduct(filtered[i]),
                             onToggle: () => provider.toggleActive(filtered[i]),
                             onDelete: () => _deleteProduct(filtered[i]),
+                            onHistory: () => _showSalesHistory(filtered[i]),
                           ),
                         ),
                 ),
@@ -670,7 +697,7 @@ class _ProductCard extends StatelessWidget {
   final ProductModel product;
   final Color categoryColor;
   final IconData categoryIcon;
-  final VoidCallback onEdit, onToggle, onDelete;
+  final VoidCallback onEdit, onToggle, onDelete, onHistory;
 
   const _ProductCard({
     required this.product,
@@ -679,6 +706,7 @@ class _ProductCard extends StatelessWidget {
     required this.onEdit,
     required this.onToggle,
     required this.onDelete,
+    required this.onHistory,
   });
 
   @override
@@ -797,6 +825,9 @@ class _ProductCard extends StatelessWidget {
             IntrinsicHeight(
               child: Row(
                 children: [
+                  _ActionBtn(Icons.receipt_long_outlined, 'Vendas',
+                      const Color(0xFF6366F1), onHistory),
+                  _vDivider(),
                   _ActionBtn(Icons.edit_outlined, 'Editar', AppColors.estab,
                       onEdit),
                   _vDivider(),
@@ -897,6 +928,226 @@ class _ActionBtn extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _SalesHistorySheet extends StatelessWidget {
+  final ProductModel product;
+  const _SalesHistorySheet({required this.product});
+
+  @override
+  Widget build(BuildContext context) {
+    final history = context.watch<ProductHistoryProvider>();
+
+    return Container(
+      constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.75),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                  color: AppColors.greyLight,
+                  borderRadius: BorderRadius.circular(2)),
+            ),
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              const Icon(Icons.receipt_long_outlined,
+                  color: Color(0xFF6366F1), size: 22),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Histórico de vendas',
+                        style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.dark)),
+                    Text(product.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            fontSize: 13, color: AppColors.grey)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (history.isLoading)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 40),
+              child: Center(
+                  child: CircularProgressIndicator(color: AppColors.estab)),
+            )
+          else if (history.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 36),
+              child: Center(
+                child: Column(
+                  children: [
+                    Icon(Icons.inbox_outlined,
+                        size: 44, color: AppColors.greyLight),
+                    SizedBox(height: 10),
+                    Text('Nenhuma venda registrada ainda',
+                        style: TextStyle(color: AppColors.grey, fontSize: 14)),
+                  ],
+                ),
+              ),
+            )
+          else ...[
+            Row(
+              children: [
+                _SummaryStat(
+                  icon: Icons.inventory_2_outlined,
+                  label: '${history.totalQuantity} ${product.unit} vendidas',
+                  color: AppColors.estab,
+                ),
+                const SizedBox(width: 8),
+                _SummaryStat(
+                  icon: Icons.attach_money,
+                  label: 'R\$ ${history.totalValue.toStringAsFixed(2)}',
+                  color: AppColors.success,
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text('${history.orderCount} ${history.orderCount == 1 ? 'pedido' : 'pedidos'}',
+                style: const TextStyle(fontSize: 12, color: AppColors.grey)),
+            const SizedBox(height: 8),
+            Flexible(
+              child: ListView.separated(
+                shrinkWrap: true,
+                padding: const EdgeInsets.only(top: 4),
+                itemCount: history.entries.length,
+                separatorBuilder: (_, __) =>
+                    const Divider(height: 1, color: AppColors.greyLight),
+                itemBuilder: (_, i) =>
+                    _SaleRow(entry: history.entries[i], unit: product.unit),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _SummaryStat extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  const _SummaryStat(
+      {required this.icon, required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 16, color: color),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: color)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SaleRow extends StatelessWidget {
+  final ProductHistoryEntry entry;
+  final String unit;
+  const _SaleRow({required this.entry, required this.unit});
+
+  static String _statusLabel(String s) {
+    switch (s) {
+      case 'FINALIZADO':
+        return 'Entregue';
+      case 'A_CAMINHO':
+        return 'A caminho';
+      case 'ENVIANDO':
+        return 'Em preparo';
+      default:
+        return s;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final d = entry.date;
+    final dateStr = d == null
+        ? 'Data indisponível'
+        : '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year} ${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+    final color = OrderTracking.color(entry.status);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(dateStr,
+                    style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.dark)),
+                const SizedBox(height: 2),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(_statusLabel(entry.status),
+                      style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: color)),
+                ),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text('${entry.quantity} $unit',
+                  style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.dark)),
+              const SizedBox(height: 2),
+              Text('R\$ ${entry.subtotal.toStringAsFixed(2)}',
+                  style: const TextStyle(fontSize: 12, color: AppColors.grey)),
+            ],
+          ),
+        ],
       ),
     );
   }
