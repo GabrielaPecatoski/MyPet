@@ -37,4 +37,5 @@ mypet_app/build/
 **/test-results/
 **/playwright-report/
 **/playwright-report-front/
-mypet_app/pubspec.lock
+docker/nginx/certs/
+__pycache__/

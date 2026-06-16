@@ -1,14 +1,28 @@
 import { FaqService } from "@faq/faqs/application/services/faq.service";
 import {
-  Body, Controller, Delete, Get, HttpCode, HttpStatus,
-  Param, Patch, Post, Put, Query,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Patch,
+  Post,
+  Put,
+  Query,
 } from "@nestjs/common";
-import { ApiBearerAuth, ApiNoContentResponse, ApiOperation, ApiTags } from "@nestjs/swagger";
+import {
+  ApiBearerAuth,
+  ApiNoContentResponse,
+  ApiOperation,
+  ApiTags,
+} from "@nestjs/swagger";
 import { Permission } from "@shared/domain/enums/permission.enum";
-import { RequirePermissions } from "@shared/infra/decorators/permissions.decorator";
-import { CurrentUser } from "@shared/infra/decorators/current-user.decorator";
-import { Public } from "@shared/infra/decorators/public.decorator";
 import type { AuthenticatedUser } from "@shared/infra/auth/interfaces/authenticated-user.interface";
+import { CurrentUser } from "@shared/infra/decorators/current-user.decorator";
+import { RequirePermissions } from "@shared/infra/decorators/permissions.decorator";
+import { Public } from "@shared/infra/decorators/public.decorator";
 
 @ApiTags("faq")
 @Controller("faq")
@@ -41,7 +55,15 @@ export class FaqController {
   @ApiBearerAuth()
   @RequirePermissions(Permission.FAQ_WRITE)
   @ApiOperation({ summary: "Criar FAQ (admin)" })
-  async createFaq(@Body() body: { question: string; answer: string; category?: string; targetRole?: string; order?: number }) {
+  async createFaq(
+    @Body() body: {
+      question: string;
+      answer: string;
+      category?: string;
+      targetRole?: string;
+      order?: number;
+    },
+  ) {
     return this.faqService.createFaq(body);
   }
 
@@ -51,7 +73,17 @@ export class FaqController {
   @RequirePermissions(Permission.FAQ_WRITE)
   @ApiOperation({ summary: "Atualizar FAQ (admin)" })
   @ApiNoContentResponse({ description: "FAQ atualizado" })
-  async updateFaq(@Param("id") id: string, @Body() body: { question?: string; answer?: string; category?: string; targetRole?: string; order?: number; active?: boolean }) {
+  async updateFaq(
+    @Param("id") id: string,
+    @Body() body: {
+      question?: string;
+      answer?: string;
+      category?: string;
+      targetRole?: string;
+      order?: number;
+      active?: boolean;
+    },
+  ) {
     return this.faqService.updateFaq(id, body);
   }
 
@@ -81,7 +113,11 @@ export class FaqController {
     @CurrentUser() user: AuthenticatedUser,
     @Body() body: { question: string },
   ) {
-    return this.faqService.submitQuestion(user.sub, { question: body.question, userName: user.email, userRole: user.role });
+    return this.faqService.submitQuestion(user.sub, {
+      question: body.question,
+      userName: user.email,
+      userRole: user.role,
+    });
   }
 
   @Get("questions/user/:userId")
@@ -106,7 +142,10 @@ export class FaqController {
   @RequirePermissions(Permission.ADMIN_WRITE)
   @ApiOperation({ summary: "Responder pergunta (admin)" })
   @ApiNoContentResponse({ description: "Resposta enviada" })
-  async answerQuestion(@Param("id") id: string, @Body() body: { answer: string }) {
+  async answerQuestion(
+    @Param("id") id: string,
+    @Body() body: { answer: string },
+  ) {
     return this.faqService.answerQuestion(id, body.answer);
   }
 

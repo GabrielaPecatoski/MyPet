@@ -6,7 +6,6 @@ import {
   USER_REPOSITORY,
   type UserRepository,
 } from "@auth/users/domain/repositories/user-repository.interface";
-import { ROLE_PERMISSIONS } from "@shared/domain/enums/permission.enum";
 import {
   ConflictException,
   Inject,
@@ -15,6 +14,7 @@ import {
   UnauthorizedException,
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
+import { ROLE_PERMISSIONS } from "@shared/domain/enums/permission.enum";
 import * as bcrypt from "bcryptjs";
 
 @Injectable()
@@ -25,7 +25,9 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  async register(dto: CreateUserDto): Promise<{ accessToken: string; user: UserDto }> {
+  async register(
+    dto: CreateUserDto,
+  ): Promise<{ accessToken: string; user: UserDto }> {
     const [existingEmail, existingCpf] = await Promise.all([
       this.userRepository.findByEmail(dto.email),
       this.userRepository.findByCpf(dto.cpf),
@@ -50,7 +52,9 @@ export class AuthService {
 
     await this.userRepository.create(user);
 
-    const created = await this.userRepository.findByEmail(dto.email.toLowerCase());
+    const created = await this.userRepository.findByEmail(
+      dto.email.toLowerCase(),
+    );
     if (!created) throw new NotFoundException("Usuário criado não encontrado");
 
     const accessToken = this.generateToken(created);

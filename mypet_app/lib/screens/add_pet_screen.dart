@@ -23,8 +23,13 @@ class _AddPetScreenState extends State<AddPetScreen> {
   String _tipoSelecionado = 'Cachorro';
   Uint8List? _imageBytes;
   String? _existingImageUrl;
+  bool _initialized = false;
 
-  bool get _isEditing => widget.initialPet != null;
+  PetModel? get _initialPet =>
+      widget.initialPet ??
+      (ModalRoute.of(context)?.settings.arguments as PetModel?);
+
+  bool get _isEditing => _initialPet != null;
 
   static const _tipos = [
     ('Cachorro', '🐶', Icons.pets),
@@ -33,9 +38,11 @@ class _AddPetScreenState extends State<AddPetScreen> {
   ];
 
   @override
-  void initState() {
-    super.initState();
-    final pet = widget.initialPet;
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_initialized) return;
+    _initialized = true;
+    final pet = _initialPet;
     if (pet != null) {
       _nomeCtrl.text = pet.name;
       _racaCtrl.text = pet.breed;
@@ -49,6 +56,11 @@ class _AddPetScreenState extends State<AddPetScreen> {
         _outroCtrl.text = pet.type;
       }
     }
+  }
+
+  @override
+  void initState() {
+    super.initState();
   }
 
   @override
@@ -157,7 +169,7 @@ class _AddPetScreenState extends State<AddPetScreen> {
         ? _outroCtrl.text.trim()
         : _tipoSelecionado;
     final pet = PetModel(
-      id: widget.initialPet?.id ?? '',
+      id: _initialPet?.id ?? '',
       name: _nomeCtrl.text.trim(),
       type: tipo,
       breed: _racaCtrl.text.trim(),

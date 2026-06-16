@@ -1,140 +1,119 @@
-import { test, expect, APIRequestContext } from '@playwright/test';
+import { APIRequestContext, expect, test } from "@playwright/test";
+import {
+  addToCart,
+  apiContext,
+  checkoutOrder,
+  createEstablishment,
+  createProduct,
+  payOrder,
+  registerUser,
+  SeededUser,
+} from "../playwright-front/_api";
 
-const BASE = 'http://localhost:3004';
-const ESTAB_ID = 'estab-entrega-test';
-const INITIAL_STOCK = 15;
+const authHeader = (u: SeededUser) => ({ Authorization: `Bearer ${u.token}` });
 
 let api: APIRequestContext;
+let owner: SeededUser;
+let estabId: string;
 let productId: string;
-let orderId: string;
-const userId = `user-entrega-${Date.now()}`;
 
-test.beforeAll(async ({ playwright }) => {
-  api = await playwright.request.newContext({ baseURL: BASE });
+async function pedidoPago(
+  deliveryMethod = "PICKUP",
+): Promise<{ cliente: SeededUser; orderId: string }> {
+  const cliente = await registerUser(api, { role: "CLIENTE" });
+  await addToCart(api, cliente, productId, 1);
+  const order = await checkoutOrder(api, cliente);
+  await payOrder(api, cliente, order.id, { method: "PIX", deliveryMethod });
+  return { cliente, orderId: order.id };
+}
 
-  // cria produto com estoque conhecido
-  const prodRes = await api.post('/marketplace/products', {
-    data: {
-      name: `Produto Entrega ${Date.now()}`,
-      price: 80.0,
-      stock: INITIAL_STOCK,
-      establishmentId: ESTAB_ID,
-    },
+async function advance(orderId: string) {
+  return api.patch(`/marketplace/orders/${orderId}/advance`, {
+    headers: authHeader(owner),
   });
-  const prod = await prodRes.json();
-  productId = prod.id;
+}
 
-  // adiciona ao carrinho e faz checkout
-  await api.post(`/marketplace/cart/${userId}`, {
-    data: { productId, quantity: 3 },
-  });
-  const orderRes = await api.post(`/marketplace/orders/${userId}`);
-  const order = await orderRes.json();
-  orderId = order.id;
+async function statusDo(orderId: string, cliente: SeededUser): Promise<string> {
+  const orders: any[] = await (
+    await api.get(`/marketplace/orders/${cliente.id}`, {
+      headers: authHeader(cliente),
+    })
+  ).json();
+  return orders.find((o) => o.id === orderId)?.status;
+}
 
-  // paga via PIX (APPROVED → CONFIRMED)
-  await api.post('/marketplace/payments', {
-    data: { orderId, userId, amount: 240.0, method: 'PIX', deliveryMethod: 'PICKUP' },
+test.beforeAll(async () => {
+  api = await apiContext();
+  owner = await registerUser(api, {
+    role: "VENDEDOR",
+    businessName: "Estab API Entrega",
   });
+  const estab = await createEstablishment(api, owner, {
+    name: `Pet Shop Entrega ${Date.now()}`,
+  });
+  estabId = estab.id;
+  const product = await createProduct(api, owner, estabId, {
+    name: `Produto Entrega ${Date.now()}`,
+    price: 40,
+    stock: 100,
+  });
+  productId = product.id;
 });
 
 test.afterAll(async () => {
   await api.dispose();
 });
 
-test('pedido começa com deliveryStatus PENDING', async () => {
-  const orders: any[] = await (await api.get(`/marketplace/orders/${userId}`)).json();
-  const order = orders.find((o) => o.id === orderId);
-  expect(order?.deliveryStatus).toBe('PENDING');
+test("pedido pago entra em ENVIANDO", async () => {
+  const { cliente, orderId } = await pedidoPago();
+  expect(await statusDo(orderId, cliente)).toBe("ENVIANDO");
 });
 
-test('avançar para PREPARING', async () => {
-  const res = await api.patch(`/marketplace/orders/${orderId}/delivery`, {
-    data: { deliveryStatus: 'PREPARING' },
-  });
+test("ciclo de avanço: ENVIANDO → A_CAMINHO → FINALIZADO", async () => {
+  const { cliente, orderId } = await pedidoPago();
+
+  let res = await advance(orderId);
   expect(res.status()).toBe(200);
-  const body = await res.json();
-  expect(body.deliveryStatus).toBe('PREPARING');
-});
+  expect((await res.json()).status).toBe("A_CAMINHO");
 
-test('avançar para READY', async () => {
-  const res = await api.patch(`/marketplace/orders/${orderId}/delivery`, {
-    data: { deliveryStatus: 'READY' },
-  });
+  res = await advance(orderId);
   expect(res.status()).toBe(200);
-  const body = await res.json();
-  expect(body.deliveryStatus).toBe('READY');
+  expect((await res.json()).status).toBe("FINALIZADO");
+
+  expect(await statusDo(orderId, cliente)).toBe("FINALIZADO");
 });
 
-test('estoque NÃO foi decrementado antes de DELIVERED', async () => {
-  const res = await api.get(`/marketplace/products/${productId}`);
-  const prod = await res.json();
-  // estoque ainda deve ser o original (desconto só ocorre ao marcar DELIVERED)
-  expect(prod.stock).toBe(INITIAL_STOCK);
+test("avançar além de FINALIZADO retorna 400", async () => {
+  const { orderId } = await pedidoPago();
+  await advance(orderId); // A_CAMINHO
+  await advance(orderId); // FINALIZADO
+  const res = await advance(orderId);
+  expect(res.status()).toBe(400);
 });
 
-test('avançar para DELIVERED decrementa estoque', async () => {
-  const res = await api.patch(`/marketplace/orders/${orderId}/delivery`, {
-    data: { deliveryStatus: 'DELIVERED' },
-  });
-  expect(res.status()).toBe(200);
-  const body = await res.json();
-  expect(body.deliveryStatus).toBe('DELIVERED');
-
-  // verifica decremento de 3 unidades
-  const prodRes = await api.get(`/marketplace/products/${productId}`);
-  const prod = await prodRes.json();
-  expect(prod.stock).toBe(INITIAL_STOCK - 3);
+test("avançar pedido inexistente retorna 404", async () => {
+  const res = await api.patch(
+    "/marketplace/orders/00000000-0000-0000-0000-000000000000/advance",
+    { headers: authHeader(owner) },
+  );
+  expect(res.status()).toBe(404);
 });
 
-// ---- pedido com pagamento pendente (Cash) ----
-
-test('pedido Cash (AWAITING_PAYMENT) aparece no endpoint do estabelecimento', async () => {
-  const cashUser = `user-cash-entrega-${Date.now()}`;
-
-  // cria produto e order para cash
-  const prodRes = await api.post('/marketplace/products', {
-    data: { name: `Prod Cash ${Date.now()}`, price: 50.0, stock: 10, establishmentId: ESTAB_ID },
+test("método e endereço de entrega são preservados", async () => {
+  const cliente = await registerUser(api, { role: "CLIENTE" });
+  await addToCart(api, cliente, productId, 1);
+  const order = await checkoutOrder(api, cliente);
+  await payOrder(api, cliente, order.id, {
+    method: "PIX",
+    deliveryMethod: "DELIVERY",
+    deliveryAddress: "Av. Paulista, 1000",
   });
-  const cashProd = await prodRes.json();
-
-  await api.post(`/marketplace/cart/${cashUser}`, {
-    data: { productId: cashProd.id, quantity: 1 },
-  });
-  const orderRes = await api.post(`/marketplace/orders/${cashUser}`);
-  const cashOrder = await orderRes.json();
-
-  // paga em dinheiro → fica AWAITING_PAYMENT
-  await api.post('/marketplace/payments', {
-    data: {
-      orderId: cashOrder.id,
-      userId: cashUser,
-      amount: 50.0,
-      method: 'CASH',
-      deliveryMethod: 'PICKUP',
-    },
-  });
-
-  // deve aparecer nos pedidos do estabelecimento
-  const res = await api.get(`/marketplace/orders/establishment/${ESTAB_ID}`);
-  expect(res.status()).toBe(200);
-  const orders: any[] = await res.json();
-  expect(orders.some((o) => o.id === cashOrder.id)).toBe(true);
-});
-
-test('pedido com pagamento rejeitado (PAYMENT_FAILED) não aparece no estabelecimento', async () => {
-  // Cria um cenário onde o crédito é sempre rejeitado é difícil (é random 10%)
-  // então apenas verificamos que CONFIRMED e AWAITING_PAYMENT aparecem
-  const res = await api.get(`/marketplace/orders/establishment/${ESTAB_ID}`);
-  const orders: any[] = await res.json();
-  const statuses = orders.map((o) => o.status);
-  // nenhum PAYMENT_FAILED ou CANCELLED deve aparecer
-  expect(statuses.every((s) => ['CONFIRMED', 'AWAITING_PAYMENT'].includes(s))).toBe(true);
-});
-
-test('delivery em pedido inexistente lança erro', async () => {
-  const res = await api.patch('/marketplace/orders/id-invalido-xyz/delivery', {
-    data: { deliveryStatus: 'PREPARING' },
-  });
-  expect(res.status()).toBeGreaterThanOrEqual(400);
+  const orders: any[] = await (
+    await api.get(`/marketplace/orders/${cliente.id}`, {
+      headers: authHeader(cliente),
+    })
+  ).json();
+  const o = orders.find((x) => x.id === order.id);
+  expect(o.deliveryMethod).toBe("DELIVERY");
+  expect(o.deliveryAddress).toBe("Av. Paulista, 1000");
 });

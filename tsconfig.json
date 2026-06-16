@@ -16,8 +16,5 @@
       "@faq/*": ["./services/faq/src/modules/faq/*"]
     }
   },
-  "include": [
-    "shared/src/**/*.ts",
-    "services/*/src/**/*.ts"
-  ]
+  "include": ["shared/src/**/*.ts", "services/*/src/**/*.ts"]
 }

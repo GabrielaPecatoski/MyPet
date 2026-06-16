@@ -45,6 +45,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return Icons.star_outline;
       case 'NEW_BOOKING':
         return Icons.calendar_today_outlined;
+      case 'BOOKING_TODAY_REMINDER':
+        return Icons.today_outlined;
       default:
         return Icons.notifications_outlined;
     }
@@ -59,6 +61,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       case 'BOOKING_CANCELLED':
         return AppColors.danger;
       case 'NEW_BOOKING':
+      case 'BOOKING_TODAY_REMINDER':
         return AppColors.warning;
       default:
         return AppColors.primary;

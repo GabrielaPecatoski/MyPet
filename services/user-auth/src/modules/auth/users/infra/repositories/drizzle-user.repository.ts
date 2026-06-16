@@ -40,7 +40,9 @@ export class DrizzleUserRepository implements UserRepository {
   }
 
   async delete(id: string): Promise<void> {
-    await this.drizzleService.db.delete(usersSchema).where(eq(usersSchema.id, id));
+    await this.drizzleService.db
+      .delete(usersSchema)
+      .where(eq(usersSchema.id, id));
   }
 
   async findById(id: string): Promise<User | null> {
@@ -75,13 +77,21 @@ export class DrizzleUserRepository implements UserRepository {
     return rows.map((r) => this.toEntity(r)!);
   }
 
-  async findAllPaginated(params: PaginationParams): Promise<{ rows: User[]; total: number }> {
+  async findAllPaginated(
+    params: PaginationParams,
+  ): Promise<{ rows: User[]; total: number }> {
     const { page, limit } = params;
     const offset = (page - 1) * limit;
 
     const [rows, [countResult]] = await Promise.all([
-      this.drizzleService.db.select().from(usersSchema).limit(limit).offset(offset),
-      this.drizzleService.db.select({ count: sql<number>`count(*)::int` }).from(usersSchema),
+      this.drizzleService.db
+        .select()
+        .from(usersSchema)
+        .limit(limit)
+        .offset(offset),
+      this.drizzleService.db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(usersSchema),
     ]);
 
     return {
@@ -90,7 +100,9 @@ export class DrizzleUserRepository implements UserRepository {
     };
   }
 
-  private toEntity(row: typeof usersSchema.$inferSelect | undefined): User | null {
+  private toEntity(
+    row: typeof usersSchema.$inferSelect | undefined,
+  ): User | null {
     if (!row) return null;
     return User.restore({
       id: row.id,

@@ -13,4 +13,8 @@ class AppColors {
   static const danger       = Color(0xFFEF4444);
   static const card         = Color(0xFFFFFFFF);
   static const divider      = Color(0xFFF0F0F5);
+
+  static const estab  = Color(0xFF0EA5E9);
+  static const vet    = Color(0xFF16A34A);
+  static const driver = Color(0xFFF97316);
 }

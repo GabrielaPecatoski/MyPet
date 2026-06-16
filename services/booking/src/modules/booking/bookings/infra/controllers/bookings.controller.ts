@@ -1,8 +1,8 @@
-import { CreateBookingDto } from "@booking/bookings/application/dto/create-booking.dto";
+import { AvailabilityService } from "@booking/availability/application/services/availability.service";
 import { BookingDto } from "@booking/bookings/application/dto/booking.dto";
+import { CreateBookingDto } from "@booking/bookings/application/dto/create-booking.dto";
 import { BookingService } from "@booking/bookings/application/services/booking.service";
 import type { BookingStatus } from "@booking/bookings/domain/models/booking.entity";
-import { AvailabilityService } from "@booking/availability/application/services/availability.service";
 import {
   Body,
   Controller,
@@ -22,11 +22,11 @@ import {
   ApiTags,
 } from "@nestjs/swagger";
 import { Permission } from "@shared/domain/enums/permission.enum";
-import { RequirePermissions } from "@shared/infra/decorators/permissions.decorator";
-import { CurrentUser } from "@shared/infra/decorators/current-user.decorator";
 import type { AuthenticatedUser } from "@shared/infra/auth/interfaces/authenticated-user.interface";
-import { HateoasItem } from "@shared/infra/hateoas";
+import { CurrentUser } from "@shared/infra/decorators/current-user.decorator";
+import { RequirePermissions } from "@shared/infra/decorators/permissions.decorator";
 import { Public } from "@shared/infra/decorators/public.decorator";
+import { HateoasItem } from "@shared/infra/hateoas";
 
 @ApiTags("bookings")
 @ApiBearerAuth()
@@ -55,7 +55,9 @@ export class BookingsController {
   @Get("establishment/:establishmentId")
   @RequirePermissions(Permission.BOOKINGS_READ)
   @ApiOperation({ summary: "Listar agendamentos do estabelecimento" })
-  async findByEstablishment(@Param("establishmentId") id: string): Promise<BookingDto[]> {
+  async findByEstablishment(
+    @Param("establishmentId") id: string,
+  ): Promise<BookingDto[]> {
     return this.bookingService.findByEstablishment(id);
   }
 
@@ -64,6 +66,15 @@ export class BookingsController {
   @ApiOperation({ summary: "Estatísticas de agendamentos do estabelecimento" })
   async getStats(@Param("establishmentId") id: string) {
     return this.bookingService.getStats(id);
+  }
+
+  @Get("vet/:vetId")
+  @RequirePermissions(Permission.BOOKINGS_READ)
+  @ApiOperation({
+    summary: "Listar agendamentos de um veterinário (agenda do vet)",
+  })
+  async findByVet(@Param("vetId") vetId: string): Promise<BookingDto[]> {
+    return this.bookingService.findByVet(vetId);
   }
 
   @Get(":id")
@@ -96,9 +107,18 @@ export class BookingsController {
   @ApiOperation({ summary: "Processar pagamento do agendamento" })
   async pay(
     @Param("id") id: string,
-    @Body() body: { method: string; cardNumber?: string; installments?: number },
+    @Body() body: {
+      method: string;
+      cardNumber?: string;
+      installments?: number;
+    },
   ) {
-    return this.bookingService.pay(id, body.method, body.cardNumber, body.installments);
+    return this.bookingService.pay(
+      id,
+      body.method,
+      body.cardNumber,
+      body.installments,
+    );
   }
 
   @Patch(":id/cancel")
@@ -113,6 +133,16 @@ export class BookingsController {
   @ApiOperation({ summary: "Concluir agendamento" })
   async complete(@Param("id") id: string): Promise<BookingDto> {
     return this.bookingService.complete(id);
+  }
+
+  @Patch(":id/photos")
+  @RequirePermissions(Permission.BOOKINGS_WRITE)
+  @ApiOperation({ summary: "Definir fotos do atendimento" })
+  async setAttendancePhotos(
+    @Param("id") id: string,
+    @Body() body: { photos: string[] },
+  ): Promise<BookingDto> {
+    return this.bookingService.setAttendancePhotos(id, body.photos ?? []);
   }
 
   @Delete(":id")
@@ -141,27 +171,92 @@ export class AvailabilityController {
   @Post("schedule")
   @RequirePermissions(Permission.AVAILABILITY_WRITE)
   @ApiOperation({ summary: "Definir horário completo do estabelecimento" })
-  async setSchedule(@Body() body: {
-    establishmentId: string;
-    slotDurationMinutes: number;
-    capacity?: number;
-    days: { dayOfWeek: number; startTime: string; endTime: string; isOpen: boolean }[];
-  }) {
+  async setSchedule(
+    @Body() body: {
+      establishmentId: string;
+      slotDurationMinutes: number;
+      capacity?: number;
+      days: {
+        dayOfWeek: number;
+        startTime: string;
+        endTime: string;
+        isOpen: boolean;
+      }[];
+    },
+  ) {
     return this.availabilityService.setFullSchedule(body);
+  }
+
+  @Get("vet-schedule/:vetId")
+  @RequirePermissions(Permission.AVAILABILITY_READ)
+  @ApiOperation({ summary: "Buscar horários do veterinário independente" })
+  async getVetSchedule(@Param("vetId") vetId: string) {
+    return this.availabilityService.getVetSchedule(vetId);
+  }
+
+  @Post("vet-schedule")
+  @RequirePermissions(Permission.AVAILABILITY_WRITE)
+  @ApiOperation({
+    summary: "Definir horário completo do veterinário independente",
+  })
+  async setVetSchedule(
+    @Body() body: {
+      vetId: string;
+      slotDurationMinutes: number;
+      capacity?: number;
+      days: {
+        dayOfWeek: number;
+        startTime: string;
+        endTime: string;
+        isOpen: boolean;
+      }[];
+    },
+  ) {
+    return this.availabilityService.setVetSchedule(body);
   }
 
   @Get("blocked/:estabId")
   @RequirePermissions(Permission.AVAILABILITY_READ)
-  @ApiOperation({ summary: "Listar horários bloqueados" })
+  @ApiOperation({ summary: "Listar horários bloqueados do estabelecimento" })
   async getBlocked(@Param("estabId") estabId: string) {
     return this.availabilityService.getBlockedSlots(estabId);
   }
 
+  @Get("vet-blocked/:vetId")
+  @RequirePermissions(Permission.AVAILABILITY_READ)
+  @ApiOperation({ summary: "Listar horários bloqueados do veterinário" })
+  async getVetBlocked(@Param("vetId") vetId: string) {
+    return this.availabilityService.getVetBlockedSlots(vetId);
+  }
+
   @Post("block")
   @RequirePermissions(Permission.AVAILABILITY_WRITE)
-  @ApiOperation({ summary: "Bloquear horário" })
-  async blockSlot(@Body() body: { establishmentId: string; date: string; startTime: string; endTime: string; reason?: string }) {
+  @ApiOperation({ summary: "Bloquear horário do estabelecimento" })
+  async blockSlot(
+    @Body() body: {
+      establishmentId: string;
+      date: string;
+      startTime: string;
+      endTime: string;
+      reason?: string;
+    },
+  ) {
     return this.availabilityService.blockSlot(body);
+  }
+
+  @Post("vet-block")
+  @RequirePermissions(Permission.AVAILABILITY_WRITE)
+  @ApiOperation({ summary: "Bloquear horário do veterinário" })
+  async blockVetSlot(
+    @Body() body: {
+      vetId: string;
+      date: string;
+      startTime: string;
+      endTime: string;
+      reason?: string;
+    },
+  ) {
+    return this.availabilityService.blockVetSlot(body);
   }
 
   @Delete("block/:id")
@@ -171,6 +266,18 @@ export class AvailabilityController {
   @ApiNoContentResponse({ description: "Horário desbloqueado" })
   async unblockSlot(@Param("id") id: string) {
     return this.availabilityService.unblockSlot(id);
+  }
+
+  @Get("vet/:vetId")
+  @Public()
+  @ApiOperation({
+    summary: "Listar slots disponíveis do veterinário para uma data",
+  })
+  async getVetAvailability(
+    @Param("vetId") vetId: string,
+    @Query("date") date: string,
+  ) {
+    return this.availabilityService.getAvailableVetSlots(vetId, date);
   }
 
   @Get(":estabId")

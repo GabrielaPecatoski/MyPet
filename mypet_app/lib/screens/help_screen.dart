@@ -3,27 +3,35 @@ import 'package:provider/provider.dart';
 import '../core/colors.dart';
 import '../models/faq.dart';
 import '../providers/auth_provider.dart';
-import '../services/faq_service.dart';
+import '../providers/faq_provider.dart';
+import '../repositories/faq_repository.dart';
 import '../widgets/mypet_app_bar.dart';
 
 const int _kMaxVisible = 4;
 
-class HelpScreen extends StatefulWidget {
+class HelpScreen extends StatelessWidget {
   const HelpScreen({super.key});
+
   @override
-  State<HelpScreen> createState() => _HelpScreenState();
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (_) => FaqProvider(FaqRepository()),
+      child: const _HelpView(),
+    );
+  }
 }
 
-class _HelpScreenState extends State<HelpScreen>
+class _HelpView extends StatefulWidget {
+  const _HelpView();
+  @override
+  State<_HelpView> createState() => _HelpViewState();
+}
+
+class _HelpViewState extends State<_HelpView>
     with SingleTickerProviderStateMixin {
   late TabController _tabs;
-  List<FaqItem> _faqs = [];
-  List<UserQuestion> _myQuestions = [];
-  bool _loadingFaq = false;
-  bool _loadingQuestions = false;
   String _search = '';
   String? _selectedCategory;
-  List<String> _categories = [];
   final Set<String> _expanded = {};
   final Set<String> _expandedCats = {};
 
@@ -32,7 +40,7 @@ class _HelpScreenState extends State<HelpScreen>
     super.initState();
     _tabs = TabController(length: 2, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadFaqs();
+      context.read<FaqProvider>().loadFaqs();
       _loadMyQuestions();
     });
   }
@@ -43,36 +51,18 @@ class _HelpScreenState extends State<HelpScreen>
     super.dispose();
   }
 
-  Future<void> _loadFaqs() async {
-    setState(() => _loadingFaq = true);
-    try {
-      final cats = await FaqService.getCategories();
-      final faqs = await FaqService.getFaqs();
-      setState(() {
-        _categories = cats;
-        _faqs = faqs;
-      });
-    } finally {
-      setState(() => _loadingFaq = false);
-    }
-  }
-
   Future<void> _loadMyQuestions() async {
     final auth = context.read<AuthProvider>();
     if (auth.user == null) return;
-    setState(() => _loadingQuestions = true);
-    try {
-      final qs = await FaqService.getUserQuestions(auth.user!.id, token: auth.token);
-      setState(() => _myQuestions = qs);
-    } finally {
-      setState(() => _loadingQuestions = false);
-    }
+    await context
+        .read<FaqProvider>()
+        .loadMyQuestions(auth.user!.id, token: auth.token);
   }
 
-  List<FaqItem> get _filtered {
+  List<FaqItem> _filtered(List<FaqItem> faqs) {
     var list = _selectedCategory != null
-        ? _faqs.where((f) => f.category == _selectedCategory).toList()
-        : _faqs;
+        ? faqs.where((f) => f.category == _selectedCategory).toList()
+        : faqs;
     if (_search.isNotEmpty) {
       final q = _search.toLowerCase();
       list = list
@@ -133,34 +123,13 @@ class _HelpScreenState extends State<HelpScreen>
               if (text.isEmpty) return;
               Navigator.pop(ctx);
               final auth = context.read<AuthProvider>();
-
-              final localQ = UserQuestion(
-                id: 'local_${DateTime.now().millisecondsSinceEpoch}',
-                userId: auth.user?.id ?? '',
-                userName: auth.user?.name ?? 'Usuário',
-                userRole: 'CLIENTE',
-                question: text,
-                status: 'PENDENTE',
-                createdAt: DateTime.now(),
-              );
-              setState(() {
-                _myQuestions = [localQ, ..._myQuestions];
-              });
               _tabs.animateTo(1);
-
-              final saved = await FaqService.submitQuestion(
-                question: text,
-                token: auth.token,
-              );
-              if (saved != null) {
-                setState(() {
-                  _myQuestions = [
-                    saved,
-                    ..._myQuestions.where((q) => q.id != localQ.id),
-                  ];
-                });
-              }
-
+              await context.read<FaqProvider>().submitQuestion(
+                    question: text,
+                    userId: auth.user?.id ?? '',
+                    userName: auth.user?.name ?? 'Usuário',
+                    token: auth.token,
+                  );
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
@@ -184,6 +153,8 @@ class _HelpScreenState extends State<HelpScreen>
 
   @override
   Widget build(BuildContext context) {
+    final faqProvider = context.watch<FaqProvider>();
+    final myQuestions = faqProvider.myQuestions;
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: const MypetAppBar(showBack: true),
@@ -249,7 +220,7 @@ class _HelpScreenState extends State<HelpScreen>
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             const Text('Minhas Dúvidas'),
-                            if (_myQuestions.isNotEmpty) ...[
+                            if (myQuestions.isNotEmpty) ...[
                               const SizedBox(width: 5),
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
@@ -258,7 +229,7 @@ class _HelpScreenState extends State<HelpScreen>
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Text(
-                                  '${_myQuestions.length}',
+                                  '${myQuestions.length}',
                                   style: const TextStyle(
                                       color: Colors.white,
                                       fontSize: 10,
@@ -281,9 +252,9 @@ class _HelpScreenState extends State<HelpScreen>
               controller: _tabs,
               children: [
                 _FaqTab(
-                  loading: _loadingFaq,
-                  faqs: _filtered,
-                  categories: _categories,
+                  loading: faqProvider.loadingFaq,
+                  faqs: _filtered(faqProvider.faqs),
+                  categories: faqProvider.categories,
                   selectedCategory: _selectedCategory,
                   expanded: _expanded,
                   expandedCats: _expandedCats,
@@ -295,8 +266,8 @@ class _HelpScreenState extends State<HelpScreen>
                   onAskTap: _showAskDialog,
                 ),
                 _QuestionsTab(
-                  loading: _loadingQuestions,
-                  questions: _myQuestions,
+                  loading: faqProvider.loadingQuestions,
+                  questions: myQuestions,
                   onAskTap: _showAskDialog,
                   onRefresh: _loadMyQuestions,
                 ),

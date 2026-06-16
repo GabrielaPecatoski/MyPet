@@ -8,7 +8,9 @@ export interface UserRepository {
   update(user: User): Promise<void>;
   delete(id: string): Promise<void>;
   findAll(): Promise<User[]>;
-  findAllPaginated(params: PaginationParams): Promise<{ rows: User[]; total: number }>;
+  findAllPaginated(
+    params: PaginationParams,
+  ): Promise<{ rows: User[]; total: number }>;
   findById(id: string): Promise<User | null>;
   findByEmail(email: string): Promise<User | null>;
   findByCpf(cpf: string): Promise<User | null>;

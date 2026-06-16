@@ -14,16 +14,24 @@ export class DrizzleEstabServiceRepository implements EstabServiceRepository {
       establishmentId: service.establishmentId,
       name: service.name,
       price: service.price,
+      priceVariable: service.priceVariable,
       durationMinutes: service.durationMinutes,
       description: service.description,
+      categoria: service.categoria,
+      imagemUrl: service.imagemUrl,
+      ativo: service.ativo,
     });
   }
 
   async delete(id: string): Promise<void> {
-    await this.drizzleService.db.delete(estabServicesSchema).where(eq(estabServicesSchema.id, id));
+    await this.drizzleService.db
+      .delete(estabServicesSchema)
+      .where(eq(estabServicesSchema.id, id));
   }
 
-  async findByEstablishmentId(establishmentId: string): Promise<EstabService[]> {
+  async findByEstablishmentId(
+    establishmentId: string,
+  ): Promise<EstabService[]> {
     const rows = await this.drizzleService.db
       .select()
       .from(estabServicesSchema)

@@ -1,243 +1,137 @@
-import { test, expect, APIRequestContext } from '@playwright/test';
+import { APIRequestContext, expect, test } from "@playwright/test";
+import {
+  addToCart,
+  apiContext,
+  checkoutOrder,
+  createEstablishment,
+  createProduct,
+  registerUser,
+  SeededUser,
+} from "../playwright-front/_api";
 
-const BASE = 'http://localhost:3004';
-const ESTAB_ID = 'estab-pag-test';
+const authHeader = (u: SeededUser) => ({ Authorization: `Bearer ${u.token}` });
 
 let api: APIRequestContext;
+let owner: SeededUser;
+let estabId: string;
+let productId: string;
 
-// helpers para criar produto + carrinho + order prontos para pagar
-async function createOrderForUser(userId: string, price = 100.0): Promise<string> {
-  const prodRes = await api.post('/marketplace/products', {
-    data: { name: `Prod Pag ${Date.now()}`, price, stock: 20, establishmentId: ESTAB_ID },
-  });
-  const prod = await prodRes.json();
-
-  await api.post(`/marketplace/cart/${userId}`, {
-    data: { productId: prod.id, quantity: 1 },
-  });
-
-  const orderRes = await api.post(`/marketplace/orders/${userId}`);
-  const order = await orderRes.json();
-  return order.id;
+// cada pagamento muda o status do pedido, então cada teste usa um pedido novo
+async function novoPedido(): Promise<{ cliente: SeededUser; orderId: string }> {
+  const cliente = await registerUser(api, { role: "CLIENTE" });
+  await addToCart(api, cliente, productId, 1);
+  const order = await checkoutOrder(api, cliente);
+  return { cliente, orderId: order.id };
 }
 
-test.beforeAll(async ({ playwright }) => {
-  api = await playwright.request.newContext({ baseURL: BASE });
+async function pagar(
+  cliente: SeededUser,
+  data: Record<string, unknown>,
+): Promise<{ status: number; body: any }> {
+  const res = await api.post("/marketplace/payments", {
+    headers: authHeader(cliente),
+    data,
+  });
+  return { status: res.status(), body: await res.json() };
+}
+
+test.beforeAll(async () => {
+  api = await apiContext();
+  owner = await registerUser(api, {
+    role: "VENDEDOR",
+    businessName: "Estab API Pagamento",
+  });
+  const estab = await createEstablishment(api, owner, {
+    name: `Pet Shop Pagamento ${Date.now()}`,
+  });
+  estabId = estab.id;
+  const product = await createProduct(api, owner, estabId, {
+    name: `Produto Pagamento ${Date.now()}`,
+    price: 100,
+    stock: 100,
+  });
+  productId = product.id;
 });
 
 test.afterAll(async () => {
   await api.dispose();
 });
 
-// ---- PIX ----
-
-test('pagamento PIX é aprovado imediatamente', async () => {
-  const userId = `user-pix-${Date.now()}`;
-  const orderId = await createOrderForUser(userId);
-
-  const res = await api.post('/marketplace/payments', {
-    data: {
-      orderId,
-      userId,
-      amount: 100.0,
-      method: 'PIX',
-      deliveryMethod: 'PICKUP',
-    },
+test("PIX é aprovado e move o pedido para ENVIANDO", async () => {
+  const { cliente, orderId } = await novoPedido();
+  const { status, body } = await pagar(cliente, {
+    orderId,
+    method: "PIX",
+    deliveryMethod: "PICKUP",
   });
-  expect(res.status()).toBe(201);
-  const body = await res.json();
-  expect(body.status).toBe('APPROVED');
-  expect(body.pixKey).toMatch(/mypet-/);
+  expect([200, 201]).toContain(status);
+  expect(body.payment.status).toBe("APPROVED");
+  expect(body.payment.pixKey).toBe("mypet@pagamentos.com");
+  expect(body.order.status).toBe("ENVIANDO");
 });
 
-test('pagamento PIX atualiza pedido para CONFIRMED', async () => {
-  const userId = `user-pix2-${Date.now()}`;
-  const orderId = await createOrderForUser(userId);
-
-  await api.post('/marketplace/payments', {
-    data: { orderId, userId, amount: 100.0, method: 'PIX', deliveryMethod: 'PICKUP' },
+test("débito aprovado retorna os 4 últimos dígitos", async () => {
+  const { cliente, orderId } = await novoPedido();
+  const { body } = await pagar(cliente, {
+    orderId,
+    method: "DEBIT_CARD",
+    cardNumber: "4111111111111111",
+    deliveryMethod: "PICKUP",
   });
-
-  const orders: any[] = await (await api.get(`/marketplace/orders/${userId}`)).json();
-  const order = orders.find((o) => o.id === orderId);
-  expect(order?.status).toBe('CONFIRMED');
+  expect(body.payment.status).toBe("APPROVED");
+  expect(body.payment.cardLastFour).toBe("1111");
 });
 
-// ---- Débito ----
-
-test('pagamento no débito é aprovado', async () => {
-  const userId = `user-deb-${Date.now()}`;
-  const orderId = await createOrderForUser(userId);
-
-  const res = await api.post('/marketplace/payments', {
-    data: {
-      orderId,
-      userId,
-      amount: 100.0,
-      method: 'DEBIT_CARD',
-      cardNumber: '4111111111111111',
-      deliveryMethod: 'PICKUP',
-    },
+test("boleto é aprovado e gera código", async () => {
+  const { cliente, orderId } = await novoPedido();
+  const { body } = await pagar(cliente, {
+    orderId,
+    method: "BOLETO",
+    deliveryMethod: "DELIVERY",
+    deliveryAddress: "Rua Teste, 123",
   });
-  expect(res.status()).toBe(201);
-  const body = await res.json();
-  expect(body.status).toBe('APPROVED');
-  expect(body.cardLastFour).toBe('1111');
+  expect(body.payment.status).toBe("APPROVED");
+  expect(body.payment.boletoCode).toBeTruthy();
+  expect(body.order.deliveryMethod).toBe("DELIVERY");
 });
 
-// ---- Dinheiro ----
-
-test('pagamento em dinheiro fica PENDING (AWAITING_PAYMENT)', async () => {
-  const userId = `user-cash-${Date.now()}`;
-  const orderId = await createOrderForUser(userId);
-
-  const res = await api.post('/marketplace/payments', {
-    data: { orderId, userId, amount: 100.0, method: 'CASH', deliveryMethod: 'PICKUP' },
+test("crédito retorna APPROVED ou REJECTED (simulação)", async () => {
+  const { cliente, orderId } = await novoPedido();
+  const { body } = await pagar(cliente, {
+    orderId,
+    method: "CREDIT_CARD",
+    cardNumber: "5500000000000004",
+    installments: 3,
+    deliveryMethod: "PICKUP",
   });
-  expect(res.status()).toBe(201);
-  const body = await res.json();
-  expect(body.status).toBe('PENDING');
-
-  // pedido deve ser AWAITING_PAYMENT
-  const orders: any[] = await (await api.get(`/marketplace/orders/${userId}`)).json();
-  const order = orders.find((o) => o.id === orderId);
-  expect(order?.status).toBe('AWAITING_PAYMENT');
-});
-
-// ---- Boleto ----
-
-test('pagamento por boleto fica PENDING e gera código', async () => {
-  const userId = `user-boleto-${Date.now()}`;
-  const orderId = await createOrderForUser(userId);
-
-  const res = await api.post('/marketplace/payments', {
-    data: { orderId, userId, amount: 100.0, method: 'BOLETO', deliveryMethod: 'DELIVERY', deliveryAddress: 'Rua Teste, 123' },
-  });
-  expect(res.status()).toBe(201);
-  const body = await res.json();
-  expect(body.status).toBe('PENDING');
-  expect(body.boletoCode).toBeTruthy();
-  expect(body.deliveryMethod).toBe('DELIVERY');
-  expect(body.deliveryAddress).toBe('Rua Teste, 123');
-});
-
-// ---- Cartão de crédito ----
-
-test('pagamento crédito retorna APPROVED ou REJECTED (simulação)', async () => {
-  const userId = `user-cc-${Date.now()}`;
-  const orderId = await createOrderForUser(userId);
-
-  const res = await api.post('/marketplace/payments', {
-    data: {
-      orderId,
-      userId,
-      amount: 100.0,
-      method: 'CREDIT_CARD',
-      cardNumber: '5500000000000004',
-      installments: 3,
-      deliveryMethod: 'PICKUP',
-    },
-  });
-  expect(res.status()).toBe(201);
-  const body = await res.json();
-  expect(['APPROVED', 'REJECTED']).toContain(body.status);
-  expect(body.cardLastFour).toBe('0004');
-  if (body.status === 'REJECTED') {
-    expect(body.rejectionReason).toBeTruthy();
+  expect(["APPROVED", "REJECTED"]).toContain(body.payment.status);
+  if (body.payment.status === "APPROVED") {
+    expect(body.payment.cardLastFour).toBe("0004");
   }
 });
 
-// ---- Buscar pagamento ----
-
-test('buscar pagamento por id', async () => {
-  const userId = `user-findpay-${Date.now()}`;
-  const orderId = await createOrderForUser(userId);
-
-  const payRes = await api.post('/marketplace/payments', {
-    data: { orderId, userId, amount: 100.0, method: 'PIX', deliveryMethod: 'PICKUP' },
+test("dinheiro é aprovado (método simulado)", async () => {
+  const { cliente, orderId } = await novoPedido();
+  const { body } = await pagar(cliente, {
+    orderId,
+    method: "CASH",
+    deliveryMethod: "PICKUP",
   });
-  const payment = await payRes.json();
-
-  const res = await api.get(`/marketplace/payments/${payment.id}`);
-  expect(res.status()).toBe(200);
-  const body = await res.json();
-  expect(body.id).toBe(payment.id);
-  expect(body.order).toBeTruthy();
+  expect(body.payment.status).toBe("APPROVED");
 });
 
-test('buscar pagamentos por usuário', async () => {
-  const userId = `user-listpay-${Date.now()}`;
-  const orderId = await createOrderForUser(userId);
-
-  const payRes = await api.post('/marketplace/payments', {
-    data: { orderId, userId, amount: 100.0, method: 'PIX', deliveryMethod: 'PICKUP' },
+test("pagar pedido inexistente retorna 404", async () => {
+  const cliente = await registerUser(api, { role: "CLIENTE" });
+  const { status } = await pagar(cliente, {
+    orderId: "00000000-0000-0000-0000-000000000000",
+    method: "PIX",
   });
-  const payment = await payRes.json();
-
-  const res = await api.get(`/marketplace/payments/user/${userId}`);
-  expect(res.status()).toBe(200);
-  const body: any[] = await res.json();
-  expect(body.some((p) => p.id === payment.id)).toBe(true);
+  expect(status).toBe(404);
 });
 
-test('buscar pagamentos por pedido', async () => {
-  const userId = `user-orderpay-${Date.now()}`;
-  const orderId = await createOrderForUser(userId);
-
-  const payRes = await api.post('/marketplace/payments', {
-    data: { orderId, userId, amount: 100.0, method: 'PIX', deliveryMethod: 'PICKUP' },
+test("pagamento exige autenticação (401 sem token)", async () => {
+  const res = await api.post("/marketplace/payments", {
+    data: { orderId: "x", method: "PIX" },
   });
-  const payment = await payRes.json();
-
-  const res = await api.get(`/marketplace/payments/order/${orderId}`);
-  expect(res.status()).toBe(200);
-  const body: any[] = await res.json();
-  expect(body.some((p) => p.id === payment.id)).toBe(true);
-});
-
-// ---- Cancelamento e estorno ----
-
-test('cancelar pagamento PENDING', async () => {
-  const userId = `user-cancel-${Date.now()}`;
-  const orderId = await createOrderForUser(userId);
-
-  const payRes = await api.post('/marketplace/payments', {
-    data: { orderId, userId, amount: 100.0, method: 'CASH', deliveryMethod: 'PICKUP' },
-  });
-  const payment = await payRes.json();
-  expect(payment.status).toBe('PENDING');
-
-  const res = await api.patch(`/marketplace/payments/${payment.id}/cancel`);
-  expect(res.status()).toBe(200);
-  const body = await res.json();
-  expect(body.status).toBe('CANCELLED');
-});
-
-test('estornar pagamento APPROVED', async () => {
-  const userId = `user-refund-${Date.now()}`;
-  const orderId = await createOrderForUser(userId);
-
-  const payRes = await api.post('/marketplace/payments', {
-    data: { orderId, userId, amount: 100.0, method: 'PIX', deliveryMethod: 'PICKUP' },
-  });
-  const payment = await payRes.json();
-  expect(payment.status).toBe('APPROVED');
-
-  const res = await api.patch(`/marketplace/payments/${payment.id}/refund`);
-  expect(res.status()).toBe(200);
-  const body = await res.json();
-  expect(body.status).toBe('REFUNDED');
-});
-
-test('não pode cancelar pagamento APPROVED', async () => {
-  const userId = `user-cancelapproved-${Date.now()}`;
-  const orderId = await createOrderForUser(userId);
-
-  const payRes = await api.post('/marketplace/payments', {
-    data: { orderId, userId, amount: 100.0, method: 'PIX', deliveryMethod: 'PICKUP' },
-  });
-  const payment = await payRes.json();
-
-  const res = await api.patch(`/marketplace/payments/${payment.id}/cancel`);
-  expect(res.status()).toBe(400);
+  expect(res.status()).toBe(401);
 });
