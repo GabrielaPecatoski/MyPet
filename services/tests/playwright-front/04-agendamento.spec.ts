@@ -9,9 +9,11 @@ import {
 import {
   bootAndLogin,
   expectText,
+  fill,
   scrollToText,
   tapButton,
   tapText,
+  textFields,
   waitForText,
 } from "./_helpers";
 
@@ -39,6 +41,10 @@ test.afterAll(async () => {
 test("agendar serviço e pagar (dinheiro) pela UI", async ({ page }) => {
   await bootAndLogin(page, cliente.email, cliente.password);
   await page.waitForTimeout(2000);
+  // A home lista TODOS os estabelecimentos (a lista cresce com os dados
+  // acumulados); busca primeiro para reduzir ao recém-criado antes de rolar.
+  await fill(textFields(page).first(), estabNome);
+  await page.waitForTimeout(800);
   await scrollToText(page, estabNome);
   await tapText(page, estabNome);
   await waitForText(page, "Agendar Serviço");
