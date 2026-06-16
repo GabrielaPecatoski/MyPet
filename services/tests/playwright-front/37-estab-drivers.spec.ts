@@ -86,7 +86,7 @@ test("cadastro de novo motorista pela UI associa ao estab", async ({
   await fill(campos.nth(1), "41944440005");
   await fill(campos.nth(2), String(ts).slice(-11).padStart(11, "0"));
   await fill(campos.nth(3), `mot${ts}@mypet.com`);
-  await fill(campos.nth(4), "senha123");
+  await fill(campos.nth(4), "Senha@123");
   await fill(campos.nth(5), String(ts).slice(-9));
   await fill(campos.nth(6), "Fiat Palio");
   await fill(campos.nth(7), `MOT${ts.toString().slice(-4)}`);

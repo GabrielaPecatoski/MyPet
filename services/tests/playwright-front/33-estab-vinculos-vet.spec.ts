@@ -133,7 +133,7 @@ test("cadastrar vet novo via UI vincula ao estab e aparece na lista", async ({
   await fill(campos.nth(1), "41977770003");
   await fill(campos.nth(2), String(ts).slice(-11).padStart(11, "0"));
   await fill(campos.nth(3), `novevet${ts}@mypet.com`);
-  await fill(campos.nth(4), "senha123");
+  await fill(campos.nth(4), "Senha@123");
   await fill(campos.nth(5), `SP${ts.toString().slice(-5)}`);
   await tapButton(page, "Cadastrar e Associar");
 

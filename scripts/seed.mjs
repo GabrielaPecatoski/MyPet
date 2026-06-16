@@ -130,7 +130,7 @@ async function main() {
   const admin = await register({
     name: "Administrador",
     email: "admin@mypet.com",
-    password: "admin123",
+    password: "Admin@123",
     phone: "(11) 99999-0001",
     cpf: "000.000.000-01",
     role: "ADMIN",
@@ -143,7 +143,7 @@ async function main() {
   const v1 = await register({
     name: "Carlos Mendes",
     email: "carlos@petshop.com",
-    password: "senha123",
+    password: "Senha@123",
     phone: "(11) 98888-0001",
     cpf: "111.111.111-01",
     role: "VENDEDOR",
@@ -179,7 +179,7 @@ async function main() {
   const v2 = await register({
     name: "Dra. Ana Lima",
     email: "ana@vetcare.com",
-    password: "senha123",
+    password: "Senha@123",
     phone: "(11) 98888-0002",
     cpf: "222.222.222-02",
     role: "VENDEDOR",
@@ -215,7 +215,7 @@ async function main() {
   const v3 = await register({
     name: "Fernanda Costa",
     email: "fernanda@mundoanimal.com",
-    password: "senha123",
+    password: "Senha@123",
     phone: "(11) 98888-0003",
     cpf: "333.333.333-03",
     role: "VENDEDOR",
@@ -251,7 +251,7 @@ async function main() {
   await register({
     name: "Maria Souza",
     email: "maria@teste.com",
-    password: "senha123",
+    password: "Senha@123",
     phone: "(11) 97777-0001",
     cpf: "444.444.444-04",
     role: "CLIENTE",
@@ -259,9 +259,9 @@ async function main() {
 
   console.log("\n✅ Seed concluído!\n");
   console.log("Credenciais:");
-  console.log("  Admin:    admin@mypet.com        / admin123");
-  console.log("  Vendedor: carlos@petshop.com     / senha123");
-  console.log("  Cliente:  maria@teste.com        / senha123");
+  console.log("  Admin:    admin@mypet.com        / Admin@123");
+  console.log("  Vendedor: carlos@petshop.com     / Senha@123");
+  console.log("  Cliente:  maria@teste.com        / Senha@123");
   console.log("");
 }
 

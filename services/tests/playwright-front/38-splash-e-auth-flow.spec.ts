@@ -13,7 +13,7 @@ import {
 } from "./_helpers";
 
 const ADMIN_EMAIL = "admin@mypet.com";
-const ADMIN_PASSWORD = "admin123";
+const ADMIN_PASSWORD = "Admin@123";
 
 let api: APIRequestContext;
 let cliente: SeededUser;

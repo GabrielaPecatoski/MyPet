@@ -1,5 +1,11 @@
 import { ApiPropertyOptional } from "@nestjs/swagger";
-import { IsEmail, IsOptional, IsString, Matches, MinLength } from "class-validator";
+import {
+  IsEmail,
+  IsOptional,
+  IsString,
+  Matches,
+  MinLength,
+} from "class-validator";
 
 export class UpdateUserDto {
   @ApiPropertyOptional({ example: "Maria Silva" })
@@ -22,7 +28,8 @@ export class UpdateUserDto {
   @IsString()
   @MinLength(8)
   @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).+$/, {
-    message: "A senha deve conter letra maiuscula, minuscula, numero e caractere especial",
+    message:
+      "A senha deve conter letra maiuscula, minuscula, numero e caractere especial",
   })
   password?: string;
 }

@@ -31,8 +31,8 @@ test("cadastro de estabelecimento pela UI abre o painel do vendedor", async ({
   await fillNth(page, 2, `Pet Shop UI ${ts.toString().slice(-5)}`);
   await fillNth(page, 3, "41977776666");
   await fillNth(page, 4, `estabui${ts}@mypet.com`);
-  await fillNth(page, 5, "senha123");
-  await fillNth(page, 6, "senha123");
+  await fillNth(page, 5, "Senha@123");
+  await fillNth(page, 6, "Senha@123");
   await tapButton(page, "Criar conta");
   await expectText(page, "Produtos");
   await expectText(page, "Avaliações");

@@ -5,6 +5,7 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  Matches,
   MinLength,
 } from "class-validator";
 
@@ -23,7 +24,8 @@ export class CreateUserDto {
   @IsString()
   @MinLength(8)
   @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).+$/, {
-    message: "A senha deve conter letra maiuscula, minuscula, numero e caractere especial",
+    message:
+      "A senha deve conter letra maiuscula, minuscula, numero e caractere especial",
   })
   password!: string;
 
