@@ -73,6 +73,7 @@ class BookingProvider extends ChangeNotifier {
     String? driverName,
     String? vetId,
     String? vetName,
+    String? address,
   }) async {
     _loading = true;
     _error = null;
@@ -94,6 +95,7 @@ class BookingProvider extends ChangeNotifier {
         driverName: driverName,
         vetId: vetId,
         vetName: vetName,
+        address: address,
       );
       _bookings.add(booking);
       _loading = false;

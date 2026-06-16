@@ -22,6 +22,7 @@ export const bookingsSchema = pgTable("bookings", {
   driverName: text("driver_name"),
   vetId: uuid("vet_id"),
   vetName: text("vet_name"),
+  address: text("address"),
   scheduledAt: timestamp("scheduled_at", { withTimezone: true }).notNull(),
   price: doublePrecision("price").notNull().default(0),
   priceVariable: boolean("price_variable").notNull().default(false),

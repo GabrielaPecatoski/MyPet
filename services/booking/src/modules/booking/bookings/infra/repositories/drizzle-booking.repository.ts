@@ -29,6 +29,7 @@ export class DrizzleBookingRepository implements BookingRepository {
         driverName: b.driverName ?? null,
         vetId: b.vetId ?? null,
         vetName: b.vetName ?? null,
+        address: b.address ?? null,
         scheduledAt: b.scheduledAt,
         price: b.price,
         priceVariable: b.priceVariable,

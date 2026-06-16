@@ -347,6 +347,10 @@ class _VetBookingCard extends StatelessWidget {
             const SizedBox(height: 4),
             _row(Icons.store_outlined, ap.establishmentName),
           ],
+          if (ap.address.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            _row(Icons.location_on_outlined, ap.address),
+          ],
           if (ap.price > 0) ...[
             const SizedBox(height: 4),
             _row(Icons.attach_money, 'R\$ ${ap.price.toStringAsFixed(2)}'),

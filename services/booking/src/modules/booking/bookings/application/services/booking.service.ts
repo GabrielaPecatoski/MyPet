@@ -77,6 +77,7 @@ export class BookingService {
       driverName: dto.driverName,
       vetId: dto.vetId,
       vetName: dto.vetName,
+      address: dto.address,
       scheduledAt,
       price: priceVariable ? 0 : totalPrice,
       priceVariable,

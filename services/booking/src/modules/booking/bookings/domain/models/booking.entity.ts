@@ -30,6 +30,7 @@ export class Booking {
   private _driverName?: string;
   private _vetId?: string;
   private _vetName?: string;
+  private _address?: string;
   private _scheduledAt!: Date;
   private _price!: number;
   private _priceVariable!: boolean;
@@ -104,6 +105,9 @@ export class Booking {
   get vetName(): string | undefined {
     return this._vetName;
   }
+  get address(): string | undefined {
+    return this._address;
+  }
   get scheduledAt(): Date {
     return this._scheduledAt;
   }
@@ -165,6 +169,7 @@ export class Booking {
     driverName?: string | null;
     vetId?: string | null;
     vetName?: string | null;
+    address?: string | null;
     scheduledAt: Date;
     price: number;
     priceVariable?: boolean | null;
@@ -190,6 +195,7 @@ export class Booking {
     b._driverName = props.driverName ?? undefined;
     b._vetId = props.vetId ?? undefined;
     b._vetName = props.vetName ?? undefined;
+    b._address = props.address ?? undefined;
     b._scheduledAt = props.scheduledAt;
     b._price = props.price;
     b._priceVariable = props.priceVariable ?? false;

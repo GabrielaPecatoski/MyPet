@@ -13,10 +13,19 @@ import '../repositories/schedule_repository.dart';
 import '../widgets/mypet_app_bar.dart';
 
 class ScheduleArgs {
-  final EstablishmentModel establishment;
+  final EstablishmentModel? establishment;
   final String? vetId;
   final String? vetName;
-  const ScheduleArgs({required this.establishment, this.vetId, this.vetName});
+
+  /// Agendamento de consulta domiciliar com veterinário sem clínica vinculada
+  /// (sem [establishment]): usa serviço/horários padrão e booking só com vetId.
+  final bool homeVisit;
+  const ScheduleArgs({
+    this.establishment,
+    this.vetId,
+    this.vetName,
+    this.homeVisit = false,
+  });
 }
 
 class ScheduleScreen extends StatelessWidget {
@@ -46,7 +55,9 @@ class _ScheduleViewState extends State<_ScheduleView> {
   DriverModel? _selectedDriver;
   String? _vetId;
   String? _vetName;
+  bool _homeVisit = false;
   bool _servicesLoaded = false;
+  final TextEditingController _addressCtrl = TextEditingController();
 
   static const _weekdays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
   static const _months = [
@@ -78,16 +89,37 @@ class _ScheduleViewState extends State<_ScheduleView> {
         establishment = args.establishment;
         _vetId = args.vetId;
         _vetName = args.vetName;
+        _homeVisit =
+            args.homeVisit || (establishment == null && args.vetId != null);
       } else if (args is EstablishmentModel) {
         establishment = args;
       }
+      final homeVisit = _homeVisit;
+      // Adiado para após o frame: loadServices* chama notifyListeners() de forma
+      // síncrona, e dispará-lo durante a fase de build (didChangeDependencies)
+      // quebra com o assert '!_dirty'.
       if (establishment != null) {
-        final auth = context.read<AuthProvider>();
-        context
-            .read<ScheduleProvider>()
-            .loadServicesAndDrivers(establishment.id, token: auth.token);
+        final estabId = establishment.id;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          final auth = context.read<AuthProvider>();
+          context
+              .read<ScheduleProvider>()
+              .loadServicesAndDrivers(estabId, token: auth.token);
+        });
+      } else if (homeVisit) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          context.read<ScheduleProvider>().loadHomeVisitServices();
+        });
       }
     }
+  }
+
+  @override
+  void dispose() {
+    _addressCtrl.dispose();
+    super.dispose();
   }
 
   EstablishmentModel? _establishment(BuildContext ctx) {
@@ -98,10 +130,17 @@ class _ScheduleViewState extends State<_ScheduleView> {
   }
 
   Future<void> _loadSlots(EstablishmentModel? establishment) async {
-    if (_selectedDate == null || establishment == null) return;
+    if (_selectedDate == null) return;
+    setState(() => _selectedTime = null);
+    // Consulta domiciliar (sem estabelecimento): slots genéricos no cliente.
+    if (establishment == null) {
+      if (_homeVisit) {
+        context.read<ScheduleProvider>().loadHomeVisitSlots(_selectedDate!);
+      }
+      return;
+    }
     final auth = context.read<AuthProvider>();
     if (auth.token == null) return;
-    setState(() => _selectedTime = null);
     final dateStr =
         '${_selectedDate!.year}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}';
     final error = await context.read<ScheduleProvider>().loadSlots(
@@ -145,6 +184,17 @@ class _ScheduleViewState extends State<_ScheduleView> {
       return;
     }
 
+    if (_homeVisit && _addressCtrl.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Informe o endereço para a consulta domiciliar'),
+          backgroundColor: AppColors.warning,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
     final auth = context.read<AuthProvider>();
     if (auth.token == null || auth.user == null) return;
 
@@ -177,6 +227,7 @@ class _ScheduleViewState extends State<_ScheduleView> {
           driverName: _selectedDriver?.name,
           vetId: _vetId,
           vetName: _vetName,
+          address: _homeVisit ? _addressCtrl.text.trim() : null,
         );
 
     if (!mounted) return;
@@ -334,16 +385,33 @@ class _ScheduleViewState extends State<_ScheduleView> {
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.medical_services_outlined,
-                            color: Color(0xFF2E7D32), size: 18),
+                        Icon(
+                            _homeVisit
+                                ? Icons.home_outlined
+                                : Icons.medical_services_outlined,
+                            color: const Color(0xFF2E7D32),
+                            size: 18),
                         const SizedBox(width: 8),
                         Expanded(
-                          child: Text(
-                            'Veterinário: $_vetName',
-                            style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF2E7D32)),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _homeVisit
+                                    ? 'Consulta domiciliar com Dr. $_vetName'
+                                    : 'Veterinário: $_vetName',
+                                style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF2E7D32)),
+                              ),
+                              if (_homeVisit)
+                                const Text(
+                                  'O veterinário vai até você. Valor a combinar.',
+                                  style: TextStyle(
+                                      fontSize: 11, color: Color(0xFF2E7D32)),
+                                ),
+                            ],
                           ),
                         ),
                       ],
@@ -472,46 +540,86 @@ class _ScheduleViewState extends State<_ScheduleView> {
                     ),
                   ),
 
-                const SizedBox(height: 24),
-
-                _sectionTitle('Motorista (opcional)'),
-                const SizedBox(height: 4),
-                const Text(
-                  'Escolha um motorista para o transporte do seu pet.',
-                  style: TextStyle(fontSize: 12, color: AppColors.grey),
-                ),
-                const SizedBox(height: 10),
-                if (schedule.loadingDrivers)
-                  const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(12),
-                      child: CircularProgressIndicator(color: AppColors.primary),
-                    ),
-                  )
-                else if (schedule.drivers.isEmpty)
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.greyLight),
-                    ),
-                    child: const Text(
-                      'Nenhum motorista disponível para este estabelecimento.',
-                      style: TextStyle(color: AppColors.grey, fontSize: 13),
-                    ),
-                  )
-                else ...[
-                  _DriverSelectCard(
-                    driver: null,
-                    selected: _selectedDriver == null,
-                    onTap: () => setState(() => _selectedDriver = null),
+                if (_homeVisit) ...[
+                  const SizedBox(height: 24),
+                  _sectionTitle('Endereço do atendimento'),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Onde o veterinário deve ir para a consulta domiciliar.',
+                    style: TextStyle(fontSize: 12, color: AppColors.grey),
                   ),
-                  ...schedule.drivers.map((d) => _DriverSelectCard(
-                        driver: d,
-                        selected: _selectedDriver?.id == d.id,
-                        onTap: () => setState(() => _selectedDriver = d),
-                      )),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _addressCtrl,
+                    maxLines: 2,
+                    textCapitalization: TextCapitalization.sentences,
+                    decoration: InputDecoration(
+                      hintText: 'Rua, número, bairro, complemento...',
+                      hintStyle:
+                          const TextStyle(color: AppColors.grey, fontSize: 13),
+                      filled: true,
+                      fillColor: Colors.white,
+                      contentPadding: const EdgeInsets.all(14),
+                      prefixIcon: const Icon(Icons.location_on_outlined,
+                          color: AppColors.grey),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: AppColors.greyLight),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: AppColors.greyLight),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: AppColors.primary),
+                      ),
+                    ),
+                  ),
+                ],
+
+                if (establishment != null) ...[
+                  const SizedBox(height: 24),
+                  _sectionTitle('Motorista (opcional)'),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Escolha um motorista para o transporte do seu pet.',
+                    style: TextStyle(fontSize: 12, color: AppColors.grey),
+                  ),
+                  const SizedBox(height: 10),
+                  if (schedule.loadingDrivers)
+                    const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(12),
+                        child:
+                            CircularProgressIndicator(color: AppColors.primary),
+                      ),
+                    )
+                  else if (schedule.drivers.isEmpty)
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.greyLight),
+                      ),
+                      child: const Text(
+                        'Nenhum motorista disponível para este estabelecimento.',
+                        style: TextStyle(color: AppColors.grey, fontSize: 13),
+                      ),
+                    )
+                  else ...[
+                    _DriverSelectCard(
+                      driver: null,
+                      selected: _selectedDriver == null,
+                      onTap: () => setState(() => _selectedDriver = null),
+                    ),
+                    ...schedule.drivers.map((d) => _DriverSelectCard(
+                          driver: d,
+                          selected: _selectedDriver?.id == d.id,
+                          onTap: () => setState(() => _selectedDriver = d),
+                        )),
+                  ],
                 ],
 
                 const SizedBox(height: 24),

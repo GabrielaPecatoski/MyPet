@@ -88,4 +88,46 @@ class ScheduleProvider extends ChangeNotifier {
     _slots = [];
     notifyListeners();
   }
+
+  /// Serviço padrão para consulta com veterinário SEM clínica vinculada:
+  /// atendimento domiciliar, preço variável (sob consulta) — vai direto para
+  /// PENDENTE, sem etapa de pagamento.
+  static ServiceModel get homeVisitService => ServiceModel(
+        id: 'home-visit-consulta',
+        name: 'Consulta domiciliar',
+        price: 0,
+        priceVariable: true,
+        durationMinutes: 60,
+        description:
+            'Atendimento no endereço do tutor. O valor é combinado com o veterinário.',
+        categoria: 'atendimento_domiciliar',
+      );
+
+  /// Modo domiciliar (vet sem clínica): oferece só a consulta domiciliar e
+  /// nenhum motorista (o próprio veterinário se desloca até o tutor).
+  void loadHomeVisitServices() {
+    _services = [homeVisitService];
+    _drivers = [];
+    _loadingServices = false;
+    _loadingDrivers = false;
+    notifyListeners();
+  }
+
+  /// Slots genéricos (08h–18h, de hora em hora) para o modo domiciliar, já que
+  /// não há disponibilidade de estabelecimento. Horários passados ficam
+  /// indisponíveis; o veterinário confirma ou recusa na agenda dele.
+  void loadHomeVisitSlots(DateTime date) {
+    final now = DateTime.now();
+    final isToday =
+        date.year == now.year && date.month == now.month && date.day == now.day;
+    _slots = [
+      for (var h = 8; h <= 17; h++)
+        TimeSlotModel(
+          time: '${h.toString().padLeft(2, '0')}:00',
+          available: !(isToday && h <= now.hour),
+        ),
+    ];
+    _loadingSlots = false;
+    notifyListeners();
+  }
 }

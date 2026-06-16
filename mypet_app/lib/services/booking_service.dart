@@ -71,6 +71,7 @@ class BookingService {
     String? driverName,
     String? vetId,
     String? vetName,
+    String? address,
   }) async {
     final body = <String, dynamic>{
       'userName': userName,
@@ -87,6 +88,7 @@ class BookingService {
     if (driverName != null) body['driverName'] = driverName;
     if (vetId != null) body['vetId'] = vetId;
     if (vetName != null) body['vetName'] = vetName;
+    if (address != null && address.isNotEmpty) body['address'] = address;
     if (services != null && services.isNotEmpty) {
       body['services'] = services
           .map((s) => {

@@ -51,6 +51,16 @@ class HomeProvider extends ChangeNotifier {
     return list.take(5).toList();
   }
 
+  /// Procura na lista completa (não filtrada) o estabelecimento de [id].
+  /// Usado para resolver a clínica de um veterinário ao agendar consulta.
+  EstablishmentModel? establishmentById(String? id) {
+    if (id == null || id.isEmpty) return null;
+    for (final e in _all) {
+      if (e.id == id) return e;
+    }
+    return null;
+  }
+
   Future<void> load() async {
     _loading = true;
     _error = null;

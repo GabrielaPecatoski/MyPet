@@ -33,6 +33,7 @@ export class CreateBookingDto {
   @ApiPropertyOptional() @IsOptional() @IsString() driverName?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() vetId?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() vetName?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() address?: string;
   @ApiPropertyOptional({ type: [ServiceItemDto] })
   @IsOptional()
   @IsArray()

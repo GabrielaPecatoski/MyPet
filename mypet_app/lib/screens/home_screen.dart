@@ -7,6 +7,7 @@ import '../models/veterinarian.dart';
 import '../providers/auth_provider.dart';
 import '../providers/booking_provider.dart';
 import '../providers/home_provider.dart';
+import 'schedule_screen.dart' show ScheduleArgs;
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -648,10 +649,27 @@ class _VetHomeCard extends StatelessWidget {
   static const _green = Color(0xFF16A34A);
   static const _orange = Color(0xFFF97316);
 
+  void _onTap(BuildContext context) {
+    final estab =
+        context.read<HomeProvider>().establishmentById(vet.establishmentId);
+    // Com clínica vinculada: agenda nela. Sem clínica: consulta domiciliar
+    // (serviço/horários padrão, booking só com vetId — o vet confirma na agenda).
+    Navigator.pushNamed(
+      context,
+      '/schedule',
+      arguments: ScheduleArgs(
+        establishment: estab,
+        vetId: vet.id,
+        vetName: vet.name,
+        homeVisit: estab == null,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () => Navigator.pushNamed(context, '/emergencia'),
+      onTap: () => _onTap(context),
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(14),
