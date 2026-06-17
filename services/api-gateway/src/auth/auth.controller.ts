@@ -17,11 +17,13 @@ export class AuthController {
   @Get("me")
   me(@Req() req: Request) {
     const auth = req.headers["authorization"];
-    if (!auth?.startsWith("Bearer ")) throw new UnauthorizedException("Token não informado");
+    if (!auth?.startsWith("Bearer "))
+      throw new UnauthorizedException("Token não informado");
 
     try {
       const payload = this.jwtService.verify(auth.split(" ")[1], {
-        secret: process.env.JWT_SECRET ?? "mypet_super_secret_change_in_production",
+        secret:
+          process.env.JWT_SECRET ?? "mypet_super_secret_change_in_production",
       });
       return {
         id: payload.sub,
@@ -38,22 +40,35 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   refresh(@Req() req: Request) {
     const auth = req.headers["authorization"];
-    if (!auth?.startsWith("Bearer ")) throw new UnauthorizedException("Token não informado");
+    if (!auth?.startsWith("Bearer "))
+      throw new UnauthorizedException("Token não informado");
 
     try {
       const payload = this.jwtService.verify(auth.split(" ")[1], {
-        secret: process.env.JWT_SECRET ?? "mypet_super_secret_change_in_production",
+        secret:
+          process.env.JWT_SECRET ?? "mypet_super_secret_change_in_production",
       });
       const newToken = this.jwtService.sign(
-        { sub: payload.sub, email: payload.email, name: payload.name, role: payload.role },
         {
-          secret: process.env.JWT_SECRET ?? "mypet_super_secret_change_in_production",
+          sub: payload.sub,
+          email: payload.email,
+          name: payload.name,
+          role: payload.role,
+        },
+        {
+          secret:
+            process.env.JWT_SECRET ?? "mypet_super_secret_change_in_production",
           expiresIn: "7d",
         },
       );
       return {
         access_token: newToken,
-        user: { id: payload.sub, name: payload.name, email: payload.email, role: payload.role },
+        user: {
+          id: payload.sub,
+          name: payload.name,
+          email: payload.email,
+          role: payload.role,
+        },
       };
     } catch {
       throw new UnauthorizedException("Token inválido ou expirado");

@@ -1,4 +1,4 @@
-import { ValidationPipe, type Type } from "@nestjs/common";
+import { type Type, ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import * as express from "express";

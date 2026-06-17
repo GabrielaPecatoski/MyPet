@@ -19,7 +19,7 @@ reais ao backend** (via Nginx em `http://localhost`). Nada é mockado.
 
 ## Pré-requisitos
 
-1. Stack no ar: `./start.ps1` (Docker) — `http://localhost/health` deve responder 200.
+1. Stack no ar: `.\scripts\start.ps1` (Docker) — `http://localhost/health` deve responder 200.
 2. Build web atualizado: `cd mypet_app && flutter build web --base-href /`
    (refazer sempre que mudar o app Flutter).
 3. Browser do Playwright: `npx playwright install chromium`.
@@ -48,6 +48,39 @@ npx playwright show-report playwright-report-front
 | `05-perfil` | editar perfil, excluir conta, logout |
 | `06-estabelecimento` | login de vendedor → painel → aba Produtos |
 | `07-estab-agenda` | estabelecimento vê e confirma um agendamento pago |
+| `08-pedidos` | cliente acompanha pedido; estabelecimento avança até finalizado |
+| `09-loja-pagamentos` | pagamento de pedido via diferentes métodos |
+| `10-carrinho` | adicionar ao carrinho, esvaziar |
+| `11-agendamento-cancelar` | cliente cancela agendamento |
+| `12-estab-recusa` | estabelecimento recusa agendamento |
+| `13-avaliacao` | cliente avalia agendamento concluído |
+| `14-faq` | FAQ: listar perguntas e respostas |
+| `15-notificacoes` | notificações do usuário |
+| `16-estab-produto` | vendedor cadastra produto pela UI |
+| `17-cadastro-vendedor` | registro de usuário VENDEDOR pela UI |
+| `18-busca-estabelecimento` | busca de estabelecimento na home |
+| `19-preco-variavel` | serviço com preço variável: "Sob consulta", sem pagamento, PENDENTE direto |
+| `20-motorista-cadastro` | registro de motorista, regra 1 ativo/estab, desativar e cadastrar novo |
+| `21-motorista-transporte` | transporte só aparece ao motorista após o estabelecimento aceitar (CONFIRMADO) |
+| `22-onboarding` | tela de onboarding e pular |
+| `23-welcome-perfil` | tela de boas-vindas e navegação para login/cadastro |
+| `24-register-motorista-vet` | registro de usuário MOTORISTA e VETERINÁRIO pela UI |
+| `25-motorista-nav` | navegação do motorista: 5 abas, toggle online/offline, ganhos, histórico, perfil |
+| `26-veterinario-nav` | navegação do vet: home stats, agenda, chamados, pacientes, perfil |
+| `27-product-detail` | tela de detalhe do produto: info, seletor de qty, snackbar, badge carrinho |
+| `28-pedidos-acompanhamento` | barra de progresso e filtros (Todos / Em andamento / Finalizados) |
+| `29-welcome-cores` | cores por papel na tela de boas-vindas |
+| `30-emergencia-vets` | emergência: abas Clínicas/Veterinários, filtro 24h |
+| `31-home-vet-filter` | chips de filtro da home (Veterinário etc.) |
+| `32-vet-domicilio` | toggles do vet: online, 24h, atendimento domiciliar |
+| `33-estab-vinculos-vet` | estabelecimento vincula/desvincula veterinários |
+| `34-admin-verificacoes` | admin aprova/rejeita vets e motoristas |
+| `35-register-fluxos` | fluxos completos de registro por papel |
+| `36-agendamento-vet` | cliente agenda consulta em clínica veterinária (preço fixo e variável) |
+| `37-estab-drivers` | estabelecimento gerencia motoristas (buscar por CPF / cadastrar novo) |
+| `38-splash-e-auth-flow` | splash, sessão persistida, logout |
+| `39-estab-pedidos` | gestão de pedidos pelo estabelecimento (badges, progresso, status) |
+| `40-vet-alarme` | alarme de emergência em tempo real (RabbitMQ→SSE, overlay em <1s) |
 
 Localização: `services/tests/playwright-front`. As configs (`playwright.front.config.ts`)
 ficam na raiz do projeto.
@@ -57,3 +90,7 @@ ficam na raiz do projeto.
 Para tornar controles só-ícone testáveis (e mais acessíveis), foram adicionados
 rótulos: botão "+" de pets (`Semantics`), tooltips "Voltar" (app bar), "Carrinho"
 (loja) e "Editar pet"/"Remover pet" (cards de pet).
+
+Adicionados em `product_detail_screen.dart`: `Semantics(button: true, label: ...)` nos
+botões `_QtyBtn` ("Diminuir quantidade" / "Aumentar quantidade"), para que o seletor de
+quantidade da tela de detalhe seja acionável pelo Playwright.

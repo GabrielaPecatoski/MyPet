@@ -1,6 +1,7 @@
 export class Schedule {
   private readonly _id?: string;
-  private _establishmentId!: string;
+  private _establishmentId?: string;
+  private _vetId?: string;
   private _dayOfWeek!: number;
   private _openTime!: string;
   private _closeTime!: string;
@@ -8,20 +9,42 @@ export class Schedule {
   private _isOpen!: boolean;
   private _capacity!: number;
 
-  private constructor(id?: string) { this._id = id; }
+  private constructor(id?: string) {
+    this._id = id;
+  }
 
-  get id(): string | undefined { return this._id; }
-  get establishmentId(): string { return this._establishmentId; }
-  get dayOfWeek(): number { return this._dayOfWeek; }
-  get openTime(): string { return this._openTime; }
-  get closeTime(): string { return this._closeTime; }
-  get slotDuration(): number { return this._slotDuration; }
-  get isOpen(): boolean { return this._isOpen; }
-  get capacity(): number { return this._capacity; }
+  get id(): string | undefined {
+    return this._id;
+  }
+  get establishmentId(): string | undefined {
+    return this._establishmentId;
+  }
+  get vetId(): string | undefined {
+    return this._vetId;
+  }
+  get dayOfWeek(): number {
+    return this._dayOfWeek;
+  }
+  get openTime(): string {
+    return this._openTime;
+  }
+  get closeTime(): string {
+    return this._closeTime;
+  }
+  get slotDuration(): number {
+    return this._slotDuration;
+  }
+  get isOpen(): boolean {
+    return this._isOpen;
+  }
+  get capacity(): number {
+    return this._capacity;
+  }
 
   static restore(props?: {
     id?: string;
-    establishmentId: string;
+    establishmentId?: string | null;
+    vetId?: string | null;
     dayOfWeek: number;
     openTime: string;
     closeTime: string;
@@ -31,7 +54,8 @@ export class Schedule {
   }): Schedule | null {
     if (!props) return null;
     const s = new Schedule(props.id);
-    s._establishmentId = props.establishmentId;
+    s._establishmentId = props.establishmentId ?? undefined;
+    s._vetId = props.vetId ?? undefined;
     s._dayOfWeek = props.dayOfWeek;
     s._openTime = props.openTime;
     s._closeTime = props.closeTime;

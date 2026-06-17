@@ -45,13 +45,27 @@ export class Notification {
     });
   }
 
-  get id() { return this._id; }
-  get userId() { return this._userId; }
-  get title() { return this._title; }
-  get body() { return this._body; }
-  get type() { return this._type; }
-  get read() { return this._read; }
-  get createdAt() { return this._createdAt; }
+  get id() {
+    return this._id;
+  }
+  get userId() {
+    return this._userId;
+  }
+  get title() {
+    return this._title;
+  }
+  get body() {
+    return this._body;
+  }
+  get type() {
+    return this._type;
+  }
+  get read() {
+    return this._read;
+  }
+  get createdAt() {
+    return this._createdAt;
+  }
 
   markAsRead(): void {
     this._read = true;

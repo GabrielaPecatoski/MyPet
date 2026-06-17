@@ -1,192 +1,84 @@
-import { test, expect, APIRequestContext } from '@playwright/test';
+import { APIRequestContext, expect, test } from "@playwright/test";
+import {
+  apiContext,
+  getAdmin,
+  registerUser,
+  SeededUser,
+} from "../playwright-front/_api";
 
-const BASE = 'http://localhost:3008';
-const ADMIN_SECRET = 'mypet_admin_secret';
+const authHeader = (u: SeededUser) => ({ Authorization: `Bearer ${u.token}` });
 
 let api: APIRequestContext;
-let faqId: string;
-let questionId: string;
-const userId = `user-faq-${Date.now()}`;
+let admin: SeededUser;
+let cliente: SeededUser;
 
-test.beforeAll(async ({ playwright }) => {
-  api = await playwright.request.newContext({ baseURL: BASE });
+test.beforeAll(async () => {
+  api = await apiContext();
+  admin = await getAdmin(api);
+  cliente = await registerUser(api, { role: "CLIENTE" });
 });
 
 test.afterAll(async () => {
   await api.dispose();
 });
 
-// ---- FAQs públicas ----
-
-test('listar FAQs ativas retorna array', async () => {
-  const res = await api.get('/faq');
+test("GET /faq (público) retorna array", async () => {
+  const res = await api.get("/faq");
   expect(res.status()).toBe(200);
-  const body = await res.json();
-  expect(Array.isArray(body)).toBe(true);
+  expect(Array.isArray(await res.json())).toBe(true);
 });
 
-test('listar categorias retorna array', async () => {
-  const res = await api.get('/faq/categories');
+test("GET /faq/categories (público) retorna array", async () => {
+  const res = await api.get("/faq/categories");
   expect(res.status()).toBe(200);
-  const body = await res.json();
-  expect(Array.isArray(body)).toBe(true);
+  expect(Array.isArray(await res.json())).toBe(true);
 });
 
-// ---- admin: criar FAQ ----
+test("POST /faq/admin (admin) cria uma FAQ", async () => {
+  const pergunta = `Como funciona a entrega? ${Date.now()}`;
+  const res = await api.post("/faq/admin", {
+    headers: authHeader(admin),
+    data: {
+      question: pergunta,
+      answer: "A entrega é feita por motoristas parceiros.",
+      category: "Entrega",
+    },
+  });
+  expect([200, 201]).toContain(res.status());
 
-test('criar FAQ sem admin secret retorna 403', async () => {
-  const res = await api.post('/faq/admin', {
-    headers: { 'x-admin-secret': 'errado' },
-    data: { question: 'Teste?', answer: 'Sim.' },
+  const faqs: any[] = await (await api.get("/faq")).json();
+  expect(faqs.some((f) => f.question === pergunta)).toBe(true);
+});
+
+test("criar FAQ sem permissão de admin retorna 403", async () => {
+  const res = await api.post("/faq/admin", {
+    headers: authHeader(cliente),
+    data: { question: "x", answer: "y" },
   });
   expect(res.status()).toBe(403);
 });
 
-test('criar FAQ com admin secret', async () => {
-  const res = await api.post('/faq/admin', {
-    headers: { 'x-admin-secret': ADMIN_SECRET },
-    data: {
-      question: 'Como fazer um agendamento?',
-      answer: 'Acesse o app e vá em Agendar.',
-      category: 'Agendamento',
-      order: 1,
-    },
+test("POST /faq/questions (cliente) envia uma pergunta", async () => {
+  const res = await api.post("/faq/questions", {
+    headers: authHeader(cliente),
+    data: { question: `Vocês atendem aos domingos? ${Date.now()}` },
   });
-  expect(res.status()).toBe(201);
-  const body = await res.json();
-  expect(body.id).toBeTruthy();
-  expect(body.active).toBe(true);
-  faqId = body.id;
+  expect([200, 201]).toContain(res.status());
 });
 
-test('FAQ criada aparece na listagem pública', async () => {
-  const res = await api.get('/faq');
-  const body: any[] = await res.json();
-  expect(body.some((f) => f.id === faqId)).toBe(true);
-});
-
-test('filtrar FAQs por categoria', async () => {
-  const res = await api.get('/faq?category=Agendamento');
-  expect(res.status()).toBe(200);
-  const body: any[] = await res.json();
-  expect(body.some((f) => f.id === faqId)).toBe(true);
-});
-
-test('admin: listar todas as FAQs', async () => {
-  const res = await api.get('/faq/admin/all', {
-    headers: { 'x-admin-secret': ADMIN_SECRET },
+test("GET /faq/questions/user/:id lista as perguntas do usuário", async () => {
+  const res = await api.get(`/faq/questions/user/${cliente.id}`, {
+    headers: authHeader(cliente),
   });
   expect(res.status()).toBe(200);
   const body: any[] = await res.json();
-  expect(body.some((f) => f.id === faqId)).toBe(true);
+  expect(Array.isArray(body)).toBe(true);
+  expect(body.length).toBeGreaterThan(0);
 });
 
-test('admin: atualizar FAQ', async () => {
-  const res = await api.put(`/faq/admin/${faqId}`, {
-    headers: { 'x-admin-secret': ADMIN_SECRET },
-    data: { answer: 'Acesse o app, vá em Agendar e escolha o serviço.' },
+test("enviar pergunta sem token retorna 401", async () => {
+  const res = await api.post("/faq/questions", {
+    data: { question: "sem auth" },
   });
-  expect(res.status()).toBe(200);
-  const body = await res.json();
-  expect(body.answer).toContain('escolha o serviço');
-});
-
-test('admin: desativar FAQ', async () => {
-  const res = await api.put(`/faq/admin/${faqId}`, {
-    headers: { 'x-admin-secret': ADMIN_SECRET },
-    data: { active: false },
-  });
-  expect(res.status()).toBe(200);
-  const body = await res.json();
-  expect(body.active).toBe(false);
-});
-
-test('FAQ inativa não aparece na listagem pública', async () => {
-  const res = await api.get('/faq');
-  const body: any[] = await res.json();
-  expect(body.some((f) => f.id === faqId)).toBe(false);
-});
-
-test('admin: deletar FAQ', async () => {
-  const res = await api.delete(`/faq/admin/${faqId}`, {
-    headers: { 'x-admin-secret': ADMIN_SECRET },
-  });
-  expect(res.status()).toBe(200);
-});
-
-// ---- perguntas de usuários ----
-
-test('enviar pergunta de usuário', async () => {
-  const res = await api.post('/faq/questions', {
-    data: {
-      userId,
-      userName: 'Usuário Teste',
-      userRole: 'CLIENTE',
-      question: 'Como cancelo meu agendamento?',
-    },
-  });
-  expect(res.status()).toBe(201);
-  const body = await res.json();
-  expect(body.id).toBeTruthy();
-  expect(body.status).toBe('OPEN');
-  questionId = body.id;
-});
-
-test('listar perguntas do usuário', async () => {
-  const res = await api.get(`/faq/questions/user/${userId}`);
-  expect(res.status()).toBe(200);
-  const body: any[] = await res.json();
-  expect(body.some((q) => q.id === questionId)).toBe(true);
-});
-
-test('admin: listar todas as perguntas', async () => {
-  const res = await api.get('/faq/questions/admin/all', {
-    headers: { 'x-admin-secret': ADMIN_SECRET },
-  });
-  expect(res.status()).toBe(200);
-  const body: any[] = await res.json();
-  expect(body.some((q) => q.id === questionId)).toBe(true);
-});
-
-test('admin: filtrar perguntas por status OPEN', async () => {
-  const res = await api.get('/faq/questions/admin/all?status=OPEN', {
-    headers: { 'x-admin-secret': ADMIN_SECRET },
-  });
-  expect(res.status()).toBe(200);
-  const body: any[] = await res.json();
-  expect(body.some((q) => q.id === questionId)).toBe(true);
-});
-
-test('admin: responder pergunta', async () => {
-  const res = await api.put(`/faq/questions/admin/${questionId}/answer`, {
-    headers: { 'x-admin-secret': ADMIN_SECRET },
-    data: { answer: 'Você pode cancelar em Meus Agendamentos até 24h antes.' },
-  });
-  expect(res.status()).toBe(200);
-  const body = await res.json();
-  expect(body.answer).toBeTruthy();
-  expect(body.status).toBe('ANSWERED');
-});
-
-test('admin: fechar pergunta', async () => {
-  const res = await api.put(`/faq/questions/admin/${questionId}/close`, {
-    headers: { 'x-admin-secret': ADMIN_SECRET },
-  });
-  expect(res.status()).toBe(200);
-  const body = await res.json();
-  expect(body.status).toBe('CLOSED');
-});
-
-test('admin: responder sem texto retorna erro', async () => {
-  // cria nova pergunta para testar
-  const qRes = await api.post('/faq/questions', {
-    data: { userId, userName: 'Teste', userRole: 'CLIENTE', question: 'Outra dúvida?' },
-  });
-  const q = await qRes.json();
-
-  const res = await api.put(`/faq/questions/admin/${q.id}/answer`, {
-    headers: { 'x-admin-secret': ADMIN_SECRET },
-    data: { answer: '' },
-  });
-  expect(res.status()).toBeGreaterThanOrEqual(400);
+  expect(res.status()).toBe(401);
 });

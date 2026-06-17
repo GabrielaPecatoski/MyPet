@@ -37,3 +37,5 @@ mypet_app/build/
 **/test-results/
 **/playwright-report/
 **/playwright-report-front/
+docker/nginx/certs/
+__pycache__/

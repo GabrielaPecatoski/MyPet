@@ -1,13 +1,25 @@
-import { CreateBookingDto } from "@booking/bookings/application/dto/create-booking.dto";
 import { BookingDto } from "@booking/bookings/application/dto/booking.dto";
-import { Booking, type BookingStatus } from "@booking/bookings/domain/models/booking.entity";
+import { CreateBookingDto } from "@booking/bookings/application/dto/create-booking.dto";
+import {
+  Booking,
+  type BookingStatus,
+} from "@booking/bookings/domain/models/booking.entity";
 import {
   BOOKING_REPOSITORY,
   type BookingRepository,
 } from "@booking/bookings/domain/repositories/booking-repository.interface";
-import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import {
+  ConflictException,
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from "@nestjs/common";
+import {
+  BookingExchangeName,
+  BookingRoutingKey,
+} from "@shared/contracts/events/booking-events.enum";
 import { SharedMessagingService } from "@shared/infra/messaging/shared-messaging.service";
-import { BookingExchangeName, BookingRoutingKey } from "@shared/contracts/events/booking-events.enum";
 
 @Injectable()
 export class BookingService {
@@ -19,13 +31,39 @@ export class BookingService {
     private readonly messaging: SharedMessagingService,
   ) {}
 
-  async create(userId: string, userName: string, dto: CreateBookingDto): Promise<BookingDto> {
-    const services = dto.services && dto.services.length > 0 ? dto.services : undefined;
-    const totalPrice = services ? services.reduce((s, svc) => s + svc.price, 0) : (dto.price ?? 0);
-    const displayName = services && services.length > 1
-      ? services.map((s) => s.name).join(", ")
-      : (dto.serviceName ?? services?.[0]?.name ?? "");
+  async create(
+    userId: string,
+    userName: string,
+    dto: CreateBookingDto,
+  ): Promise<BookingDto> {
+    const services =
+      dto.services && dto.services.length > 0 ? dto.services : undefined;
+    const totalPrice = services
+      ? services.reduce((s, svc) => s + svc.price, 0)
+      : (dto.price ?? 0);
+    const displayName =
+      services && services.length > 1
+        ? services.map((s) => s.name).join(", ")
+        : (dto.serviceName ?? services?.[0]?.name ?? "");
 
+    const scheduledAt = new Date(dto.scheduledAt);
+
+    if (dto.vetId) {
+      const existentes = await this.repo.findByVetId(dto.vetId);
+      const conflito = existentes.some(
+        (b) =>
+          b.status !== "CANCELADO" &&
+          b.status !== "RECUSADO" &&
+          b.scheduledAt.getTime() === scheduledAt.getTime(),
+      );
+      if (conflito) {
+        throw new ConflictException(
+          "Horário indisponível para este veterinário",
+        );
+      }
+    }
+
+    const priceVariable = dto.priceVariable ?? false;
     const booking = Booking.restore({
       userId,
       userName: dto.userName ?? userName,
@@ -34,13 +72,26 @@ export class BookingService {
       serviceName: displayName,
       servicesJson: services ? JSON.stringify(services) : undefined,
       establishmentId: dto.establishmentId,
-      establishmentName: dto.establishmentName,
-      scheduledAt: new Date(dto.scheduledAt),
-      price: totalPrice,
-      status: "AGUARDANDO_PAGAMENTO",
+      establishmentName: dto.establishmentName ?? "",
+      driverId: dto.driverId,
+      driverName: dto.driverName,
+      vetId: dto.vetId,
+      vetName: dto.vetName,
+      scheduledAt,
+      price: priceVariable ? 0 : totalPrice,
+      priceVariable,
+      status: priceVariable ? "PENDENTE" : "AGUARDANDO_PAGAMENTO",
+      paymentStatus: priceVariable ? "NONE" : "NONE",
     })!;
     const created = await this.repo.create(booking);
     return BookingDto.fromBooking(created)!;
+  }
+
+  async findByVet(vetId: string): Promise<BookingDto[]> {
+    const rows = await this.repo.findByVetId(vetId);
+    return rows
+      .filter((b) => b.status !== "AGUARDANDO_PAGAMENTO")
+      .map((b) => BookingDto.fromBooking(b)!);
   }
 
   async findByUser(userId: string): Promise<BookingDto[]> {
@@ -65,49 +116,88 @@ export class BookingService {
       .map((b) => BookingDto.fromBooking(b)!);
   }
 
-  async pay(id: string, method: string, cardNumber?: string, installments?: number): Promise<{ booking: BookingDto; payment: Record<string, unknown> }> {
+  async pay(
+    id: string,
+    method: string,
+    cardNumber?: string,
+    installments?: number,
+  ): Promise<{ booking: BookingDto; payment: Record<string, unknown> }> {
     const booking = await this.repo.findById(id);
     if (!booking) throw new NotFoundException("Agendamento não encontrado");
 
-    if (booking.paymentStatus === "AUTHORIZED" || booking.paymentStatus === "CAPTURED") {
-      return { booking: BookingDto.fromBooking(booking)!, payment: { status: "APPROVED", method, amount: booking.price, alreadyPaid: true } };
+    if (
+      booking.paymentStatus === "AUTHORIZED" ||
+      booking.paymentStatus === "CAPTURED"
+    ) {
+      return {
+        booking: BookingDto.fromBooking(booking)!,
+        payment: {
+          status: "APPROVED",
+          method,
+          amount: booking.price,
+          alreadyPaid: true,
+        },
+      };
     }
 
-    const payment = this.simulatePayment(method, booking.price, cardNumber, installments);
+    const payment = this.simulatePayment(
+      method,
+      booking.price,
+      cardNumber,
+      installments,
+    );
 
     if (payment["status"] === "APPROVED") {
       booking.withStatus("PENDENTE").withPayment("AUTHORIZED", method);
       await this.repo.update(booking);
-      // Não aguarda o broker: a resposta do pagamento não pode ficar presa
-      // numa conexão lenta/instável com o RabbitMQ (causava timeout no app).
-      void this.safePublish(BookingExchangeName.CREATED, BookingRoutingKey.CREATED, {
-        bookingId: booking.id!,
-        establishmentId: booking.establishmentId,
-        clientName: booking.userName,
-        serviceName: booking.serviceName,
-        scheduledAt: booking.scheduledAt.toISOString(),
-      });
+      void this.safePublish(
+        BookingExchangeName.CREATED,
+        BookingRoutingKey.CREATED,
+        {
+          bookingId: booking.id!,
+          establishmentId: booking.establishmentId,
+          clientName: booking.userName,
+          serviceName: booking.serviceName,
+          scheduledAt: booking.scheduledAt.toISOString(),
+        },
+      );
     }
 
     return { booking: BookingDto.fromBooking(booking)!, payment };
   }
 
-  private simulatePayment(method: string, amount: number, cardNumber?: string, installments?: number): Record<string, unknown> {
+  private simulatePayment(
+    method: string,
+    amount: number,
+    cardNumber?: string,
+    installments?: number,
+  ): Record<string, unknown> {
     const base = { method, amount };
 
     if (method === "PIX") {
       return { ...base, status: "APPROVED", pixKey: "mypet@pagamentos.com" };
     }
     if (method === "BOLETO") {
-      const code = "34191.75501 34191.75501 34191.75501 1 " + String(Math.floor(amount * 100)).padStart(14, "0");
+      const code =
+        "34191.75501 34191.75501 34191.75501 1 " +
+        String(Math.floor(amount * 100)).padStart(14, "0");
       return { ...base, status: "APPROVED", boletoCode: code };
     }
     if (method === "CREDIT_CARD") {
       const lastFour = cardNumber ? cardNumber.slice(-4) : "0000";
       if (Math.random() < 0.05) {
-        return { ...base, status: "REJECTED", rejectionReason: "Cartão recusado pela operadora." };
+        return {
+          ...base,
+          status: "REJECTED",
+          rejectionReason: "Cartão recusado pela operadora.",
+        };
       }
-      return { ...base, status: "APPROVED", cardLastFour: lastFour, installments: installments ?? 1 };
+      return {
+        ...base,
+        status: "APPROVED",
+        cardLastFour: lastFour,
+        installments: installments ?? 1,
+      };
     }
     if (method === "DEBIT_CARD") {
       const lastFour = cardNumber ? cardNumber.slice(-4) : "0000";
@@ -125,34 +215,51 @@ export class BookingService {
     if (!booking) throw new NotFoundException("Agendamento não encontrado");
     booking.withStatus(status);
 
-    // Escrow: estorna o valor retido ao recusar/cancelar; captura ao concluir.
-    if ((status === "RECUSADO" || status === "CANCELADO") && booking.paymentStatus === "AUTHORIZED") {
+    if (
+      (status === "RECUSADO" || status === "CANCELADO") &&
+      booking.paymentStatus === "AUTHORIZED"
+    ) {
       booking.withPayment("REFUNDED");
-    } else if (status === "CONCLUIDO" && booking.paymentStatus === "AUTHORIZED") {
+    } else if (
+      status === "CONCLUIDO" &&
+      booking.paymentStatus === "AUTHORIZED"
+    ) {
       booking.withPayment("CAPTURED");
     }
 
     await this.repo.update(booking);
 
     if (status === "CONFIRMADO" || status === "RECUSADO") {
-      await this.safePublish(BookingExchangeName.STATUS_UPDATED, BookingRoutingKey.STATUS_UPDATED, {
-        bookingId: booking.id!,
-        userId: booking.userId,
-        status,
-        establishmentName: booking.establishmentName,
-      });
+      await this.safePublish(
+        BookingExchangeName.STATUS_UPDATED,
+        BookingRoutingKey.STATUS_UPDATED,
+        {
+          bookingId: booking.id!,
+          userId: booking.userId,
+          status,
+          establishmentName: booking.establishmentName,
+        },
+      );
     } else if (status === "CONCLUIDO") {
-      await this.safePublish(BookingExchangeName.COMPLETED, BookingRoutingKey.COMPLETED, {
-        bookingId: booking.id!,
-        userId: booking.userId,
-        establishmentName: booking.establishmentName,
-        serviceName: booking.serviceName,
-      });
+      await this.safePublish(
+        BookingExchangeName.COMPLETED,
+        BookingRoutingKey.COMPLETED,
+        {
+          bookingId: booking.id!,
+          userId: booking.userId,
+          establishmentName: booking.establishmentName,
+          serviceName: booking.serviceName,
+        },
+      );
     } else if (status === "CANCELADO") {
-      await this.safePublish(BookingExchangeName.CANCELED, BookingRoutingKey.CANCELED, {
-        bookingId: booking.id!,
-        userId: booking.userId,
-      });
+      await this.safePublish(
+        BookingExchangeName.CANCELED,
+        BookingRoutingKey.CANCELED,
+        {
+          bookingId: booking.id!,
+          userId: booking.userId,
+        },
+      );
     }
     return BookingDto.fromBooking(booking)!;
   }
@@ -161,11 +268,6 @@ export class BookingService {
     return this.updateStatus(id, "CANCELADO");
   }
 
-  /**
-   * Cancela em background os agendamentos que ficaram em AGUARDANDO_PAGAMENTO
-   * por mais de 1 hora. Roda periodicamente, independente do usuário abrir a agenda.
-   * Retorna a quantidade de agendamentos cancelados.
-   */
   async cancelExpired(): Promise<number> {
     const cutoff = new Date(Date.now() - 60 * 60 * 1000);
     const expired = await this.repo.findExpiredAwaitingPayment(cutoff);
@@ -174,13 +276,67 @@ export class BookingService {
       await this.repo.update(b);
     }
     if (expired.length > 0) {
-      this.logger.log(`${expired.length} agendamento(s) expirado(s) cancelado(s) automaticamente.`);
+      this.logger.log(
+        `${expired.length} agendamento(s) expirado(s) cancelado(s) automaticamente.`,
+      );
     }
     return expired.length;
   }
 
+  async notifyTodayBookings(): Promise<number> {
+    const now = new Date();
+    const startOfDay = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    );
+    const startOfNextDay = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate() + 1,
+    );
+    const bookings = await this.repo.findConfirmedForReminder(
+      startOfDay,
+      startOfNextDay,
+    );
+    for (const b of bookings) {
+      b.withReminderSent(now);
+      await this.repo.update(b);
+      await this.safePublish(
+        BookingExchangeName.TODAY_REMINDER,
+        BookingRoutingKey.TODAY_REMINDER,
+        {
+          bookingId: b.id!,
+          establishmentId: b.establishmentId,
+          userId: b.userId,
+          clientName: b.userName,
+          establishmentName: b.establishmentName,
+          serviceName: b.serviceName,
+          scheduledAt: b.scheduledAt.toISOString(),
+        },
+      );
+    }
+    if (bookings.length > 0) {
+      this.logger.log(
+        `${bookings.length} lembrete(s) de atendimento de hoje enviado(s).`,
+      );
+    }
+    return bookings.length;
+  }
+
   async complete(id: string): Promise<BookingDto> {
     return this.updateStatus(id, "CONCLUIDO");
+  }
+
+  async setAttendancePhotos(
+    id: string,
+    photos: string[],
+  ): Promise<BookingDto> {
+    const booking = await this.repo.findById(id);
+    if (!booking) throw new NotFoundException("Agendamento não encontrado");
+    booking.withAttendancePhotos(photos);
+    await this.repo.update(booking);
+    return BookingDto.fromBooking(booking)!;
   }
 
   async remove(id: string): Promise<void> {
@@ -208,16 +364,36 @@ export class BookingService {
       return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
     });
     const monthRevenue = monthCompleted.reduce((s, b) => s + b.price, 0);
-    const avgTicket = completed.length > 0 ? totalRevenue / completed.length : 0;
+    const avgTicket =
+      completed.length > 0 ? totalRevenue / completed.length : 0;
 
-    const ptMonths = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+    const ptMonths = [
+      "Jan",
+      "Fev",
+      "Mar",
+      "Abr",
+      "Mai",
+      "Jun",
+      "Jul",
+      "Ago",
+      "Set",
+      "Out",
+      "Nov",
+      "Dez",
+    ];
     const last6Months = [];
     for (let i = 5; i >= 0; i--) {
       const d = new Date(thisYear, thisMonth - i, 1);
       const m = d.getMonth();
       const y = d.getFullYear();
-      const monthRows = completed.filter((b) => b.scheduledAt.getMonth() === m && b.scheduledAt.getFullYear() === y);
-      last6Months.push({ month: ptMonths[m], value: monthRows.reduce((s, b) => s + b.price, 0) });
+      const monthRows = completed.filter(
+        (b) =>
+          b.scheduledAt.getMonth() === m && b.scheduledAt.getFullYear() === y,
+      );
+      last6Months.push({
+        month: ptMonths[m],
+        value: monthRows.reduce((s, b) => s + b.price, 0),
+      });
     }
 
     const serviceCount: Record<string, number> = {};
@@ -229,10 +405,22 @@ export class BookingService {
       .slice(0, 5)
       .map(([name, count]) => ({ name, count }));
 
-    return { totalRevenue, monthRevenue, avgTicket, totalBookings, monthBookings, last6Months, topServices };
+    return {
+      totalRevenue,
+      monthRevenue,
+      avgTicket,
+      totalBookings,
+      monthBookings,
+      last6Months,
+      topServices,
+    };
   }
 
-  private async safePublish(exchange: string, routingKey: string, payload: unknown): Promise<void> {
+  private async safePublish(
+    exchange: string,
+    routingKey: string,
+    payload: unknown,
+  ): Promise<void> {
     try {
       await this.messaging.assertExchange(exchange, "direct");
       await this.messaging.publish(exchange, routingKey, payload);

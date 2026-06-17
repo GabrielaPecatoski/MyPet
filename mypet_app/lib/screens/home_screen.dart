@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/colors.dart';
 import '../models/establishment.dart';
+import '../models/veterinarian.dart';
 import '../providers/auth_provider.dart';
 import '../providers/booking_provider.dart';
 import '../providers/home_provider.dart';
@@ -18,6 +19,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _selectedChip = 0;
 
   static const _chips = ['Todos', 'Banho', 'Tosa', 'Veterinário', 'Acessórios'];
+  static const _vetChipIndex = 3;
 
   @override
   void initState() {
@@ -28,7 +30,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _onChipTap(int idx) {
     setState(() => _selectedChip = idx);
-    context.read<HomeProvider>().filterByType(_chips[idx]);
+    final home = context.read<HomeProvider>();
+    home.filterByType(_chips[idx]);
+    if (idx == _vetChipIndex && home.availableVets.isEmpty) {
+      final token = context.read<AuthProvider>().token ?? '';
+      home.loadAvailableVets(token: token);
+    }
   }
 
   @override
@@ -165,7 +172,49 @@ class _HomeScreenState extends State<HomeScreen> {
                         }),
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
+
+                    GestureDetector(
+                      onTap: () => Navigator.pushNamed(context, '/emergencia'),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: AppColors.danger,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.emergency,
+                                color: Colors.white, size: 22),
+                            SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Emergência Veterinária',
+                                    style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14),
+                                  ),
+                                  Text(
+                                    'Encontre clínicas disponíveis agora',
+                                    style: TextStyle(
+                                        color: Colors.white70, fontSize: 11),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Icon(Icons.arrow_forward_ios,
+                                color: Colors.white70, size: 14),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
 
                     if (confirmedToday.isNotEmpty)
                       Container(
@@ -256,26 +305,83 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       )
                     else ...[
-                      const Text(
-                        'Mais Bem Avaliados',
-                        style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.dark),
-                      ),
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        height: 168,
-                        child: ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: home.establishments.take(5).length,
-                          separatorBuilder: (_, __) => const SizedBox(width: 12),
-                          itemBuilder: (ctx, i) =>
-                              _HighlightCard(establishment: home.establishments[i]),
+                      if (_selectedChip == _vetChipIndex) ...[
+                        const Text(
+                          'Veterinários disponíveis',
+                          style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.dark),
                         ),
-                      ),
-                      const SizedBox(height: 24),
-
+                        const SizedBox(height: 4),
+                        const Text(
+                          'Profissionais prontos para atender seu pet',
+                          style: TextStyle(fontSize: 12, color: AppColors.grey),
+                        ),
+                        const SizedBox(height: 12),
+                        if (home.loadingVets)
+                          const Center(
+                              child: Padding(
+                                  padding: EdgeInsets.all(24),
+                                  child: CircularProgressIndicator(
+                                      color: Color(0xFF16A34A))))
+                        else if (home.availableVets.isEmpty)
+                          Container(
+                            padding: const EdgeInsets.all(20),
+                            margin: const EdgeInsets.only(bottom: 16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: AppColors.greyLight),
+                            ),
+                            child: const Row(
+                              children: [
+                                Icon(Icons.medical_services_outlined,
+                                    color: AppColors.greyLight, size: 28),
+                                SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    'Nenhum veterinário disponível no momento.\nVeja as clínicas abaixo.',
+                                    style: TextStyle(
+                                        color: AppColors.grey, fontSize: 13),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        else
+                          for (final v in home.availableVets) _VetHomeCard(vet: v),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Clínicas e Pet shops',
+                          style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.dark),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                      if (_selectedChip != _vetChipIndex) ...[
+                        const Text(
+                          'Mais Bem Avaliados',
+                          style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.dark),
+                        ),
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          height: 168,
+                          child: ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: home.establishments.take(5).length,
+                            separatorBuilder: (_, __) => const SizedBox(width: 12),
+                            itemBuilder: (ctx, i) =>
+                                _HighlightCard(establishment: home.establishments[i]),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                      ],
                       const Text(
                         'Estabelecimentos',
                         style: TextStyle(
@@ -339,7 +445,7 @@ class _HighlightCard extends StatelessWidget {
               ),
               child: Center(
                 child: Icon(
-                  e.type == 'VET_CLINIC' ? Icons.local_hospital : Icons.pets,
+                  e.isVeterinario ? Icons.local_hospital : Icons.pets,
                   color: AppColors.primary,
                   size: 40,
                 ),
@@ -387,6 +493,106 @@ class _HighlightCard extends StatelessWidget {
   }
 }
 
+class _VetHomeCard extends StatelessWidget {
+  final VeterinarianModel vet;
+  const _VetHomeCard({required this.vet});
+
+  static const _green = Color(0xFF16A34A);
+  static const _orange = Color(0xFFF97316);
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => Navigator.pushNamed(context, '/emergencia'),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: const [
+            BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 2))
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                color: _green.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.medical_services_rounded,
+                  color: _green, size: 24),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Dr. ${vet.name}',
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          color: AppColors.dark)),
+                  const SizedBox(height: 2),
+                  Text(vet.especialidade ?? 'Clínico geral',
+                      style: const TextStyle(
+                          fontSize: 12, color: AppColors.grey)),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 7, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: _green.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Text('Disponível',
+                            style: TextStyle(
+                                fontSize: 10,
+                                color: _green,
+                                fontWeight: FontWeight.w600)),
+                      ),
+                      if (vet.atendeDomicilio) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 7, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: _orange.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.home_outlined,
+                                  size: 10, color: _orange),
+                              SizedBox(width: 3),
+                              Text('Domiciliar',
+                                  style: TextStyle(
+                                      fontSize: 10,
+                                      color: _orange,
+                                      fontWeight: FontWeight.w600)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, color: AppColors.grey, size: 20),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _EstabCard extends StatelessWidget {
   final EstablishmentModel establishment;
   const _EstabCard({required this.establishment});
@@ -417,7 +623,7 @@ class _EstabCard extends StatelessWidget {
               ),
               child: Center(
                 child: Icon(
-                  e.type == 'VET_CLINIC' ? Icons.local_hospital : Icons.pets,
+                  e.isVeterinario ? Icons.local_hospital : Icons.pets,
                   color: AppColors.primary,
                   size: 28,
                 ),

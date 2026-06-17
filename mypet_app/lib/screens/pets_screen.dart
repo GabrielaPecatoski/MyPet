@@ -4,9 +4,8 @@ import 'package:provider/provider.dart';
 import '../core/colors.dart';
 import '../models/pet.dart';
 import '../providers/auth_provider.dart';
-import '../services/api_service.dart';
+import '../providers/pet_provider.dart';
 import '../widgets/mypet_app_bar.dart';
-import 'add_pet_screen.dart';
 
 class PetsScreen extends StatefulWidget {
   const PetsScreen({super.key});
@@ -15,9 +14,6 @@ class PetsScreen extends StatefulWidget {
 }
 
 class _PetsScreenState extends State<PetsScreen> {
-  List<PetModel> _pets = [];
-  bool _loading = true;
-
   @override
   void initState() {
     super.initState();
@@ -26,109 +22,58 @@ class _PetsScreenState extends State<PetsScreen> {
 
   Future<void> _load() async {
     final auth = context.read<AuthProvider>();
-    if (auth.user == null) {
-      setState(() => _loading = false);
-      return;
-    }
-    setState(() => _loading = true);
-    try {
-      final data = await ApiService.get(
-        '/pets/user/${auth.user!.id}',
-        token: auth.token,
-      );
-      final list = data as List;
-      setState(() {
-        _pets = list
-            .map((e) => PetModel.fromJson(e as Map<String, dynamic>))
-            .toList();
-      });
-    } catch (_) {
-    } finally {
-      setState(() => _loading = false);
-    }
+    if (auth.user == null) return;
+    await context
+        .read<PetProvider>()
+        .load(auth.user!.id, token: auth.token);
   }
 
-  Future<void> _addPet() async {
-    final formData = await Navigator.push<PetModel>(
-      context,
-      MaterialPageRoute(builder: (_) => const AddPetScreen()),
+  void _showError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: AppColors.danger),
     );
+  }
+
+  Map<String, dynamic> _formToData(PetModel form, {bool nullableImage = false}) => {
+        'name': form.name,
+        'type': form.type,
+        'breed': form.breed,
+        'age': form.age,
+        if (form.weight != null) 'weight': form.weight,
+        if (nullableImage || form.imageUrl != null) 'imageUrl': form.imageUrl,
+      };
+
+  Future<void> _addPet() async {
+    final formData =
+        await Navigator.pushNamed(context, '/add-pet') as PetModel?;
     if (formData == null || !mounted) return;
 
     final auth = context.read<AuthProvider>();
     if (auth.user == null) return;
 
-    try {
-      final result = await ApiService.post(
-        '/pets/user/${auth.user!.id}',
-        {
-          'name': formData.name,
-          'type': formData.type,
-          'breed': formData.breed,
-          'age': formData.age,
-          if (formData.weight != null) 'weight': formData.weight,
-          if (formData.imageUrl != null) 'imageUrl': formData.imageUrl,
-        },
-        token: auth.token,
-      );
-      final saved = PetModel.fromJson(result as Map<String, dynamic>);
-      setState(() => _pets.add(saved));
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Erro ao cadastrar pet. Tente novamente.'),
-          backgroundColor: AppColors.danger,
-        ),
-      );
-    }
+    final saved = await context.read<PetProvider>().create(
+          auth.user!.id,
+          _formToData(formData),
+          token: auth.token,
+        );
+    if (saved == null) _showError('Erro ao cadastrar pet. Tente novamente.');
   }
 
   Future<void> _editPet(PetModel pet) async {
-    final formData = await Navigator.push<PetModel>(
-      context,
-      MaterialPageRoute(builder: (_) => AddPetScreen(initialPet: pet)),
-    );
+    final formData = await Navigator.pushNamed(
+      context, '/add-pet', arguments: pet) as PetModel?;
     if (formData == null || !mounted) return;
 
     final auth = context.read<AuthProvider>();
     if (auth.user == null) return;
 
-    try {
-      await ApiService.patch(
-        '/pets/${pet.id}',
-        {
-          'name': formData.name,
-          'type': formData.type,
-          'breed': formData.breed,
-          'age': formData.age,
-          if (formData.weight != null) 'weight': formData.weight,
-          'imageUrl': formData.imageUrl,
-        },
-        token: auth.token,
-      );
-      final updated = PetModel(
-        id: pet.id,
-        name: formData.name,
-        type: formData.type,
-        breed: formData.breed,
-        age: formData.age,
-        weight: formData.weight,
-        imageUrl: formData.imageUrl,
-      );
-      setState(() {
-        final idx = _pets.indexWhere((p) => p.id == pet.id);
-        if (idx != -1) _pets[idx] = updated;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Erro ao atualizar pet. Tente novamente.'),
-          backgroundColor: AppColors.danger,
-        ),
-      );
-    }
+    final ok = await context.read<PetProvider>().update(
+          pet.id,
+          _formToData(formData, nullableImage: true),
+          token: auth.token,
+        );
+    if (!ok) _showError('Erro ao atualizar pet. Tente novamente.');
   }
 
   Future<void> _deletePet(PetModel pet) async {
@@ -166,22 +111,16 @@ class _PetsScreenState extends State<PetsScreen> {
     if (confirmed != true || !mounted) return;
 
     final auth = context.read<AuthProvider>();
-    try {
-      await ApiService.delete('/pets/${pet.id}', token: auth.token);
-      setState(() => _pets.removeWhere((p) => p.id == pet.id));
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Erro ao remover pet. Tente novamente.'),
-          backgroundColor: AppColors.danger,
-        ),
-      );
-    }
+    final ok = await context
+        .read<PetProvider>()
+        .remove(pet.id, token: auth.token);
+    if (!ok) _showError('Erro ao remover pet. Tente novamente.');
   }
 
   @override
   Widget build(BuildContext context) {
+    final petProvider = context.watch<PetProvider>();
+    final pets = petProvider.pets;
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: MypetAppBar(
@@ -192,6 +131,8 @@ class _PetsScreenState extends State<PetsScreen> {
             child: Semantics(
               label: 'Adicionar pet',
               button: true,
+              onTap: _addPet,
+              excludeSemantics: true,
               child: GestureDetector(
                 onTap: _addPet,
                 child: Container(
@@ -208,13 +149,13 @@ class _PetsScreenState extends State<PetsScreen> {
           ),
         ],
       ),
-      body: _loading
+      body: petProvider.isLoading
           ? const Center(
               child: CircularProgressIndicator(color: AppColors.primary))
           : RefreshIndicator(
               onRefresh: _load,
               color: AppColors.primary,
-              child: _pets.isEmpty
+              child: pets.isEmpty
                   ? ListView(
                       children: [
                         const SizedBox(height: 80),
@@ -249,11 +190,11 @@ class _PetsScreenState extends State<PetsScreen> {
                   : ListView.builder(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 16, vertical: 16),
-                      itemCount: _pets.length,
+                      itemCount: pets.length,
                       itemBuilder: (ctx, i) => _PetCard(
-                        pet: _pets[i],
-                        onEdit: () => _editPet(_pets[i]),
-                        onDelete: () => _deletePet(_pets[i]),
+                        pet: pets[i],
+                        onEdit: () => _editPet(pets[i]),
+                        onDelete: () => _deletePet(pets[i]),
                       ),
                     ),
             ),

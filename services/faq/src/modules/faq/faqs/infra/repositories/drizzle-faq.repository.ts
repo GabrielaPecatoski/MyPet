@@ -25,29 +25,54 @@ export class DrizzleFaqRepository implements FaqRepository {
   async update(item: FaqItem): Promise<void> {
     await this.drizzleService.db
       .update(faqItemsSchema)
-      .set({ question: item.question, answer: item.answer, category: item.category, targetRole: item.targetRole, order: item.order, active: item.active, viewCount: item.viewCount })
+      .set({
+        question: item.question,
+        answer: item.answer,
+        category: item.category,
+        targetRole: item.targetRole,
+        order: item.order,
+        active: item.active,
+        viewCount: item.viewCount,
+      })
       .where(eq(faqItemsSchema.id, item.id!));
   }
 
   async delete(id: string): Promise<void> {
-    await this.drizzleService.db.delete(faqItemsSchema).where(eq(faqItemsSchema.id, id));
+    await this.drizzleService.db
+      .delete(faqItemsSchema)
+      .where(eq(faqItemsSchema.id, id));
   }
 
   async findById(id: string): Promise<FaqItem | null> {
-    const [row] = await this.drizzleService.db.select().from(faqItemsSchema).where(eq(faqItemsSchema.id, id)).limit(1);
+    const [row] = await this.drizzleService.db
+      .select()
+      .from(faqItemsSchema)
+      .where(eq(faqItemsSchema.id, id))
+      .limit(1);
     return FaqItem.restore(row);
   }
 
   async findAll(category?: string): Promise<FaqItem[]> {
-    const base = this.drizzleService.db.select().from(faqItemsSchema).where(eq(faqItemsSchema.active, true)).orderBy(asc(faqItemsSchema.order));
+    const base = this.drizzleService.db
+      .select()
+      .from(faqItemsSchema)
+      .where(eq(faqItemsSchema.active, true))
+      .orderBy(asc(faqItemsSchema.order));
     const rows = category
-      ? await this.drizzleService.db.select().from(faqItemsSchema).where(eq(faqItemsSchema.category, category)).orderBy(asc(faqItemsSchema.order))
+      ? await this.drizzleService.db
+          .select()
+          .from(faqItemsSchema)
+          .where(eq(faqItemsSchema.category, category))
+          .orderBy(asc(faqItemsSchema.order))
       : await base;
     return rows.map((r) => FaqItem.restore(r)!);
   }
 
   async findAllAdmin(): Promise<FaqItem[]> {
-    const rows = await this.drizzleService.db.select().from(faqItemsSchema).orderBy(asc(faqItemsSchema.order));
+    const rows = await this.drizzleService.db
+      .select()
+      .from(faqItemsSchema)
+      .orderBy(asc(faqItemsSchema.order));
     return rows.map((r) => FaqItem.restore(r)!);
   }
 

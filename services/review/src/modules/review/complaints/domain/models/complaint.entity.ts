@@ -1,4 +1,8 @@
-export type ComplaintStatus = "PENDENTE" | "EM_ANALISE" | "RESOLVIDA" | "REJEITADA";
+export type ComplaintStatus =
+  | "PENDENTE"
+  | "EM_ANALISE"
+  | "RESOLVIDA"
+  | "REJEITADA";
 
 export class Complaint {
   private readonly _id?: string;
@@ -20,21 +24,51 @@ export class Complaint {
     this._updatedAt = updatedAt;
   }
 
-  get id(): string | undefined { return this._id; }
-  get establishmentId(): string { return this._establishmentId; }
-  get userId(): string { return this._userId; }
-  get userName(): string { return this._userName; }
-  get bookingId(): string | undefined { return this._bookingId; }
-  get subject(): string { return this._subject; }
-  get description(): string { return this._description; }
-  get category(): string { return this._category; }
-  get status(): ComplaintStatus { return this._status; }
-  get response(): string | undefined { return this._response; }
-  get createdAt(): Date | undefined { return this._createdAt; }
-  get updatedAt(): Date | undefined { return this._updatedAt; }
+  get id(): string | undefined {
+    return this._id;
+  }
+  get establishmentId(): string {
+    return this._establishmentId;
+  }
+  get userId(): string {
+    return this._userId;
+  }
+  get userName(): string {
+    return this._userName;
+  }
+  get bookingId(): string | undefined {
+    return this._bookingId;
+  }
+  get subject(): string {
+    return this._subject;
+  }
+  get description(): string {
+    return this._description;
+  }
+  get category(): string {
+    return this._category;
+  }
+  get status(): ComplaintStatus {
+    return this._status;
+  }
+  get response(): string | undefined {
+    return this._response;
+  }
+  get createdAt(): Date | undefined {
+    return this._createdAt;
+  }
+  get updatedAt(): Date | undefined {
+    return this._updatedAt;
+  }
 
-  withStatus(status: ComplaintStatus) { this._status = status; return this; }
-  withResponse(response: string) { this._response = response; return this; }
+  withStatus(status: ComplaintStatus) {
+    this._status = status;
+    return this;
+  }
+  withResponse(response: string) {
+    this._response = response;
+    return this;
+  }
 
   toJSON() {
     return {

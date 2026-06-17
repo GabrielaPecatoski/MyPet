@@ -32,7 +32,7 @@ class UserQuestion {
   final String userRole;
   final String question;
   final String? answer;
-  final String status; // PENDENTE | RESPONDIDA | FECHADA
+  final String status;
   final DateTime createdAt;
   final DateTime? answeredAt;
 
