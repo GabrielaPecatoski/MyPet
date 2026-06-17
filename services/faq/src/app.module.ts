@@ -4,10 +4,6 @@ import { SharedModule } from "@shared/shared.module";
 import { FaqModule } from "./modules/faq/faq.module";
 
 @Module({
-  imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
-    SharedModule,
-    FaqModule,
-  ],
+  imports: [ConfigModule.forRoot({ isGlobal: true }), SharedModule, FaqModule],
 })
 export class AppModule {}

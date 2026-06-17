@@ -1,7 +1,10 @@
 import { EstablishmentService } from "@estab/establishments/application/services/establishment.service";
 import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
+import {
+  ReviewExchangeName,
+  ReviewRoutingKey,
+} from "@shared/contracts/events/review-events.enum";
 import { RabbitMQService } from "@shared/infra/messaging/rabbitmq.service";
-import { ReviewExchangeName, ReviewRoutingKey } from "@shared/contracts/events/review-events.enum";
 
 interface ReviewCreatedPayload {
   reviewId: string;
@@ -27,13 +30,21 @@ export class EstablishmentReviewHandler implements OnModuleInit {
     try {
       const channel = this.rabbitMQService.getChannel();
       await channel.assertQueue(ESTAB_REVIEW_QUEUE, { durable: true });
-      await channel.assertExchange(ReviewExchangeName.CREATED, "direct", { durable: true });
-      await channel.bindQueue(ESTAB_REVIEW_QUEUE, ReviewExchangeName.CREATED, ReviewRoutingKey.CREATED);
+      await channel.assertExchange(ReviewExchangeName.CREATED, "direct", {
+        durable: true,
+      });
+      await channel.bindQueue(
+        ESTAB_REVIEW_QUEUE,
+        ReviewExchangeName.CREATED,
+        ReviewRoutingKey.CREATED,
+      );
 
       await channel.consume(ESTAB_REVIEW_QUEUE, async (msg) => {
         if (!msg) return;
         try {
-          const payload = JSON.parse(msg.content.toString()) as ReviewCreatedPayload;
+          const payload = JSON.parse(
+            msg.content.toString(),
+          ) as ReviewCreatedPayload;
           await this.establishmentService.updateRating(
             payload.establishmentId,
             payload.newAverage,
@@ -46,7 +57,9 @@ export class EstablishmentReviewHandler implements OnModuleInit {
         }
       });
 
-      this.logger.log(`EstablishmentReviewHandler listening on queue: ${ESTAB_REVIEW_QUEUE}`);
+      this.logger.log(
+        `EstablishmentReviewHandler listening on queue: ${ESTAB_REVIEW_QUEUE}`,
+      );
     } catch (err) {
       this.logger.warn("RabbitMQ not available; review handler disabled.", err);
     }

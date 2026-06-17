@@ -1,13 +1,16 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/colors.dart';
 import '../models/admin_data.dart';
 import '../models/complaint.dart';
+import '../models/driver.dart';
+import '../models/veterinarian.dart';
+import '../providers/admin_provider.dart';
 import '../providers/auth_provider.dart';
-import '../services/api_service.dart';
 import '../widgets/app_bottom_nav.dart';
 import '../widgets/mypet_app_bar.dart';
-
 
 class AdminScreen extends StatefulWidget {
   const AdminScreen({super.key});
@@ -18,129 +21,17 @@ class AdminScreen extends StatefulWidget {
 class _AdminScreenState extends State<AdminScreen> {
   int _selectedIndex = 0;
 
-  List<AdminUserModel> _users = [];
-  List<AdminEstabModel> _estabs = [];
-  List<ComplaintModel> _complaints = [];
-  List<dynamic> _faqItems = [];
-  List<dynamic> _userQuestions = [];
-  Map<String, dynamic> _reviewStats = {};
-  bool _loading = true;
-  String? _error;
-  String? _token;
-
   @override
   void initState() {
     super.initState();
-    _token = Provider.of<AuthProvider>(context, listen: false).token;
-    _loadAll();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final token = context.read<AuthProvider>().token;
+      final admin = context.read<AdminProvider>();
+      admin.setToken(token);
+      admin.loadAll();
+    });
   }
 
-  Future<void> _loadAll() async {
-    setState(() { _loading = true; _error = null; });
-    try {
-      await Future.wait([
-        _loadUsers(),
-        _loadEstabs(),
-        _loadComplaints(),
-        _loadFaq(),
-        _loadReviewStats(),
-        _loadUserQuestions(),
-      ]);
-    } catch (e) {
-      setState(() => _error = e.toString());
-    }
-    setState(() => _loading = false);
-  }
-
-  Future<void> _loadUsers() async {
-    final data = await ApiService.get('/users', token: _token);
-    final list = data is Map ? (data['data'] as List? ?? []) : (data as List? ?? []);
-    setState(() => _users = list.map((e) => AdminUserModel.fromJson(e as Map<String, dynamic>)).toList());
-  }
-
-  Future<void> _loadEstabs() async {
-    try {
-      final data = await ApiService.get('/establishments/admin/all', token: _token);
-      setState(() => _estabs = (data as List).map((e) => AdminEstabModel.fromJson(e as Map<String, dynamic>)).toList());
-    } catch (_) {
-      final data = await ApiService.get('/establishments');
-      setState(() => _estabs = (data as List).map((e) => AdminEstabModel.fromJson(e as Map<String, dynamic>)).toList());
-    }
-  }
-
-  Future<void> _loadComplaints() async {
-    try {
-      final data = await ApiService.get('/reviews/admin/complaints', token: _token);
-      setState(() => _complaints = (data as List).map((e) => ComplaintModel.fromJson(e as Map<String, dynamic>)).toList());
-    } catch (_) {
-      setState(() => _complaints = []);
-    }
-  }
-
-  Future<void> _loadFaq() async {
-    try {
-      final data = await ApiService.get('/faq/admin/all', token: _token);
-      setState(() => _faqItems = data as List<dynamic>);
-    } catch (_) {
-      setState(() => _faqItems = []);
-    }
-  }
-
-  Future<void> _loadReviewStats() async {
-    try {
-      final data = await ApiService.get('/reviews/admin/stats', token: _token);
-      setState(() => _reviewStats = data as Map<String, dynamic>);
-    } catch (_) {
-      setState(() => _reviewStats = {});
-    }
-  }
-
-  Future<void> _loadUserQuestions() async {
-    try {
-      final data = await ApiService.get('/faq/questions/admin/all', token: _token);
-      setState(() => _userQuestions = data as List<dynamic>);
-    } catch (_) {
-      setState(() => _userQuestions = []);
-    }
-  }
-
-  Future<void> _resolveComplaint(String id) async {
-    await ApiService.patch('/reviews/admin/complaints/$id/resolve', {}, token: _token);
-    await _loadComplaints();
-  }
-
-  Future<void> _rejectComplaint(String id) async {
-    await ApiService.patch('/reviews/admin/complaints/$id/reject', {}, token: _token);
-    await _loadComplaints();
-  }
-
-  Future<void> _createFaq(String question, String answer, String category, String targetRole) async {
-    await ApiService.post('/faq/admin', {
-      'question': question, 'answer': answer,
-      'category': category, 'targetRole': targetRole,
-    }, token: _token);
-    await _loadFaq();
-  }
-
-  Future<void> _updateFaq(String id, Map<String, dynamic> data) async {
-    await ApiService.put('/faq/admin/$id', data, token: _token);
-    await _loadFaq();
-  }
-
-  Future<void> _deleteFaq(String id) async {
-    await ApiService.delete('/faq/admin/$id', token: _token);
-    await _loadFaq();
-  }
-
-  Future<void> _answerUserQuestion(String id, String answer) async {
-    await ApiService.put('/faq/questions/admin/$id/answer', {'answer': answer}, token: _token);
-    await _loadUserQuestions();
-  }
-
-  Future<void> _closeUserQuestion(String id) async {
-    await ApiService.put('/faq/questions/admin/$id/close', {}, token: _token);
-    await _loadUserQuestions();
-  }
 
   Future<void> _logout() async {
     final ok = await showDialog<bool>(
@@ -201,49 +92,56 @@ class _AdminScreenState extends State<AdminScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final pendingComplaints = _complaints.where((c) => c.status == 'PENDENTE').length;
-    final pendingQuestions = _userQuestions.where((q) => (q as Map)['status'] == 'PENDENTE').length;
+    final vm = context.watch<AdminProvider>();
 
     final pages = [
       _PainelPage(
-        users: _users,
-        estabs: _estabs,
-        complaints: _complaints,
-        reviewStats: _reviewStats,
-        loading: _loading,
-        error: _error,
-        onRetry: _loadAll,
+        users: vm.users,
+        estabs: vm.estabs,
+        complaints: vm.complaints,
+        reviewStats: vm.reviewStats,
+        loading: vm.loading,
+        error: vm.error,
+        onRetry: vm.loadAll,
         onLogout: _logout,
         onGoToComplaints: () => setState(() => _selectedIndex = 1),
         onGoToStats: () => setState(() => _selectedIndex = 5),
       ),
       _ReclamacoesPage(
-        complaints: _complaints,
-        estabs: _estabs,
-        loading: _loading,
-        onResolve: _resolveComplaint,
-        onReject: _rejectComplaint,
+        complaints: vm.complaints,
+        estabs: vm.estabs,
+        loading: vm.loading,
+        onResolve: vm.resolveComplaint,
+        onReject: vm.rejectComplaint,
       ),
-      _UsuariosPage(users: _users, loading: _loading),
-      _LojasPage(estabs: _estabs, loading: _loading),
+      _CadastrosPage(users: vm.users, estabs: vm.estabs, loading: vm.loading),
+      _VerificacoesPage(
+        pendingVets: vm.pendingVets,
+        pendingDrivers: vm.pendingDrivers,
+        loading: vm.loading,
+        onApproveVet: vm.approveVet,
+        onRejectVet: vm.rejectVet,
+        onApproveDriver: vm.approveDriver,
+        onRejectDriver: vm.rejectDriver,
+      ),
       _FaqPage(
-        faqItems: _faqItems,
-        userQuestions: _userQuestions,
-        loading: _loading,
-        onCreateFaq: _createFaq,
-        onUpdateFaq: _updateFaq,
-        onDeleteFaq: _deleteFaq,
-        onAnswerQuestion: _answerUserQuestion,
-        onCloseQuestion: _closeUserQuestion,
+        faqItems: vm.faqItems,
+        userQuestions: vm.userQuestions,
+        loading: vm.loading,
+        onCreateFaq: vm.createFaq,
+        onUpdateFaq: vm.updateFaq,
+        onDeleteFaq: vm.deleteFaq,
+        onAnswerQuestion: vm.answerQuestion,
+        onCloseQuestion: vm.closeQuestion,
       ),
       _EstatisticasPage(
-        users: _users,
-        estabs: _estabs,
-        complaints: _complaints,
-        reviewStats: _reviewStats,
-        faqItems: _faqItems,
-        userQuestions: _userQuestions,
-        loading: _loading,
+        users: vm.users,
+        estabs: vm.estabs,
+        complaints: vm.complaints,
+        reviewStats: vm.reviewStats,
+        faqItems: vm.faqItems,
+        userQuestions: vm.userQuestions,
+        loading: vm.loading,
       ),
     ];
 
@@ -252,18 +150,20 @@ class _AdminScreenState extends State<AdminScreen> {
       appBar: _selectedIndex == 0
           ? null
           : MypetAppBar(
-              showBack: false,
+              showBack: _selectedIndex == 5,
+              onBack: _selectedIndex == 5 ? () => setState(() => _selectedIndex = 0) : null,
               purple: _selectedIndex == 5,
               actions: [_AdminSairButton(onPressed: _logout, onPurple: _selectedIndex == 5)],
             ),
       body: pages[_selectedIndex],
       bottomNavigationBar: AppBottomNav(
-        currentIndex: _selectedIndex,
+        currentIndex: _selectedIndex < 5 ? _selectedIndex : -1,
         items: adminNavItems,
         onTap: (i) => setState(() => _selectedIndex = i),
         badges: {
-          1: pendingComplaints,
-          4: pendingQuestions,
+          1: vm.pendingComplaints,
+          3: vm.pendingVerifications,
+          4: vm.pendingQuestions,
         },
       ),
     );
@@ -460,45 +360,13 @@ class _PainelPage extends StatelessWidget {
               _StatCard('Novos usuários', '+${users.where((u) { final d = u.createdAt; final now = DateTime.now(); return d != null && d.year == now.year && d.month == now.month; }).length}', Icons.trending_up_outlined, AppColors.success),
             ]),
 
-            const SizedBox(height: 24),
-            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              const Text('Movimentação de hoje', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.dark)),
-              Text(
-                _dayMonth(DateTime.now()),
-                style: const TextStyle(fontSize: 12, color: AppColors.grey),
-              ),
-            ]),
-            const SizedBox(height: 12),
-            _MovCard(
-              icon: Icons.calendar_today_outlined,
-              iconColor: AppColors.primary,
-              title: '— agendamentos confirmados',
-              sub: 'dados em tempo real',
-            ),
             const SizedBox(height: 8),
-            _MovCard(
-              icon: Icons.favorite_outline,
-              iconColor: AppColors.danger,
-              title: '— serviços em atendimento',
-              sub: 'banho, tosa, consultas vet',
-            ),
-            const SizedBox(height: 8),
-            _MovCard(
-              icon: Icons.trending_up_outlined,
-              iconColor: AppColors.success,
-              title: '— transações hoje',
-              sub: 'valor total estimado',
-            ),
           ]),
         ),
       ],
     );
   }
 
-  String _dayMonth(DateTime d) {
-    const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-    return '${d.day} ${months[d.month - 1]}';
-  }
 }
 
 class _StatCard extends StatelessWidget {
@@ -530,40 +398,6 @@ class _StatCard extends StatelessWidget {
     );
   }
 }
-
-class _MovCard extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final String title;
-  final String sub;
-  const _MovCard({required this.icon, required this.iconColor, required this.title, required this.sub});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 4, offset: const Offset(0, 2))],
-      ),
-      child: Row(children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(color: iconColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
-          child: Icon(icon, size: 18, color: iconColor),
-        ),
-        const SizedBox(width: 12),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.dark)),
-          Text(sub, style: const TextStyle(fontSize: 11, color: AppColors.grey)),
-        ])),
-        const Icon(Icons.chevron_right, size: 18, color: AppColors.greyLight),
-      ]),
-    );
-  }
-}
-
 
 class _ReclamacoesPage extends StatefulWidget {
   final List<ComplaintModel> complaints;
@@ -1343,6 +1177,60 @@ class _EstabCard extends StatelessWidget {
 }
 
 
+class _CadastrosPage extends StatefulWidget {
+  final List<AdminUserModel> users;
+  final List<AdminEstabModel> estabs;
+  final bool loading;
+  const _CadastrosPage({required this.users, required this.estabs, required this.loading});
+
+  @override
+  State<_CadastrosPage> createState() => _CadastrosPageState();
+}
+
+class _CadastrosPageState extends State<_CadastrosPage> with SingleTickerProviderStateMixin {
+  late TabController _tab;
+
+  @override
+  void initState() {
+    super.initState();
+    _tab = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tab.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.loading) return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+    return Column(children: [
+      Container(
+        color: Colors.white,
+        child: TabBar(
+          controller: _tab,
+          indicatorColor: AppColors.primary,
+          labelColor: AppColors.primary,
+          unselectedLabelColor: AppColors.grey,
+          labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+          tabs: [
+            Tab(text: 'Usuários (${widget.users.length})'),
+            Tab(text: 'Lojas (${widget.estabs.length})'),
+          ],
+        ),
+      ),
+      Expanded(
+        child: TabBarView(controller: _tab, children: [
+          _UsuariosPage(users: widget.users, loading: false),
+          _LojasPage(estabs: widget.estabs, loading: false),
+        ]),
+      ),
+    ]);
+  }
+}
+
+
 class _FaqPage extends StatefulWidget {
   final List<dynamic> faqItems;
   final List<dynamic> userQuestions;
@@ -1934,6 +1822,8 @@ class _FaqEditSheetState extends State<_FaqEditSheet> {
   late bool _active;
   bool _visCliente = true;
   bool _visLojista = false;
+  bool _visMotorista = false;
+  bool _visVet = false;
   bool _destaque = false;
 
   @override
@@ -1946,6 +1836,7 @@ class _FaqEditSheetState extends State<_FaqEditSheet> {
     final role = widget.item?['targetRole'] as String? ?? 'CLIENTE';
     _visCliente = role == 'CLIENTE' || role == 'TODOS';
     _visLojista = role == 'VENDEDOR' || role == 'TODOS';
+    _visMotorista = role == 'MOTORISTA' || role == 'TODOS';
   }
 
   @override
@@ -2257,6 +2148,358 @@ class _EstatisticasPage extends StatelessWidget {
     );
   }
 }
+
+
+class _VerificacoesPage extends StatefulWidget {
+  final List<VeterinarianModel> pendingVets;
+  final List<DriverModel> pendingDrivers;
+  final bool loading;
+  final Future<void> Function(String) onApproveVet;
+  final Future<void> Function(String) onRejectVet;
+  final Future<void> Function(String) onApproveDriver;
+  final Future<void> Function(String) onRejectDriver;
+
+  const _VerificacoesPage({
+    required this.pendingVets,
+    required this.pendingDrivers,
+    required this.loading,
+    required this.onApproveVet,
+    required this.onRejectVet,
+    required this.onApproveDriver,
+    required this.onRejectDriver,
+  });
+
+  @override
+  State<_VerificacoesPage> createState() => _VerificacoesPageState();
+}
+
+class _VerificacoesPageState extends State<_VerificacoesPage>
+    with SingleTickerProviderStateMixin {
+  late TabController _tab;
+  final _processingIds = <String>{};
+  final _cnhPhotos = <String, String>{};
+  final _crmvPhotos = <String, String>{};
+
+  @override
+  void initState() {
+    super.initState();
+    _tab = TabController(length: 2, vsync: this);
+    _loadPhotos();
+  }
+
+  @override
+  void didUpdateWidget(_VerificacoesPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.pendingDrivers != widget.pendingDrivers ||
+        oldWidget.pendingVets != widget.pendingVets) {
+      _loadPhotos();
+    }
+  }
+
+  Future<void> _loadPhotos() async {
+    final admin = context.read<AdminProvider>();
+    for (final d in widget.pendingDrivers) {
+      final path = await admin.cnhPhoto(d.cpf);
+      if (path != null && mounted) setState(() => _cnhPhotos[d.cpf] = path);
+    }
+    for (final v in widget.pendingVets) {
+      final path = await admin.crmvPhoto(v.cpf);
+      if (path != null && mounted) setState(() => _crmvPhotos[v.cpf] = path);
+    }
+  }
+
+  @override
+  void dispose() {
+    _tab.dispose();
+    super.dispose();
+  }
+
+  Future<void> _act(String id, Future<void> Function(String) fn) async {
+    setState(() => _processingIds.add(id));
+    try {
+      await fn(id);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(e.toString().replaceAll('Exception: ', '')),
+          backgroundColor: AppColors.danger,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _processingIds.remove(id));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.loading) {
+      return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+    }
+
+    return Column(
+      children: [
+        Container(
+          color: Colors.white,
+          child: TabBar(
+            controller: _tab,
+            labelColor: AppColors.primary,
+            unselectedLabelColor: AppColors.grey,
+            indicatorColor: AppColors.primary,
+            tabs: [
+              Tab(text: 'Veterinários (${widget.pendingVets.length})'),
+              Tab(text: 'Motoristas (${widget.pendingDrivers.length})'),
+            ],
+          ),
+        ),
+        Expanded(
+          child: TabBarView(
+            controller: _tab,
+            children: [
+              _listVets(),
+              _listDrivers(),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _listVets() {
+    if (widget.pendingVets.isEmpty) {
+      return _emptyTab('veterinários', Icons.medical_services_outlined);
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: widget.pendingVets.length,
+      itemBuilder: (_, i) {
+        final v = widget.pendingVets[i];
+        return _PendingCard(
+          id: v.id,
+          name: v.name,
+          subtitle: 'CRMV: ${v.crmv}${v.especialidade != null ? ' • ${v.especialidade}' : ''}',
+          extra: v.phone,
+          icon: Icons.medical_services_rounded,
+          color: const Color(0xFF16A34A),
+          processing: _processingIds.contains(v.id),
+          docPhotoPath: _crmvPhotos[v.cpf],
+          docPhotoLabel: 'Diploma / CRMV',
+          onApprove: () => _act(v.id, widget.onApproveVet),
+          onReject: () => _act(v.id, widget.onRejectVet),
+        );
+      },
+    );
+  }
+
+  Widget _listDrivers() {
+    if (widget.pendingDrivers.isEmpty) {
+      return _emptyTab('motoristas', Icons.airport_shuttle_outlined);
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: widget.pendingDrivers.length,
+      itemBuilder: (_, i) {
+        final d = widget.pendingDrivers[i];
+        return _PendingCard(
+          id: d.id,
+          name: d.name,
+          subtitle: '${d.vehicleTypeLabel} • ${d.vehicleModel}',
+          extra: 'Placa: ${d.vehiclePlate} • CNH: ${d.cnh}',
+          icon: Icons.airport_shuttle_rounded,
+          color: const Color(0xFFF97316),
+          processing: _processingIds.contains(d.id),
+          docPhotoPath: _cnhPhotos[d.cpf],
+          docPhotoLabel: 'Foto da CNH',
+          onApprove: () => _act(d.id, widget.onApproveDriver),
+          onReject: () => _act(d.id, widget.onRejectDriver),
+        );
+      },
+    );
+  }
+
+  Widget _emptyTab(String tipo, IconData icon) => Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 44, color: AppColors.greyLight),
+            const SizedBox(height: 10),
+            Text('Nenhum $tipo pendente',
+                style: const TextStyle(color: AppColors.grey, fontSize: 14)),
+          ],
+        ),
+      );
+}
+
+class _PendingCard extends StatelessWidget {
+  final String id;
+  final String name;
+  final String subtitle;
+  final String extra;
+  final IconData icon;
+  final Color color;
+  final bool processing;
+  final String? docPhotoPath;
+  final String? docPhotoLabel;
+  final VoidCallback onApprove;
+  final VoidCallback onReject;
+
+  const _PendingCard({
+    required this.id,
+    required this.name,
+    required this.subtitle,
+    required this.extra,
+    required this.icon,
+    required this.color,
+    required this.processing,
+    this.docPhotoPath,
+    this.docPhotoLabel,
+    required this.onApprove,
+    required this.onReject,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withValues(alpha: 0.4), width: 1.5),
+        boxShadow: const [
+          BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 2))
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: color, size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(name,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                            color: AppColors.dark)),
+                    const SizedBox(height: 2),
+                    Text(subtitle,
+                        style: const TextStyle(
+                            fontSize: 12, color: AppColors.grey)),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.warning.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text(
+                  'Pendente',
+                  style: TextStyle(
+                      fontSize: 11,
+                      color: AppColors.warning,
+                      fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+          if (extra.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(Icons.info_outline, size: 13, color: AppColors.grey),
+                const SizedBox(width: 5),
+                Flexible(
+                  child: Text(extra,
+                      style: const TextStyle(fontSize: 12, color: AppColors.grey)),
+                ),
+              ],
+            ),
+          ],
+          if (docPhotoPath != null && !kIsWeb) ...[
+            const SizedBox(height: 10),
+            Row(children: [
+              const Icon(Icons.photo_outlined, size: 13, color: AppColors.grey),
+              const SizedBox(width: 5),
+              Text(
+                '${docPhotoLabel ?? 'Documento'}:',
+                style: const TextStyle(fontSize: 12, color: AppColors.grey, fontWeight: FontWeight.w600),
+              ),
+            ]),
+            const SizedBox(height: 6),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.file(
+                File(docPhotoPath!),
+                height: 120,
+                width: double.infinity,
+                fit: BoxFit.cover,
+              ),
+            ),
+          ],
+          const SizedBox(height: 12),
+          if (processing)
+            const Center(
+                child: SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                        color: AppColors.primary, strokeWidth: 2)))
+          else
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: onReject,
+                    icon: const Icon(Icons.close, size: 16),
+                    label: const Text('Rejeitar'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.danger,
+                      side: const BorderSide(color: AppColors.danger),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10)),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: onApprove,
+                    icon: const Icon(Icons.check, size: 16),
+                    label: const Text('Aprovar'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.success,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10)),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 
 class _StatsRowData {
   final String label;

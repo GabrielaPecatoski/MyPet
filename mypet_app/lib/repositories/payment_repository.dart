@@ -44,9 +44,6 @@ class PaymentRepository implements IPaymentRepository {
       final res = await ApiService.patch(endpoint, body, token: token);
       return res as Map<String, dynamic>;
     } catch (e) {
-      // O endpoint /pay é idempotente no backend (retorna alreadyPaid se já
-      // autorizado), então é seguro tentar mais uma vez em falha de rede/timeout
-      // — evita o usuário ter que clicar de novo.
       if (ApiService.isNetworkError(e)) {
         final res = await ApiService.patch(endpoint, body, token: token);
         return res as Map<String, dynamic>;

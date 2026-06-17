@@ -17,28 +17,79 @@ export class Product {
     this._createdAt = createdAt;
   }
 
-  get id(): string | undefined { return this._id; }
-  get establishmentId(): string | undefined { return this._establishmentId; }
-  get name(): string { return this._name; }
-  get brand(): string { return this._brand; }
-  get price(): number { return this._price; }
-  get unit(): string { return this._unit; }
-  get category(): string { return this._category; }
-  get description(): string { return this._description; }
-  get stock(): number { return this._stock; }
-  get imageUrl(): string | undefined { return this._imageUrl; }
-  get active(): boolean { return this._active; }
-  get createdAt(): Date | undefined { return this._createdAt; }
+  get id(): string | undefined {
+    return this._id;
+  }
+  get establishmentId(): string | undefined {
+    return this._establishmentId;
+  }
+  get name(): string {
+    return this._name;
+  }
+  get brand(): string {
+    return this._brand;
+  }
+  get price(): number {
+    return this._price;
+  }
+  get unit(): string {
+    return this._unit;
+  }
+  get category(): string {
+    return this._category;
+  }
+  get description(): string {
+    return this._description;
+  }
+  get stock(): number {
+    return this._stock;
+  }
+  get imageUrl(): string | undefined {
+    return this._imageUrl;
+  }
+  get active(): boolean {
+    return this._active;
+  }
+  get createdAt(): Date | undefined {
+    return this._createdAt;
+  }
 
-  withName(v: string) { this._name = v; return this; }
-  withBrand(v: string) { this._brand = v; return this; }
-  withPrice(v: number) { this._price = v; return this; }
-  withUnit(v: string) { this._unit = v; return this; }
-  withCategory(v: string) { this._category = v; return this; }
-  withDescription(v: string) { this._description = v; return this; }
-  withStock(v: number) { this._stock = v; return this; }
-  withImageUrl(v?: string) { this._imageUrl = v; return this; }
-  withActive(v: boolean) { this._active = v; return this; }
+  withName(v: string) {
+    this._name = v;
+    return this;
+  }
+  withBrand(v: string) {
+    this._brand = v;
+    return this;
+  }
+  withPrice(v: number) {
+    this._price = v;
+    return this;
+  }
+  withUnit(v: string) {
+    this._unit = v;
+    return this;
+  }
+  withCategory(v: string) {
+    this._category = v;
+    return this;
+  }
+  withDescription(v: string) {
+    this._description = v;
+    return this;
+  }
+  withStock(v: number) {
+    this._stock = v;
+    return this;
+  }
+  withImageUrl(v?: string) {
+    this._imageUrl = v;
+    return this;
+  }
+  withActive(v: boolean) {
+    this._active = v;
+    return this;
+  }
 
   static restore(props?: {
     id?: string;

@@ -9,5 +9,7 @@ export interface PetRepository {
   delete(id: string): Promise<void>;
   findById(id: string): Promise<Pet | null>;
   findByUserId(userId: string): Promise<Pet[]>;
-  findAllPaginated(params: PaginationParams): Promise<{ rows: Pet[]; total: number }>;
+  findAllPaginated(
+    params: PaginationParams,
+  ): Promise<{ rows: Pet[]; total: number }>;
 }

@@ -73,6 +73,11 @@ class EstablishmentService {
     required String phone,
     required String type,
     String? imageUrl,
+    String? crmv,
+    bool? atendeEmergencia,
+    bool? atendimento24h,
+    bool? receberAlertaSonoro,
+    bool? receberPushEmergencia,
   }) async {
     final body = <String, dynamic>{
       'name': name,
@@ -83,6 +88,11 @@ class EstablishmentService {
       'type': type,
     };
     if (imageUrl != null) body['imageUrl'] = imageUrl;
+    if (crmv != null) body['crmv'] = crmv;
+    if (atendeEmergencia != null) body['atendeEmergencia'] = atendeEmergencia;
+    if (atendimento24h != null) body['atendimento24h'] = atendimento24h;
+    if (receberAlertaSonoro != null) body['receberAlertaSonoro'] = receberAlertaSonoro;
+    if (receberPushEmergencia != null) body['receberPushEmergencia'] = receberPushEmergencia;
     final res = await http
         .patch(
           Uri.parse(
@@ -130,6 +140,8 @@ class EstablishmentService {
     required double price,
     required int durationMinutes,
     String? description,
+    String categoria = 'outros',
+    bool priceVariable = false,
   }) async {
     final res = await http
         .post(
@@ -138,9 +150,11 @@ class EstablishmentService {
           headers: _headers(token),
           body: jsonEncode({
             'name': name,
-            'price': price,
+            'price': priceVariable ? 0 : price,
+            'priceVariable': priceVariable,
             'durationMinutes': durationMinutes,
             if (description != null && description.isNotEmpty) 'description': description,
+            'categoria': categoria,
           }),
         )
         .timeout(const Duration(seconds: 8));
@@ -193,6 +207,22 @@ class EstablishmentService {
       final list = jsonDecode(res.body) as List;
       return list
           .map((s) => ServiceModel.fromJson(s as Map<String, dynamic>))
+          .toList();
+    }
+    return [];
+  }
+
+  static Future<List<EstablishmentModel>> fetchEmergency() async {
+    final res = await http
+        .get(
+          Uri.parse(
+              '${ApiConstants.baseUrl}${ApiConstants.establishmentsEndpoint}/emergency'),
+        )
+        .timeout(const Duration(seconds: 8));
+    if (res.statusCode == 200) {
+      final list = jsonDecode(res.body) as List;
+      return list
+          .map((e) => EstablishmentModel.fromJson(e as Map<String, dynamic>))
           .toList();
     }
     return [];

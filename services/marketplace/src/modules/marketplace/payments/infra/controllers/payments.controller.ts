@@ -14,8 +14,22 @@ export class PaymentsController {
   @RequirePermissions(Permission.ORDERS_WRITE)
   @ApiOperation({ summary: "Processar pagamento de pedido" })
   async processPayment(
-    @Body() body: { orderId: string; method: string; cardNumber?: string; installments?: number },
+    @Body() body: {
+      orderId: string;
+      method: string;
+      cardNumber?: string;
+      installments?: number;
+      deliveryMethod?: string;
+      deliveryAddress?: string;
+    },
   ) {
-    return this.orderService.processPayment(body.orderId, body.method, body.cardNumber, body.installments);
+    return this.orderService.processPayment(
+      body.orderId,
+      body.method,
+      body.cardNumber,
+      body.installments,
+      body.deliveryMethod,
+      body.deliveryAddress,
+    );
   }
 }

@@ -133,7 +133,7 @@ class EstabPurpleHeader extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF7B3FF2), Color(0xFF5B2FBF)],
+          colors: [Color(0xFF0284C7), Color(0xFF0EA5E9)],
         ),
       ),
       padding: EdgeInsets.fromLTRB(

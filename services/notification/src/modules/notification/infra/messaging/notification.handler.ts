@@ -1,8 +1,18 @@
 import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
-import { RabbitMQService } from "@shared/infra/messaging/rabbitmq.service";
-import { BookingExchangeName, BookingRoutingKey } from "@shared/contracts/events/booking-events.enum";
-import { MarketplaceExchangeName, MarketplaceRoutingKey } from "@shared/contracts/events/marketplace-events.enum";
 import { NotificationService } from "@notification/application/services/notification.service";
+import {
+  BookingExchangeName,
+  BookingRoutingKey,
+} from "@shared/contracts/events/booking-events.enum";
+import {
+  EmergencyExchangeName,
+  EmergencyRoutingKey,
+} from "@shared/contracts/events/emergency-events.enum";
+import {
+  MarketplaceExchangeName,
+  MarketplaceRoutingKey,
+} from "@shared/contracts/events/marketplace-events.enum";
+import { RabbitMQService } from "@shared/infra/messaging/rabbitmq.service";
 
 interface BookingCreatedPayload {
   bookingId: string;
@@ -26,11 +36,30 @@ interface BookingCompletedPayload {
   serviceName: string;
 }
 
+interface BookingTodayReminderPayload {
+  bookingId: string;
+  establishmentId?: string;
+  userId: string;
+  clientName: string;
+  establishmentName: string;
+  serviceName: string;
+  scheduledAt: string;
+}
+
 interface OrderCreatedPayload {
   orderId: string;
   userId: string;
   total: number;
   itemCount: number;
+}
+
+interface EmergencyVetCallPayload {
+  callId: string;
+  vetId: string;
+  vetName: string;
+  callerName: string;
+  callerPhone: string;
+  petDescription: string | null;
 }
 
 const NOTIFICATION_QUEUE = "notification.service.queue";
@@ -49,15 +78,62 @@ export class NotificationHandler implements OnModuleInit {
       const channel = this.rabbitMQService.getChannel();
       await channel.assertQueue(NOTIFICATION_QUEUE, { durable: true });
 
-      await channel.assertExchange(BookingExchangeName.CREATED, "direct", { durable: true });
-      await channel.assertExchange(BookingExchangeName.STATUS_UPDATED, "direct", { durable: true });
-      await channel.assertExchange(BookingExchangeName.COMPLETED, "direct", { durable: true });
-      await channel.bindQueue(NOTIFICATION_QUEUE, BookingExchangeName.CREATED, BookingRoutingKey.CREATED);
-      await channel.bindQueue(NOTIFICATION_QUEUE, BookingExchangeName.STATUS_UPDATED, BookingRoutingKey.STATUS_UPDATED);
-      await channel.bindQueue(NOTIFICATION_QUEUE, BookingExchangeName.COMPLETED, BookingRoutingKey.COMPLETED);
+      await channel.assertExchange(BookingExchangeName.CREATED, "direct", {
+        durable: true,
+      });
+      await channel.assertExchange(
+        BookingExchangeName.STATUS_UPDATED,
+        "direct",
+        { durable: true },
+      );
+      await channel.assertExchange(BookingExchangeName.COMPLETED, "direct", {
+        durable: true,
+      });
+      await channel.assertExchange(
+        BookingExchangeName.TODAY_REMINDER,
+        "direct",
+        { durable: true },
+      );
+      await channel.bindQueue(
+        NOTIFICATION_QUEUE,
+        BookingExchangeName.CREATED,
+        BookingRoutingKey.CREATED,
+      );
+      await channel.bindQueue(
+        NOTIFICATION_QUEUE,
+        BookingExchangeName.STATUS_UPDATED,
+        BookingRoutingKey.STATUS_UPDATED,
+      );
+      await channel.bindQueue(
+        NOTIFICATION_QUEUE,
+        BookingExchangeName.COMPLETED,
+        BookingRoutingKey.COMPLETED,
+      );
+      await channel.bindQueue(
+        NOTIFICATION_QUEUE,
+        BookingExchangeName.TODAY_REMINDER,
+        BookingRoutingKey.TODAY_REMINDER,
+      );
 
-      await channel.assertExchange(MarketplaceExchangeName.ORDER_CREATED, "direct", { durable: true });
-      await channel.bindQueue(NOTIFICATION_QUEUE, MarketplaceExchangeName.ORDER_CREATED, MarketplaceRoutingKey.ORDER_CREATED);
+      await channel.assertExchange(
+        MarketplaceExchangeName.ORDER_CREATED,
+        "direct",
+        { durable: true },
+      );
+      await channel.bindQueue(
+        NOTIFICATION_QUEUE,
+        MarketplaceExchangeName.ORDER_CREATED,
+        MarketplaceRoutingKey.ORDER_CREATED,
+      );
+
+      await channel.assertExchange(EmergencyExchangeName.VET_CALL, "direct", {
+        durable: true,
+      });
+      await channel.bindQueue(
+        NOTIFICATION_QUEUE,
+        EmergencyExchangeName.VET_CALL,
+        EmergencyRoutingKey.VET_CALL,
+      );
 
       await channel.consume(NOTIFICATION_QUEUE, async (msg) => {
         if (!msg) return;
@@ -72,13 +148,21 @@ export class NotificationHandler implements OnModuleInit {
         }
       });
 
-      this.logger.log(`NotificationHandler listening on queue: ${NOTIFICATION_QUEUE}`);
+      this.logger.log(
+        `NotificationHandler listening on queue: ${NOTIFICATION_QUEUE}`,
+      );
     } catch (err) {
-      this.logger.warn("RabbitMQ not available; notification handler disabled.", err);
+      this.logger.warn(
+        "RabbitMQ not available; notification handler disabled.",
+        err,
+      );
     }
   }
 
-  private async handleMessage(routingKey: string, payload: unknown): Promise<void> {
+  private async handleMessage(
+    routingKey: string,
+    payload: unknown,
+  ): Promise<void> {
     switch (routingKey) {
       case BookingRoutingKey.CREATED: {
         const data = payload as BookingCreatedPayload;
@@ -92,7 +176,8 @@ export class NotificationHandler implements OnModuleInit {
       }
       case BookingRoutingKey.STATUS_UPDATED: {
         const data = payload as BookingStatusUpdatedPayload;
-        const statusLabel = data.status === "CONFIRMADO" ? "confirmada" : "recusada";
+        const statusLabel =
+          data.status === "CONFIRMADO" ? "confirmada" : "recusada";
         await this.notificationService.create({
           userId: data.userId,
           title: `Reserva ${statusLabel}`,
@@ -111,6 +196,28 @@ export class NotificationHandler implements OnModuleInit {
         });
         break;
       }
+      case BookingRoutingKey.TODAY_REMINDER: {
+        const data = payload as BookingTodayReminderPayload;
+        const when = new Date(data.scheduledAt).toLocaleTimeString("pt-BR", {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+        if (data.establishmentId) {
+          await this.notificationService.create({
+            userId: data.establishmentId,
+            title: "Atendimento hoje",
+            body: `${data.clientName} tem ${data.serviceName} agendado para hoje às ${when}.`,
+            type: "BOOKING_TODAY_REMINDER",
+          });
+        }
+        await this.notificationService.create({
+          userId: data.userId,
+          title: "Seu atendimento é hoje",
+          body: `Você tem ${data.serviceName} em ${data.establishmentName} hoje às ${when}.`,
+          type: "BOOKING_TODAY_REMINDER",
+        });
+        break;
+      }
       case MarketplaceRoutingKey.ORDER_CREATED: {
         const data = payload as OrderCreatedPayload;
         await this.notificationService.create({
@@ -118,6 +225,17 @@ export class NotificationHandler implements OnModuleInit {
           title: "Pedido realizado",
           body: `Seu pedido de ${data.itemCount} item(s) no valor de R$ ${data.total.toFixed(2)} foi registrado.`,
           type: "ORDER_CREATED",
+        });
+        break;
+      }
+      case EmergencyRoutingKey.VET_CALL: {
+        const data = payload as EmergencyVetCallPayload;
+        const pet = data.petDescription ? ` · ${data.petDescription}` : "";
+        await this.notificationService.create({
+          userId: data.vetId,
+          title: "Chamado de emergência!",
+          body: `${data.callerName} (${data.callerPhone}) precisa de atendimento urgente${pet}.`,
+          type: "EMERGENCY_VET_CALL",
         });
         break;
       }

@@ -1,4 +1,11 @@
-import { doublePrecision, integer, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import {
+  doublePrecision,
+  integer,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+} from "drizzle-orm/pg-core";
 
 export const petsSchema = pgTable("pets", {
   id: uuid("id").primaryKey().defaultRandom(),

@@ -30,7 +30,9 @@ export class UserService {
     return users.map((u) => UserDto.fromUser(u)!);
   }
 
-  async listPaginated(params: PaginationParams): Promise<PaginatedResult<UserDto>> {
+  async listPaginated(
+    params: PaginationParams,
+  ): Promise<PaginatedResult<UserDto>> {
     const { rows, total } = await this.userRepository.findAllPaginated(params);
     return {
       data: rows.map((u) => UserDto.fromUser(u)!),

@@ -1,4 +1,9 @@
-export type UserRole = "ADMIN" | "CLIENTE" | "VENDEDOR";
+export type UserRole =
+  | "ADMIN"
+  | "CLIENTE"
+  | "VENDEDOR"
+  | "MOTORISTA"
+  | "VETERINARIO";
 
 export class User {
   private readonly _id?: string;
@@ -19,26 +24,65 @@ export class User {
     this._updatedAt = updatedAt;
   }
 
-  get id(): string | undefined { return this._id; }
-  get name(): string { return this._name; }
-  get email(): string { return this._email; }
-  get password(): string { return this._password; }
-  get phone(): string { return this._phone; }
-  get cpf(): string { return this._cpf; }
-  get role(): UserRole { return this._role; }
-  get permissions(): string[] { return this._permissions; }
-  get photoUrl(): string | null | undefined { return this._photoUrl; }
-  get createdAt(): Date | undefined { return this._createdAt; }
-  get updatedAt(): Date | undefined { return this._updatedAt; }
+  get id(): string | undefined {
+    return this._id;
+  }
+  get name(): string {
+    return this._name;
+  }
+  get email(): string {
+    return this._email;
+  }
+  get password(): string {
+    return this._password;
+  }
+  get phone(): string {
+    return this._phone;
+  }
+  get cpf(): string {
+    return this._cpf;
+  }
+  get role(): UserRole {
+    return this._role;
+  }
+  get permissions(): string[] {
+    return this._permissions;
+  }
+  get createdAt(): Date | undefined {
+    return this._createdAt;
+  }
+  get updatedAt(): Date | undefined {
+    return this._updatedAt;
+  }
 
-  withName(name: string) { this._name = name; return this; }
-  withEmail(email: string) { this._email = email; return this; }
-  withPassword(password: string) { this._password = password; return this; }
-  withPhone(phone: string) { this._phone = phone; return this; }
-  withCpf(cpf: string) { this._cpf = cpf; return this; }
-  withRole(role: UserRole) { this._role = role; return this; }
-  withPermissions(permissions: string[]) { this._permissions = permissions; return this; }
-  withPhotoUrl(photoUrl: string | null) { this._photoUrl = photoUrl; return this; }
+  withName(name: string) {
+    this._name = name;
+    return this;
+  }
+  withEmail(email: string) {
+    this._email = email;
+    return this;
+  }
+  withPassword(password: string) {
+    this._password = password;
+    return this;
+  }
+  withPhone(phone: string) {
+    this._phone = phone;
+    return this;
+  }
+  withCpf(cpf: string) {
+    this._cpf = cpf;
+    return this;
+  }
+  withRole(role: UserRole) {
+    this._role = role;
+    return this;
+  }
+  withPermissions(permissions: string[]) {
+    this._permissions = permissions;
+    return this;
+  }
 
   static restore(props?: {
     id?: string;
