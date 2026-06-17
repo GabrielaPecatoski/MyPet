@@ -48,6 +48,9 @@ export class User {
   get permissions(): string[] {
     return this._permissions;
   }
+  get photoUrl(): string | null | undefined {
+    return this._photoUrl;
+  }
   get createdAt(): Date | undefined {
     return this._createdAt;
   }
@@ -81,6 +84,10 @@ export class User {
   }
   withPermissions(permissions: string[]) {
     this._permissions = permissions;
+    return this;
+  }
+  withPhotoUrl(photoUrl: string | null) {
+    this._photoUrl = photoUrl;
     return this;
   }
 
