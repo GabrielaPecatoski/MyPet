@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/colors.dart';
@@ -105,20 +106,7 @@ class _EstablishmentDetailViewState
         children: [
           CustomScrollView(
             slivers: [
-              SliverToBoxAdapter(
-                child: Container(
-                  height: 200,
-                  width: double.infinity,
-                  color: AppColors.primary,
-                  child: Center(
-                    child: Icon(
-                      e.isPetShop && !e.isVeterinario ? Icons.pets : Icons.local_hospital,
-                      size: 72,
-                      color: Colors.white.withValues(alpha: 0.6),
-                    ),
-                  ),
-                ),
-              ),
+              SliverToBoxAdapter(child: _coverHeader(e)),
 
               SliverToBoxAdapter(
                 child: Container(
@@ -596,6 +584,39 @@ class _EstablishmentDetailViewState
           ],
         ),
       );
+
+  Widget _coverHeader(EstablishmentModel e) {
+    final image = _imageProvider(e.imageUrl);
+    return Container(
+      height: 200,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: AppColors.primary,
+        image: image != null
+            ? DecorationImage(image: image, fit: BoxFit.cover)
+            : null,
+      ),
+      child: image == null
+          ? Center(
+              child: Icon(
+                e.isPetShop && !e.isVeterinario
+                    ? Icons.pets
+                    : Icons.local_hospital,
+                size: 72,
+                color: Colors.white.withValues(alpha: 0.6),
+              ),
+            )
+          : null,
+    );
+  }
+
+  ImageProvider? _imageProvider(String? url) {
+    if (url == null || url.isEmpty) return null;
+    if (url.startsWith('data:image/')) {
+      return MemoryImage(base64Decode(url.split(',').last));
+    }
+    return NetworkImage(url);
+  }
 
   Widget _infoRow(IconData icon, String text) => Row(
         crossAxisAlignment: CrossAxisAlignment.start,

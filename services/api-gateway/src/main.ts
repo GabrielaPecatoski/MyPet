@@ -56,7 +56,9 @@ const ROUTES = [
   },
 ];
 
-const GATEWAY_HANDLED = ["GET /auth/me", "POST /auth/refresh"];
+// GET /auth/me é proxyado para o user-auth (retorna o UserDto completo, com
+// photoUrl); só o refresh é resolvido localmente a partir do JWT.
+const GATEWAY_HANDLED = ["POST /auth/refresh"];
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
