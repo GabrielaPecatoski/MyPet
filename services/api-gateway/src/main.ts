@@ -83,32 +83,32 @@ async function bootstrap() {
   });
 
   for (const route of ROUTES) {
+    const proxy = createProxyMiddleware({
+      target: route.target,
+      changeOrigin: true,
+      pathRewrite: (path: string) => `/v1${route.prefix}${path}`,
+      on: {
+        proxyRes: (_proxyRes: unknown, _req: unknown, res: Response) => {
+          for (const [k, v] of Object.entries(CORS_HEADERS))
+            res.setHeader(k, v);
+        },
+        error: (_err: unknown, _req: unknown, res: Response) => {
+          for (const [k, v] of Object.entries(CORS_HEADERS))
+            res.setHeader(k, v);
+          res.status(502).json({
+            statusCode: 502,
+            message: `Serviço indisponível: ${route.prefix}`,
+          });
+        },
+      },
+    });
+
     expressApp.use(
       route.prefix,
       (req: Request, res: Response, next: NextFunction) => {
         const fullPath = `${route.prefix}${req.path}`;
         if (GATEWAY_HANDLED.includes(`${req.method} ${fullPath}`))
           return next();
-
-        const proxy = createProxyMiddleware({
-          target: route.target,
-          changeOrigin: true,
-          pathRewrite: (path: string) => `/v1${route.prefix}${path}`,
-          on: {
-            proxyRes: (_proxyRes: unknown, _req: unknown, res: Response) => {
-              for (const [k, v] of Object.entries(CORS_HEADERS))
-                res.setHeader(k, v);
-            },
-            error: (_err: unknown, _req: unknown, res: Response) => {
-              for (const [k, v] of Object.entries(CORS_HEADERS))
-                res.setHeader(k, v);
-              res.status(502).json({
-                statusCode: 502,
-                message: `Serviço indisponível: ${route.prefix}`,
-              });
-            },
-          },
-        });
         return proxy(req, res, next);
       },
     );
