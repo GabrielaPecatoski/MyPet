@@ -44,7 +44,6 @@ export class AvailabilityService {
     establishmentId: string;
     slotDurationMinutes: number;
     capacity?: number;
-<<<<<<< HEAD
     days: ScheduleDays;
   }): Promise<void> {
     for (const day of dto.days) {
