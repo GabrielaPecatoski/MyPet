@@ -1,6 +1,7 @@
 export class BlockedSlot {
   private readonly _id?: string;
-  private _establishmentId!: string;
+  private _establishmentId?: string;
+  private _vetId?: string;
   private _date!: string;
   private _startTime!: string;
   private _endTime!: string;
@@ -13,8 +14,11 @@ export class BlockedSlot {
   get id(): string | undefined {
     return this._id;
   }
-  get establishmentId(): string {
+  get establishmentId(): string | undefined {
     return this._establishmentId;
+  }
+  get vetId(): string | undefined {
+    return this._vetId;
   }
   get date(): string {
     return this._date;
@@ -31,7 +35,8 @@ export class BlockedSlot {
 
   static restore(props?: {
     id?: string;
-    establishmentId: string;
+    establishmentId?: string | null;
+    vetId?: string | null;
     date: string;
     startTime: string;
     endTime: string;
@@ -39,7 +44,8 @@ export class BlockedSlot {
   }): BlockedSlot | null {
     if (!props) return null;
     const b = new BlockedSlot(props.id);
-    b._establishmentId = props.establishmentId;
+    b._establishmentId = props.establishmentId ?? undefined;
+    b._vetId = props.vetId ?? undefined;
     b._date = props.date;
     b._startTime = props.startTime;
     b._endTime = props.endTime;

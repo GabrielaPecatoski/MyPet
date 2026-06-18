@@ -1,3 +1,4 @@
+import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { CreatePetDto } from "@pets/pets/application/dto/create-pet.dto";
 import { PetDto } from "@pets/pets/application/dto/pet.dto";
 import { UpdatePetDto } from "@pets/pets/application/dto/update-pet.dto";
@@ -6,11 +7,6 @@ import {
   PET_REPOSITORY,
   type PetRepository,
 } from "@pets/pets/domain/repositories/pet-repository.interface";
-import {
-  Inject,
-  Injectable,
-  NotFoundException,
-} from "@nestjs/common";
 import type { PaginatedResult, PaginationParams } from "@shared/infra/hateoas";
 
 @Injectable()
@@ -45,7 +41,9 @@ export class PetService {
     return PetDto.fromPet(pet);
   }
 
-  async listPaginated(params: PaginationParams): Promise<PaginatedResult<PetDto>> {
+  async listPaginated(
+    params: PaginationParams,
+  ): Promise<PaginatedResult<PetDto>> {
     const { rows, total } = await this.petRepository.findAllPaginated(params);
     return {
       data: rows.map((p) => PetDto.fromPet(p)!),

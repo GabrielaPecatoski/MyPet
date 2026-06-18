@@ -1,14 +1,17 @@
 import { CreateUserDto } from "@auth/users/application/dto/create-user.dto";
 import { LoginDto } from "@auth/users/application/dto/login.dto";
+import { UpdateUserDto } from "@auth/users/application/dto/update-user.dto";
 import { UserDto } from "@auth/users/application/dto/user.dto";
 import { AuthService } from "@auth/users/application/services/auth.service";
 import { UserService } from "@auth/users/application/services/user.service";
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
+  Patch,
   Post,
 } from "@nestjs/common";
 import {
@@ -50,5 +53,24 @@ export class AuthController {
   @ApiOperation({ summary: "Retornar usuário autenticado" })
   async me(@CurrentUser() user: AuthenticatedUser): Promise<UserDto | null> {
     return this.userService.findById(user.sub);
+  }
+
+  @Patch("me")
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Atualizar o próprio perfil" })
+  async updateMe(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() body: UpdateUserDto,
+  ): Promise<UserDto | null> {
+    await this.userService.update(user.sub, body);
+    return this.userService.findById(user.sub);
+  }
+
+  @Delete("me")
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Excluir a própria conta" })
+  async deleteMe(@CurrentUser() user: AuthenticatedUser): Promise<void> {
+    await this.userService.remove(user.sub);
   }
 }

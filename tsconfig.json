@@ -2,9 +2,8 @@
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "noEmit": true,
-    "module": "commonjs",
-    "moduleResolution": "node",
-    "baseUrl": ".",
+    "module": "esnext",
+    "moduleResolution": "bundler",
     "paths": {
       "@shared/*": ["./shared/src/*"],
       "@auth/*": ["./services/user-auth/src/modules/auth/*"],
@@ -17,8 +16,5 @@
       "@faq/*": ["./services/faq/src/modules/faq/*"]
     }
   },
-  "include": [
-    "shared/src/**/*.ts",
-    "services/*/src/**/*.ts"
-  ]
+  "include": ["shared/src/**/*.ts", "services/*/src/**/*.ts"]
 }

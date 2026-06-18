@@ -1,11 +1,27 @@
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Patch,
+  Post,
+  Query,
+} from "@nestjs/common";
+import {
+  ApiBearerAuth,
+  ApiNoContentResponse,
+  ApiOperation,
+  ApiTags,
+} from "@nestjs/swagger";
 import { ReviewService } from "@review/reviews/application/services/review.service";
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post, Query } from "@nestjs/common";
-import { ApiBearerAuth, ApiNoContentResponse, ApiOperation, ApiTags } from "@nestjs/swagger";
 import { Permission } from "@shared/domain/enums/permission.enum";
-import { RequirePermissions } from "@shared/infra/decorators/permissions.decorator";
-import { CurrentUser } from "@shared/infra/decorators/current-user.decorator";
-import { Public } from "@shared/infra/decorators/public.decorator";
 import type { AuthenticatedUser } from "@shared/infra/auth/interfaces/authenticated-user.interface";
+import { CurrentUser } from "@shared/infra/decorators/current-user.decorator";
+import { RequirePermissions } from "@shared/infra/decorators/permissions.decorator";
+import { Public } from "@shared/infra/decorators/public.decorator";
 
 @ApiTags("reviews")
 @Controller("reviews")
@@ -108,7 +124,13 @@ export class ReviewsController {
   @ApiOperation({ summary: "Criar reclamação" })
   async createComplaint(
     @CurrentUser() user: AuthenticatedUser,
-    @Body() body: { establishmentId: string; bookingId?: string; subject: string; description: string; category?: string },
+    @Body() body: {
+      establishmentId: string;
+      bookingId?: string;
+      subject: string;
+      description: string;
+      category?: string;
+    },
   ) {
     return this.reviewService.createComplaint(user.sub, user.email, body);
   }
@@ -117,10 +139,7 @@ export class ReviewsController {
   @ApiBearerAuth()
   @RequirePermissions(Permission.COMPLAINTS_WRITE)
   @ApiOperation({ summary: "Responder reclamação" })
-  async respond(
-    @Param("id") id: string,
-    @Body() body: { response: string },
-  ) {
+  async respond(@Param("id") id: string, @Body() body: { response: string }) {
     return this.reviewService.respondToComplaint(id, body.response);
   }
 }

@@ -1,17 +1,24 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.4.9/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.4.15/schema.json",
   "vcs": {
     "enabled": true,
     "clientKind": "git",
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["**", "!**/dist", "!**/drizzle", "!**/node_modules", "!mypet_app/**"]
+    "includes": [
+      "**",
+      "!**/dist",
+      "!**/drizzle",
+      "!**/node_modules",
+      "!mypet_app"
+    ]
   },
   "formatter": {
     "enabled": true,
     "indentWidth": 2,
-    "indentStyle": "space"
+    "indentStyle": "space",
+    "lineEnding": "crlf"
   },
   "linter": {
     "enabled": true,

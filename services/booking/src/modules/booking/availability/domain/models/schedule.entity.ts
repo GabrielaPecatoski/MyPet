@@ -1,6 +1,7 @@
 export class Schedule {
   private readonly _id?: string;
-  private _establishmentId!: string;
+  private _establishmentId?: string;
+  private _vetId?: string;
   private _dayOfWeek!: number;
   private _openTime!: string;
   private _closeTime!: string;
@@ -15,8 +16,11 @@ export class Schedule {
   get id(): string | undefined {
     return this._id;
   }
-  get establishmentId(): string {
+  get establishmentId(): string | undefined {
     return this._establishmentId;
+  }
+  get vetId(): string | undefined {
+    return this._vetId;
   }
   get dayOfWeek(): number {
     return this._dayOfWeek;
@@ -39,7 +43,8 @@ export class Schedule {
 
   static restore(props?: {
     id?: string;
-    establishmentId: string;
+    establishmentId?: string | null;
+    vetId?: string | null;
     dayOfWeek: number;
     openTime: string;
     closeTime: string;
@@ -49,7 +54,8 @@ export class Schedule {
   }): Schedule | null {
     if (!props) return null;
     const s = new Schedule(props.id);
-    s._establishmentId = props.establishmentId;
+    s._establishmentId = props.establishmentId ?? undefined;
+    s._vetId = props.vetId ?? undefined;
     s._dayOfWeek = props.dayOfWeek;
     s._openTime = props.openTime;
     s._closeTime = props.closeTime;

@@ -1,5 +1,5 @@
-import type { Pet } from "@pets/pets/domain/models/pet.entity";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import type { Pet } from "@pets/pets/domain/models/pet.entity";
 
 export class PetDto {
   @ApiProperty() id: string | undefined;

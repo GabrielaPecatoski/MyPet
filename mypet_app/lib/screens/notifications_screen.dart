@@ -3,39 +3,8 @@ import 'package:provider/provider.dart';
 import '../core/colors.dart';
 import '../providers/auth_provider.dart';
 import '../providers/notifications_provider.dart';
-import '../services/api_service.dart';
 import '../widgets/app_bottom_nav.dart';
 import '../widgets/mypet_app_bar.dart';
-
-class _AppNotification {
-  final String id;
-  final String title;
-  final String body;
-  final String type;
-  final bool read;
-  final DateTime createdAt;
-
-  _AppNotification({
-    required this.id,
-    required this.title,
-    required this.body,
-    required this.type,
-    required this.read,
-    required this.createdAt,
-  });
-
-  factory _AppNotification.fromJson(Map<String, dynamic> json) =>
-      _AppNotification(
-        id: json['id'] as String? ?? '',
-        title: json['title'] as String? ?? '',
-        body: json['body'] as String? ?? '',
-        type: json['type'] as String? ?? 'INFO',
-        read: json['read'] as bool? ?? false,
-        createdAt:
-            DateTime.tryParse(json['createdAt'] as String? ?? '') ??
-                DateTime.now(),
-      );
-}
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -45,62 +14,15 @@ class NotificationsScreen extends StatefulWidget {
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
-  List<_AppNotification> _notifications = [];
-  bool _loading = false;
-  bool _hasUnread = false;
-
-  // Guardados para uso no dispose (sem acesso ao context).
-  String? _userId;
-  String? _token;
-  late NotificationsProvider _notifProvider;
-
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _notifProvider = context.read<NotificationsProvider>();
-      _load();
+      final auth = context.read<AuthProvider>();
+      if (auth.user != null) {
+        context.read<NotificationsProvider>().load(auth.user!.id, token: auth.token);
+      }
     });
-  }
-
-  @override
-  void dispose() {
-    // Marca todas como lidas ao sair — o usuário já as visualizou.
-    if (_hasUnread && _userId != null && _token != null) {
-      ApiService.patch(
-        '/notifications/user/$_userId/read-all',
-        {},
-        token: _token,
-      ).ignore();
-      _notifProvider.clearUnread();
-    }
-    super.dispose();
-  }
-
-  Future<void> _load() async {
-    final auth = context.read<AuthProvider>();
-    if (auth.token == null || auth.user == null) return;
-    _userId = auth.user!.id;
-    _token = auth.token;
-    setState(() => _loading = true);
-    try {
-      final data = await ApiService.get(
-        '/notifications/user/${auth.user!.id}',
-        token: auth.token,
-      );
-      final list = data as List;
-      final notifications = list
-          .map((e) => _AppNotification.fromJson(e as Map<String, dynamic>))
-          .toList();
-      // Verifica se há não-lidas para decidir se chamamos markAllRead no dispose.
-      _hasUnread = notifications.any((n) => !n.read);
-      setState(() => _notifications = notifications);
-      // NÃO marca como lidas aqui — o usuário ainda está vendo a tela.
-      // O dispose cuida disso quando o usuário sair.
-    } catch (_) {
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
   }
 
   String _timeAgo(DateTime dt) {
@@ -127,6 +49,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       // Booking – establishment (new reservation received)
       case 'BOOKING_CREATED':
         return Icons.calendar_today_outlined;
+      case 'BOOKING_TODAY_REMINDER':
+        return Icons.today_outlined;
       // Marketplace
       case 'ORDER_CREATED':
         return Icons.shopping_bag_outlined;
@@ -152,6 +76,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return AppColors.danger;
       case 'BOOKING_REMINDER':
       case 'REVIEW_RECEIVED':
+      case 'NEW_BOOKING':
+      case 'BOOKING_TODAY_REMINDER':
         return AppColors.warning;
       case 'BOOKING_CREATED':
       case 'ORDER_CREATED':
@@ -178,135 +104,125 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           }
         },
       ),
-      body: _loading
-          ? const Center(
-              child: CircularProgressIndicator(color: AppColors.primary))
-          : RefreshIndicator(
-              onRefresh: _load,
-              color: AppColors.primary,
-              child: _notifications.isEmpty
-                  ? ListView(
-                      children: [
-                        const SizedBox(height: 80),
-                        Center(
-                          child: Column(
-                            children: [
-                              Container(
-                                width: 72,
-                                height: 72,
-                                decoration: BoxDecoration(
-                                  color: AppColors.primaryLight,
-                                  borderRadius: BorderRadius.circular(36),
-                                ),
-                                child: const Icon(Icons.notifications_none,
-                                    size: 36, color: AppColors.primary),
-                              ),
-                              const SizedBox(height: 16),
-                              const Text(
-                                'Nenhuma notificação',
-                                style: TextStyle(
-                                    color: AppColors.dark,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600),
-                              ),
-                              const SizedBox(height: 6),
-                              const Text(
-                                'Você está em dia!',
-                                style:
-                                    TextStyle(color: AppColors.grey, fontSize: 13),
-                              ),
-                            ],
-                          ),
+      body: Builder(builder: (context) {
+        final provider = context.watch<NotificationsProvider>();
+        final auth = context.read<AuthProvider>();
+        if (provider.isLoading) {
+          return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+        }
+        return RefreshIndicator(
+          onRefresh: () => provider.load(auth.user?.id ?? '', token: auth.token),
+          color: AppColors.primary,
+          child: provider.notifications.isEmpty
+              ? ListView(children: [
+                  const SizedBox(height: 80),
+                  Center(
+                    child: Column(children: [
+                      Container(
+                        width: 72, height: 72,
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryLight,
+                          borderRadius: BorderRadius.circular(36),
                         ),
-                      ],
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: _notifications.length,
-                      itemBuilder: (ctx, i) {
-                        final n = _notifications[i];
-                        final color = _color(n.type);
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            border: n.read
-                                ? null
-                                : Border.all(
-                                    color: AppColors.primary
-                                        .withValues(alpha: 0.25)),
-                            boxShadow: const [
-                              BoxShadow(
-                                  color: Colors.black12,
-                                  blurRadius: 8,
-                                  offset: Offset(0, 2)),
-                            ],
+                        child: const Icon(Icons.notifications_none, size: 36, color: AppColors.primary),
+                      ),
+                      const SizedBox(height: 16),
+                      const Text('Nenhuma notificação',
+                          style: TextStyle(color: AppColors.dark, fontSize: 16, fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 6),
+                      const Text('Você está em dia!',
+                          style: TextStyle(color: AppColors.grey, fontSize: 13)),
+                    ]),
+                  ),
+                ])
+              : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: provider.notifications.length,
+                  itemBuilder: (ctx, i) {
+                    final n = provider.notifications[i];
+                    final color = _color(n.type);
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: n.read
+                            ? null
+                            : Border.all(
+                                color: AppColors.primary
+                                    .withValues(alpha: 0.25)),
+                        boxShadow: const [
+                          BoxShadow(
+                              color: Colors.black12,
+                              blurRadius: 8,
+                              offset: Offset(0, 2)),
+                        ],
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: color.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(22),
+                            ),
+                            child: Icon(_icon(n.type),
+                                color: color, size: 22),
                           ),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                width: 44,
-                                height: 44,
-                                decoration: BoxDecoration(
-                                  color: color.withValues(alpha: 0.12),
-                                  borderRadius: BorderRadius.circular(22),
-                                ),
-                                child: Icon(_icon(n.type),
-                                    color: color, size: 22),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
                                   children: [
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: Text(
-                                            n.title,
-                                            style: const TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 14,
-                                                color: AppColors.dark),
-                                          ),
+                                    Expanded(
+                                      child: Text(
+                                        n.title,
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 14,
+                                            color: AppColors.dark),
+                                      ),
+                                    ),
+                                    if (!n.read)
+                                      Container(
+                                        width: 8,
+                                        height: 8,
+                                        decoration: const BoxDecoration(
+                                          color: AppColors.primary,
+                                          shape: BoxShape.circle,
                                         ),
-                                        if (!n.read)
-                                          Container(
-                                            width: 8,
-                                            height: 8,
-                                            decoration: const BoxDecoration(
-                                              color: AppColors.primary,
-                                              shape: BoxShape.circle,
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      n.body,
-                                      style: const TextStyle(
-                                          fontSize: 12,
-                                          color: AppColors.grey,
-                                          height: 1.4),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Text(
-                                      _timeAgo(n.createdAt),
-                                      style: const TextStyle(
-                                          fontSize: 11, color: AppColors.grey),
-                                    ),
+                                      ),
                                   ],
                                 ),
-                              ),
-                            ],
+                                const SizedBox(height: 4),
+                                Text(
+                                  n.body,
+                                  style: const TextStyle(
+                                      fontSize: 12,
+                                      color: AppColors.grey,
+                                      height: 1.4),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  _timeAgo(n.createdAt),
+                                  style: const TextStyle(
+                                      fontSize: 11, color: AppColors.grey),
+                                ),
+                              ],
+                            ),
                           ),
-                        );
-                      },
-                    ),
-            ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+        );
+      }),
     );
   }
 }

@@ -1,9 +1,9 @@
 import { Logger } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
-import { AppModule } from "./app.module";
+import type { NextFunction, Request, Response } from "express";
 import helmet from "helmet";
 import { createProxyMiddleware } from "http-proxy-middleware";
-import type { NextFunction, Request, Response } from "express";
+import { AppModule } from "./app.module";
 
 const ROUTES = [
   { prefix: "/auth",           target: process.env.AUTH_SERVICE_URL          ?? "http://localhost:3001" },
@@ -17,9 +17,11 @@ const ROUTES = [
   { prefix: "/reviews",        target: process.env.REVIEW_SERVICE_URL        ?? "http://localhost:3007" },
   { prefix: "/faq",            target: process.env.FAQ_SERVICE_URL           ?? "http://localhost:3008" },
   { prefix: "/conversations",  target: process.env.CHAT_SERVICE_URL          ?? "http://localhost:3009" },
+  { prefix: "/drivers",        target: process.env.DRIVER_SERVICE_URL        ?? "http://localhost:3010" },
+  { prefix: "/veterinarians",  target: process.env.VET_SERVICE_URL           ?? "http://localhost:3011" },
 ];
 
-const GATEWAY_HANDLED = ["/auth/me", "/auth/refresh"];
+const GATEWAY_HANDLED = ["GET /auth/me", "POST /auth/refresh"];
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -29,15 +31,17 @@ const CORS_HEADERS = {
 
 async function bootstrap() {
   const logger = new Logger("Bootstrap");
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { bodyParser: false });
 
-  app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
+  app.use(
+    helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }),
+  );
 
   const expressApp = app.getHttpAdapter().getInstance();
 
   expressApp.use((req: Request, res: Response, next: NextFunction) => {
     if (req.method === "OPTIONS") {
-      Object.entries(CORS_HEADERS).forEach(([k, v]) => res.setHeader(k, v));
+      for (const [k, v] of Object.entries(CORS_HEADERS)) res.setHeader(k, v);
       return res.sendStatus(204);
     }
     next();
@@ -52,26 +56,35 @@ async function bootstrap() {
   expressApp.use("/socket.io", chatWsProxy);
 
   for (const route of ROUTES) {
-    expressApp.use(route.prefix, (req: Request, res: Response, next: NextFunction) => {
-      const fullPath = `${route.prefix}${req.path}`;
-      if (GATEWAY_HANDLED.includes(fullPath)) return next();
-
-      const proxy = createProxyMiddleware({
-        target: route.target,
-        changeOrigin: true,
-        pathRewrite: (path: string) => `/v1${route.prefix}${path}`,
-        on: {
-          proxyRes: (_proxyRes: unknown, _req: unknown, res: Response) => {
-            Object.entries(CORS_HEADERS).forEach(([k, v]) => res.setHeader(k, v));
-          },
-          error: (_err: unknown, _req: unknown, res: Response) => {
-            Object.entries(CORS_HEADERS).forEach(([k, v]) => res.setHeader(k, v));
-            res.status(502).json({ statusCode: 502, message: `Serviço indisponível: ${route.prefix}` });
-          },
+    const proxy = createProxyMiddleware({
+      target: route.target,
+      changeOrigin: true,
+      pathRewrite: (path: string) => `/v1${route.prefix}${path}`,
+      on: {
+        proxyRes: (_proxyRes: unknown, _req: unknown, res: Response) => {
+          for (const [k, v] of Object.entries(CORS_HEADERS))
+            res.setHeader(k, v);
         },
-      });
-      return proxy(req, res, next);
+        error: (_err: unknown, _req: unknown, res: Response) => {
+          for (const [k, v] of Object.entries(CORS_HEADERS))
+            res.setHeader(k, v);
+          res.status(502).json({
+            statusCode: 502,
+            message: `Serviço indisponível: ${route.prefix}`,
+          });
+        },
+      },
     });
+
+    expressApp.use(
+      route.prefix,
+      (req: Request, res: Response, next: NextFunction) => {
+        const fullPath = `${route.prefix}${req.path}`;
+        if (GATEWAY_HANDLED.includes(`${req.method} ${fullPath}`))
+          return next();
+        return proxy(req, res, next);
+      },
+    );
   }
 
   const port = process.env.PORT ?? 3000;

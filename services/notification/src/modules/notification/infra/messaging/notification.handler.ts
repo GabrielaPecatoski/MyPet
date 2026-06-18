@@ -8,6 +8,10 @@ import {
   BookingRoutingKey,
 } from "@shared/contracts/events/booking-events.enum";
 import {
+  EmergencyExchangeName,
+  EmergencyRoutingKey,
+} from "@shared/contracts/events/emergency-events.enum";
+import {
   MarketplaceExchangeName,
   MarketplaceRoutingKey,
 } from "@shared/contracts/events/marketplace-events.enum";
@@ -65,6 +69,16 @@ interface BookingReminderPayload {
   scheduledAt: string;
 }
 
+interface BookingTodayReminderPayload {
+  bookingId: string;
+  establishmentId?: string;
+  userId: string;
+  clientName: string;
+  establishmentName: string;
+  serviceName: string;
+  scheduledAt: string;
+}
+
 interface OrderCreatedPayload {
   orderId: string;
   userId: string;
@@ -84,6 +98,15 @@ interface UserCreatedPayload {
   userId: string;
   name: string;
   email: string;
+}
+
+interface EmergencyVetCallPayload {
+  callId: string;
+  vetId: string;
+  vetName: string;
+  callerName: string;
+  callerPhone: string;
+  petDescription: string | null;
 }
 
 const NOTIFICATION_QUEUE = "notification.service.queue";
@@ -106,38 +129,16 @@ export class NotificationHandler implements OnModuleInit {
       await channel.assertQueue(NOTIFICATION_QUEUE, { durable: true });
 
       const bindings: { exchange: string; routingKey: string }[] = [
-        {
-          exchange: BookingExchangeName.CREATED,
-          routingKey: BookingRoutingKey.CREATED,
-        },
-        {
-          exchange: BookingExchangeName.STATUS_UPDATED,
-          routingKey: BookingRoutingKey.STATUS_UPDATED,
-        },
-        {
-          exchange: BookingExchangeName.COMPLETED,
-          routingKey: BookingRoutingKey.COMPLETED,
-        },
-        {
-          exchange: BookingExchangeName.CANCELED,
-          routingKey: BookingRoutingKey.CANCELED,
-        },
-        {
-          exchange: BookingExchangeName.REMINDER,
-          routingKey: BookingRoutingKey.REMINDER,
-        },
-        {
-          exchange: MarketplaceExchangeName.ORDER_CREATED,
-          routingKey: MarketplaceRoutingKey.ORDER_CREATED,
-        },
-        {
-          exchange: ReviewExchangeName.CREATED,
-          routingKey: ReviewRoutingKey.CREATED,
-        },
-        {
-          exchange: UserAuthExchangeName.USER_CREATED,
-          routingKey: UserAuthRoutingKey.USER_CREATED,
-        },
+        { exchange: BookingExchangeName.CREATED, routingKey: BookingRoutingKey.CREATED },
+        { exchange: BookingExchangeName.STATUS_UPDATED, routingKey: BookingRoutingKey.STATUS_UPDATED },
+        { exchange: BookingExchangeName.COMPLETED, routingKey: BookingRoutingKey.COMPLETED },
+        { exchange: BookingExchangeName.CANCELED, routingKey: BookingRoutingKey.CANCELED },
+        { exchange: BookingExchangeName.REMINDER, routingKey: BookingRoutingKey.REMINDER },
+        { exchange: BookingExchangeName.TODAY_REMINDER, routingKey: BookingRoutingKey.TODAY_REMINDER },
+        { exchange: MarketplaceExchangeName.ORDER_CREATED, routingKey: MarketplaceRoutingKey.ORDER_CREATED },
+        { exchange: ReviewExchangeName.CREATED, routingKey: ReviewRoutingKey.CREATED },
+        { exchange: UserAuthExchangeName.USER_CREATED, routingKey: UserAuthRoutingKey.USER_CREATED },
+        { exchange: EmergencyExchangeName.VET_CALL, routingKey: EmergencyRoutingKey.VET_CALL },
       ];
 
       for (const { exchange, routingKey } of bindings) {
@@ -282,9 +283,32 @@ export class NotificationHandler implements OnModuleInit {
         });
         await this.push(
           data.userId,
-          "Lembrete de agendamento ⏰",
+          "Lembrete de agendamento",
           `${data.serviceName} em ${data.establishmentName} é amanhã!`,
         );
+        break;
+      }
+
+      case BookingRoutingKey.TODAY_REMINDER: {
+        const data = payload as BookingTodayReminderPayload;
+        const when = new Date(data.scheduledAt).toLocaleTimeString("pt-BR", {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+        if (data.establishmentId) {
+          await this.notificationService.create({
+            userId: data.establishmentId,
+            title: "Atendimento hoje",
+            body: `${data.clientName} tem ${data.serviceName} agendado para hoje às ${when}.`,
+            type: "BOOKING_TODAY_REMINDER",
+          });
+        }
+        await this.notificationService.create({
+          userId: data.userId,
+          title: "Seu atendimento é hoje",
+          body: `Você tem ${data.serviceName} em ${data.establishmentName} hoje às ${when}.`,
+          type: "BOOKING_TODAY_REMINDER",
+        });
         break;
       }
 
@@ -298,7 +322,7 @@ export class NotificationHandler implements OnModuleInit {
         });
         await this.push(
           data.userId,
-          "Pedido realizado 🛍️",
+          "Pedido realizado",
           `${data.itemCount} item(s) — R$ ${data.total.toFixed(2)}`,
         );
         if (data.userEmail) {
@@ -322,7 +346,7 @@ export class NotificationHandler implements OnModuleInit {
         });
         await this.push(
           data.establishmentId,
-          "Nova avaliação ⭐",
+          "Nova avaliação",
           `${data.rating} estrela(s) recebida(s).`,
         );
         break;
@@ -332,11 +356,23 @@ export class NotificationHandler implements OnModuleInit {
         const data = payload as UserCreatedPayload;
         await this.notificationService.create({
           userId: data.userId,
-          title: "Bem-vindo ao MyPet! 🐾",
+          title: "Bem-vindo ao MyPet!",
           body: `Olá, ${data.name}! Sua conta foi criada com sucesso.`,
           type: "AUTH_WELCOME",
         });
         await this.mailService.sendWelcome(data.email, data.name);
+        break;
+      }
+
+      case EmergencyRoutingKey.VET_CALL: {
+        const data = payload as EmergencyVetCallPayload;
+        const pet = data.petDescription ? ` · ${data.petDescription}` : "";
+        await this.notificationService.create({
+          userId: data.vetId,
+          title: "Chamado de emergência!",
+          body: `${data.callerName} (${data.callerPhone}) precisa de atendimento urgente${pet}.`,
+          type: "EMERGENCY_VET_CALL",
+        });
         break;
       }
 

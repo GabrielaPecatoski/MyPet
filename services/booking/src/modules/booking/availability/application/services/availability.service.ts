@@ -23,6 +23,13 @@ const DEFAULT_TIMES: Record<number, { open: string; close: string }> = {
   6: { open: "08:00", close: "14:00" },
 };
 
+type ScheduleDays = {
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+  isOpen: boolean;
+}[];
+
 @Injectable()
 export class AvailabilityService {
   constructor(
@@ -37,12 +44,8 @@ export class AvailabilityService {
     establishmentId: string;
     slotDurationMinutes: number;
     capacity?: number;
-    days: {
-      dayOfWeek: number;
-      startTime: string;
-      endTime: string;
-      isOpen: boolean;
-    }[];
+<<<<<<< HEAD
+    days: ScheduleDays;
   }): Promise<void> {
     for (const day of dto.days) {
       const schedule = Schedule.restore({
@@ -58,10 +61,47 @@ export class AvailabilityService {
     }
   }
 
+  async setVetSchedule(dto: {
+    vetId: string;
+    slotDurationMinutes: number;
+    capacity?: number;
+    days: ScheduleDays;
+  }): Promise<void> {
+    for (const day of dto.days) {
+      const schedule = Schedule.restore({
+        vetId: dto.vetId,
+        dayOfWeek: day.dayOfWeek,
+        openTime: day.startTime,
+        closeTime: day.endTime,
+        slotDuration: dto.slotDurationMinutes,
+        isOpen: day.isOpen,
+        capacity: dto.capacity ?? 1,
+      })!;
+      await this.scheduleRepo.upsert(schedule);
+    }
+  }
+
   async getFullSchedule(establishmentId: string) {
     const rows = await this.scheduleRepo.findByEstablishmentId(establishmentId);
-    const byDay = new Map(rows.map((r) => [r.dayOfWeek, r]));
+    return this._buildScheduleResponse(
+      { ownerId: establishmentId, ownerKey: "establishmentId" },
+      rows,
+    );
+  }
 
+  async getVetSchedule(vetId: string) {
+    const rows = await this.scheduleRepo.findByVetId(vetId);
+    return this._buildScheduleResponse(
+      { ownerId: vetId, ownerKey: "vetId" },
+      rows,
+    );
+  }
+
+  private _buildScheduleResponse(
+    owner: { ownerId: string; ownerKey: string },
+    rows: Schedule[],
+  ) {
+    const byDay = new Map(rows.map((r) => [r.dayOfWeek, r]));
     const slotDuration = rows[0]?.slotDuration ?? 60;
     const capacity = rows[0]?.capacity ?? 1;
 
@@ -77,7 +117,7 @@ export class AvailabilityService {
     });
 
     return {
-      establishmentId,
+      [owner.ownerKey]: owner.ownerId,
       slotDurationMinutes: slotDuration,
       capacity,
       days,
@@ -95,8 +135,23 @@ export class AvailabilityService {
     await this.blockedRepo.create(slot);
   }
 
+  async blockVetSlot(dto: {
+    vetId: string;
+    date: string;
+    startTime: string;
+    endTime: string;
+    reason?: string;
+  }): Promise<void> {
+    const slot = BlockedSlot.restore(dto)!;
+    await this.blockedRepo.create(slot);
+  }
+
   async getBlockedSlots(establishmentId: string) {
     return this.blockedRepo.findByEstablishmentId(establishmentId);
+  }
+
+  async getVetBlockedSlots(vetId: string) {
+    return this.blockedRepo.findByVetId(vetId);
   }
 
   async unblockSlot(id: string): Promise<void> {
@@ -107,12 +162,35 @@ export class AvailabilityService {
     establishmentId: string,
     date: string,
   ): Promise<{ slots: SlotInfo[] }> {
-    const d = new Date(`${date}T00:00:00`);
-    const dayOfWeek = d.getDay();
-
     const schedules =
       await this.scheduleRepo.findByEstablishmentId(establishmentId);
-    const daySchedule = schedules.find((s) => s.dayOfWeek === dayOfWeek);
+    const blocked =
+      await this.blockedRepo.findByEstablishmentId(establishmentId);
+    const bookings =
+      await this.bookingRepo.findByEstablishmentId(establishmentId);
+    return this._computeSlots({ schedules, blocked, bookings, date });
+  }
+
+  async getAvailableVetSlots(
+    vetId: string,
+    date: string,
+  ): Promise<{ slots: SlotInfo[] }> {
+    const schedules = await this.scheduleRepo.findByVetId(vetId);
+    const blocked = await this.blockedRepo.findByVetId(vetId);
+    const bookings = await this.bookingRepo.findByVetId(vetId);
+    return this._computeSlots({ schedules, blocked, bookings, date });
+  }
+
+  private _computeSlots(opts: {
+    schedules: Schedule[];
+    blocked: BlockedSlot[];
+    bookings: { scheduledAt: Date; status: string; id?: string }[];
+    date: string;
+  }): { slots: SlotInfo[] } {
+    const d = new Date(`${opts.date}T00:00:00`);
+    const dayOfWeek = d.getDay();
+
+    const daySchedule = opts.schedules.find((s) => s.dayOfWeek === dayOfWeek);
 
     let openTime: string;
     let closeTime: string;
@@ -135,13 +213,8 @@ export class AvailabilityService {
       capacity = 1;
     }
 
-    const blocked =
-      await this.blockedRepo.findByEstablishmentId(establishmentId);
-    const blockedOnDate = blocked.filter((b) => b.date === date);
-
-    const bookings =
-      await this.bookingRepo.findByEstablishmentId(establishmentId);
-    const bookingsOnDate = bookings.filter((b) => {
+    const blockedOnDate = opts.blocked.filter((b) => b.date === opts.date);
+    const bookingsOnDate = opts.bookings.filter((b) => {
       const bd = b.scheduledAt;
       return (
         bd.getFullYear() === d.getFullYear() &&

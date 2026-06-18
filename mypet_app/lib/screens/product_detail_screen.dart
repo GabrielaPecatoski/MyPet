@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../core/colors.dart';
 import '../models/product.dart';
 import '../providers/cart_provider.dart';
+import '../widgets/app_image.dart';
 import '../widgets/mypet_app_bar.dart';
 
 class ProductDetailScreen extends StatefulWidget {
@@ -179,16 +180,17 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   'price': product.price,
                   'unit': product.unit,
                 }, _qty);
+                final nav = Navigator.of(context);
                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                   content: Text(
                       '$_qty ${_qty == 1 ? 'unidade adicionada' : 'unidades adicionadas'} ao carrinho'),
                   backgroundColor: AppColors.success,
-                  duration: const Duration(seconds: 2),
+                  behavior: SnackBarBehavior.floating,
+                  duration: const Duration(milliseconds: 1200),
                   action: SnackBarAction(
                     label: 'Ver carrinho',
                     textColor: Colors.white,
-                    onPressed: () =>
-                        Navigator.pushNamed(context, '/cart'),
+                    onPressed: () => nav.pushNamed('/cart'),
                   ),
                 ));
                 setState(() => _qty = 1);
@@ -210,19 +212,13 @@ class _ProductImage extends StatelessWidget {
       height: 220,
       width: double.infinity,
       color: AppColors.primaryLight,
-      child: imageUrl != null
-          ? Image.network(
-              imageUrl!,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => const Center(
-                child: Icon(Icons.shopping_bag,
-                    color: AppColors.primary, size: 72),
-              ),
-            )
-          : const Center(
-              child: Icon(Icons.shopping_bag,
-                  color: AppColors.primary, size: 72),
-            ),
+      child: AppImage(
+        url: imageUrl,
+        fit: BoxFit.cover,
+        fallback: const Center(
+          child: Icon(Icons.shopping_bag, color: AppColors.primary, size: 72),
+        ),
+      ),
     );
   }
 }
@@ -370,17 +366,24 @@ class _QtyBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    final label = icon == Icons.remove ? 'Diminuir quantidade' : 'Aumentar quantidade';
+    return Semantics(
+      button: true,
+      label: label,
       onTap: onTap,
-      child: Container(
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          color: filled ? AppColors.primary : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
+      excludeSemantics: true,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: filled ? AppColors.primary : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon,
+              size: 18, color: filled ? Colors.white : AppColors.dark),
         ),
-        child: Icon(icon,
-            size: 18, color: filled ? Colors.white : AppColors.dark),
       ),
     );
   }

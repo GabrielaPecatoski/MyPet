@@ -4,6 +4,7 @@ export enum BookingExchangeName {
   COMPLETED = "booking.completed.exchange",
   CANCELED = "booking.canceled.exchange",
   REMINDER = "booking.reminder.exchange",
+  TODAY_REMINDER = "booking.today-reminder.exchange",
 }
 
 export enum BookingRoutingKey {
@@ -12,4 +13,5 @@ export enum BookingRoutingKey {
   COMPLETED = "booking.completed",
   CANCELED = "booking.canceled",
   REMINDER = "booking.reminder",
+  TODAY_REMINDER = "booking.today-reminder",
 }

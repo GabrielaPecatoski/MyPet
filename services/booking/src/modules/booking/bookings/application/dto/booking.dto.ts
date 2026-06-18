@@ -15,12 +15,21 @@ export class BookingDto {
   @ApiPropertyOptional() petAge?: number;
   @ApiProperty() serviceName: string;
   @ApiPropertyOptional() services?: BookingServiceItem[];
-  @ApiProperty() establishmentId: string;
+  @ApiPropertyOptional() attendancePhotos?: string[];
+  @ApiPropertyOptional() establishmentId?: string;
   @ApiProperty() establishmentName: string;
   @ApiPropertyOptional() establishmentAddress?: string;
+  @ApiPropertyOptional() driverId?: string;
+  @ApiPropertyOptional() driverName?: string;
+  @ApiPropertyOptional() vetId?: string;
+  @ApiPropertyOptional() vetName?: string;
   @ApiProperty() scheduledAt: Date;
   @ApiProperty() price: number;
+  @ApiProperty() priceVariable: boolean;
   @ApiProperty() status: string;
+  @ApiProperty() paymentStatus: string;
+  @ApiPropertyOptional() paymentMethod?: string;
+  @ApiPropertyOptional() expiresAt?: Date;
   @ApiProperty() createdAt: Date | undefined;
 
   private constructor(b: Booking) {
@@ -34,13 +43,25 @@ export class BookingDto {
     this.petAge = b.petAge || undefined;
     this.serviceName = b.serviceName;
     this.services = b.services.length > 0 ? b.services : undefined;
+    this.attendancePhotos =
+      b.attendancePhotos.length > 0 ? b.attendancePhotos : undefined;
     this.establishmentId = b.establishmentId;
     this.establishmentName = b.establishmentName;
     this.establishmentAddress = b.establishmentAddress || undefined;
+    this.driverId = b.driverId;
+    this.driverName = b.driverName;
+    this.vetId = b.vetId;
+    this.vetName = b.vetName;
     this.scheduledAt = b.scheduledAt;
     this.price = b.price;
+    this.priceVariable = b.priceVariable;
     this.status = b.status;
+    this.paymentStatus = b.paymentStatus;
+    this.paymentMethod = b.paymentMethod;
     this.createdAt = b.createdAt;
+    if (b.status === "AGUARDANDO_PAGAMENTO" && b.createdAt) {
+      this.expiresAt = new Date(b.createdAt.getTime() + 60 * 60 * 1000);
+    }
   }
 
   static fromBooking(b: Booking | null): BookingDto | null {

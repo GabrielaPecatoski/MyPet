@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import '../models/user.dart';
-import '../services/api_service.dart';
 import '../services/auth_service.dart';
+import '../services/driver_service.dart';
 import '../services/storage_service.dart';
+import '../services/veterinarian_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   UserModel? _user;
@@ -20,6 +21,8 @@ class AuthProvider extends ChangeNotifier {
   bool get isAdmin => role == 'ADMIN';
   bool get isVendedor => role == 'VENDEDOR';
   bool get isCliente => role == 'CLIENTE';
+  bool get isMotorista => role == 'MOTORISTA';
+  bool get isVeterinario => role == 'VETERINARIO';
 
   String get homeRoute {
     switch (role) {
@@ -27,6 +30,10 @@ class AuthProvider extends ChangeNotifier {
         return '/admin';
       case 'VENDEDOR':
         return '/estab-home';
+      case 'MOTORISTA':
+        return '/driver-nav';
+      case 'VETERINARIO':
+        return '/vet-home';
       default:
         return '/home';
     }
@@ -41,8 +48,8 @@ class AuthProvider extends ChangeNotifier {
   Future<bool> validateToken() async {
     if (_token == null) return false;
     try {
-      final data = await ApiService.get('/auth/me', token: _token);
-      _user = UserModel.fromJson(data as Map<String, dynamic>);
+      final data = await AuthService.getMe(token: _token!);
+      _user = UserModel.fromJson(data);
       await StorageService.saveUser(_user!);
       notifyListeners();
       return true;
@@ -127,12 +134,12 @@ class AuthProvider extends ChangeNotifier {
     _error = null;
     notifyListeners();
     try {
-      final data = await ApiService.patch(
-        '/auth/me',
-        {'name': name, 'phone': phone},
-        token: _token,
+      final data = await AuthService.updateMe(
+        token: _token!,
+        name: name,
+        phone: phone,
       );
-      _user = UserModel.fromJson(data as Map<String, dynamic>);
+      _user = UserModel.fromJson(data);
       await StorageService.saveUser(_user!);
       _loading = false;
       notifyListeners();
@@ -148,7 +155,7 @@ class AuthProvider extends ChangeNotifier {
   Future<bool> deleteAccount() async {
     if (_user == null || _token == null) return false;
     try {
-      await ApiService.delete('/auth/me', token: _token);
+      await AuthService.deleteMe(token: _token!);
       await logout();
       return true;
     } catch (e) {
@@ -163,6 +170,53 @@ class AuthProvider extends ChangeNotifier {
     _user = null;
     await StorageService.clear();
     notifyListeners();
+  }
+
+  Future<String?> registerDriverProfile({
+    required String name,
+    required String phone,
+    required String cpf,
+    required String cnh,
+    required String vehicleType,
+    required String vehicleModel,
+    required String vehiclePlate,
+  }) async {
+    if (_token == null) return 'Token ausente';
+    try {
+      await DriverService.register(
+        token: _token!,
+        name: name, phone: phone, cpf: cpf,
+        cnh: cnh, vehicleType: vehicleType,
+        vehicleModel: vehicleModel, vehiclePlate: vehiclePlate,
+      );
+      return null;
+    } catch (e) {
+      return e.toString().replaceAll('Exception: ', '');
+    }
+  }
+
+  Future<String?> registerVetProfile({
+    required String name,
+    required String phone,
+    required String cpf,
+    required String crmv,
+    String? especialidade,
+    String? crmvPhotoPath,
+  }) async {
+    if (_token == null) return 'Token ausente';
+    if (crmvPhotoPath != null) {
+      await StorageService.saveCrmvPhoto(cpf, crmvPhotoPath);
+    }
+    try {
+      await VeterinarianService.register(
+        token: _token!,
+        name: name, phone: phone, cpf: cpf,
+        crmv: crmv, especialidade: especialidade,
+      );
+      return null;
+    } catch (e) {
+      return e.toString().replaceAll('Exception: ', '');
+    }
   }
 
   void clearError() {

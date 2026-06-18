@@ -1,4 +1,9 @@
-export type UserRole = "ADMIN" | "CLIENTE" | "VENDEDOR";
+export type UserRole =
+  | "ADMIN"
+  | "CLIENTE"
+  | "VENDEDOR"
+  | "MOTORISTA"
+  | "VETERINARIO";
 
 export class User {
   private readonly _id?: string;

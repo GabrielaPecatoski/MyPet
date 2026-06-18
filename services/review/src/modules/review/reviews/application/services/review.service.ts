@@ -1,13 +1,37 @@
-import { Review } from "@review/reviews/domain/models/review.entity";
-import { REVIEW_REPOSITORY, type ReviewRepository } from "@review/reviews/domain/repositories/review-repository.interface";
-import { COMPLAINT_REPOSITORY, type ComplaintRepository } from "@review/complaints/domain/repositories/complaint-repository.interface";
-import { Complaint, type ComplaintStatus } from "@review/complaints/domain/models/complaint.entity";
 import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import {
+  Complaint,
+  type ComplaintStatus,
+} from "@review/complaints/domain/models/complaint.entity";
+import {
+  COMPLAINT_REPOSITORY,
+  type ComplaintRepository,
+} from "@review/complaints/domain/repositories/complaint-repository.interface";
+import { Review } from "@review/reviews/domain/models/review.entity";
+import {
+  REVIEW_REPOSITORY,
+  type ReviewRepository,
+} from "@review/reviews/domain/repositories/review-repository.interface";
+import {
+  ReviewExchangeName,
+  ReviewRoutingKey,
+} from "@shared/contracts/events/review-events.enum";
 import { SharedMessagingService } from "@shared/infra/messaging/shared-messaging.service";
-import { ReviewExchangeName, ReviewRoutingKey } from "@shared/contracts/events/review-events.enum";
 
-export interface CreateReviewDto { establishmentId: string; userName: string; bookingId?: string; rating: number; comment?: string; }
-export interface CreateComplaintDto { establishmentId: string; bookingId?: string; subject: string; description: string; category?: string; }
+export interface CreateReviewDto {
+  establishmentId: string;
+  userName: string;
+  bookingId?: string;
+  rating: number;
+  comment?: string;
+}
+export interface CreateComplaintDto {
+  establishmentId: string;
+  bookingId?: string;
+  subject: string;
+  description: string;
+  category?: string;
+}
 
 @Injectable()
 export class ReviewService {
@@ -15,7 +39,8 @@ export class ReviewService {
 
   constructor(
     @Inject(REVIEW_REPOSITORY) private readonly reviewRepo: ReviewRepository,
-    @Inject(COMPLAINT_REPOSITORY) private readonly complaintRepo: ComplaintRepository,
+    @Inject(COMPLAINT_REPOSITORY)
+    private readonly complaintRepo: ComplaintRepository,
     private readonly messaging: SharedMessagingService,
   ) {}
 
@@ -30,14 +55,18 @@ export class ReviewService {
     })!;
     await this.reviewRepo.create(review);
     const stats = await this.reviewRepo.getStats(dto.establishmentId);
-    await this.safePublish(ReviewExchangeName.CREATED, ReviewRoutingKey.CREATED, {
-      reviewId: review.id!,
-      establishmentId: dto.establishmentId,
-      userId,
-      rating: dto.rating,
-      newAverage: stats.average,
-      newCount: stats.count,
-    });
+    await this.safePublish(
+      ReviewExchangeName.CREATED,
+      ReviewRoutingKey.CREATED,
+      {
+        reviewId: review.id!,
+        establishmentId: dto.establishmentId,
+        userId,
+        rating: dto.rating,
+        newAverage: stats.average,
+        newCount: stats.count,
+      },
+    );
   }
 
   async getReviewsByUser(userId: string) {
@@ -53,7 +82,8 @@ export class ReviewService {
   }
 
   async getReviews(establishmentId: string) {
-    const reviews = await this.reviewRepo.findByEstablishmentId(establishmentId);
+    const reviews =
+      await this.reviewRepo.findByEstablishmentId(establishmentId);
     return reviews.map((r) => ({
       id: r.id,
       establishmentId: r.establishmentId,
@@ -73,7 +103,11 @@ export class ReviewService {
     return this.reviewRepo.getAdminStats();
   }
 
-  async createComplaint(userId: string, userName: string, dto: CreateComplaintDto): Promise<void> {
+  async createComplaint(
+    userId: string,
+    userName: string,
+    dto: CreateComplaintDto,
+  ): Promise<void> {
     const complaint = Complaint.restore({
       userId,
       userName,
@@ -85,11 +119,15 @@ export class ReviewService {
       status: "PENDENTE",
     })!;
     await this.complaintRepo.create(complaint);
-    await this.safePublish(ReviewExchangeName.COMPLAINT_CREATED, ReviewRoutingKey.COMPLAINT_CREATED, {
-      establishmentId: dto.establishmentId,
-      userId,
-      subject: dto.subject,
-    });
+    await this.safePublish(
+      ReviewExchangeName.COMPLAINT_CREATED,
+      ReviewRoutingKey.COMPLAINT_CREATED,
+      {
+        establishmentId: dto.establishmentId,
+        userId,
+        subject: dto.subject,
+      },
+    );
   }
 
   async getComplaints(status?: string) {
@@ -98,7 +136,8 @@ export class ReviewService {
   }
 
   async getComplaintsByEstablishment(establishmentId: string) {
-    const complaints = await this.complaintRepo.findByEstablishmentId(establishmentId);
+    const complaints =
+      await this.complaintRepo.findByEstablishmentId(establishmentId);
     return complaints.map(this._toComplaintDto);
   }
 
@@ -149,7 +188,11 @@ export class ReviewService {
     await this.complaintRepo.delete(id);
   }
 
-  private async safePublish(exchange: string, routingKey: string, payload: unknown): Promise<void> {
+  private async safePublish(
+    exchange: string,
+    routingKey: string,
+    payload: unknown,
+  ): Promise<void> {
     try {
       await this.messaging.assertExchange(exchange, "direct");
       await this.messaging.publish(exchange, routingKey, payload);

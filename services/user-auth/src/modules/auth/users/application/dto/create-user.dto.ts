@@ -35,12 +35,12 @@ export class CreateUserDto {
   cpf!: string;
 
   @ApiPropertyOptional({
-    enum: ["ADMIN", "CLIENTE", "VENDEDOR"],
+    enum: ["ADMIN", "CLIENTE", "VENDEDOR", "MOTORISTA", "VETERINARIO"],
     default: "CLIENTE",
   })
   @IsOptional()
-  @IsIn(["ADMIN", "CLIENTE", "VENDEDOR"])
-  role?: "ADMIN" | "CLIENTE" | "VENDEDOR";
+  @IsIn(["ADMIN", "CLIENTE", "VENDEDOR", "MOTORISTA", "VETERINARIO"])
+  role?: "ADMIN" | "CLIENTE" | "VENDEDOR" | "MOTORISTA" | "VETERINARIO";
 
   @ApiPropertyOptional({ example: "Pet Shop da Maria" })
   @IsOptional()

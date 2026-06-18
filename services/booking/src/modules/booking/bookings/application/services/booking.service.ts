@@ -9,12 +9,11 @@ import {
   type BookingRepository,
 } from "@booking/bookings/domain/repositories/booking-repository.interface";
 import {
+  ConflictException,
   Inject,
   Injectable,
   Logger,
   NotFoundException,
-  OnModuleDestroy,
-  OnModuleInit,
 } from "@nestjs/common";
 import {
   BookingExchangeName,
@@ -23,10 +22,8 @@ import {
 import { SharedMessagingService } from "@shared/infra/messaging/shared-messaging.service";
 
 @Injectable()
-export class BookingService implements OnModuleInit, OnModuleDestroy {
+export class BookingService {
   private readonly logger = new Logger(BookingService.name);
-  private reminderInterval?: ReturnType<typeof setInterval>;
-  private readonly remindedIds = new Set<string>();
 
   constructor(
     @Inject(BOOKING_REPOSITORY)
@@ -34,49 +31,9 @@ export class BookingService implements OnModuleInit, OnModuleDestroy {
     private readonly messaging: SharedMessagingService,
   ) {}
 
-  onModuleInit() {
-    // Check every hour for bookings within 24h window
-    this.reminderInterval = setInterval(
-      () => void this.sendReminders(),
-      60 * 60 * 1000,
-    );
-  }
-
-  onModuleDestroy() {
-    if (this.reminderInterval) clearInterval(this.reminderInterval);
-  }
-
-  private async sendReminders(): Promise<void> {
-    try {
-      const now = new Date();
-      const from = new Date(now.getTime() + 23 * 60 * 60 * 1000);
-      const to = new Date(now.getTime() + 25 * 60 * 60 * 1000);
-      const upcoming = await this.repo.findUpcoming(from, to);
-
-      for (const booking of upcoming) {
-        if (!booking.id || this.remindedIds.has(booking.id)) continue;
-        this.remindedIds.add(booking.id);
-        await this.safePublish(
-          BookingExchangeName.REMINDER,
-          BookingRoutingKey.REMINDER,
-          {
-            bookingId: booking.id,
-            userId: booking.userId,
-            userEmail: booking.userEmail,
-            serviceName: booking.serviceName,
-            establishmentName: booking.establishmentName,
-            scheduledAt: booking.scheduledAt.toISOString(),
-          },
-        );
-      }
-    } catch (err) {
-      this.logger.warn(`Reminder scheduler error: ${err}`);
-    }
-  }
-
   async create(
     userId: string,
-    userEmail: string,
+    userName: string,
     dto: CreateBookingDto,
   ): Promise<BookingDto> {
     const services =
@@ -89,6 +46,24 @@ export class BookingService implements OnModuleInit, OnModuleDestroy {
         ? services.map((s) => s.name).join(", ")
         : (dto.serviceName ?? services?.[0]?.name ?? "");
 
+    const scheduledAt = new Date(dto.scheduledAt);
+
+    if (dto.vetId) {
+      const existentes = await this.repo.findByVetId(dto.vetId);
+      const conflito = existentes.some(
+        (b) =>
+          b.status !== "CANCELADO" &&
+          b.status !== "RECUSADO" &&
+          b.scheduledAt.getTime() === scheduledAt.getTime(),
+      );
+      if (conflito) {
+        throw new ConflictException(
+          "Horário indisponível para este veterinário",
+        );
+      }
+    }
+
+    const priceVariable = dto.priceVariable ?? false;
     const booking = Booking.restore({
       userId,
       userName: dto.userName ?? userEmail,
@@ -100,37 +75,139 @@ export class BookingService implements OnModuleInit, OnModuleDestroy {
       serviceName: displayName,
       servicesJson: services ? JSON.stringify(services) : undefined,
       establishmentId: dto.establishmentId,
-      establishmentName: dto.establishmentName,
+      establishmentName: dto.establishmentName ?? "",
       establishmentAddress: dto.establishmentAddress,
-      scheduledAt: new Date(dto.scheduledAt),
-      price: totalPrice,
-      status: "PENDENTE",
+      driverId: dto.driverId,
+      driverName: dto.driverName,
+      vetId: dto.vetId,
+      vetName: dto.vetName,
+      scheduledAt,
+      price: priceVariable ? 0 : totalPrice,
+      priceVariable,
+      status: priceVariable ? "PENDENTE" : "AGUARDANDO_PAGAMENTO",
+      paymentStatus: priceVariable ? "NONE" : "NONE",
     })!;
-    await this.repo.create(booking);
-    await this.safePublish(
-      BookingExchangeName.CREATED,
-      BookingRoutingKey.CREATED,
-      {
-        bookingId: booking.id!,
-        establishmentId: booking.establishmentId,
-        establishmentName: booking.establishmentName,
-        clientName: booking.userName,
-        userEmail,
-        serviceName: booking.serviceName,
-        scheduledAt: booking.scheduledAt.toISOString(),
-      },
-    );
-    return BookingDto.fromBooking(booking)!;
+    const created = await this.repo.create(booking);
+    return BookingDto.fromBooking(created)!;
+  }
+
+  async findByVet(vetId: string): Promise<BookingDto[]> {
+    const rows = await this.repo.findByVetId(vetId);
+    return rows
+      .filter((b) => b.status !== "AGUARDANDO_PAGAMENTO")
+      .map((b) => BookingDto.fromBooking(b)!);
   }
 
   async findByUser(userId: string): Promise<BookingDto[]> {
     const rows = await this.repo.findByUserId(userId);
+    const now = new Date();
+    for (const b of rows) {
+      if (b.status === "AGUARDANDO_PAGAMENTO" && b.createdAt) {
+        const expiresAt = new Date(b.createdAt.getTime() + 60 * 60 * 1000);
+        if (expiresAt < now) {
+          b.withStatus("CANCELADO");
+          await this.repo.update(b);
+        }
+      }
+    }
     return rows.map((b) => BookingDto.fromBooking(b)!);
   }
 
   async findByEstablishment(establishmentId: string): Promise<BookingDto[]> {
     const rows = await this.repo.findByEstablishmentId(establishmentId);
-    return rows.map((b) => BookingDto.fromBooking(b)!);
+    return rows
+      .filter((b) => b.status !== "AGUARDANDO_PAGAMENTO")
+      .map((b) => BookingDto.fromBooking(b)!);
+  }
+
+  async pay(
+    id: string,
+    method: string,
+    cardNumber?: string,
+    installments?: number,
+  ): Promise<{ booking: BookingDto; payment: Record<string, unknown> }> {
+    const booking = await this.repo.findById(id);
+    if (!booking) throw new NotFoundException("Agendamento não encontrado");
+
+    if (
+      booking.paymentStatus === "AUTHORIZED" ||
+      booking.paymentStatus === "CAPTURED"
+    ) {
+      return {
+        booking: BookingDto.fromBooking(booking)!,
+        payment: {
+          status: "APPROVED",
+          method,
+          amount: booking.price,
+          alreadyPaid: true,
+        },
+      };
+    }
+
+    const payment = this.simulatePayment(
+      method,
+      booking.price,
+      cardNumber,
+      installments,
+    );
+
+    if (payment["status"] === "APPROVED") {
+      booking.withStatus("PENDENTE").withPayment("AUTHORIZED", method);
+      await this.repo.update(booking);
+      void this.safePublish(
+        BookingExchangeName.CREATED,
+        BookingRoutingKey.CREATED,
+        {
+          bookingId: booking.id!,
+          establishmentId: booking.establishmentId,
+          clientName: booking.userName,
+          serviceName: booking.serviceName,
+          scheduledAt: booking.scheduledAt.toISOString(),
+        },
+      );
+    }
+
+    return { booking: BookingDto.fromBooking(booking)!, payment };
+  }
+
+  private simulatePayment(
+    method: string,
+    amount: number,
+    cardNumber?: string,
+    installments?: number,
+  ): Record<string, unknown> {
+    const base = { method, amount };
+
+    if (method === "PIX") {
+      return { ...base, status: "APPROVED", pixKey: "mypet@pagamentos.com" };
+    }
+    if (method === "BOLETO") {
+      const code =
+        "34191.75501 34191.75501 34191.75501 1 " +
+        String(Math.floor(amount * 100)).padStart(14, "0");
+      return { ...base, status: "APPROVED", boletoCode: code };
+    }
+    if (method === "CREDIT_CARD") {
+      const lastFour = cardNumber ? cardNumber.slice(-4) : "0000";
+      if (Math.random() < 0.05) {
+        return {
+          ...base,
+          status: "REJECTED",
+          rejectionReason: "Cartão recusado pela operadora.",
+        };
+      }
+      return {
+        ...base,
+        status: "APPROVED",
+        cardLastFour: lastFour,
+        installments: installments ?? 1,
+      };
+    }
+    if (method === "DEBIT_CARD") {
+      const lastFour = cardNumber ? cardNumber.slice(-4) : "0000";
+      return { ...base, status: "APPROVED", cardLastFour: lastFour };
+    }
+    return { ...base, status: "APPROVED" };
   }
 
   async findById(id: string): Promise<BookingDto | null> {
@@ -141,6 +218,19 @@ export class BookingService implements OnModuleInit, OnModuleDestroy {
     const booking = await this.repo.findById(id);
     if (!booking) throw new NotFoundException("Agendamento não encontrado");
     booking.withStatus(status);
+
+    if (
+      (status === "RECUSADO" || status === "CANCELADO") &&
+      booking.paymentStatus === "AUTHORIZED"
+    ) {
+      booking.withPayment("REFUNDED");
+    } else if (
+      status === "CONCLUIDO" &&
+      booking.paymentStatus === "AUTHORIZED"
+    ) {
+      booking.withPayment("CAPTURED");
+    }
+
     await this.repo.update(booking);
 
     if (status === "CONFIRMADO" || status === "RECUSADO") {
@@ -189,8 +279,75 @@ export class BookingService implements OnModuleInit, OnModuleDestroy {
     return this.updateStatus(id, "CANCELADO");
   }
 
+  async cancelExpired(): Promise<number> {
+    const cutoff = new Date(Date.now() - 60 * 60 * 1000);
+    const expired = await this.repo.findExpiredAwaitingPayment(cutoff);
+    for (const b of expired) {
+      b.withStatus("CANCELADO");
+      await this.repo.update(b);
+    }
+    if (expired.length > 0) {
+      this.logger.log(
+        `${expired.length} agendamento(s) expirado(s) cancelado(s) automaticamente.`,
+      );
+    }
+    return expired.length;
+  }
+
+  async notifyTodayBookings(): Promise<number> {
+    const now = new Date();
+    const startOfDay = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    );
+    const startOfNextDay = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate() + 1,
+    );
+    const bookings = await this.repo.findConfirmedForReminder(
+      startOfDay,
+      startOfNextDay,
+    );
+    for (const b of bookings) {
+      b.withReminderSent(now);
+      await this.repo.update(b);
+      await this.safePublish(
+        BookingExchangeName.TODAY_REMINDER,
+        BookingRoutingKey.TODAY_REMINDER,
+        {
+          bookingId: b.id!,
+          establishmentId: b.establishmentId,
+          userId: b.userId,
+          clientName: b.userName,
+          establishmentName: b.establishmentName,
+          serviceName: b.serviceName,
+          scheduledAt: b.scheduledAt.toISOString(),
+        },
+      );
+    }
+    if (bookings.length > 0) {
+      this.logger.log(
+        `${bookings.length} lembrete(s) de atendimento de hoje enviado(s).`,
+      );
+    }
+    return bookings.length;
+  }
+
   async complete(id: string): Promise<BookingDto> {
     return this.updateStatus(id, "CONCLUIDO");
+  }
+
+  async setAttendancePhotos(
+    id: string,
+    photos: string[],
+  ): Promise<BookingDto> {
+    const booking = await this.repo.findById(id);
+    if (!booking) throw new NotFoundException("Agendamento não encontrado");
+    booking.withAttendancePhotos(photos);
+    await this.repo.update(booking);
+    return BookingDto.fromBooking(booking)!;
   }
 
   async remove(id: string): Promise<void> {
