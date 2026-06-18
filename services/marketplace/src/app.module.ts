@@ -1,7 +1,7 @@
+import { MarketplaceModule } from "@market/marketplace.module";
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { SharedModule } from "@shared/shared.module";
-import { MarketplaceModule } from "@market/marketplace.module";
 
 @Module({
   imports: [

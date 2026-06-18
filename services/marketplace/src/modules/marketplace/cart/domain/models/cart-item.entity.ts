@@ -8,12 +8,23 @@ export class CartItem {
     this._id = id;
   }
 
-  get id(): string | undefined { return this._id; }
-  get userId(): string { return this._userId; }
-  get productId(): string { return this._productId; }
-  get quantity(): number { return this._quantity; }
+  get id(): string | undefined {
+    return this._id;
+  }
+  get userId(): string {
+    return this._userId;
+  }
+  get productId(): string {
+    return this._productId;
+  }
+  get quantity(): number {
+    return this._quantity;
+  }
 
-  withQuantity(v: number) { this._quantity = v; return this; }
+  withQuantity(v: number) {
+    this._quantity = v;
+    return this;
+  }
 
   static restore(props?: {
     id?: string;

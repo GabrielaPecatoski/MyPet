@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 
 class ApiConstants {
   static String get baseUrl {
-    if (kIsWeb) return 'http://localhost';
+    if (kIsWeb) return 'http://127.0.0.1';
     if (defaultTargetPlatform == TargetPlatform.android) return 'http://10.0.2.2';
     return 'http://localhost';
   }
@@ -20,4 +20,6 @@ class ApiConstants {
   static const bookingPaymentEndpoint = '/bookings/{id}/pay';
   static const establishmentsEndpoint = '/establishments';
   static const reviewsEndpoint = '/reviews';
+  static const driversEndpoint = '/drivers';
+  static const veterinariansEndpoint = '/veterinarians';
 }

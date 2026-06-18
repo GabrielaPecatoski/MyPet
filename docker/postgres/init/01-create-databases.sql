@@ -37,3 +37,8 @@ SELECT 'CREATE DATABASE mypet_faq'
 WHERE NOT EXISTS (
   SELECT FROM pg_database WHERE datname = 'mypet_faq'
 )\gexec
+
+SELECT 'CREATE DATABASE mypet_driver'
+WHERE NOT EXISTS (
+  SELECT FROM pg_database WHERE datname = 'mypet_driver'
+)\gexec

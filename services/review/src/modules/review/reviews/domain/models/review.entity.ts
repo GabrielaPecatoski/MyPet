@@ -13,14 +13,30 @@ export class Review {
     this._createdAt = createdAt;
   }
 
-  get id(): string | undefined { return this._id; }
-  get establishmentId(): string { return this._establishmentId; }
-  get userId(): string { return this._userId; }
-  get userName(): string { return this._userName; }
-  get bookingId(): string | undefined { return this._bookingId; }
-  get rating(): number { return this._rating; }
-  get comment(): string { return this._comment; }
-  get createdAt(): Date | undefined { return this._createdAt; }
+  get id(): string | undefined {
+    return this._id;
+  }
+  get establishmentId(): string {
+    return this._establishmentId;
+  }
+  get userId(): string {
+    return this._userId;
+  }
+  get userName(): string {
+    return this._userName;
+  }
+  get bookingId(): string | undefined {
+    return this._bookingId;
+  }
+  get rating(): number {
+    return this._rating;
+  }
+  get comment(): string {
+    return this._comment;
+  }
+  get createdAt(): Date | undefined {
+    return this._createdAt;
+  }
 
   static restore(props?: {
     id?: string;

@@ -13,17 +13,15 @@ dependencies:
 
   cupertino_icons: ^1.0.8
 
-  # GERENCIAMENTO DE ESTADO
   provider: ^6.0.5
 
-  # REQUISIÇÕES HTTP
   http: ^1.2.1
 
-  # SELEÇÃO DE IMAGEM
   image_picker: ^1.0.7
 
-  # ARMAZENAMENTO LOCAL
   shared_preferences: ^2.2.2
+
+  audioplayers: ^6.1.0
 
 dev_dependencies:
   flutter_test:
@@ -35,3 +33,4 @@ flutter:
   uses-material-design: true
   assets:
   - assets/images/
+  - assets/sounds/

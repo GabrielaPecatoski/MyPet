@@ -1,12 +1,12 @@
 import { Injectable } from "@nestjs/common";
-import { desc, eq } from "drizzle-orm";
-import { DrizzleService } from "@shared/infra/database/drizzle.service";
 import { Notification } from "@notification/domain/models/notification.entity";
 import type { NotificationRepository } from "@notification/domain/repositories/notification-repository.interface";
 import {
-  notificationsSchema,
   type NotificationRecord,
+  notificationsSchema,
 } from "@notification/infra/database/schemas/notification.schema";
+import { DrizzleService } from "@shared/infra/database/drizzle.service";
+import { desc, eq } from "drizzle-orm";
 
 @Injectable()
 export class DrizzleNotificationRepository implements NotificationRepository {

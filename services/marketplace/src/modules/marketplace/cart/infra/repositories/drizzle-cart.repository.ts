@@ -1,5 +1,8 @@
 import type { CartItemEnriched } from "@market/cart/application/dto/cart-item.dto";
-import type { CartItemInput, CartRepository } from "@market/cart/domain/repositories/cart-repository.interface";
+import type {
+  CartItemInput,
+  CartRepository,
+} from "@market/cart/domain/repositories/cart-repository.interface";
 import { cartItemsSchema } from "@market/cart/infra/database/schemas/cart-item.schema";
 import { productsSchema } from "@market/products/infra/database/schemas/product.schema";
 import { Injectable } from "@nestjs/common";
@@ -13,28 +16,48 @@ export class DrizzleCartRepository implements CartRepository {
   async addItem(item: CartItemInput): Promise<void> {
     await this.drizzleService.db
       .insert(cartItemsSchema)
-      .values({ userId: item.userId, productId: item.productId, quantity: item.quantity })
+      .values({
+        userId: item.userId,
+        productId: item.productId,
+        quantity: item.quantity,
+      })
       .onConflictDoUpdate({
         target: [cartItemsSchema.userId, cartItemsSchema.productId],
         set: { quantity: item.quantity },
       });
   }
 
-  async updateItem(userId: string, productId: string, quantity: number): Promise<void> {
+  async updateItem(
+    userId: string,
+    productId: string,
+    quantity: number,
+  ): Promise<void> {
     await this.drizzleService.db
       .update(cartItemsSchema)
       .set({ quantity })
-      .where(and(eq(cartItemsSchema.userId, userId), eq(cartItemsSchema.productId, productId)));
+      .where(
+        and(
+          eq(cartItemsSchema.userId, userId),
+          eq(cartItemsSchema.productId, productId),
+        ),
+      );
   }
 
   async removeItem(userId: string, productId: string): Promise<void> {
     await this.drizzleService.db
       .delete(cartItemsSchema)
-      .where(and(eq(cartItemsSchema.userId, userId), eq(cartItemsSchema.productId, productId)));
+      .where(
+        and(
+          eq(cartItemsSchema.userId, userId),
+          eq(cartItemsSchema.productId, productId),
+        ),
+      );
   }
 
   async clearCart(userId: string): Promise<void> {
-    await this.drizzleService.db.delete(cartItemsSchema).where(eq(cartItemsSchema.userId, userId));
+    await this.drizzleService.db
+      .delete(cartItemsSchema)
+      .where(eq(cartItemsSchema.userId, userId));
   }
 
   async findByUserId(userId: string): Promise<CartItemEnriched[]> {
@@ -49,7 +72,10 @@ export class DrizzleCartRepository implements CartRepository {
         imageUrl: productsSchema.imageUrl,
       })
       .from(cartItemsSchema)
-      .innerJoin(productsSchema, eq(cartItemsSchema.productId, productsSchema.id))
+      .innerJoin(
+        productsSchema,
+        eq(cartItemsSchema.productId, productsSchema.id),
+      )
       .where(eq(cartItemsSchema.userId, userId));
   }
 }

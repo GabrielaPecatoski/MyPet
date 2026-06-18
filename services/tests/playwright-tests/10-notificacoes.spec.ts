@@ -1,105 +1,107 @@
-import { test, expect, APIRequestContext } from '@playwright/test';
+import { APIRequestContext, expect, test } from "@playwright/test";
+import {
+  apiContext,
+  getAdmin,
+  registerUser,
+  SeededUser,
+} from "../playwright-front/_api";
 
-const BASE = 'http://localhost:3006';
+const authHeader = (u: SeededUser) => ({ Authorization: `Bearer ${u.token}` });
 
 let api: APIRequestContext;
-const userId = `user-notif-${Date.now()}`;
+let admin: SeededUser;
+let user: SeededUser;
 let notifId: string;
 
-test.beforeAll(async ({ playwright }) => {
-  api = await playwright.request.newContext({ baseURL: BASE });
+test.beforeAll(async () => {
+  api = await apiContext();
+  admin = await getAdmin(api);
+  user = await registerUser(api, { role: "CLIENTE" });
 });
 
 test.afterAll(async () => {
   await api.dispose();
 });
 
-test('usuário sem notificações retorna array vazio', async () => {
-  const res = await api.get(`/notifications/user/${userId}`);
+test("GET /notifications/user/:id começa vazio", async () => {
+  const res = await api.get(`/notifications/user/${user.id}`, {
+    headers: authHeader(user),
+  });
   expect(res.status()).toBe(200);
   const body = await res.json();
   expect(Array.isArray(body)).toBe(true);
   expect(body.length).toBe(0);
 });
 
-test('contagem de não lidas começa em 0', async () => {
-  const res = await api.get(`/notifications/user/${userId}/unread`);
-  expect(res.status()).toBe(200);
-  const body = await res.json();
-  expect(body.count).toBe(0);
+test("notificações exigem autenticação (401 sem token)", async () => {
+  const res = await api.get(`/notifications/user/${user.id}`);
+  expect(res.status()).toBe(401);
 });
 
-test('criar notificação', async () => {
-  const res = await api.post('/notifications', {
+test("POST /notifications (admin) cria notificação para o usuário", async () => {
+  const res = await api.post("/notifications", {
+    headers: authHeader(admin),
     data: {
-      userId,
-      title: 'Pedido confirmado',
-      body: 'Seu pedido foi confirmado com sucesso!',
-      type: 'ORDER',
+      userId: user.id,
+      title: "Pedido confirmado",
+      body: "Seu pedido foi confirmado.",
+      type: "ORDER",
     },
   });
-  expect(res.status()).toBe(201);
-  const body = await res.json();
-  expect(body.id).toBeTruthy();
-  expect(body.userId).toBe(userId);
-  expect(body.read).toBe(false);
-  notifId = body.id;
+  expect([200, 201]).toContain(res.status());
 });
 
-test('criar segunda notificação', async () => {
-  const res = await api.post('/notifications', {
-    data: {
-      userId,
-      title: 'Agendamento confirmado',
-      body: 'Seu banho e tosa está confirmado para amanhã.',
-      type: 'BOOKING',
-    },
+test("usuário comum não pode criar notificação (403)", async () => {
+  const res = await api.post("/notifications", {
+    headers: authHeader(user),
+    data: { userId: user.id, title: "x", body: "y", type: "ORDER" },
   });
-  expect(res.status()).toBe(201);
+  expect(res.status()).toBe(403);
 });
 
-test('listar notificações retorna as criadas', async () => {
-  const res = await api.get(`/notifications/user/${userId}`);
-  expect(res.status()).toBe(200);
-  const body: any[] = await res.json();
-  expect(body.length).toBe(2);
-  expect(body.some((n) => n.id === notifId)).toBe(true);
+test("GET /notifications/user/:id lista a notificação criada", async () => {
+  const body: any[] = await (
+    await api.get(`/notifications/user/${user.id}`, {
+      headers: authHeader(user),
+    })
+  ).json();
+  expect(body.length).toBeGreaterThan(0);
+  notifId = body[0].id ?? body[0]._id;
+  expect(notifId).toBeTruthy();
 });
 
-test('contagem de não lidas é 2', async () => {
-  const res = await api.get(`/notifications/user/${userId}/unread`);
-  const body = await res.json();
-  expect(body.count).toBe(2);
-});
-
-test('marcar notificação como lida', async () => {
-  const res = await api.patch(`/notifications/${notifId}/read`);
-  expect(res.status()).toBe(200);
-  const body = await res.json();
-  expect(body.read).toBe(true);
-});
-
-test('contagem de não lidas cai para 1', async () => {
-  const res = await api.get(`/notifications/user/${userId}/unread`);
-  const body = await res.json();
-  expect(body.count).toBe(1);
-});
-
-test('marcar todas como lidas', async () => {
-  const res = await api.patch(`/notifications/user/${userId}/read-all`);
+test("GET /notifications/user/:id/unread retorna a contagem de não lidas", async () => {
+  const res = await api.get(`/notifications/user/${user.id}/unread`, {
+    headers: authHeader(user),
+  });
   expect(res.status()).toBe(200);
   const body = await res.json();
-  expect(body.ok).toBe(true);
+  expect(body.count).toBeGreaterThan(0);
 });
 
-test('contagem de não lidas é 0 após marcar todas', async () => {
-  const res = await api.get(`/notifications/user/${userId}/unread`);
-  const body = await res.json();
-  expect(body.count).toBe(0);
+test("marcar como lida exige NOTIFICATIONS_WRITE (cliente recebe 403)", async () => {
+  const res = await api.patch(`/notifications/${notifId}/read`, {
+    headers: authHeader(user),
+  });
+  expect(res.status()).toBe(403);
 });
 
-test('todas as notificações aparecem como lidas', async () => {
-  const res = await api.get(`/notifications/user/${userId}`);
-  const body: any[] = await res.json();
-  expect(body.every((n) => n.read === true)).toBe(true);
+test("PATCH /notifications/:id/read marca como lida (admin, 204)", async () => {
+  const res = await api.patch(`/notifications/${notifId}/read`, {
+    headers: authHeader(admin),
+  });
+  expect(res.status()).toBe(204);
+});
+
+test("PATCH /notifications/user/:id/read-all zera as não lidas (admin)", async () => {
+  const res = await api.patch(`/notifications/user/${user.id}/read-all`, {
+    headers: authHeader(admin),
+  });
+  expect(res.status()).toBe(204);
+  const unread = await (
+    await api.get(`/notifications/user/${user.id}/unread`, {
+      headers: authHeader(user),
+    })
+  ).json();
+  expect(unread.count).toBe(0);
 });

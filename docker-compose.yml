@@ -4,29 +4,25 @@ services:
     image: postgres:16
     container_name: mypet-postgres
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: root
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: mypet_auth
-    ports:
-      - '5433:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./docker/init-dbs.sql:/docker-entrypoint-initdb.d/init-dbs.sql
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER}']
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
 
   rabbitmq:
-    image: rabbitmq:3-management
+    image: rabbitmq:3
     container_name: mypet-rabbitmq
-    ports:
-      - '5672:5672'
-      - '15672:15672'
     environment:
-      RABBITMQ_DEFAULT_USER: mypet
-      RABBITMQ_DEFAULT_PASS: mypet123
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS}
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     healthcheck:
@@ -35,17 +31,19 @@ services:
       timeout: 30s
       retries: 10
       start_period: 90s
+    restart: unless-stopped
 
   nginx:
     image: nginx:1.27-alpine
     container_name: mypet-nginx
     ports:
-      - '80:80'
-      - '443:443'
+      - '0.0.0.0:80:80'
+      - '[::1]:80:80'
+      - '0.0.0.0:443:443'
+      - '[::1]:443:443'
     volumes:
       - ./docker/nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
-      - ./docker/nginx/html:/usr/share/nginx/html:ro
-      # - ./docker/nginx/certs:/etc/nginx/certs:ro
+      - ./docker/nginx/certs:/etc/nginx/certs:ro
     depends_on:
       - api-gateway
     restart: unless-stopped
@@ -59,6 +57,7 @@ services:
         SERVICE_PORT: 3000
     container_name: mypet-gateway
     environment:
+      NODE_ENV: production
       PORT: 3000
       JWT_SECRET: ${JWT_SECRET}
       AUTH_SERVICE_URL: http://user-auth:3001
@@ -69,6 +68,8 @@ services:
       NOTIFICATION_SERVICE_URL: http://notification:3006
       REVIEW_SERVICE_URL: http://review:3007
       FAQ_SERVICE_URL: http://faq:3008
+      DRIVER_SERVICE_URL: http://user-driver:3009
+      VET_SERVICE_URL: http://user-vet:3010
       THROTTLE_TTL: 60000
       THROTTLE_LIMIT: 100
     depends_on:
@@ -87,10 +88,11 @@ services:
         SERVICE_PORT: 3001
     container_name: mypet-auth
     environment:
+      NODE_ENV: production
       PORT: 3001
-      DATABASE_URL: postgresql://postgres:root@postgres:5432/mypet_auth
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/mypet_auth
       JWT_SECRET: ${JWT_SECRET}
-      RABBITMQ_URL: amqp://mypet:mypet123@rabbitmq:5672
+      RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672
     depends_on:
       postgres:
         condition: service_healthy
@@ -107,10 +109,11 @@ services:
         SERVICE_PORT: 3002
     container_name: mypet-user-pet
     environment:
+      NODE_ENV: production
       PORT: 3002
-      DATABASE_URL: postgresql://postgres:root@postgres:5432/mypet_users
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/mypet_users
       JWT_SECRET: ${JWT_SECRET}
-      RABBITMQ_URL: amqp://mypet:mypet123@rabbitmq:5672
+      RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672
     depends_on:
       postgres:
         condition: service_healthy
@@ -127,10 +130,11 @@ services:
         SERVICE_PORT: 3003
     container_name: mypet-establishment
     environment:
+      NODE_ENV: production
       PORT: 3003
-      DATABASE_URL: postgresql://postgres:root@postgres:5432/mypet_estab
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/mypet_estab
       JWT_SECRET: ${JWT_SECRET}
-      RABBITMQ_URL: amqp://mypet:mypet123@rabbitmq:5672
+      RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672
     depends_on:
       postgres:
         condition: service_healthy
@@ -147,10 +151,11 @@ services:
         SERVICE_PORT: 3004
     container_name: mypet-marketplace
     environment:
+      NODE_ENV: production
       PORT: 3004
-      DATABASE_URL: postgresql://postgres:root@postgres:5432/mypet_market
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/mypet_market
       JWT_SECRET: ${JWT_SECRET}
-      RABBITMQ_URL: amqp://mypet:mypet123@rabbitmq:5672
+      RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672
     depends_on:
       postgres:
         condition: service_healthy
@@ -167,10 +172,11 @@ services:
         SERVICE_PORT: 3005
     container_name: mypet-booking
     environment:
+      NODE_ENV: production
       PORT: 3005
-      DATABASE_URL: postgresql://postgres:root@postgres:5432/mypet_booking
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/mypet_booking
       JWT_SECRET: ${JWT_SECRET}
-      RABBITMQ_URL: amqp://mypet:mypet123@rabbitmq:5672
+      RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672
     depends_on:
       postgres:
         condition: service_healthy
@@ -187,10 +193,11 @@ services:
         SERVICE_PORT: 3006
     container_name: mypet-notification
     environment:
+      NODE_ENV: production
       PORT: 3006
-      DATABASE_URL: postgresql://postgres:root@postgres:5432/mypet_notif
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/mypet_notif
       JWT_SECRET: ${JWT_SECRET}
-      RABBITMQ_URL: amqp://mypet:mypet123@rabbitmq:5672
+      RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672
     depends_on:
       postgres:
         condition: service_healthy
@@ -207,10 +214,11 @@ services:
         SERVICE_PORT: 3007
     container_name: mypet-review
     environment:
+      NODE_ENV: production
       PORT: 3007
-      DATABASE_URL: postgresql://postgres:root@postgres:5432/mypet_review
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/mypet_review
       JWT_SECRET: ${JWT_SECRET}
-      RABBITMQ_URL: amqp://mypet:mypet123@rabbitmq:5672
+      RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672
     depends_on:
       postgres:
         condition: service_healthy
@@ -227,10 +235,53 @@ services:
         SERVICE_PORT: 3008
     container_name: mypet-faq
     environment:
+      NODE_ENV: production
       PORT: 3008
-      DATABASE_URL: postgresql://postgres:root@postgres:5432/mypet_faq
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/mypet_faq
       JWT_SECRET: ${JWT_SECRET}
-      RABBITMQ_URL: amqp://mypet:mypet123@rabbitmq:5672
+      RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  user-driver:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: user-driver
+        SERVICE_PORT: 3009
+    container_name: mypet-user-driver
+    environment:
+      NODE_ENV: production
+      PORT: 3009
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/mypet_driver
+      JWT_SECRET: ${JWT_SECRET}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  user-vet:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: user-vet
+        SERVICE_PORT: 3010
+    container_name: mypet-user-vet
+    environment:
+      NODE_ENV: production
+      PORT: 3010
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/mypet_vet
+      JWT_SECRET: ${JWT_SECRET}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672
     depends_on:
       postgres:
         condition: service_healthy

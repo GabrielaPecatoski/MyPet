@@ -1,4 +1,7 @@
-import type { Booking, BookingServiceItem } from "@booking/bookings/domain/models/booking.entity";
+import type {
+  Booking,
+  BookingServiceItem,
+} from "@booking/bookings/domain/models/booking.entity";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 
 export class BookingDto {
@@ -9,10 +12,16 @@ export class BookingDto {
   @ApiProperty() petName: string;
   @ApiProperty() serviceName: string;
   @ApiPropertyOptional() services?: BookingServiceItem[];
-  @ApiProperty() establishmentId: string;
+  @ApiPropertyOptional() attendancePhotos?: string[];
+  @ApiPropertyOptional() establishmentId?: string;
   @ApiProperty() establishmentName: string;
+  @ApiPropertyOptional() driverId?: string;
+  @ApiPropertyOptional() driverName?: string;
+  @ApiPropertyOptional() vetId?: string;
+  @ApiPropertyOptional() vetName?: string;
   @ApiProperty() scheduledAt: Date;
   @ApiProperty() price: number;
+  @ApiProperty() priceVariable: boolean;
   @ApiProperty() status: string;
   @ApiProperty() paymentStatus: string;
   @ApiPropertyOptional() paymentMethod?: string;
@@ -27,10 +36,17 @@ export class BookingDto {
     this.petName = b.petName;
     this.serviceName = b.serviceName;
     this.services = b.services.length > 0 ? b.services : undefined;
+    this.attendancePhotos =
+      b.attendancePhotos.length > 0 ? b.attendancePhotos : undefined;
     this.establishmentId = b.establishmentId;
     this.establishmentName = b.establishmentName;
+    this.driverId = b.driverId;
+    this.driverName = b.driverName;
+    this.vetId = b.vetId;
+    this.vetName = b.vetName;
     this.scheduledAt = b.scheduledAt;
     this.price = b.price;
+    this.priceVariable = b.priceVariable;
     this.status = b.status;
     this.paymentStatus = b.paymentStatus;
     this.paymentMethod = b.paymentMethod;

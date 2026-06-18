@@ -1,7 +1,7 @@
+import { Injectable } from "@nestjs/common";
 import { Review } from "@review/reviews/domain/models/review.entity";
 import type { ReviewRepository } from "@review/reviews/domain/repositories/review-repository.interface";
 import { reviewsSchema } from "@review/reviews/infra/database/schemas/review.schema";
-import { Injectable } from "@nestjs/common";
 import { DrizzleService } from "@shared/infra/database/drizzle.service";
 import { avg, count, eq, sql } from "drizzle-orm";
 
@@ -37,7 +37,9 @@ export class DrizzleReviewRepository implements ReviewRepository {
     return rows.map((r) => Review.restore(r)!);
   }
 
-  async getStats(establishmentId: string): Promise<{ average: number; count: number }> {
+  async getStats(
+    establishmentId: string,
+  ): Promise<{ average: number; count: number }> {
     const [result] = await this.drizzleService.db
       .select({
         average: sql<number>`coalesce(avg(${reviewsSchema.rating}), 0)::float`,
@@ -55,6 +57,9 @@ export class DrizzleReviewRepository implements ReviewRepository {
         totalReviews: sql<number>`count(*)::int`,
       })
       .from(reviewsSchema);
-    return { avgRating: Number(result?.avgRating ?? 0), totalReviews: result?.totalReviews ?? 0 };
+    return {
+      avgRating: Number(result?.avgRating ?? 0),
+      totalReviews: result?.totalReviews ?? 0,
+    };
   }
 }

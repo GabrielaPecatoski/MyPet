@@ -54,6 +54,11 @@ class EstablishmentProvider extends ChangeNotifier {
     required String phone,
     required String type,
     String? imageUrl,
+    String? crmv,
+    bool? atendeEmergencia,
+    bool? atendimento24h,
+    bool? receberAlertaSonoro,
+    bool? receberPushEmergencia,
   }) async {
     if (_establishment == null) return false;
     _loading = true;
@@ -70,6 +75,11 @@ class EstablishmentProvider extends ChangeNotifier {
         phone: phone,
         type: type,
         imageUrl: imageUrl,
+        crmv: crmv,
+        atendeEmergencia: atendeEmergencia,
+        atendimento24h: atendimento24h,
+        receberAlertaSonoro: receberAlertaSonoro,
+        receberPushEmergencia: receberPushEmergencia,
       );
       _establishment = updated;
       _loading = false;
@@ -107,6 +117,8 @@ class EstablishmentProvider extends ChangeNotifier {
     required double price,
     required int durationMinutes,
     String? description,
+    String categoria = 'outros',
+    bool priceVariable = false,
   }) async {
     if (_establishment == null) return false;
     _error = null;
@@ -118,6 +130,8 @@ class EstablishmentProvider extends ChangeNotifier {
         price: price,
         durationMinutes: durationMinutes,
         description: description,
+        categoria: categoria,
+        priceVariable: priceVariable,
       );
       _establishment = updated;
       notifyListeners();

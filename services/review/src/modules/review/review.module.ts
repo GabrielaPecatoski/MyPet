@@ -1,10 +1,10 @@
 import { Module } from "@nestjs/common";
+import { COMPLAINT_REPOSITORY } from "@review/complaints/domain/repositories/complaint-repository.interface";
+import { DrizzleComplaintRepository } from "@review/complaints/infra/repositories/drizzle-complaint.repository";
 import { ReviewService } from "@review/reviews/application/services/review.service";
 import { REVIEW_REPOSITORY } from "@review/reviews/domain/repositories/review-repository.interface";
-import { COMPLAINT_REPOSITORY } from "@review/complaints/domain/repositories/complaint-repository.interface";
-import { DrizzleReviewRepository } from "@review/reviews/infra/repositories/drizzle-review.repository";
-import { DrizzleComplaintRepository } from "@review/complaints/infra/repositories/drizzle-complaint.repository";
 import { ReviewsController } from "@review/reviews/infra/controllers/reviews.controller";
+import { DrizzleReviewRepository } from "@review/reviews/infra/repositories/drizzle-review.repository";
 
 @Module({
   controllers: [ReviewsController],

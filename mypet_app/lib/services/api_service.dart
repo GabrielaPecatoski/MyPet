@@ -45,7 +45,7 @@ class ApiService {
             body: jsonEncode(body))
         .timeout(_timeout);
     if (res.statusCode >= 200 && res.statusCode < 300) {
-      if (res.body.isEmpty) return {};
+      if (res.body.isEmpty) return <String, dynamic>{};
       return jsonDecode(res.body);
     }
     throw Exception('Erro ${res.statusCode}: ${res.body}');
@@ -64,7 +64,7 @@ class ApiService {
             body: jsonEncode(body))
         .timeout(_timeout);
     if (res.statusCode >= 200 && res.statusCode < 300) {
-      if (res.body.isEmpty) return {};
+      if (res.body.isEmpty) return <String, dynamic>{};
       return jsonDecode(res.body);
     }
     throw Exception('Erro ${res.statusCode}: ${res.body}');
@@ -83,7 +83,7 @@ class ApiService {
             body: jsonEncode(body))
         .timeout(_timeout);
     if (res.statusCode >= 200 && res.statusCode < 300) {
-      if (res.body.isEmpty) return {};
+      if (res.body.isEmpty) return <String, dynamic>{};
       return jsonDecode(res.body);
     }
     throw Exception('Erro ${res.statusCode}: ${res.body}');

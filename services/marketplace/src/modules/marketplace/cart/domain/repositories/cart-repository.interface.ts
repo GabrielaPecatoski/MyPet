@@ -10,7 +10,11 @@ export interface CartItemInput {
 
 export interface CartRepository {
   addItem(item: CartItemInput): Promise<void>;
-  updateItem(userId: string, productId: string, quantity: number): Promise<void>;
+  updateItem(
+    userId: string,
+    productId: string,
+    quantity: number,
+  ): Promise<void>;
   removeItem(userId: string, productId: string): Promise<void>;
   clearCart(userId: string): Promise<void>;
   findByUserId(userId: string): Promise<CartItemEnriched[]>;

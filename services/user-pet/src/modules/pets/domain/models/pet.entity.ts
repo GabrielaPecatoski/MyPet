@@ -17,26 +17,72 @@ export class Pet {
     this._updatedAt = updatedAt;
   }
 
-  get id(): string | undefined { return this._id; }
-  get userId(): string { return this._userId; }
-  get name(): string { return this._name; }
-  get type(): string { return this._type; }
-  get breed(): string { return this._breed; }
-  get age(): number { return this._age; }
-  get weight(): number { return this._weight; }
-  get imageUrl(): string | undefined { return this._imageUrl; }
-  get notes(): string | undefined { return this._notes; }
-  get createdAt(): Date | undefined { return this._createdAt; }
-  get updatedAt(): Date | undefined { return this._updatedAt; }
+  get id(): string | undefined {
+    return this._id;
+  }
+  get userId(): string {
+    return this._userId;
+  }
+  get name(): string {
+    return this._name;
+  }
+  get type(): string {
+    return this._type;
+  }
+  get breed(): string {
+    return this._breed;
+  }
+  get age(): number {
+    return this._age;
+  }
+  get weight(): number {
+    return this._weight;
+  }
+  get imageUrl(): string | undefined {
+    return this._imageUrl;
+  }
+  get notes(): string | undefined {
+    return this._notes;
+  }
+  get createdAt(): Date | undefined {
+    return this._createdAt;
+  }
+  get updatedAt(): Date | undefined {
+    return this._updatedAt;
+  }
 
-  withUserId(userId: string) { this._userId = userId; return this; }
-  withName(name: string) { this._name = name; return this; }
-  withType(type: string) { this._type = type; return this; }
-  withBreed(breed: string) { this._breed = breed; return this; }
-  withAge(age: number) { this._age = age; return this; }
-  withWeight(weight: number) { this._weight = weight; return this; }
-  withImageUrl(imageUrl?: string) { this._imageUrl = imageUrl; return this; }
-  withNotes(notes?: string) { this._notes = notes; return this; }
+  withUserId(userId: string) {
+    this._userId = userId;
+    return this;
+  }
+  withName(name: string) {
+    this._name = name;
+    return this;
+  }
+  withType(type: string) {
+    this._type = type;
+    return this;
+  }
+  withBreed(breed: string) {
+    this._breed = breed;
+    return this;
+  }
+  withAge(age: number) {
+    this._age = age;
+    return this;
+  }
+  withWeight(weight: number) {
+    this._weight = weight;
+    return this;
+  }
+  withImageUrl(imageUrl?: string) {
+    this._imageUrl = imageUrl;
+    return this;
+  }
+  withNotes(notes?: string) {
+    this._notes = notes;
+    return this;
+  }
 
   static restore(props?: {
     id?: string;

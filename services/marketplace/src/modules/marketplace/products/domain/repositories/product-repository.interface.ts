@@ -10,5 +10,8 @@ export interface ProductRepository {
   findById(id: string): Promise<Product | null>;
   findAll(search?: string): Promise<Product[]>;
   findByEstablishment(establishmentId: string): Promise<Product[]>;
-  findAllPaginated(params: PaginationParams, search?: string): Promise<{ rows: Product[]; total: number }>;
+  findAllPaginated(
+    params: PaginationParams,
+    search?: string,
+  ): Promise<{ rows: Product[]; total: number }>;
 }
