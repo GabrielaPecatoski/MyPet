@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 export class Notification {
   private _id: string;
   private _userId: string;
@@ -35,7 +37,7 @@ export class Notification {
     createdAt?: Date;
   }): Notification {
     return new Notification({
-      id: props.id ?? crypto.randomUUID(),
+      id: props.id ?? randomUUID(),
       userId: props.userId,
       title: props.title,
       body: props.body,
