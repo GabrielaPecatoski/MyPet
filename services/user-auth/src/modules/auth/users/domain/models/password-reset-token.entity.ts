@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 export class PasswordResetToken {
   private _id: string;
   private _userId: string;
@@ -31,7 +33,7 @@ export class PasswordResetToken {
     createdAt?: Date;
   }): PasswordResetToken {
     return new PasswordResetToken({
-      id: props.id ?? crypto.randomUUID(),
+      id: props.id ?? randomUUID(),
       userId: props.userId,
       token: props.token,
       expiresAt: props.expiresAt,
