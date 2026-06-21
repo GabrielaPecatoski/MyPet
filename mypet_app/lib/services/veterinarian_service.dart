@@ -18,6 +18,7 @@ class VeterinarianService {
     required String cpf,
     required String crmv,
     String? especialidade,
+    String? photoUrl,
   }) async {
     final body = <String, dynamic>{
       'name': name,
@@ -27,6 +28,7 @@ class VeterinarianService {
     };
     if (establishmentId != null) body['establishmentId'] = establishmentId;
     if (especialidade != null && especialidade.isNotEmpty) body['especialidade'] = especialidade;
+    if (photoUrl != null && photoUrl.isNotEmpty) body['photoUrl'] = photoUrl;
 
     final res = await http
         .post(
@@ -104,6 +106,24 @@ class VeterinarianService {
       msg = (m is List ? m.join(', ') : m?.toString()) ?? msg;
     } catch (_) {}
     throw Exception(msg);
+  }
+
+  static Future<VeterinarianModel> updatePhoto({
+    required String token,
+    required String vetId,
+    required String photoUrl,
+  }) async {
+    final res = await http
+        .patch(
+          Uri.parse('${ApiConstants.baseUrl}${ApiConstants.veterinariansEndpoint}/$vetId/photo'),
+          headers: _headers(token),
+          body: jsonEncode({'photoUrl': photoUrl}),
+        )
+        .timeout(const Duration(seconds: 10));
+    if (res.statusCode == 200 || res.statusCode == 201) {
+      return VeterinarianModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+    }
+    throw Exception('Erro ao atualizar foto do veterinário');
   }
 
   static Future<void> dissociate({
@@ -195,12 +215,12 @@ class VeterinarianService {
     required String token,
     required String vetId,
     required String callerName,
-    required String callerPhone,
+    String callerPhone = '',
     String? petDescription,
   }) async {
     final body = <String, dynamic>{
       'callerName': callerName,
-      'callerPhone': callerPhone,
+      if (callerPhone.isNotEmpty) 'callerPhone': callerPhone,
     };
     if (petDescription != null && petDescription.isNotEmpty) {
       body['petDescription'] = petDescription;

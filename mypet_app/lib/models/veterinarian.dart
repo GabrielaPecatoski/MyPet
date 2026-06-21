@@ -6,6 +6,7 @@ class VeterinarianModel {
   final String cpf;
   final String crmv;
   final String? especialidade;
+  final String? photoUrl;
   final String status;
   final bool atendeDomicilio;
   final bool disponivel;
@@ -19,6 +20,7 @@ class VeterinarianModel {
     required this.cpf,
     required this.crmv,
     this.especialidade,
+    this.photoUrl,
     this.status = 'PENDENTE',
     this.atendeDomicilio = false,
     this.disponivel = false,
@@ -48,6 +50,7 @@ class VeterinarianModel {
         cpf: json['cpf'] as String,
         crmv: json['crmv'] as String,
         especialidade: json['especialidade'] as String?,
+        photoUrl: json['photoUrl'] as String?,
         status: json['status'] as String? ?? 'PENDENTE',
         atendeDomicilio: json['atendeDomicilio'] as bool? ?? false,
         disponivel: json['disponivel'] as bool? ?? false,
@@ -59,6 +62,7 @@ class VeterinarianModel {
     bool? disponivel,
     bool? atende24h,
     String? status,
+    String? photoUrl,
   }) =>
       VeterinarianModel(
         id: id,
@@ -68,6 +72,7 @@ class VeterinarianModel {
         cpf: cpf,
         crmv: crmv,
         especialidade: especialidade,
+        photoUrl: photoUrl ?? this.photoUrl,
         status: status ?? this.status,
         atendeDomicilio: atendeDomicilio ?? this.atendeDomicilio,
         disponivel: disponivel ?? this.disponivel,

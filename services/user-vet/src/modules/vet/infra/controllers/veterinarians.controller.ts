@@ -15,6 +15,7 @@ import { RequirePermissions } from "@shared/infra/decorators/permissions.decorat
 import {
   CreateVeterinarianDto,
   UpdateVetAvailabilityDto,
+  UpdateVetPhotoDto,
 } from "@vet/vet/application/dto/create-veterinarian.dto";
 import { CreateEmergencyCallDto } from "@vet/vet/application/dto/emergency-call.dto";
 import { VeterinarianService } from "@vet/vet/application/services/veterinarian.service";
@@ -148,6 +149,14 @@ export class VeterinariansController {
     @Body() dto: UpdateVetAvailabilityDto,
   ) {
     return this.vetService.updateAvailability(id, dto);
+  }
+
+  @Patch(":id/photo")
+  @RequirePermissions(Permission.VETS_WRITE)
+  @HttpCode(200)
+  @ApiOperation({ summary: "Atualizar foto de perfil do veterinário" })
+  updatePhoto(@Param("id") id: string, @Body() dto: UpdateVetPhotoDto) {
+    return this.vetService.updatePhoto(id, dto);
   }
 
   @Patch(":id/deactivate")

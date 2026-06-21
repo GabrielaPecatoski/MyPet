@@ -267,12 +267,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 : '000.000.000-00',
                             keyboardType: TextInputType.number,
                             validator: (v) {
-                              if (v == null || v.isEmpty)
+                              if (v == null || v.isEmpty) {
                                 return 'Informe o CPF';
+                              }
                               if (isMotorista) {
                                 final d = v.replaceAll(RegExp(r'\D'), '');
-                                if (d.length != 11)
+                                if (d.length != 11) {
                                   return 'CPF deve ter 11 dígitos';
+                                }
                               }
                               return null;
                             }),
@@ -434,10 +436,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             'Ex: ABC1D23',
                             caps: TextCapitalization.characters,
                             validator: (v) {
-                              if (v == null || v.trim().isEmpty)
+                              if (v == null || v.trim().isEmpty) {
                                 return 'Informe a placa';
-                              if (v.trim().length < 7)
+                              }
+                              if (v.trim().length < 7) {
                                 return 'Placa inválida';
+                              }
                               return null;
                             },
                           ),

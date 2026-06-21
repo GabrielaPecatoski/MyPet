@@ -60,15 +60,19 @@ class BookingService {
     required String userName,
     required String petId,
     required String petName,
+    String petBreed = '',
+    int petAge = 0,
     required String serviceName,
     String? establishmentId,
     String? establishmentName,
+    String? establishmentAddress,
     required DateTime scheduledAt,
     double price = 0,
     bool priceVariable = false,
     List<ServiceModel>? services,
     String? driverId,
     String? driverName,
+    String? driverPhotoUrl,
     String? vetId,
     String? vetName,
   }) async {
@@ -76,6 +80,8 @@ class BookingService {
       'userName': userName,
       'petId': petId,
       'petName': petName,
+      if (petBreed.isNotEmpty) 'petBreed': petBreed,
+      if (petAge > 0) 'petAge': petAge,
       'serviceName': serviceName,
       'scheduledAt': scheduledAt.toIso8601String(),
       'price': price,
@@ -83,8 +89,10 @@ class BookingService {
     };
     if (establishmentId != null) body['establishmentId'] = establishmentId;
     if (establishmentName != null) body['establishmentName'] = establishmentName;
+    if (establishmentAddress != null && establishmentAddress.isNotEmpty) body['establishmentAddress'] = establishmentAddress;
     if (driverId != null) body['driverId'] = driverId;
     if (driverName != null) body['driverName'] = driverName;
+    if (driverPhotoUrl != null) body['driverPhotoUrl'] = driverPhotoUrl;
     if (vetId != null) body['vetId'] = vetId;
     if (vetName != null) body['vetName'] = vetName;
     if (services != null && services.isNotEmpty) {

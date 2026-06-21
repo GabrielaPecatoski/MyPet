@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../core/colors.dart';
 import '../providers/auth_provider.dart';
 import '../providers/driver_profile_provider.dart';
+import '../widgets/app_image.dart';
 import '../widgets/mypet_app_bar.dart';
 
 class DriverPerfilScreen extends StatefulWidget {
@@ -32,14 +33,27 @@ class _DriverPerfilScreenState extends State<DriverPerfilScreen> {
   }
 
   Future<void> _pickProfilePhoto() async {
-    if (kIsWeb) return;
-    final picked = await ImagePicker()
-        .pickImage(source: ImageSource.gallery, imageQuality: 80);
-    if (picked != null && mounted) {
-      final auth = context.read<AuthProvider>();
-      auth.updateUser(auth.user!.copyWith(photoPath: picked.path));
-      setState(() {});
-    }
+    final picked = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+      maxWidth: 800,
+      maxHeight: 800,
+    );
+    if (picked == null || !mounted) return;
+    final bytes = await picked.readAsBytes();
+    if (!mounted) return;
+    final auth = context.read<AuthProvider>();
+    final ok = await context.read<DriverProfileProvider>().updateProfilePhoto(
+          token: auth.token ?? '',
+          photoUrl: dataUrlFromBytes(bytes),
+        );
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content:
+          Text(ok ? 'Foto de perfil salva!' : 'Erro ao salvar foto de perfil'),
+      backgroundColor: ok ? AppColors.success : AppColors.danger,
+      behavior: SnackBarBehavior.floating,
+    ));
   }
 
   Future<void> _pickVehiclePhoto() async {
@@ -68,9 +82,9 @@ class _DriverPerfilScreenState extends State<DriverPerfilScreen> {
     final name = auth.user?.name ?? 'Motorista';
     final email = auth.user?.email ?? '';
     final phone = auth.user?.phone ?? '';
-    final photo = auth.user?.photoPath;
+    final profilePhotoUrl = driver?.photoUrl;
 
-    final hasProfile = photo != null && !kIsWeb;
+    final hasProfile = profilePhotoUrl != null && profilePhotoUrl.isNotEmpty;
     final hasVehicle = vehiclePhotoPath != null && !kIsWeb;
 
     return Scaffold(
@@ -109,7 +123,7 @@ class _DriverPerfilScreenState extends State<DriverPerfilScreen> {
                                   backgroundColor:
                                       _orange.withValues(alpha: 0.12),
                                   backgroundImage:
-                                      (photo != null && !kIsWeb) ? FileImage(File(photo)) : null,
+                                      appImageProvider(profilePhotoUrl),
                                   child: !hasProfile
                                       ? const Icon(Icons.person,
                                           size: 34, color: _orange)
@@ -266,8 +280,7 @@ class _DriverPerfilScreenState extends State<DriverPerfilScreen> {
                                   child: _photoCard(
                                 label: 'Foto de perfil',
                                 icon: Icons.person_outline,
-                                photoPath: photo,
-                                hasPhoto: hasProfile,
+                                image: appImageProvider(profilePhotoUrl),
                                 onTap: _pickProfilePhoto,
                               )),
                               const SizedBox(width: 12),
@@ -275,8 +288,9 @@ class _DriverPerfilScreenState extends State<DriverPerfilScreen> {
                                   child: _photoCard(
                                 label: 'Foto do veículo',
                                 icon: Icons.directions_car_outlined,
-                                photoPath: vehiclePhotoPath,
-                                hasPhoto: hasVehicle,
+                                image: hasVehicle
+                                    ? FileImage(File(vehiclePhotoPath))
+                                    : null,
                                 onTap: _pickVehiclePhoto,
                               )),
                             ],
@@ -340,7 +354,7 @@ class _DriverPerfilScreenState extends State<DriverPerfilScreen> {
                     GestureDetector(
                       onTap: () async {
                         await auth.logout();
-                        if (mounted) {
+                        if (context.mounted) {
                           Navigator.pushReplacementNamed(context, '/login');
                         }
                       },
@@ -371,10 +385,10 @@ class _DriverPerfilScreenState extends State<DriverPerfilScreen> {
   Widget _photoCard({
     required String label,
     required IconData icon,
-    required String? photoPath,
-    required bool hasPhoto,
+    required ImageProvider? image,
     required VoidCallback onTap,
   }) {
+    final hasPhoto = image != null;
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -395,7 +409,7 @@ class _DriverPerfilScreenState extends State<DriverPerfilScreen> {
               ? Stack(
                   fit: StackFit.expand,
                   children: [
-                    Image.file(File(photoPath!), fit: BoxFit.cover),
+                    Image(image: image, fit: BoxFit.cover),
                     Positioned(
                       bottom: 0,
                       left: 0,

@@ -58,7 +58,7 @@ class AuthService {
       'phone': phone,
       'cpf': cpf,
       'role': role,
-      if (businessName != null) 'businessName': businessName,
+      'businessName': ?businessName,
     };
     final response = await http
         .post(

@@ -55,7 +55,7 @@ class EmergencyProvider extends ChangeNotifier {
     required String token,
     required String vetId,
     required String callerName,
-    required String callerPhone,
+    String callerPhone = '',
     String? petDescription,
   }) async {
     try {

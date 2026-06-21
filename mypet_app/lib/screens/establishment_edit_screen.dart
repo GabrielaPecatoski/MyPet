@@ -63,7 +63,6 @@ class _EstabEditScreenState extends State<EstabEditScreen> {
   }
 
   Future<void> _pickImage(ImageSource source) async {
-    if (kIsWeb) return;
     final picker = ImagePicker();
     final picked = await picker.pickImage(
       source: source,
@@ -78,7 +77,6 @@ class _EstabEditScreenState extends State<EstabEditScreen> {
   }
 
   void _showImageOptions() {
-    if (kIsWeb) return;
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -218,33 +216,31 @@ class _EstabEditScreenState extends State<EstabEditScreen> {
               ),
               const SizedBox(height: 24),
 
-              if (!kIsWeb) ...[
-                Center(
-                  child: GestureDetector(
-                    onTap: _showImageOptions,
-                    child: Stack(
-                      children: [
-                        _buildAvatar(),
-                        Positioned(
-                          bottom: 2,
-                          right: 2,
-                          child: Container(
-                            width: 30,
-                            height: 30,
-                            decoration: const BoxDecoration(
-                              color: AppColors.estab,
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(Icons.camera_alt,
-                                color: Colors.white, size: 16),
+              Center(
+                child: GestureDetector(
+                  onTap: _showImageOptions,
+                  child: Stack(
+                    children: [
+                      _buildAvatar(),
+                      Positioned(
+                        bottom: 2,
+                        right: 2,
+                        child: Container(
+                          width: 30,
+                          height: 30,
+                          decoration: const BoxDecoration(
+                            color: AppColors.estab,
+                            shape: BoxShape.circle,
                           ),
+                          child: const Icon(Icons.camera_alt,
+                              color: Colors.white, size: 16),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 28),
-              ],
+              ),
+              const SizedBox(height: 28),
 
               _sectionTitle('Tipo de Estabelecimento'),
               const SizedBox(height: 10),

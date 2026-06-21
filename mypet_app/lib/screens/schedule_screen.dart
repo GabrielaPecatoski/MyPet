@@ -10,6 +10,7 @@ import '../providers/auth_provider.dart';
 import '../providers/booking_provider.dart';
 import '../providers/schedule_provider.dart';
 import '../repositories/schedule_repository.dart';
+import '../widgets/app_image.dart';
 import '../widgets/mypet_app_bar.dart';
 
 class ScheduleArgs {
@@ -40,7 +41,7 @@ class _ScheduleView extends StatefulWidget {
 
 class _ScheduleViewState extends State<_ScheduleView> {
   PetModel? _selectedPet;
-  List<ServiceModel> _selectedServices = [];
+  final List<ServiceModel> _selectedServices = [];
   DateTime? _selectedDate;
   String? _selectedTime;
   DriverModel? _selectedDriver;
@@ -82,10 +83,17 @@ class _ScheduleViewState extends State<_ScheduleView> {
         establishment = args;
       }
       if (establishment != null) {
-        final auth = context.read<AuthProvider>();
-        context
-            .read<ScheduleProvider>()
-            .loadServicesAndDrivers(establishment.id, token: auth.token);
+        final estabId = establishment.id;
+        final token = context.read<AuthProvider>().token;
+        // Defer to after the frame: loadServicesAndDrivers() calls
+        // notifyListeners() synchronously, which would mark the provider
+        // dirty during build (the '!_dirty' assertion) if called here.
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          context
+              .read<ScheduleProvider>()
+              .loadServicesAndDrivers(estabId, token: token);
+        });
       }
     }
   }
@@ -166,15 +174,19 @@ class _ScheduleViewState extends State<_ScheduleView> {
           userName: auth.user!.name,
           petId: _selectedPet!.id,
           petName: _selectedPet!.name,
+          petBreed: _selectedPet!.breed,
+          petAge: _selectedPet!.age,
           serviceName: serviceNameDisplay,
-          establishmentId: establishment?.id,
-          establishmentName: establishment?.name,
+          establishmentId: establishment?.id ?? '',
+          establishmentName: establishment?.name ?? '',
+          establishmentAddress: establishment?.address ?? '',
           scheduledAt: scheduledAt,
           price: totalPrice,
           priceVariable: allVariable,
           services: _selectedServices,
           driverId: _selectedDriver?.id,
           driverName: _selectedDriver?.name,
+          driverPhotoUrl: _selectedDriver?.photoUrl,
           vetId: _vetId,
           vetName: _vetName,
         );
@@ -523,7 +535,7 @@ class _ScheduleViewState extends State<_ScheduleView> {
                   child: ListView.separated(
                     scrollDirection: Axis.horizontal,
                     itemCount: _availableDates.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 8),
+                    separatorBuilder: (_, _) => const SizedBox(width: 8),
                     itemBuilder: (ctx, i) {
                       final date = _availableDates[i];
                       final today = _isToday(date);
@@ -963,14 +975,14 @@ class _DriverSelectCard extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: selected ? AppColors.primaryLight : AppColors.greyLight.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(
+            PhotoBox(
+              url: driver?.photoUrl,
+              size: 40,
+              radius: 10,
+              background: selected
+                  ? AppColors.primaryLight
+                  : AppColors.greyLight.withValues(alpha: 0.5),
+              fallback: Icon(
                 isNone ? Icons.do_not_disturb_alt_outlined : vehicleIcon,
                 color: selected ? AppColors.primary : AppColors.grey,
                 size: 20,

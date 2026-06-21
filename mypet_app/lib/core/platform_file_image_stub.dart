@@ -18,6 +18,6 @@ Widget fileImageWidget({
     width: width,
     height: height,
     fit: fit,
-    errorBuilder: (_, __, ___) => fallback,
+    errorBuilder: (_, _, _) => fallback,
   );
 }

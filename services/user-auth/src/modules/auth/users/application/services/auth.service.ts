@@ -25,7 +25,12 @@ import {
   UnauthorizedException,
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
+import {
+  UserAuthExchangeName,
+  UserAuthRoutingKey,
+} from "@shared/contracts/events/user-auth-events.enum";
 import { ROLE_PERMISSIONS } from "@shared/domain/enums/permission.enum";
+import { SharedMessagingService } from "@shared/infra/messaging/shared-messaging.service";
 import * as bcrypt from "bcryptjs";
 
 const PASSWORD_RESET_TTL_MINUTES = Number(
@@ -45,6 +50,7 @@ export class AuthService {
     private readonly passwordResetTokenRepository: PasswordResetTokenRepository,
     private readonly emailService: EmailService,
     private readonly jwtService: JwtService,
+    private readonly messaging: SharedMessagingService,
   ) {}
 
   async register(
@@ -78,6 +84,16 @@ export class AuthService {
       dto.email.toLowerCase(),
     );
     if (!created) throw new NotFoundException("Usuário criado não encontrado");
+
+    await this.safePublish(
+      UserAuthExchangeName.USER_CREATED,
+      UserAuthRoutingKey.USER_CREATED,
+      {
+        userId: created.id,
+        name: created.name,
+        email: created.email,
+      },
+    );
 
     const accessToken = this.generateToken(created);
     return { accessToken, user: UserDto.fromUser(created)! };
@@ -167,50 +183,16 @@ export class AuthService {
     });
   }
 
-  private hashToken(token: string): string {
-    return createHash("sha256").update(token).digest("hex");
-  }
-
-  private buildResetEmailText(
-    name: string,
-    token: string,
-    resetUrl: string,
-  ): string {
-    return [
-      `Olá, ${name}.`,
-      "",
-      "Recebemos um pedido para redefinir a senha da sua conta MyPet.",
-      "Use o código abaixo no aplicativo para criar uma nova senha:",
-      "",
-      token,
-      "",
-      `Ou acesse: ${resetUrl}`,
-      "",
-      `Este código expira em ${PASSWORD_RESET_TTL_MINUTES} minutos. Se você não solicitou a recuperação, ignore este e-mail.`,
-      "",
-      "Equipe MyPet",
-    ].join("\n");
-  }
-
-  private buildResetEmailHtml(
-    name: string,
-    token: string,
-    resetUrl: string,
-  ): string {
-    return `
-      <div style="font-family: Arial, sans-serif; color: #2D2D2D; max-width: 480px; margin: 0 auto;">
-        <h2 style="color: #7B3FF2;">Recuperação de senha</h2>
-        <p>Olá, ${name}.</p>
-        <p>Recebemos um pedido para redefinir a senha da sua conta <strong>MyPet</strong>.</p>
-        <p>Use o código abaixo no aplicativo para criar uma nova senha:</p>
-        <p style="font-size: 16px; font-weight: bold; background: #F4F0FF; padding: 12px 16px; border-radius: 8px; letter-spacing: 1px; word-break: break-all;">${token}</p>
-        <p>Ou clique no botão abaixo:</p>
-        <p>
-          <a href="${resetUrl}" style="display: inline-block; background: #7B3FF2; color: #fff; text-decoration: none; padding: 12px 20px; border-radius: 8px;">Redefinir senha</a>
-        </p>
-        <p style="color: #888; font-size: 13px;">Este código expira em ${PASSWORD_RESET_TTL_MINUTES} minutos. Se você não solicitou a recuperação, ignore este e-mail.</p>
-        <p style="color: #888; font-size: 13px;">Equipe MyPet</p>
-      </div>
-    `;
+  private async safePublish(
+    exchange: string,
+    routingKey: string,
+    payload: unknown,
+  ): Promise<void> {
+    try {
+      await this.messaging.assertExchange(exchange, "direct");
+      await this.messaging.publish(exchange, routingKey, payload);
+    } catch (err) {
+      this.logger.warn(`RabbitMQ publish failed [${routingKey}]: ${err}`);
+    }
   }
 }

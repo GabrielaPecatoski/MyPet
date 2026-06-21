@@ -8,6 +8,7 @@ class DriverModel {
   final String vehicleType;
   final String vehicleModel;
   final String vehiclePlate;
+  final String? photoUrl;
   final String status;
 
   DriverModel({
@@ -20,6 +21,7 @@ class DriverModel {
     required this.vehicleType,
     required this.vehicleModel,
     required this.vehiclePlate,
+    this.photoUrl,
     this.status = 'ATIVO',
   });
 
@@ -56,6 +58,7 @@ class DriverModel {
         vehicleType: json['vehicleType'] as String,
         vehicleModel: json['vehicleModel'] as String,
         vehiclePlate: json['vehiclePlate'] as String,
+        photoUrl: json['photoUrl'] as String?,
         status: json['status'] as String? ?? 'ATIVO',
       );
 }

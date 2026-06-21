@@ -50,6 +50,9 @@ export enum Permission {
   NOTIFICATIONS_READ = "notifications:read",
   NOTIFICATIONS_WRITE = "notifications:write",
 
+  CHAT_READ = "chat:read",
+  CHAT_WRITE = "chat:write",
+
   DRIVERS_READ = "drivers:read",
   DRIVERS_WRITE = "drivers:write",
   DRIVERS_DELETE = "drivers:delete",
@@ -88,6 +91,8 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     Permission.QUESTIONS_WRITE,
     Permission.NOTIFICATIONS_READ,
     Permission.NOTIFICATIONS_WRITE,
+    Permission.CHAT_READ,
+    Permission.CHAT_WRITE,
     Permission.CART_READ,
     Permission.CART_WRITE,
     Permission.ORDERS_READ,
@@ -120,6 +125,9 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     Permission.QUESTIONS_READ,
     Permission.QUESTIONS_WRITE,
     Permission.NOTIFICATIONS_READ,
+    Permission.NOTIFICATIONS_WRITE,
+    Permission.CHAT_READ,
+    Permission.CHAT_WRITE,
     Permission.VETS_READ,
   ],
   MOTORISTA: [

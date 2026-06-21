@@ -19,15 +19,20 @@ export class Booking {
   private readonly _id?: string;
   private _userId!: string;
   private _userName!: string;
+  private _userEmail?: string;
   private _petId!: string;
   private _petName!: string;
+  private _petBreed?: string;
+  private _petAge?: number;
   private _serviceName!: string;
   private _servicesJson?: string;
   private _attendancePhotos?: string;
   private _establishmentId?: string;
   private _establishmentName!: string;
+  private _establishmentAddress?: string;
   private _driverId?: string;
   private _driverName?: string;
+  private _driverPhotoUrl?: string;
   private _vetId?: string;
   private _vetName?: string;
   private _scheduledAt!: Date;
@@ -55,11 +60,20 @@ export class Booking {
   get userName(): string {
     return this._userName;
   }
+  get userEmail(): string | undefined {
+    return this._userEmail;
+  }
   get petId(): string {
     return this._petId;
   }
   get petName(): string {
     return this._petName;
+  }
+  get petBreed(): string {
+    return this._petBreed ?? "";
+  }
+  get petAge(): number {
+    return this._petAge ?? 0;
   }
   get serviceName(): string {
     return this._serviceName;
@@ -92,11 +106,17 @@ export class Booking {
   get establishmentName(): string {
     return this._establishmentName;
   }
+  get establishmentAddress(): string {
+    return this._establishmentAddress ?? "";
+  }
   get driverId(): string | undefined {
     return this._driverId;
   }
   get driverName(): string | undefined {
     return this._driverName;
+  }
+  get driverPhotoUrl(): string | undefined {
+    return this._driverPhotoUrl;
   }
   get vetId(): string | undefined {
     return this._vetId;
@@ -154,15 +174,20 @@ export class Booking {
     id?: string;
     userId: string;
     userName: string;
+    userEmail?: string | null;
     petId: string;
     petName: string;
+    petBreed?: string | null;
+    petAge?: number | null;
     serviceName: string;
     servicesJson?: string | null;
     attendancePhotos?: string | null;
     establishmentId?: string | null;
     establishmentName?: string | null;
+    establishmentAddress?: string | null;
     driverId?: string | null;
     driverName?: string | null;
+    driverPhotoUrl?: string | null;
     vetId?: string | null;
     vetName?: string | null;
     scheduledAt: Date;
@@ -179,15 +204,20 @@ export class Booking {
     const b = new Booking(props.id, props.createdAt, props.updatedAt);
     b._userId = props.userId;
     b._userName = props.userName;
+    b._userEmail = props.userEmail ?? undefined;
     b._petId = props.petId;
     b._petName = props.petName;
+    b._petBreed = props.petBreed ?? undefined;
+    b._petAge = props.petAge ?? undefined;
     b._serviceName = props.serviceName;
     b._servicesJson = props.servicesJson ?? undefined;
     b._attendancePhotos = props.attendancePhotos ?? undefined;
     b._establishmentId = props.establishmentId ?? undefined;
     b._establishmentName = props.establishmentName ?? "";
+    b._establishmentAddress = props.establishmentAddress ?? undefined;
     b._driverId = props.driverId ?? undefined;
     b._driverName = props.driverName ?? undefined;
+    b._driverPhotoUrl = props.driverPhotoUrl ?? undefined;
     b._vetId = props.vetId ?? undefined;
     b._vetName = props.vetName ?? undefined;
     b._scheduledAt = props.scheduledAt;

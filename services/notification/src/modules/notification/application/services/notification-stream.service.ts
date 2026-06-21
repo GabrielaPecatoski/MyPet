@@ -2,6 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { Observable, Subject } from "rxjs";
 
 export interface StreamEvent {
+  id: string;
   type: string;
   title: string;
   body: string;

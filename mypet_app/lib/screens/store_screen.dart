@@ -4,6 +4,7 @@ import '../core/colors.dart';
 import '../models/product.dart';
 import '../providers/auth_provider.dart';
 import '../providers/cart_provider.dart';
+import '../providers/chat_provider.dart';
 import '../providers/store_provider.dart';
 import '../core/order_status.dart';
 import '../widgets/app_image.dart';
@@ -429,8 +430,59 @@ class _OrderCard extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
             child: OrderProgressBar(status: status, pickup: pickup),
           ),
+
+        // Enquanto o pedido está sendo preparado ou a caminho, permite conversar
+        // com o estabelecimento.
+        if (!cancelled && (status == 'ENVIANDO' || status == 'A_CAMINHO') &&
+            (order['establishmentId'] as String? ?? '').isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+            child: SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => _openChat(context),
+                icon: const Icon(Icons.chat_bubble_outline,
+                    size: 16, color: AppColors.primary),
+                label: const Text('Conversar',
+                    style: TextStyle(color: AppColors.primary)),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: AppColors.primary),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                ),
+              ),
+            ),
+          ),
       ]),
     );
+  }
+
+  Future<void> _openChat(BuildContext context) async {
+    final auth = context.read<AuthProvider>();
+    final chat = context.read<ChatProvider>();
+    final establishmentId = order['establishmentId'] as String?;
+    final orderId = order['id'] as String?;
+    if (auth.token == null || establishmentId == null || orderId == null) return;
+    try {
+      final conv = await chat.openOrCreateConversation(
+        bookingId: orderId,
+        clientId: auth.user?.id ?? (order['userId'] as String? ?? ''),
+        clientName: auth.user?.name,
+        establishmentId: establishmentId,
+        token: auth.token!,
+      );
+      if (!context.mounted) return;
+      Navigator.pushNamed(context, '/chat', arguments: conv);
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Não foi possível abrir o chat'),
+          backgroundColor: AppColors.danger,
+        ),
+      );
+    }
   }
 
   String _fmt(String iso) {
