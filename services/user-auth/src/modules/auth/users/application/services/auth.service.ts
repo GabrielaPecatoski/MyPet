@@ -195,4 +195,51 @@ export class AuthService {
       this.logger.warn(`RabbitMQ publish failed [${routingKey}]: ${err}`);
     }
   }
+
+  private hashToken(token: string): string {
+    return createHash("sha256").update(token).digest("hex");
+  }
+
+  private buildResetEmailText(
+    name: string,
+    token: string,
+    resetUrl: string,
+  ): string {
+    return [
+      `Olá, ${name}.`,
+      "",
+      "Recebemos um pedido para redefinir a senha da sua conta MyPet.",
+      "Use o código abaixo no aplicativo para criar uma nova senha:",
+      "",
+      token,
+      "",
+      `Ou acesse: ${resetUrl}`,
+      "",
+      `Este código expira em ${PASSWORD_RESET_TTL_MINUTES} minutos. Se você não solicitou a recuperação, ignore este e-mail.`,
+      "",
+      "Equipe MyPet",
+    ].join("\n");
+  }
+
+  private buildResetEmailHtml(
+    name: string,
+    token: string,
+    resetUrl: string,
+  ): string {
+    return `
+      <div style="font-family: Arial, sans-serif; color: #2D2D2D; max-width: 480px; margin: 0 auto;">
+        <h2 style="color: #7B3FF2;">Recuperação de senha</h2>
+        <p>Olá, ${name}.</p>
+        <p>Recebemos um pedido para redefinir a senha da sua conta <strong>MyPet</strong>.</p>
+        <p>Use o código abaixo no aplicativo para criar uma nova senha:</p>
+        <p style="font-size: 16px; font-weight: bold; background: #F4F0FF; padding: 12px 16px; border-radius: 8px; letter-spacing: 1px; word-break: break-all;">${token}</p>
+        <p>Ou clique no botão abaixo:</p>
+        <p>
+          <a href="${resetUrl}" style="display: inline-block; background: #7B3FF2; color: #fff; text-decoration: none; padding: 12px 20px; border-radius: 8px;">Redefinir senha</a>
+        </p>
+        <p style="color: #888; font-size: 13px;">Este código expira em ${PASSWORD_RESET_TTL_MINUTES} minutos. Se você não solicitou a recuperação, ignore este e-mail.</p>
+        <p style="color: #888; font-size: 13px;">Equipe MyPet</p>
+      </div>
+    `;
+  }
 }
