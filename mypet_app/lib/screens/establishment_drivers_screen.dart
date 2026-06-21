@@ -1,10 +1,13 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../core/colors.dart';
 import '../models/driver.dart';
 import '../providers/auth_provider.dart';
 import '../providers/establishment_provider.dart';
 import '../providers/establishment_staff_provider.dart';
+import '../widgets/app_image.dart';
 import '../widgets/mypet_app_bar.dart';
 
 class EstabMotoristasScreen extends StatefulWidget {
@@ -35,7 +38,7 @@ class _EstabMotoristasScreenState extends State<EstabMotoristasScreen> {
       );
     }
     final estabId = estabProvider.establishmentId;
-    if (estabId == null) return;
+    if (estabId == null || !mounted) return;
     final staff = context.read<EstablishmentStaffProvider>();
     staff.init(establishmentId: estabId, token: auth.token!);
     await staff.loadDrivers();
@@ -471,8 +474,21 @@ class _CadastrarTabState extends State<_CadastrarTab> {
   final _modelCtrl = TextEditingController();
   final _plateCtrl = TextEditingController();
   String _vehicleType = 'CARRO';
+  Uint8List? _photoBytes;
   bool _loading = false;
   bool _obscureSenha = true;
+
+  Future<void> _pickPhoto() async {
+    final picked = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+      maxWidth: 800,
+      maxHeight: 800,
+    );
+    if (picked == null) return;
+    final bytes = await picked.readAsBytes();
+    if (mounted) setState(() => _photoBytes = bytes);
+  }
 
   @override
   void dispose() {
@@ -500,6 +516,8 @@ class _CadastrarTabState extends State<_CadastrarTab> {
                 vehicleType: _vehicleType,
                 vehicleModel: _modelCtrl.text.trim(),
                 vehiclePlate: _plateCtrl.text.trim().toUpperCase(),
+                photoUrl:
+                    _photoBytes != null ? dataUrlFromBytes(_photoBytes!) : null,
               );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -532,6 +550,8 @@ class _CadastrarTabState extends State<_CadastrarTab> {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
         children: [
+          Center(child: _photoPicker()),
+          const SizedBox(height: 16),
           _field(_nameCtrl, 'Nome completo', Icons.person, required: true),
           const SizedBox(height: 10),
           _field(_phoneCtrl, 'Telefone', Icons.phone,
@@ -686,6 +706,37 @@ class _CadastrarTabState extends State<_CadastrarTab> {
     );
   }
 
+  Widget _photoPicker() => GestureDetector(
+        onTap: _pickPhoto,
+        child: Stack(
+          children: [
+            CircleAvatar(
+              radius: 42,
+              backgroundColor: AppColors.primaryLight,
+              backgroundImage:
+                  _photoBytes != null ? MemoryImage(_photoBytes!) : null,
+              child: _photoBytes == null
+                  ? const Icon(Icons.add_a_photo_outlined,
+                      color: AppColors.estab, size: 26)
+                  : null,
+            ),
+            Positioned(
+              bottom: 0,
+              right: 0,
+              child: Container(
+                padding: const EdgeInsets.all(5),
+                decoration: const BoxDecoration(
+                  color: AppColors.estab,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.camera_alt,
+                    color: Colors.white, size: 14),
+              ),
+            ),
+          ],
+        ),
+      );
+
   Widget _field(
     TextEditingController ctrl,
     String label,
@@ -732,7 +783,7 @@ class EstabMotoristaCard extends StatelessWidget {
   final VoidCallback? onAssociar;
   final bool associando;
 
-  const EstabMotoristaCard({
+  const EstabMotoristaCard({super.key, 
     required this.driver,
     this.onRemover,
     this.onAssociar,
@@ -767,16 +818,13 @@ class EstabMotoristaCard extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Container(
-                      width: 46,
-                      height: 46,
-                      decoration: BoxDecoration(
-                        color: driver.isAtivo
-                            ? AppColors.primaryLight
-                            : AppColors.greyLight.withValues(alpha: 0.5),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(_vehicleIcon,
+                    PhotoBox(
+                      url: driver.photoUrl,
+                      size: 46,
+                      background: driver.isAtivo
+                          ? AppColors.primaryLight
+                          : AppColors.greyLight.withValues(alpha: 0.5),
+                      fallback: Icon(_vehicleIcon,
                           color: driver.isAtivo
                               ? AppColors.estab
                               : AppColors.grey,

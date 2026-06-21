@@ -120,12 +120,16 @@ class _LoginScreenState extends State<LoginScreen> {
 
                       Align(
                         alignment: Alignment.centerRight,
-                        child: Text(
-                          'Esqueceu sua senha?',
-                          style: const TextStyle(
-                            color: AppColors.primary,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
+                        child: GestureDetector(
+                          onTap: () =>
+                              Navigator.pushNamed(context, '/forgot-password'),
+                          child: const Text(
+                            'Esqueceu sua senha?',
+                            style: TextStyle(
+                              color: AppColors.primary,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ),
                       ),

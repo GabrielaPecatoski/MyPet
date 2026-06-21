@@ -20,6 +20,7 @@ class AppointmentModel {
   final DateTime? expiresAt;
   final String? driverId;
   final String? driverName;
+  final String? driverPhotoUrl;
   final List<String> attendancePhotos;
 
   AppointmentModel({
@@ -44,6 +45,7 @@ class AppointmentModel {
     this.expiresAt,
     this.driverId,
     this.driverName,
+    this.driverPhotoUrl,
     this.attendancePhotos = const [],
   });
 
@@ -75,6 +77,7 @@ class AppointmentModel {
           : null,
       driverId: json['driverId'] as String?,
       driverName: json['driverName'] as String?,
+      driverPhotoUrl: json['driverPhotoUrl'] as String?,
       attendancePhotos: (json['attendancePhotos'] as List?)
               ?.map((e) => e.toString())
               .toList() ??

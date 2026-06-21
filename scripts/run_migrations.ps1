@@ -10,7 +10,8 @@ $services = @(
   @{name="faq"; db="mypet_faq"},
   @{name="notification"; db="mypet_notif"},
   @{name="user-driver"; db="mypet_driver"},
-  @{name="user-vet"; db="mypet_vet"}
+  @{name="user-vet"; db="mypet_vet"},
+  @{name="chat"; db="mypet_chat"}
 )
 
 foreach ($svc in $services) {

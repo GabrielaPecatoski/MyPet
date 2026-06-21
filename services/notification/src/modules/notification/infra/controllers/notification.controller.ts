@@ -1,9 +1,11 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
+  MessageEvent,
   Param,
   Patch,
   Post,
@@ -16,6 +18,7 @@ import { JwtService } from "@nestjs/jwt";
 import {
   ApiBearerAuth,
   ApiNoContentResponse,
+  ApiOkResponse,
   ApiOperation,
   ApiTags,
 } from "@nestjs/swagger";
@@ -72,6 +75,13 @@ export class NotificationsController {
     );
   }
 
+  @Get("health")
+  @Public()
+  @ApiOperation({ summary: "Health check" })
+  health() {
+    return { status: "ok", service: "notification-service" };
+  }
+
   @Post()
   @RequirePermissions(Permission.ADMIN_WRITE)
   @ApiOperation({ summary: "Criar notificação" })
@@ -85,7 +95,17 @@ export class NotificationsController {
   @RequirePermissions(Permission.NOTIFICATIONS_READ)
   @ApiOperation({ summary: "Listar notificações do usuário" })
   async listByUser(@Param("userId") userId: string) {
-    return this.notificationService.listByUser(userId);
+    const items = await this.notificationService.listByUser(userId);
+    // Mapeia o entity para objeto plano — sem isso o JSON expõe os campos
+    // privados (_title, _body, _createdAt) e o app lê tudo como vazio.
+    return items.map((n) => ({
+      id: n.id,
+      title: n.title,
+      body: n.body,
+      type: n.type,
+      read: n.read,
+      createdAt: n.createdAt,
+    }));
   }
 
   @Get("user/:userId/unread")
@@ -96,16 +116,14 @@ export class NotificationsController {
   }
 
   @Patch(":id/read")
-  @HttpCode(HttpStatus.NO_CONTENT)
   @RequirePermissions(Permission.NOTIFICATIONS_WRITE)
   @ApiOperation({ summary: "Marcar notificação como lida" })
-  @ApiNoContentResponse({ description: "Notificação marcada como lida" })
+  @ApiOkResponse({ description: "Notificação marcada como lida" })
   async markAsRead(@Param("id") id: string) {
     return this.notificationService.markAsRead(id);
   }
 
   @Patch("user/:userId/read-all")
-  @HttpCode(HttpStatus.NO_CONTENT)
   @RequirePermissions(Permission.NOTIFICATIONS_WRITE)
   @ApiOperation({ summary: "Marcar todas as notificações como lidas" })
   @ApiNoContentResponse({
@@ -113,5 +131,29 @@ export class NotificationsController {
   })
   async markAllAsRead(@Param("userId") userId: string) {
     return this.notificationService.markAllAsRead(userId);
+  }
+
+  @Post("device-token")
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @RequirePermissions(Permission.NOTIFICATIONS_WRITE)
+  @ApiOperation({ summary: "Registrar device token FCM" })
+  @ApiNoContentResponse({ description: "Token registrado" })
+  async registerDeviceToken(
+    @Body() body: { userId: string; token: string; platform?: string },
+  ) {
+    await this.notificationService.saveDeviceToken(
+      body.userId,
+      body.token,
+      body.platform ?? "android",
+    );
+  }
+
+  @Delete("device-token/:userId")
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @RequirePermissions(Permission.NOTIFICATIONS_WRITE)
+  @ApiOperation({ summary: "Remover device token FCM" })
+  @ApiNoContentResponse({ description: "Token removido" })
+  async removeDeviceToken(@Param("userId") userId: string) {
+    await this.notificationService.removeDeviceToken(userId);
   }
 }

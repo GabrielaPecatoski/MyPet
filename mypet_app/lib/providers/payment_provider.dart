@@ -38,9 +38,9 @@ class PagamentoProvider extends ChangeNotifier {
         'amount': amount,
         'method': method,
         'deliveryMethod': deliveryMethod,
-        if (deliveryAddress != null) 'deliveryAddress': deliveryAddress,
-        if (cardNumber != null) 'cardNumber': cardNumber,
-        if (installments != null) 'installments': installments,
+        'deliveryAddress': ?deliveryAddress,
+        'cardNumber': ?cardNumber,
+        'installments': ?installments,
       }, token: token);
       final payment = result['payment'] as Map<String, dynamic>? ?? result;
       paymentResult = payment;

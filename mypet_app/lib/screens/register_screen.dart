@@ -239,6 +239,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   const SizedBox(height: 20),
                   Form(
                     key: _formKey,
+                    autovalidateMode: AutovalidateMode.onUserInteraction,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -266,12 +267,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 : '000.000.000-00',
                             keyboardType: TextInputType.number,
                             validator: (v) {
-                              if (v == null || v.isEmpty)
+                              if (v == null || v.isEmpty) {
                                 return 'Informe o CPF';
+                              }
                               if (isMotorista) {
                                 final d = v.replaceAll(RegExp(r'\D'), '');
-                                if (d.length != 11)
+                                if (d.length != 11) {
                                   return 'CPF deve ter 11 dígitos';
+                                }
                               }
                               return null;
                             }),
@@ -314,10 +317,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           obscure: _obscureSenha,
                           onToggle: () => setState(
                               () => _obscureSenha = !_obscureSenha),
-                          validator: (v) =>
-                              v == null || v.length < 6
-                                  ? 'Mínimo 6 caracteres'
-                                  : null,
+                          validator: _validatePassword,
                         ),
                         const SizedBox(height: 14),
                         _label('Confirmar senha'),
@@ -436,10 +436,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             'Ex: ABC1D23',
                             caps: TextCapitalization.characters,
                             validator: (v) {
-                              if (v == null || v.trim().isEmpty)
+                              if (v == null || v.trim().isEmpty) {
                                 return 'Informe a placa';
-                              if (v.trim().length < 7)
+                              }
+                              if (v.trim().length < 7) {
                                 return 'Placa inválida';
+                              }
                               return null;
                             },
                           ),
@@ -529,6 +531,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 fontWeight: FontWeight.w600,
                 color: AppColors.dark)),
       );
+  // Mesma regra do backend: 8+ caracteres com maiúscula, minúscula, número e símbolo.
+  String? _validatePassword(String? v) {
+    if (v == null || v.isEmpty) return 'Informe a senha';
+    if (v.length < 8) return 'Mínimo 8 caracteres';
+    final hasLower = RegExp(r'[a-z]').hasMatch(v);
+    final hasUpper = RegExp(r'[A-Z]').hasMatch(v);
+    final hasDigit = RegExp(r'\d').hasMatch(v);
+    final hasSpecial = RegExp(r'[^A-Za-z0-9]').hasMatch(v);
+    if (!hasLower || !hasUpper || !hasDigit || !hasSpecial) {
+      return 'Use maiúscula, minúscula, número e símbolo';
+    }
+    return null;
+  }
+
   Widget _field(
     TextEditingController ctrl,
     String hint, {

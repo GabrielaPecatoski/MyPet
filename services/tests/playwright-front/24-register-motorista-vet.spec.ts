@@ -35,8 +35,8 @@ test("cadastro de motorista pela UI cria perfil e abre painel do motorista", asy
   await fill(campos.nth(1), String(ts).slice(-11).padStart(11, "0"));
   await fill(campos.nth(2), `41${ts.toString().slice(-9)}`);
   await fill(campos.nth(3), `mot${ts}@mypet.com`);
-  await fill(campos.nth(4), "senha123");
-  await fill(campos.nth(5), "senha123");
+  await fill(campos.nth(4), "Senha@123");
+  await fill(campos.nth(5), "Senha@123");
   await fill(campos.nth(6), String(ts).slice(-9));
   await page.waitForTimeout(600);
   await fill(campos.nth(7), "Fiat Uno");
@@ -61,8 +61,8 @@ test("cadastro de veterinário pela UI cria perfil e abre painel do vet", async 
   await fill(campos.nth(1), String(ts).slice(-11).padStart(11, "0"));
   await fill(campos.nth(2), "41966660002");
   await fill(campos.nth(3), `vet${ts}@mypet.com`);
-  await fill(page.locator('input[type="password"]').nth(0), "senha123");
-  await fill(page.locator('input[type="password"]').nth(1), "senha123");
+  await fill(page.locator('input[type="password"]').nth(0), "Senha@123");
+  await fill(page.locator('input[type="password"]').nth(1), "Senha@123");
   await fill(campos.nth(6), `SP${ts.toString().slice(-5)}`);
   await tapButton(page, "Criar conta");
   await waitForText(page, "MY PET · VETERINÁRIO", 60_000);

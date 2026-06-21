@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/colors.dart';
 import '../models/appointment.dart';
@@ -453,7 +453,7 @@ class _ServicosTab extends StatelessWidget {
                         fontSize: 12, color: AppColors.grey)),
                 const SizedBox(height: 4),
                 DropdownButtonFormField<String>(
-                  value: selectedCategoria,
+                  initialValue: selectedCategoria,
                   isExpanded: true,
                   items: categoriasFiltradas
                       .map((c) => DropdownMenuItem(

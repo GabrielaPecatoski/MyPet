@@ -5,8 +5,10 @@ import '../core/colors.dart';
 import '../models/appointment.dart';
 import '../providers/auth_provider.dart';
 import '../providers/booking_provider.dart';
+import '../providers/chat_provider.dart';
 import '../providers/user_reviews_provider.dart';
 import '../repositories/user_reviews_repository.dart';
+import '../widgets/app_image.dart';
 import '../widgets/attendance_photos.dart';
 import '../widgets/mypet_app_bar.dart';
 
@@ -561,6 +563,45 @@ class _BookingCardState extends State<_BookingCard> {
                 const SizedBox(height: 6),
                 _row(Icons.access_time_outlined, ap.time),
 
+                if (ap.driverName != null && ap.driverName!.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryLight,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      children: [
+                        PhotoBox(
+                          url: ap.driverPhotoUrl,
+                          size: 38,
+                          radius: 19,
+                          background: Colors.white,
+                          fallback: const Icon(Icons.local_shipping_outlined,
+                              color: AppColors.primary, size: 20),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Motorista do transporte',
+                                  style: TextStyle(
+                                      fontSize: 11, color: AppColors.grey)),
+                              Text(ap.driverName!,
+                                  style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.dark)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
                 if (ap.attendancePhotos.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   Row(
@@ -635,6 +676,47 @@ class _BookingCardState extends State<_BookingCard> {
                         elevation: 0,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        final auth = context.read<AuthProvider>();
+                        final chat = context.read<ChatProvider>();
+                        if (auth.token == null) return;
+                        try {
+                          final conv = await chat.openOrCreateConversation(
+                            bookingId: ap.id,
+                            clientId: auth.user?.id ?? ap.userId,
+                            clientName: auth.user?.name ?? ap.userName,
+                            establishmentId: ap.establishmentId,
+                            establishmentName: ap.establishmentName,
+                            token: auth.token!,
+                          );
+                          if (!context.mounted) return;
+                          Navigator.pushNamed(context, '/chat', arguments: conv);
+                        } catch (_) {
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Não foi possível abrir o chat'),
+                              backgroundColor: AppColors.danger,
+                            ),
+                          );
+                        }
+                      },
+                      icon: const Icon(Icons.chat_bubble_outline,
+                          size: 16, color: AppColors.primary),
+                      label: const Text('Mensagem',
+                          style: TextStyle(color: AppColors.primary)),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: AppColors.primary),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10)),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
                       ),
                     ),
                   ),

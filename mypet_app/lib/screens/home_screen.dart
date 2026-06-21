@@ -6,6 +6,7 @@ import '../models/establishment.dart';
 import '../models/veterinarian.dart';
 import '../providers/auth_provider.dart';
 import '../providers/booking_provider.dart';
+import '../providers/notifications_provider.dart';
 import '../providers/home_provider.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -42,6 +43,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final home = context.watch<HomeProvider>();
     final user = context.watch<AuthProvider>().user;
+    final unreadCount = context.watch<NotificationsProvider>().unreadCount;
     final bookings = context.watch<BookingProvider>().bookings;
     final today = DateTime.now();
     final confirmedToday = bookings.where((b) =>
@@ -66,6 +68,42 @@ class _HomeScreenState extends State<HomeScreen> {
                       'assets/images/logo branca.png',
                       height: 36,
                       fit: BoxFit.contain,
+                    ),
+                    Positioned(
+                      left: 16,
+                      child: GestureDetector(
+                        onTap: () => Navigator.pushNamed(context, '/notifications'),
+                        child: Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            const Icon(Icons.notifications_outlined,
+                                color: Colors.white, size: 26),
+                            if (unreadCount > 0)
+                              Positioned(
+                                right: -4,
+                                top: -4,
+                                child: Container(
+                                  padding: const EdgeInsets.all(2),
+                                  decoration: const BoxDecoration(
+                                    color: AppColors.danger,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  constraints: const BoxConstraints(
+                                      minWidth: 16, minHeight: 16),
+                                  child: Text(
+                                    unreadCount > 99 ? '99+' : '$unreadCount',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
                     ),
                     Positioned(
                       right: 16,
@@ -250,9 +288,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         color: AppColors.dark),
                                   ),
                                   Text(
-                                    confirmedToday.first.serviceName +
-                                        ' às ' +
-                                        confirmedToday.first.time,
+                                    '${confirmedToday.first.serviceName} às ${confirmedToday.first.time}',
                                     style: const TextStyle(
                                         fontSize: 12, color: AppColors.grey),
                                   ),
@@ -375,7 +411,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: ListView.separated(
                             scrollDirection: Axis.horizontal,
                             itemCount: home.establishments.take(5).length,
-                            separatorBuilder: (_, __) => const SizedBox(width: 12),
+                            separatorBuilder: (_, _) => const SizedBox(width: 12),
                             itemBuilder: (ctx, i) =>
                                 _HighlightCard(establishment: home.establishments[i]),
                           ),

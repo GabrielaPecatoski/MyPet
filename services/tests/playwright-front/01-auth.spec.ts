@@ -56,8 +56,8 @@ test("cadastro de novo cliente pela UI leva à home", async ({ page }) => {
   await fillNth(page, 1, String(ts).slice(-11));
   await fillNth(page, 2, "41988887777");
   await fillNth(page, 3, `novo${ts}@mypet.com`);
-  await fillNth(page, 4, "senha123");
-  await fillNth(page, 5, "senha123");
+  await fillNth(page, 4, "Senha@123");
+  await fillNth(page, 5, "Senha@123");
   await tapButton(page, "Criar conta");
   await expectText(page, "Agenda");
   await expectText(page, "Perfil");

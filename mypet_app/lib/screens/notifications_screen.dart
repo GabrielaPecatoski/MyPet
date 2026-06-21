@@ -35,6 +35,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   IconData _icon(String type) {
     switch (type) {
+      // Booking – client
       case 'BOOKING_CONFIRMED':
         return Icons.check_circle_outline;
       case 'BOOKING_REJECTED':
@@ -43,10 +44,22 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return Icons.event_busy_outlined;
       case 'BOOKING_COMPLETED':
         return Icons.star_outline;
-      case 'NEW_BOOKING':
+      case 'BOOKING_REMINDER':
+        return Icons.alarm_outlined;
+      // Booking – establishment (new reservation received)
+      case 'BOOKING_CREATED':
         return Icons.calendar_today_outlined;
       case 'BOOKING_TODAY_REMINDER':
         return Icons.today_outlined;
+      // Marketplace
+      case 'ORDER_CREATED':
+        return Icons.shopping_bag_outlined;
+      // Reviews (establishment)
+      case 'REVIEW_RECEIVED':
+        return Icons.star_rate_outlined;
+      // Auth
+      case 'AUTH_WELCOME':
+        return Icons.pets;
       default:
         return Icons.notifications_outlined;
     }
@@ -56,13 +69,18 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     switch (type) {
       case 'BOOKING_CONFIRMED':
       case 'BOOKING_COMPLETED':
+      case 'AUTH_WELCOME':
         return AppColors.success;
       case 'BOOKING_REJECTED':
       case 'BOOKING_CANCELLED':
         return AppColors.danger;
+      case 'BOOKING_REMINDER':
+      case 'REVIEW_RECEIVED':
       case 'NEW_BOOKING':
       case 'BOOKING_TODAY_REMINDER':
         return AppColors.warning;
+      case 'BOOKING_CREATED':
+      case 'ORDER_CREATED':
       default:
         return AppColors.primary;
     }
@@ -122,82 +140,87 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   itemCount: provider.notifications.length,
                   itemBuilder: (ctx, i) {
                     final n = provider.notifications[i];
-                        final color = _color(n.type);
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            border: n.read
-                                ? null
-                                : Border.all(
-                                    color: AppColors.primary
-                                        .withValues(alpha: 0.25)),
-                            boxShadow: const [
-                              BoxShadow(
-                                  color: Colors.black12,
-                                  blurRadius: 8,
-                                  offset: Offset(0, 2)),
-                            ],
+                    final color = _color(n.type);
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: n.read
+                            ? null
+                            : Border.all(
+                                color: AppColors.primary
+                                    .withValues(alpha: 0.25)),
+                        boxShadow: const [
+                          BoxShadow(
+                              color: Colors.black12,
+                              blurRadius: 8,
+                              offset: Offset(0, 2)),
+                        ],
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: color.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(22),
+                            ),
+                            child: Icon(_icon(n.type),
+                                color: color, size: 22),
                           ),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                width: 44,
-                                height: 44,
-                                decoration: BoxDecoration(
-                                  color: color.withValues(alpha: 0.12),
-                                  borderRadius: BorderRadius.circular(22),
-                                ),
-                                child: Icon(_icon(n.type),
-                                    color: color, size: 22),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
                                   children: [
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: Text(n.title,
-                                              style: const TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 14,
-                                                  color: AppColors.dark)),
-                                        ),
-                                        if (!n.read)
-                                          Container(
-                                            width: 8,
-                                            height: 8,
-                                            decoration: const BoxDecoration(
-                                              color: AppColors.primary,
-                                              shape: BoxShape.circle,
-                                            ),
-                                          ),
-                                      ],
+                                    Expanded(
+                                      child: Text(
+                                        n.title,
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 14,
+                                            color: AppColors.dark),
+                                      ),
                                     ),
-                                    const SizedBox(height: 4),
-                                    Text(n.body,
-                                        style: const TextStyle(
-                                            fontSize: 12,
-                                            color: AppColors.grey,
-                                            height: 1.4)),
-                                    const SizedBox(height: 6),
-                                    Text(_timeAgo(n.createdAt),
-                                        style: const TextStyle(
-                                            fontSize: 11,
-                                            color: AppColors.grey)),
+                                    if (!n.read)
+                                      Container(
+                                        width: 8,
+                                        height: 8,
+                                        decoration: const BoxDecoration(
+                                          color: AppColors.primary,
+                                          shape: BoxShape.circle,
+                                        ),
+                                      ),
                                   ],
                                 ),
-                              ),
-                            ],
+                                const SizedBox(height: 4),
+                                Text(
+                                  n.body,
+                                  style: const TextStyle(
+                                      fontSize: 12,
+                                      color: AppColors.grey,
+                                      height: 1.4),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  _timeAgo(n.createdAt),
+                                  style: const TextStyle(
+                                      fontSize: 11, color: AppColors.grey),
+                                ),
+                              ],
+                            ),
                           ),
-                        );
-                      },
-                    ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
         );
       }),
     );

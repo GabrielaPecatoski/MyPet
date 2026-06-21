@@ -234,7 +234,7 @@ class _PetAvatar extends StatelessWidget {
         child: Image.network(
           url,
           fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => _placeholder(),
+          errorBuilder: (_, _, _) => _placeholder(),
           loadingBuilder: (_, child, progress) =>
               progress == null ? child : _placeholder(),
         ),

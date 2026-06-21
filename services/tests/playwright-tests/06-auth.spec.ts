@@ -6,7 +6,7 @@ let api: APIRequestContext;
 const ts = Date.now();
 const email = `apiauth${ts}@mypet.com`;
 const cpf = `${ts}`.slice(-11).padStart(11, "0");
-const password = "senha123";
+const password = "Senha@123";
 let token: string;
 let userId: string;
 

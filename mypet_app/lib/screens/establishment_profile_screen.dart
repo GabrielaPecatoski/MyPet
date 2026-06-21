@@ -82,6 +82,7 @@ class _EstabProfileScreenState extends State<EstabProfileScreen> {
         ),
       );
       await auth.logout();
+      if (!mounted) return;
       Navigator.pushReplacementNamed(context, '/login');
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -295,6 +296,9 @@ class _EstabProfileScreenState extends State<EstabProfileScreen> {
                   _div(),
                   _item(Icons.notifications_outlined, 'Notificações',
                       () => Navigator.pushNamed(context, '/notifications')),
+                  _div(),
+                  _item(Icons.chat_bubble_outline, 'Mensagens',
+                      () => Navigator.pushNamed(context, '/conversations')),
                   _div(),
                   _item(Icons.help_outline_rounded, 'Ajuda',
                       () => Navigator.pushNamed(context, '/estab-help')),

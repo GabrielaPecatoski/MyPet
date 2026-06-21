@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "../..",
+    "outDir": "../../dist",
+    "paths": {
+      "@shared/*": ["../../shared/src/*"],
+      "@chat/*": ["./src/modules/chat/*"]
+    }
+  },
+  "include": ["src", "../../shared/src"]
+}

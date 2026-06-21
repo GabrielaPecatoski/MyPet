@@ -1,4 +1,5 @@
-﻿import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'core/colors.dart';
 import 'providers/admin_provider.dart';
@@ -8,11 +9,12 @@ import 'providers/cart_provider.dart';
 import 'providers/driver_profile_provider.dart';
 import 'providers/emergency_provider.dart';
 import 'providers/establishment_provider.dart';
+import 'providers/chat_provider.dart';
+import 'providers/notifications_provider.dart';
 import 'providers/establishment_staff_provider.dart';
 import 'providers/history_provider.dart';
 import 'providers/home_provider.dart';
 import 'providers/store_provider.dart';
-import 'providers/notifications_provider.dart';
 import 'providers/payment_provider.dart';
 import 'providers/pet_provider.dart';
 import 'providers/vet_profile_provider.dart';
@@ -27,6 +29,8 @@ import 'screens/splash_screen.dart';
 import 'screens/welcome_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
+import 'screens/forgot_password_screen.dart';
+import 'screens/reset_password_screen.dart';
 import 'screens/edit_profile_screen.dart';
 import 'screens/history_screen.dart';
 import 'screens/notifications_screen.dart';
@@ -54,9 +58,17 @@ import 'screens/establishment_vets_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/product_detail_screen.dart';
 import 'screens/vet_navigation.dart';
+import 'screens/chat_screen.dart';
+import 'screens/conversations_screen.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Inicializa Firebase silenciosamente — requer google-services.json (Android)
+  // e GoogleService-Info.plist (iOS). Execute: flutterfire configure
+  try {
+    await Firebase.initializeApp();
+  } catch (_) {}
 
   runApp(
     MultiProvider(
@@ -68,11 +80,15 @@ void main() {
           update: (_, auth, cart) => cart!..update(auth),
         ),
         ChangeNotifierProvider(create: (_) => EstablishmentProvider()),
+        ChangeNotifierProvider(create: (_) => NotificationsProvider(NotificationRepository())),
+        ChangeNotifierProxyProvider<AuthProvider, ChatProvider>(
+          create: (_) => ChatProvider(),
+          update: (_, auth, chat) => chat!..updateAuth(auth.token),
+        ),
         ChangeNotifierProvider(create: (_) => PagamentoProvider(PaymentRepository())),
         ChangeNotifierProvider(create: (_) => HomeProvider(EstablishmentListRepository())),
         ChangeNotifierProvider(create: (_) => PetProvider(PetRepository())),
         ChangeNotifierProvider(create: (_) => HistoryProvider(HistoryRepository())),
-        ChangeNotifierProvider(create: (_) => NotificationsProvider(NotificationRepository())),
         ChangeNotifierProvider(create: (_) => LojaProvider(CatalogRepository(), OrdersRepository())),
         ChangeNotifierProvider(create: (_) => DriverProfileProvider()),
         ChangeNotifierProvider(create: (_) => VetProfileProvider()),
@@ -109,6 +125,8 @@ class MyPetApp extends StatelessWidget {
         '/splash':        (_) => const SplashScreen(),
         '/welcome':       (_) => const WelcomeScreen(),
         '/login':         (_) => const LoginScreen(),
+        '/forgot-password': (_) => const ForgotPasswordScreen(),
+        '/reset-password':  (_) => const ResetPasswordScreen(),
         '/register': (ctx) {
           final arg = ModalRoute.of(ctx)?.settings.arguments;
           final tipo = (arg is int && arg >= 0) ? arg : 0;
@@ -133,6 +151,8 @@ class MyPetApp extends StatelessWidget {
         '/estab-help':    (_) => const EstabHelpScreen(),
         '/cart':                    (_) => const CarrinhoScreen(),
         '/payment':                 (_) => const PagamentoScreen(),
+        '/conversations': (_) => const ConversationsScreen(),
+        '/chat':          (_) => const ChatScreen(),
         '/pagamento-agendamento':   (_) => const PagamentoAgendamentoScreen(),
         '/onboarding':              (_) => const OnboardingScreen(),
         '/motorista-cadastro':      (_) => const MotoristaRegisterScreen(),

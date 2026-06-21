@@ -6,6 +6,7 @@ import '../models/establishment.dart';
 import '../models/veterinarian.dart';
 import '../providers/auth_provider.dart';
 import '../providers/emergency_provider.dart';
+import '../widgets/app_image.dart';
 import '../widgets/mypet_app_bar.dart';
 
 class EmergenciaScreen extends StatefulWidget {
@@ -41,7 +42,6 @@ class _EmergenciaScreenState extends State<EmergenciaScreen>
     final auth = context.read<AuthProvider>();
     final token = auth.token ?? '';
     final callerName = auth.user?.name ?? 'Cliente';
-    final phoneCtrl = TextEditingController();
     final petCtrl = TextEditingController();
 
     final confirmed = await showModalBottomSheet<bool>(
@@ -50,7 +50,6 @@ class _EmergenciaScreenState extends State<EmergenciaScreen>
       backgroundColor: Colors.transparent,
       builder: (_) => _CallVetSheet(
         vetName: vet.name,
-        phoneCtrl: phoneCtrl,
         petCtrl: petCtrl,
       ),
     );
@@ -62,7 +61,6 @@ class _EmergenciaScreenState extends State<EmergenciaScreen>
           token: token,
           vetId: vet.id,
           callerName: callerName,
-          callerPhone: phoneCtrl.text.trim(),
           petDescription:
               petCtrl.text.trim().isEmpty ? null : petCtrl.text.trim(),
         );
@@ -296,13 +294,12 @@ class _EmergencyCard extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.all(14),
               child: Row(children: [
-                Container(
-                  width: 56, height: 56,
-                  decoration: BoxDecoration(
-                    color: AppColors.danger.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(Icons.local_hospital, color: AppColors.danger, size: 28),
+                PhotoBox(
+                  url: e.imageUrl,
+                  size: 56,
+                  background: AppColors.danger.withValues(alpha: 0.1),
+                  fallback: const Icon(Icons.local_hospital,
+                      color: AppColors.danger, size: 28),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -398,13 +395,12 @@ class _VetEmergencyCard extends StatelessWidget {
       Padding(
       padding: const EdgeInsets.all(14),
       child: Row(children: [
-        Container(
-          width: 52, height: 52,
-          decoration: BoxDecoration(
-            color: _green.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const Icon(Icons.medical_services_rounded, color: _green, size: 26),
+        PhotoBox(
+          url: vet.photoUrl,
+          size: 52,
+          background: _green.withValues(alpha: 0.1),
+          fallback: const Icon(Icons.medical_services_rounded,
+              color: _green, size: 26),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -504,12 +500,10 @@ class _VetEmergencyCard extends StatelessWidget {
 
 class _CallVetSheet extends StatelessWidget {
   final String vetName;
-  final TextEditingController phoneCtrl;
   final TextEditingController petCtrl;
 
   const _CallVetSheet({
     required this.vetName,
-    required this.phoneCtrl,
     required this.petCtrl,
   });
 
@@ -550,22 +544,6 @@ class _CallVetSheet extends StatelessWidget {
           ]),
           const SizedBox(height: 20),
           TextField(
-            controller: phoneCtrl,
-            keyboardType: TextInputType.phone,
-            decoration: InputDecoration(
-              labelText: 'Seu telefone para retorno *',
-              prefixIcon: const Icon(Icons.phone_outlined, color: AppColors.danger, size: 20),
-              filled: true,
-              fillColor: AppColors.background,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.danger, width: 1.5),
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
             controller: petCtrl,
             maxLines: 2,
             decoration: InputDecoration(
@@ -580,10 +558,7 @@ class _CallVetSheet extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: () {
-                if (phoneCtrl.text.trim().isEmpty) return;
-                Navigator.pop(context, true);
-              },
+              onPressed: () => Navigator.pop(context, true),
               icon: const Icon(Icons.emergency, size: 18),
               label: const Text('Enviar chamado de emergência'),
               style: ElevatedButton.styleFrom(
