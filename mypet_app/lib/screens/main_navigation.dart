@@ -9,7 +9,7 @@ import '../widgets/app_bottom_nav.dart';
 import 'appointments_screen.dart';
 import 'home_screen.dart';
 import 'pets_screen.dart';
-import 'produtos_screen.dart';
+import 'store_screen.dart';
 import 'profile_screen.dart';
 
 class MainNavigation extends StatefulWidget {
@@ -24,6 +24,9 @@ class MainNavigation extends StatefulWidget {
 class _MainNavigationState extends State<MainNavigation> {
   late int _currentIndex;
   Timer? _notifTimer;
+  // Referência capturada para uso seguro no dispose (não dá pra ler o provider
+  // via context depois que o widget é desativado).
+  NotificationsProvider? _notif;
 
   @override
   void initState() {
@@ -38,9 +41,15 @@ class _MainNavigationState extends State<MainNavigation> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _notif = context.read<NotificationsProvider>();
+  }
+
+  @override
   void dispose() {
     _notifTimer?.cancel();
-    context.read<NotificationsProvider>().stopStream();
+    _notif?.stopStream();
     super.dispose();
   }
 

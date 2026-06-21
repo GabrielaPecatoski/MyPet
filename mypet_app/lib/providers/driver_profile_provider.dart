@@ -44,6 +44,28 @@ class DriverProfileProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Persiste a foto de perfil do motorista no backend (data URL base64) para
+  /// que ela apareça para os clientes (escolha de transporte, agenda etc.).
+  Future<bool> updateProfilePhoto({
+    required String token,
+    required String photoUrl,
+  }) async {
+    if (_driver == null) return false;
+    try {
+      _driver = await DriverService.updatePhoto(
+        token: token,
+        driverId: _driver!.id,
+        photoUrl: photoUrl,
+      );
+      notifyListeners();
+      return true;
+    } catch (_) {
+      _error = 'Erro ao salvar foto de perfil';
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<void> saveCnhPhoto(String cpf, String path) async {
     await StorageService.saveCnhPhoto(cpf, path);
     _cnhPhotoPath = path;

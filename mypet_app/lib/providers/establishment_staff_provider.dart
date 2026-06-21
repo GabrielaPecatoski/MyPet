@@ -109,6 +109,7 @@ class EstablishmentStaffProvider extends ChangeNotifier {
     required String vehicleType,
     required String vehicleModel,
     required String vehiclePlate,
+    String? photoUrl,
   }) async {
     await AuthService.register(
       name: name,
@@ -128,6 +129,7 @@ class EstablishmentStaffProvider extends ChangeNotifier {
       vehicleType: vehicleType,
       vehicleModel: vehicleModel,
       vehiclePlate: vehiclePlate,
+      photoUrl: photoUrl,
     );
     await loadDrivers();
     return driver;
@@ -190,6 +192,7 @@ class EstablishmentStaffProvider extends ChangeNotifier {
     required String cpf,
     required String crmv,
     String? especialidade,
+    String? photoUrl,
   }) async {
     await AuthService.register(
       name: name,
@@ -207,6 +210,7 @@ class EstablishmentStaffProvider extends ChangeNotifier {
       cpf: cpf,
       crmv: crmv,
       especialidade: especialidade,
+      photoUrl: photoUrl,
     );
     await loadVets();
     return vet;

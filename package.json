@@ -45,8 +45,10 @@
     "@nestjs/core": "^11.0.1",
     "@nestjs/jwt": "~11.0.2",
     "@nestjs/platform-express": "^11.0.1",
+    "@nestjs/platform-socket.io": "^11.0.0",
     "@nestjs/swagger": "~11.2.6",
     "@nestjs/throttler": "^6.4.0",
+    "@nestjs/websockets": "^11.0.0",
     "amqplib": "~1.0.3",
     "bcryptjs": "~2.4.3",
     "class-transformer": "~0.5.1",
@@ -58,7 +60,8 @@
     "nodemailer": "^6.10.1",
     "pg": "~8.20.0",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "socket.io": "^4.8.1"
   },
   "devDependencies": {
     "@biomejs/biome": "~2.4.6",

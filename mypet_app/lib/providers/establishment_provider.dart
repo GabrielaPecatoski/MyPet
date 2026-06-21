@@ -28,14 +28,12 @@ class EstablishmentProvider extends ChangeNotifier {
         token: token,
         ownerId: ownerId,
       );
-      if (estab == null) {
-        estab = await EstablishmentService.create(
+      estab ??= await EstablishmentService.create(
           token: token,
           ownerId: ownerId,
           name: ownerName,
           phone: ownerPhone,
         );
-      }
       _establishment = estab;
     } catch (e) {
       _error = e.toString().replaceAll('Exception: ', '');

@@ -74,6 +74,7 @@ class BookingProvider extends ChangeNotifier {
     List<ServiceModel>? services,
     String? driverId,
     String? driverName,
+    String? driverPhotoUrl,
     String? vetId,
     String? vetName,
   }) async {
@@ -98,6 +99,7 @@ class BookingProvider extends ChangeNotifier {
         services: services,
         driverId: driverId,
         driverName: driverName,
+        driverPhotoUrl: driverPhotoUrl,
         vetId: vetId,
         vetName: vetName,
       );

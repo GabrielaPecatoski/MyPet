@@ -19,12 +19,21 @@ class _ChatScreenState extends State<ChatScreen> {
   ConversationModel? _conv;
   String? _userId;
   int _prevMessageCount = 0;
+  ChatProvider? _chatProvider;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _init());
     _scrollCtrl.addListener(_onScroll);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Save a reference so dispose() doesn't need to look up the ancestor,
+    // which is unsafe once the widget has been deactivated.
+    _chatProvider = context.read<ChatProvider>();
   }
 
   void _init() {
@@ -45,7 +54,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
-    context.read<ChatProvider>().leaveRoom();
+    _chatProvider?.leaveRoom();
     _ctrl.dispose();
     _scrollCtrl.removeListener(_onScroll);
     _scrollCtrl.dispose();

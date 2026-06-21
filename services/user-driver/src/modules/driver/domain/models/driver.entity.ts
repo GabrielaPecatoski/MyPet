@@ -11,6 +11,7 @@ export class Driver {
   private _vehicleType!: VehicleType;
   private _vehicleModel!: string;
   private _vehiclePlate!: string;
+  private _photoUrl?: string;
   private _status!: DriverStatus;
   private readonly _createdAt?: Date;
   private readonly _updatedAt?: Date;
@@ -48,6 +49,9 @@ export class Driver {
   get vehiclePlate(): string {
     return this._vehiclePlate;
   }
+  get photoUrl(): string | undefined {
+    return this._photoUrl;
+  }
   get status(): DriverStatus {
     return this._status;
   }
@@ -66,6 +70,10 @@ export class Driver {
     this._establishmentId = establishmentId;
     return this;
   }
+  withPhotoUrl(photoUrl: string | undefined) {
+    this._photoUrl = photoUrl;
+    return this;
+  }
 
   static restore(props?: {
     id?: string;
@@ -77,6 +85,7 @@ export class Driver {
     vehicleType: string;
     vehicleModel: string;
     vehiclePlate: string;
+    photoUrl?: string | null;
     status?: string | null;
     createdAt?: Date;
     updatedAt?: Date;
@@ -91,6 +100,7 @@ export class Driver {
     d._vehicleType = props.vehicleType as VehicleType;
     d._vehicleModel = props.vehicleModel;
     d._vehiclePlate = props.vehiclePlate;
+    d._photoUrl = props.photoUrl ?? undefined;
     d._status = (props.status ?? "PENDENTE") as DriverStatus;
     return d;
   }

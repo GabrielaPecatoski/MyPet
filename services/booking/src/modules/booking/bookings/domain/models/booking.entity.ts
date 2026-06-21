@@ -32,6 +32,7 @@ export class Booking {
   private _establishmentAddress?: string;
   private _driverId?: string;
   private _driverName?: string;
+  private _driverPhotoUrl?: string;
   private _vetId?: string;
   private _vetName?: string;
   private _scheduledAt!: Date;
@@ -114,6 +115,9 @@ export class Booking {
   get driverName(): string | undefined {
     return this._driverName;
   }
+  get driverPhotoUrl(): string | undefined {
+    return this._driverPhotoUrl;
+  }
   get vetId(): string | undefined {
     return this._vetId;
   }
@@ -183,6 +187,7 @@ export class Booking {
     establishmentAddress?: string | null;
     driverId?: string | null;
     driverName?: string | null;
+    driverPhotoUrl?: string | null;
     vetId?: string | null;
     vetName?: string | null;
     scheduledAt: Date;
@@ -212,6 +217,7 @@ export class Booking {
     b._establishmentAddress = props.establishmentAddress ?? undefined;
     b._driverId = props.driverId ?? undefined;
     b._driverName = props.driverName ?? undefined;
+    b._driverPhotoUrl = props.driverPhotoUrl ?? undefined;
     b._vetId = props.vetId ?? undefined;
     b._vetName = props.vetName ?? undefined;
     b._scheduledAt = props.scheduledAt;

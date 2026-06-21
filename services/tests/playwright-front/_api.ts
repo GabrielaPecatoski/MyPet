@@ -225,6 +225,9 @@ export async function createBooking(
     establishmentName: string;
     price: number;
     scheduledAt: Date;
+    driverId?: string;
+    driverName?: string;
+    driverPhotoUrl?: string;
   },
 ): Promise<any> {
   return ok(
@@ -239,6 +242,9 @@ export async function createBooking(
         establishmentName: args.establishmentName,
         scheduledAt: args.scheduledAt.toISOString(),
         price: args.price,
+        driverId: args.driverId,
+        driverName: args.driverName,
+        driverPhotoUrl: args.driverPhotoUrl,
       },
     }),
     "createBooking",
@@ -465,6 +471,7 @@ export async function registerDriver(
     vehicleType: string;
     vehicleModel: string;
     vehiclePlate: string;
+    photoUrl: string;
   }> = {},
 ): Promise<any> {
   const ts = Date.now() + counter++;
@@ -482,6 +489,7 @@ export async function registerDriver(
         vehicleType: data.vehicleType ?? "CARRO",
         vehicleModel: data.vehicleModel ?? "Fiat Uno",
         vehiclePlate: data.vehiclePlate ?? plate,
+        photoUrl: data.photoUrl,
       },
     }),
     "registerDriver",
@@ -522,7 +530,12 @@ export async function registerIndependentDriver(
 export async function registerVet(
   api: APIRequestContext,
   user: SeededUser,
-  data: Partial<{ crmv: string; especialidade: string }> = {},
+  data: Partial<{
+    crmv: string;
+    especialidade: string;
+    photoUrl: string;
+    establishmentId: string;
+  }> = {},
 ): Promise<any> {
   const ts = Date.now() + counter++;
   const vet = await ok(
@@ -534,6 +547,8 @@ export async function registerVet(
         cpf: user.cpf,
         crmv: data.crmv ?? `SP${ts.toString().slice(-5)}`,
         especialidade: data.especialidade ?? "Clínica geral",
+        photoUrl: data.photoUrl,
+        establishmentId: data.establishmentId,
       },
     }),
     "registerVet",

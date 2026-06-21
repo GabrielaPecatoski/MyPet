@@ -95,7 +95,17 @@ export class NotificationsController {
   @RequirePermissions(Permission.NOTIFICATIONS_READ)
   @ApiOperation({ summary: "Listar notificações do usuário" })
   async listByUser(@Param("userId") userId: string) {
-    return this.notificationService.listByUser(userId);
+    const items = await this.notificationService.listByUser(userId);
+    // Mapeia o entity para objeto plano — sem isso o JSON expõe os campos
+    // privados (_title, _body, _createdAt) e o app lê tudo como vazio.
+    return items.map((n) => ({
+      id: n.id,
+      title: n.title,
+      body: n.body,
+      type: n.type,
+      read: n.read,
+      createdAt: n.createdAt,
+    }));
   }
 
   @Get("user/:userId/unread")

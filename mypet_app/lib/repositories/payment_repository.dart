@@ -37,8 +37,8 @@ class PaymentRepository implements IPaymentRepository {
     final endpoint = ApiConstants.bookingPaymentEndpoint.replaceAll('{id}', bookingId);
     final body = {
       'method': method,
-      if (cardNumber != null) 'cardNumber': cardNumber,
-      if (installments != null) 'installments': installments,
+      'cardNumber': ?cardNumber,
+      'installments': ?installments,
     };
     try {
       final res = await ApiService.patch(endpoint, body, token: token);

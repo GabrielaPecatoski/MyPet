@@ -86,6 +86,7 @@ class _AdminScreenState extends State<AdminScreen> {
     );
     if (ok == true && mounted) {
       await context.read<AuthProvider>().logout();
+      if (!mounted) return;
       Navigator.pushReplacementNamed(context, '/login');
     }
   }
@@ -1278,14 +1279,18 @@ class _FaqPageState extends State<_FaqPage> with SingleTickerProviderStateMixin 
       final q = _search.toLowerCase();
       list = list.where((f) => (f['question'] as String? ?? '').toLowerCase().contains(q)).toList();
     }
-    if (role == 'CLIENTE') return list.where((f) {
+    if (role == 'CLIENTE') {
+      return list.where((f) {
       final r = f['targetRole'] as String? ?? 'CLIENTE';
       return r == 'CLIENTE' || r == 'TODOS';
     }).toList();
-    if (role == 'VENDEDOR') return list.where((f) {
+    }
+    if (role == 'VENDEDOR') {
+      return list.where((f) {
       final r = f['targetRole'] as String? ?? 'CLIENTE';
       return r == 'VENDEDOR' || r == 'TODOS';
     }).toList();
+    }
     return list;
   }
 
@@ -1822,8 +1827,6 @@ class _FaqEditSheetState extends State<_FaqEditSheet> {
   late bool _active;
   bool _visCliente = true;
   bool _visLojista = false;
-  bool _visMotorista = false;
-  bool _visVet = false;
   bool _destaque = false;
 
   @override
@@ -1836,7 +1839,6 @@ class _FaqEditSheetState extends State<_FaqEditSheet> {
     final role = widget.item?['targetRole'] as String? ?? 'CLIENTE';
     _visCliente = role == 'CLIENTE' || role == 'TODOS';
     _visLojista = role == 'VENDEDOR' || role == 'TODOS';
-    _visMotorista = role == 'MOTORISTA' || role == 'TODOS';
   }
 
   @override

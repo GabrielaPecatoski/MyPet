@@ -8,6 +8,7 @@ import '../providers/booking_provider.dart';
 import '../providers/chat_provider.dart';
 import '../providers/user_reviews_provider.dart';
 import '../repositories/user_reviews_repository.dart';
+import '../widgets/app_image.dart';
 import '../widgets/attendance_photos.dart';
 import '../widgets/mypet_app_bar.dart';
 
@@ -561,6 +562,45 @@ class _BookingCardState extends State<_BookingCard> {
                 _row(Icons.calendar_today_outlined, _formatDate(ap.date)),
                 const SizedBox(height: 6),
                 _row(Icons.access_time_outlined, ap.time),
+
+                if (ap.driverName != null && ap.driverName!.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryLight,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      children: [
+                        PhotoBox(
+                          url: ap.driverPhotoUrl,
+                          size: 38,
+                          radius: 19,
+                          background: Colors.white,
+                          fallback: const Icon(Icons.local_shipping_outlined,
+                              color: AppColors.primary, size: 20),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Motorista do transporte',
+                                  style: TextStyle(
+                                      fontSize: 11, color: AppColors.grey)),
+                              Text(ap.driverName!,
+                                  style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.dark)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
 
                 if (ap.attendancePhotos.isNotEmpty) ...[
                   const SizedBox(height: 12),

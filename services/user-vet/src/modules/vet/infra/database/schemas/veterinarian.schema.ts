@@ -8,6 +8,7 @@ export const veterinariansSchema = pgTable("veterinarians", {
   cpf: text("cpf").notNull().unique(),
   crmv: text("crmv").notNull(),
   especialidade: text("especialidade"),
+  photoUrl: text("photo_url"),
   status: text("status").notNull().default("PENDENTE"),
   disponivel: boolean("disponivel").notNull().default(false),
   atendeDomicilio: boolean("atende_domicilio").notNull().default(false),

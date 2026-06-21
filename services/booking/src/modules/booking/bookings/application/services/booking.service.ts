@@ -33,7 +33,7 @@ export class BookingService {
 
   async create(
     userId: string,
-    userName: string,
+    userEmail: string,
     dto: CreateBookingDto,
   ): Promise<BookingDto> {
     const services =
@@ -79,6 +79,7 @@ export class BookingService {
       establishmentAddress: dto.establishmentAddress,
       driverId: dto.driverId,
       driverName: dto.driverName,
+      driverPhotoUrl: dto.driverPhotoUrl,
       vetId: dto.vetId,
       vetName: dto.vetName,
       scheduledAt,

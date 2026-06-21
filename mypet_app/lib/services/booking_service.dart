@@ -72,6 +72,7 @@ class BookingService {
     List<ServiceModel>? services,
     String? driverId,
     String? driverName,
+    String? driverPhotoUrl,
     String? vetId,
     String? vetName,
   }) async {
@@ -91,6 +92,7 @@ class BookingService {
     if (establishmentAddress != null && establishmentAddress.isNotEmpty) body['establishmentAddress'] = establishmentAddress;
     if (driverId != null) body['driverId'] = driverId;
     if (driverName != null) body['driverName'] = driverName;
+    if (driverPhotoUrl != null) body['driverPhotoUrl'] = driverPhotoUrl;
     if (vetId != null) body['vetId'] = vetId;
     if (vetName != null) body['vetName'] = vetName;
     if (services != null && services.isNotEmpty) {

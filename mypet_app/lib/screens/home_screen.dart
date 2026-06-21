@@ -288,9 +288,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         color: AppColors.dark),
                                   ),
                                   Text(
-                                    confirmedToday.first.serviceName +
-                                        ' às ' +
-                                        confirmedToday.first.time,
+                                    '${confirmedToday.first.serviceName} às ${confirmedToday.first.time}',
                                     style: const TextStyle(
                                         fontSize: 12, color: AppColors.grey),
                                   ),
@@ -413,7 +411,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: ListView.separated(
                             scrollDirection: Axis.horizontal,
                             itemCount: home.establishments.take(5).length,
-                            separatorBuilder: (_, __) => const SizedBox(width: 12),
+                            separatorBuilder: (_, _) => const SizedBox(width: 12),
                             itemBuilder: (ctx, i) =>
                                 _HighlightCard(establishment: home.establishments[i]),
                           ),

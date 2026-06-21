@@ -115,7 +115,7 @@ void main() {
     });
 
     test('statusLabel traduz todos os status', () {
-      expect(make('PENDENTE').statusLabel, 'Pendente');
+      expect(make('PENDENTE').statusLabel, 'Aguardando confirmação');
       expect(make('CONFIRMADO').statusLabel, 'Confirmado');
       expect(make('RECUSADO').statusLabel, 'Recusado');
       expect(make('CANCELADO').statusLabel, 'Cancelado');

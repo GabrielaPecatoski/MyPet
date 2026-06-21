@@ -306,13 +306,17 @@ services:
         SERVICE_NAME: chat
         SERVICE_PORT: 3009
     container_name: mypet-chat
+    # init reaps zombie/defunct child processes (evita o erro "PID is zombie and
+    # can not be killed" ao recriar o container).
+    init: true
     ports:
       - '3009:3009'
     environment:
       PORT: 3009
-      DATABASE_URL: postgresql://postgres:root@postgres:5432/mypet_chat
-      JWT_SECRET: mypet_super_secret_change_in_production
-      RABBITMQ_URL: amqp://mypet:mypet123@rabbitmq:5672
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/mypet_chat
+      JWT_SECRET: ${JWT_SECRET}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672
+      ESTABLISHMENT_SERVICE_URL: http://establishment:3003
     depends_on:
       postgres:
         condition: service_healthy

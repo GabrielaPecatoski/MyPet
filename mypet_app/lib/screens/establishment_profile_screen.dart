@@ -82,6 +82,7 @@ class _EstabProfileScreenState extends State<EstabProfileScreen> {
         ),
       );
       await auth.logout();
+      if (!mounted) return;
       Navigator.pushReplacementNamed(context, '/login');
     } else {
       ScaffoldMessenger.of(context).showSnackBar(

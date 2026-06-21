@@ -10,6 +10,7 @@ export const driversSchema = pgTable("drivers", {
   vehicleType: text("vehicle_type").notNull(),
   vehicleModel: text("vehicle_model").notNull(),
   vehiclePlate: text("vehicle_plate").notNull().unique(),
+  photoUrl: text("photo_url"),
   status: text("status").notNull().default("PENDENTE"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),

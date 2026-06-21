@@ -1,12 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mypet_app/providers/notifications_provider.dart';
+import 'package:mypet_app/repositories/notification_repository.dart';
 
 void main() {
   group('NotificationsProvider — gerenciamento de badge (C35)', () {
     late NotificationsProvider provider;
 
     setUp(() {
-      provider = NotificationsProvider();
+      provider = NotificationsProvider(NotificationRepository());
     });
 
     tearDown(() {
@@ -32,7 +33,7 @@ void main() {
     });
 
     test('dispose fecha o SSE sem lançar exceção', () {
-      final local = NotificationsProvider();
+      final local = NotificationsProvider(NotificationRepository());
       expect(() => local.dispose(), returnsNormally);
     });
   });
@@ -42,14 +43,14 @@ void main() {
       // No ambiente de teste o dart:io está disponível e kIsWeb=false,
       // então o SSE tentaria conectar. Apenas verificamos que o provider
       // aceita a chamada a stopStream logo depois sem erro.
-      final provider = NotificationsProvider();
+      final provider = NotificationsProvider(NotificationRepository());
       provider.stopStream();
       expect(provider.unreadCount, 0);
       provider.dispose();
     });
 
     test('múltiplas chamadas a stopStream são seguras', () {
-      final provider = NotificationsProvider();
+      final provider = NotificationsProvider(NotificationRepository());
       expect(() {
         provider.stopStream();
         provider.stopStream();
@@ -60,13 +61,13 @@ void main() {
 
   group('NotificationsProvider — clearUnread', () {
     test('clearUnread não lança exceção independente do estado', () {
-      final provider = NotificationsProvider();
+      final provider = NotificationsProvider(NotificationRepository());
       expect(() => provider.clearUnread(), returnsNormally);
       provider.dispose();
     });
 
     test('unreadCount permanece 0 após clearUnread sem notificações', () {
-      final provider = NotificationsProvider();
+      final provider = NotificationsProvider(NotificationRepository());
       provider.clearUnread();
       expect(provider.unreadCount, 0);
       provider.dispose();
