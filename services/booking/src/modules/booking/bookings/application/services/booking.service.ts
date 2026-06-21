@@ -33,7 +33,7 @@ export class BookingService {
 
   async create(
     userId: string,
-    userName: string,
+    userEmail: string,
     dto: CreateBookingDto,
   ): Promise<BookingDto> {
     const services =
@@ -66,15 +66,20 @@ export class BookingService {
     const priceVariable = dto.priceVariable ?? false;
     const booking = Booking.restore({
       userId,
-      userName: dto.userName ?? userName,
+      userName: dto.userName ?? userEmail,
+      userEmail,
       petId: dto.petId,
       petName: dto.petName,
+      petBreed: dto.petBreed,
+      petAge: dto.petAge,
       serviceName: displayName,
       servicesJson: services ? JSON.stringify(services) : undefined,
       establishmentId: dto.establishmentId,
       establishmentName: dto.establishmentName ?? "",
+      establishmentAddress: dto.establishmentAddress,
       driverId: dto.driverId,
       driverName: dto.driverName,
+      driverPhotoUrl: dto.driverPhotoUrl,
       vetId: dto.vetId,
       vetName: dto.vetName,
       scheduledAt,
@@ -236,8 +241,11 @@ export class BookingService {
         {
           bookingId: booking.id!,
           userId: booking.userId,
+          userEmail: booking.userEmail,
           status,
           establishmentName: booking.establishmentName,
+          serviceName: booking.serviceName,
+          scheduledAt: booking.scheduledAt.toISOString(),
         },
       );
     } else if (status === "CONCLUIDO") {
@@ -247,6 +255,7 @@ export class BookingService {
         {
           bookingId: booking.id!,
           userId: booking.userId,
+          userEmail: booking.userEmail,
           establishmentName: booking.establishmentName,
           serviceName: booking.serviceName,
         },
@@ -258,6 +267,9 @@ export class BookingService {
         {
           bookingId: booking.id!,
           userId: booking.userId,
+          userEmail: booking.userEmail,
+          serviceName: booking.serviceName,
+          establishmentName: booking.establishmentName,
         },
       );
     }

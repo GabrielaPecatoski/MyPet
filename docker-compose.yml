@@ -68,6 +68,7 @@ services:
       NOTIFICATION_SERVICE_URL: http://notification:3006
       REVIEW_SERVICE_URL: http://review:3007
       FAQ_SERVICE_URL: http://faq:3008
+      CHAT_SERVICE_URL: http://chat:3009
       DRIVER_SERVICE_URL: http://user-driver:3009
       VET_SERVICE_URL: http://user-vet:3010
       THROTTLE_TTL: 60000
@@ -198,6 +199,14 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/mypet_notif
       JWT_SECRET: ${JWT_SECRET}
       RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672
+      # E-mail – set to your Mailtrap / SendGrid credentials
+      MAIL_HOST: ${MAIL_HOST:-sandbox.smtp.mailtrap.io}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USER: ${MAIL_USER:-}
+      MAIL_PASS: ${MAIL_PASS:-}
+      MAIL_FROM: ${MAIL_FROM:-noreply@mypet.com}
+      # FCM – paste the service-account JSON as a single-line string
+      FCM_SERVICE_ACCOUNT: ${FCM_SERVICE_ACCOUNT:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -282,6 +291,32 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/mypet_vet
       JWT_SECRET: ${JWT_SECRET}
       RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  chat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: chat
+        SERVICE_PORT: 3009
+    container_name: mypet-chat
+    # init reaps zombie/defunct child processes (evita o erro "PID is zombie and
+    # can not be killed" ao recriar o container).
+    init: true
+    ports:
+      - '3009:3009'
+    environment:
+      PORT: 3009
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/mypet_chat
+      JWT_SECRET: ${JWT_SECRET}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672
+      ESTABLISHMENT_SERVICE_URL: http://establishment:3003
     depends_on:
       postgres:
         condition: service_healthy

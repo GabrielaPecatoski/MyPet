@@ -21,6 +21,7 @@ export class DrizzleDriverRepository implements DriverRepository {
         vehicleType: driver.vehicleType,
         vehicleModel: driver.vehicleModel,
         vehiclePlate: driver.vehiclePlate,
+        photoUrl: driver.photoUrl ?? null,
         status: driver.status,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -81,6 +82,7 @@ export class DrizzleDriverRepository implements DriverRepository {
       .update(driversSchema)
       .set({
         establishmentId: driver.establishmentId ?? null,
+        photoUrl: driver.photoUrl ?? null,
         status: driver.status,
         updatedAt: new Date(),
       })

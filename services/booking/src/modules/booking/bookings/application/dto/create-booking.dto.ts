@@ -22,15 +22,19 @@ export class ServiceItemDto {
 export class CreateBookingDto {
   @ApiProperty() @IsString() @IsNotEmpty() petId!: string;
   @ApiProperty() @IsString() @IsNotEmpty() petName!: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() petBreed?: string;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() @Min(0) petAge?: number;
   @ApiProperty() @IsString() @IsNotEmpty() serviceName!: string;
   @ApiPropertyOptional() @IsOptional() @IsString() establishmentId?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() establishmentName?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() establishmentAddress?: string;
   @ApiProperty() @IsDateString() scheduledAt!: string;
   @ApiPropertyOptional() @IsOptional() @IsNumber() @Min(0) price?: number;
   @ApiPropertyOptional() @IsOptional() @IsBoolean() priceVariable?: boolean;
   @ApiPropertyOptional() @IsOptional() @IsString() userName?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() driverId?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() driverName?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() driverPhotoUrl?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() vetId?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() vetName?: string;
   @ApiPropertyOptional({ type: [ServiceItemDto] })

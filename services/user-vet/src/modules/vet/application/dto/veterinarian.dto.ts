@@ -9,6 +9,7 @@ export class VeterinarianDto {
   @ApiProperty() cpf: string;
   @ApiProperty() crmv: string;
   @ApiPropertyOptional() especialidade: string | undefined;
+  @ApiPropertyOptional() photoUrl: string | undefined;
   @ApiProperty() status: string;
   @ApiProperty() disponivel: boolean;
   @ApiProperty() atendeDomicilio: boolean;
@@ -23,6 +24,7 @@ export class VeterinarianDto {
     this.cpf = v.cpf;
     this.crmv = v.crmv;
     this.especialidade = v.especialidade;
+    this.photoUrl = v.photoUrl;
     this.status = v.status;
     this.disponivel = v.disponivel;
     this.atendeDomicilio = v.atendeDomicilio;

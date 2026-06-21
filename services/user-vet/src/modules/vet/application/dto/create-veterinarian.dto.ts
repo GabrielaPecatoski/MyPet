@@ -14,8 +14,13 @@ export class CreateVeterinarianDto {
   @ApiProperty() @IsString() @IsNotEmpty() cpf!: string;
   @ApiProperty() @IsString() @IsNotEmpty() crmv!: string;
   @ApiPropertyOptional() @IsString() @IsOptional() especialidade?: string;
+  @ApiPropertyOptional() @IsString() @IsOptional() photoUrl?: string;
   @ApiPropertyOptional() @IsBoolean() @IsOptional() atende24h?: boolean;
   @ApiPropertyOptional() @IsBoolean() @IsOptional() atendeDomicilio?: boolean;
+}
+
+export class UpdateVetPhotoDto {
+  @ApiPropertyOptional() @IsString() @IsOptional() photoUrl?: string;
 }
 
 export class UpdateVetAvailabilityDto {

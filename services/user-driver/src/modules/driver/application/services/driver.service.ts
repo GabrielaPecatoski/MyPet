@@ -1,4 +1,7 @@
-import { CreateDriverDto } from "@driver/driver/application/dto/create-driver.dto";
+import {
+  CreateDriverDto,
+  UpdateDriverPhotoDto,
+} from "@driver/driver/application/dto/create-driver.dto";
 import { DriverDto } from "@driver/driver/application/dto/driver.dto";
 import { Driver } from "@driver/driver/domain/models/driver.entity";
 import {
@@ -32,6 +35,7 @@ export class DriverService {
       vehicleType: dto.vehicleType,
       vehicleModel: dto.vehicleModel,
       vehiclePlate: dto.vehiclePlate,
+      photoUrl: dto.photoUrl,
       status: "PENDENTE",
     })!;
 
@@ -82,6 +86,17 @@ export class DriverService {
   async findById(id: string): Promise<DriverDto> {
     const driver = await this.repo.findById(id);
     if (!driver) throw new NotFoundException("Motorista não encontrado");
+    return DriverDto.fromDriver(driver)!;
+  }
+
+  async updatePhoto(
+    id: string,
+    dto: UpdateDriverPhotoDto,
+  ): Promise<DriverDto> {
+    const driver = await this.repo.findById(id);
+    if (!driver) throw new NotFoundException("Motorista não encontrado");
+    driver.withPhotoUrl(dto.photoUrl);
+    await this.repo.update(driver);
     return DriverDto.fromDriver(driver)!;
   }
 

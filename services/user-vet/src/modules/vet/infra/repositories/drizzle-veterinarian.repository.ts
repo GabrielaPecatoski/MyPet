@@ -19,6 +19,7 @@ export class DrizzleVeterinarianRepository implements VeterinarianRepository {
         cpf: vet.cpf,
         crmv: vet.crmv,
         especialidade: vet.especialidade ?? null,
+        photoUrl: vet.photoUrl ?? null,
         status: vet.status,
         disponivel: vet.disponivel,
         atendeDomicilio: vet.atendeDomicilio,
@@ -98,6 +99,7 @@ export class DrizzleVeterinarianRepository implements VeterinarianRepository {
       .set({
         establishmentId: vet.establishmentId ?? null,
         especialidade: vet.especialidade ?? null,
+        photoUrl: vet.photoUrl ?? null,
         status: vet.status,
         disponivel: vet.disponivel,
         atendeDomicilio: vet.atendeDomicilio,

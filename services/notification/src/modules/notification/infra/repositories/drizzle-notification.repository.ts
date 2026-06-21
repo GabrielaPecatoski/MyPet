@@ -6,7 +6,7 @@ import {
   notificationsSchema,
 } from "@notification/infra/database/schemas/notification.schema";
 import { DrizzleService } from "@shared/infra/database/drizzle.service";
-import { desc, eq } from "drizzle-orm";
+import { and, count, desc, eq } from "drizzle-orm";
 
 @Injectable()
 export class DrizzleNotificationRepository implements NotificationRepository {
@@ -24,7 +24,7 @@ export class DrizzleNotificationRepository implements NotificationRepository {
     });
   }
 
-  async create(notification: Notification): Promise<void> {
+  async create(notification: Notification): Promise<Notification> {
     await this.drizzle.db.insert(notificationsSchema).values({
       id: notification.id,
       userId: notification.userId,
@@ -34,6 +34,7 @@ export class DrizzleNotificationRepository implements NotificationRepository {
       read: notification.read,
       createdAt: notification.createdAt,
     });
+    return notification;
   }
 
   async update(notification: Notification): Promise<void> {
@@ -61,17 +62,23 @@ export class DrizzleNotificationRepository implements NotificationRepository {
   }
 
   async countUnread(userId: string): Promise<number> {
-    const rows = await this.drizzle.db
-      .select()
+    const [row] = await this.drizzle.db
+      .select({ count: count() })
       .from(notificationsSchema)
-      .where(eq(notificationsSchema.userId, userId));
-    return rows.filter((r) => !r.read).length;
+      .where(
+        and(
+          eq(notificationsSchema.userId, userId),
+          eq(notificationsSchema.read, false),
+        ),
+      );
+    return Number(row?.count ?? 0);
   }
 
-  async markAllAsRead(userId: string): Promise<void> {
+  async markAllAsRead(userId: string): Promise<{ ok: boolean }> {
     await this.drizzle.db
       .update(notificationsSchema)
       .set({ read: true })
       .where(eq(notificationsSchema.userId, userId));
+    return { ok: true };
   }
 }

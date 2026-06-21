@@ -6,54 +6,19 @@ import { createProxyMiddleware } from "http-proxy-middleware";
 import { AppModule } from "./app.module";
 
 const ROUTES = [
-  {
-    prefix: "/auth",
-    target: process.env.AUTH_SERVICE_URL ?? "http://localhost:3001",
-  },
-  {
-    prefix: "/users",
-    target: process.env.AUTH_SERVICE_URL ?? "http://localhost:3001",
-  },
-  {
-    prefix: "/pets",
-    target: process.env.USER_PET_SERVICE_URL ?? "http://localhost:3002",
-  },
-  {
-    prefix: "/establishments",
-    target: process.env.ESTABLISHMENT_SERVICE_URL ?? "http://localhost:3003",
-  },
-  {
-    prefix: "/marketplace",
-    target: process.env.MARKETPLACE_SERVICE_URL ?? "http://localhost:3004",
-  },
-  {
-    prefix: "/bookings",
-    target: process.env.BOOKING_SERVICE_URL ?? "http://localhost:3005",
-  },
-  {
-    prefix: "/availability",
-    target: process.env.BOOKING_SERVICE_URL ?? "http://localhost:3005",
-  },
-  {
-    prefix: "/notifications",
-    target: process.env.NOTIFICATION_SERVICE_URL ?? "http://localhost:3006",
-  },
-  {
-    prefix: "/reviews",
-    target: process.env.REVIEW_SERVICE_URL ?? "http://localhost:3007",
-  },
-  {
-    prefix: "/faq",
-    target: process.env.FAQ_SERVICE_URL ?? "http://localhost:3008",
-  },
-  {
-    prefix: "/drivers",
-    target: process.env.DRIVER_SERVICE_URL ?? "http://localhost:3009",
-  },
-  {
-    prefix: "/veterinarians",
-    target: process.env.VET_SERVICE_URL ?? "http://localhost:3010",
-  },
+  { prefix: "/auth",           target: process.env.AUTH_SERVICE_URL          ?? "http://localhost:3001" },
+  { prefix: "/users",          target: process.env.AUTH_SERVICE_URL          ?? "http://localhost:3001" },
+  { prefix: "/pets",           target: process.env.USER_PET_SERVICE_URL      ?? "http://localhost:3002" },
+  { prefix: "/establishments", target: process.env.ESTABLISHMENT_SERVICE_URL ?? "http://localhost:3003" },
+  { prefix: "/marketplace",    target: process.env.MARKETPLACE_SERVICE_URL   ?? "http://localhost:3004" },
+  { prefix: "/bookings",       target: process.env.BOOKING_SERVICE_URL       ?? "http://localhost:3005" },
+  { prefix: "/availability",   target: process.env.BOOKING_SERVICE_URL       ?? "http://localhost:3005" },
+  { prefix: "/notifications",  target: process.env.NOTIFICATION_SERVICE_URL  ?? "http://localhost:3006" },
+  { prefix: "/reviews",        target: process.env.REVIEW_SERVICE_URL        ?? "http://localhost:3007" },
+  { prefix: "/faq",            target: process.env.FAQ_SERVICE_URL           ?? "http://localhost:3008" },
+  { prefix: "/conversations",  target: process.env.CHAT_SERVICE_URL          ?? "http://localhost:3009" },
+  { prefix: "/drivers",        target: process.env.DRIVER_SERVICE_URL        ?? "http://localhost:3010" },
+  { prefix: "/veterinarians",  target: process.env.VET_SERVICE_URL           ?? "http://localhost:3011" },
 ];
 
 const GATEWAY_HANDLED = ["GET /auth/me", "POST /auth/refresh"];
@@ -81,6 +46,14 @@ async function bootstrap() {
     }
     next();
   });
+
+  // WebSocket proxy for Socket.IO (chat service) — must be before REST routes
+  const chatWsProxy = createProxyMiddleware({
+    target: process.env.CHAT_SERVICE_URL ?? "http://localhost:3009",
+    changeOrigin: true,
+    ws: true,
+  });
+  expressApp.use("/socket.io", chatWsProxy);
 
   for (const route of ROUTES) {
     const proxy = createProxyMiddleware({

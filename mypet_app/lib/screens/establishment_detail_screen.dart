@@ -9,6 +9,7 @@ import '../providers/auth_provider.dart';
 import '../providers/establishment_detail_provider.dart';
 import '../repositories/establishment_detail_repository.dart';
 import '../widgets/app_bottom_nav.dart';
+import '../widgets/app_image.dart';
 import '../widgets/mypet_app_bar.dart';
 import 'schedule_screen.dart' show ScheduleArgs;
 
@@ -106,15 +107,23 @@ class _EstablishmentDetailViewState
           CustomScrollView(
             slivers: [
               SliverToBoxAdapter(
-                child: Container(
+                child: SizedBox(
                   height: 200,
                   width: double.infinity,
-                  color: AppColors.primary,
-                  child: Center(
-                    child: Icon(
-                      e.isPetShop && !e.isVeterinario ? Icons.pets : Icons.local_hospital,
-                      size: 72,
-                      color: Colors.white.withValues(alpha: 0.6),
+                  child: AppImage(
+                    url: e.imageUrl,
+                    fit: BoxFit.cover,
+                    fallback: Container(
+                      color: AppColors.primary,
+                      child: Center(
+                        child: Icon(
+                          e.isPetShop && !e.isVeterinario
+                              ? Icons.pets
+                              : Icons.local_hospital,
+                          size: 72,
+                          color: Colors.white.withValues(alpha: 0.6),
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -471,13 +480,11 @@ class _EstablishmentDetailViewState
                   children: [
                     Row(
                       children: [
-                        Container(
-                          width: 46, height: 46,
-                          decoration: BoxDecoration(
-                            color: AppColors.primaryLight,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Icon(Icons.medical_services_outlined,
+                        PhotoBox(
+                          url: v.photoUrl,
+                          size: 46,
+                          background: AppColors.primaryLight,
+                          fallback: const Icon(Icons.medical_services_outlined,
                               color: AppColors.estab, size: 24),
                         ),
                         const SizedBox(width: 12),

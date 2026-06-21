@@ -19,6 +19,7 @@ class DriverService {
     required String vehicleType,
     required String vehicleModel,
     required String vehiclePlate,
+    String? photoUrl,
   }) async {
     final body = <String, dynamic>{
       'name': name,
@@ -30,6 +31,7 @@ class DriverService {
       'vehiclePlate': vehiclePlate,
     };
     if (establishmentId != null) body['establishmentId'] = establishmentId;
+    if (photoUrl != null && photoUrl.isNotEmpty) body['photoUrl'] = photoUrl;
 
     final res = await http
         .post(
@@ -148,6 +150,24 @@ class DriverService {
         )
         .timeout(const Duration(seconds: 8));
     if (res.statusCode != 200) throw Exception('Erro ao desassociar motorista');
+  }
+
+  static Future<DriverModel> updatePhoto({
+    required String token,
+    required String driverId,
+    required String photoUrl,
+  }) async {
+    final res = await http
+        .patch(
+          Uri.parse('${ApiConstants.baseUrl}${ApiConstants.driversEndpoint}/$driverId/photo'),
+          headers: _headers(token),
+          body: jsonEncode({'photoUrl': photoUrl}),
+        )
+        .timeout(const Duration(seconds: 10));
+    if (res.statusCode == 200 || res.statusCode == 201) {
+      return DriverModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+    }
+    throw Exception('Erro ao atualizar foto do motorista');
   }
 
   static Future<void> deactivate({

@@ -10,19 +10,28 @@ import {
   ConflictException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
   UnauthorizedException,
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
+import {
+  UserAuthExchangeName,
+  UserAuthRoutingKey,
+} from "@shared/contracts/events/user-auth-events.enum";
 import { ROLE_PERMISSIONS } from "@shared/domain/enums/permission.enum";
+import { SharedMessagingService } from "@shared/infra/messaging/shared-messaging.service";
 import * as bcrypt from "bcryptjs";
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     @Inject(USER_REPOSITORY)
     private readonly userRepository: UserRepository,
     private readonly jwtService: JwtService,
+    private readonly messaging: SharedMessagingService,
   ) {}
 
   async register(
@@ -57,6 +66,16 @@ export class AuthService {
     );
     if (!created) throw new NotFoundException("Usuário criado não encontrado");
 
+    await this.safePublish(
+      UserAuthExchangeName.USER_CREATED,
+      UserAuthRoutingKey.USER_CREATED,
+      {
+        userId: created.id,
+        name: created.name,
+        email: created.email,
+      },
+    );
+
     const accessToken = this.generateToken(created);
     return { accessToken, user: UserDto.fromUser(created)! };
   }
@@ -82,5 +101,18 @@ export class AuthService {
       role: user.role,
       permissions,
     });
+  }
+
+  private async safePublish(
+    exchange: string,
+    routingKey: string,
+    payload: unknown,
+  ): Promise<void> {
+    try {
+      await this.messaging.assertExchange(exchange, "direct");
+      await this.messaging.publish(exchange, routingKey, payload);
+    } catch (err) {
+      this.logger.warn(`RabbitMQ publish failed [${routingKey}]: ${err}`);
+    }
   }
 }

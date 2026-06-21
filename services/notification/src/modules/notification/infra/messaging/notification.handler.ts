@@ -1,5 +1,8 @@
 import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
 import { NotificationService } from "@notification/application/services/notification.service";
+import { MailService } from "@notification/infra/mail/mail.service";
+import { FcmService } from "@notification/infra/push/fcm.service";
+import { DeviceTokenRepository } from "@notification/infra/repositories/device-token.repository";
 import {
   BookingExchangeName,
   BookingRoutingKey,
@@ -12,12 +15,22 @@ import {
   MarketplaceExchangeName,
   MarketplaceRoutingKey,
 } from "@shared/contracts/events/marketplace-events.enum";
+import {
+  ReviewExchangeName,
+  ReviewRoutingKey,
+} from "@shared/contracts/events/review-events.enum";
+import {
+  UserAuthExchangeName,
+  UserAuthRoutingKey,
+} from "@shared/contracts/events/user-auth-events.enum";
 import { RabbitMQService } from "@shared/infra/messaging/rabbitmq.service";
 
 interface BookingCreatedPayload {
   bookingId: string;
   establishmentId: string;
+  establishmentName: string;
   clientName: string;
+  userEmail?: string;
   serviceName: string;
   scheduledAt: string;
 }
@@ -25,7 +38,18 @@ interface BookingCreatedPayload {
 interface BookingStatusUpdatedPayload {
   bookingId: string;
   userId: string;
+  userEmail?: string;
   status: string;
+  establishmentName: string;
+  serviceName?: string;
+  scheduledAt?: string;
+}
+
+interface BookingCanceledPayload {
+  bookingId: string;
+  userId: string;
+  userEmail?: string;
+  serviceName: string;
   establishmentName: string;
 }
 
@@ -34,6 +58,15 @@ interface BookingCompletedPayload {
   userId: string;
   establishmentName: string;
   serviceName: string;
+}
+
+interface BookingReminderPayload {
+  bookingId: string;
+  userId: string;
+  userEmail?: string;
+  serviceName: string;
+  establishmentName: string;
+  scheduledAt: string;
 }
 
 interface BookingTodayReminderPayload {
@@ -49,8 +82,22 @@ interface BookingTodayReminderPayload {
 interface OrderCreatedPayload {
   orderId: string;
   userId: string;
+  userEmail?: string;
   total: number;
   itemCount: number;
+}
+
+interface ReviewCreatedPayload {
+  reviewId: string;
+  establishmentId: string;
+  userId: string;
+  rating: number;
+}
+
+interface UserCreatedPayload {
+  userId: string;
+  name: string;
+  email: string;
 }
 
 interface EmergencyVetCallPayload {
@@ -71,6 +118,9 @@ export class NotificationHandler implements OnModuleInit {
   constructor(
     private readonly rabbitMQService: RabbitMQService,
     private readonly notificationService: NotificationService,
+    private readonly deviceTokenRepo: DeviceTokenRepository,
+    private readonly mailService: MailService,
+    private readonly fcmService: FcmService,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -78,68 +128,29 @@ export class NotificationHandler implements OnModuleInit {
       const channel = this.rabbitMQService.getChannel();
       await channel.assertQueue(NOTIFICATION_QUEUE, { durable: true });
 
-      await channel.assertExchange(BookingExchangeName.CREATED, "direct", {
-        durable: true,
-      });
-      await channel.assertExchange(
-        BookingExchangeName.STATUS_UPDATED,
-        "direct",
-        { durable: true },
-      );
-      await channel.assertExchange(BookingExchangeName.COMPLETED, "direct", {
-        durable: true,
-      });
-      await channel.assertExchange(
-        BookingExchangeName.TODAY_REMINDER,
-        "direct",
-        { durable: true },
-      );
-      await channel.bindQueue(
-        NOTIFICATION_QUEUE,
-        BookingExchangeName.CREATED,
-        BookingRoutingKey.CREATED,
-      );
-      await channel.bindQueue(
-        NOTIFICATION_QUEUE,
-        BookingExchangeName.STATUS_UPDATED,
-        BookingRoutingKey.STATUS_UPDATED,
-      );
-      await channel.bindQueue(
-        NOTIFICATION_QUEUE,
-        BookingExchangeName.COMPLETED,
-        BookingRoutingKey.COMPLETED,
-      );
-      await channel.bindQueue(
-        NOTIFICATION_QUEUE,
-        BookingExchangeName.TODAY_REMINDER,
-        BookingRoutingKey.TODAY_REMINDER,
-      );
+      const bindings: { exchange: string; routingKey: string }[] = [
+        { exchange: BookingExchangeName.CREATED, routingKey: BookingRoutingKey.CREATED },
+        { exchange: BookingExchangeName.STATUS_UPDATED, routingKey: BookingRoutingKey.STATUS_UPDATED },
+        { exchange: BookingExchangeName.COMPLETED, routingKey: BookingRoutingKey.COMPLETED },
+        { exchange: BookingExchangeName.CANCELED, routingKey: BookingRoutingKey.CANCELED },
+        { exchange: BookingExchangeName.REMINDER, routingKey: BookingRoutingKey.REMINDER },
+        { exchange: BookingExchangeName.TODAY_REMINDER, routingKey: BookingRoutingKey.TODAY_REMINDER },
+        { exchange: MarketplaceExchangeName.ORDER_CREATED, routingKey: MarketplaceRoutingKey.ORDER_CREATED },
+        { exchange: ReviewExchangeName.CREATED, routingKey: ReviewRoutingKey.CREATED },
+        { exchange: UserAuthExchangeName.USER_CREATED, routingKey: UserAuthRoutingKey.USER_CREATED },
+        { exchange: EmergencyExchangeName.VET_CALL, routingKey: EmergencyRoutingKey.VET_CALL },
+      ];
 
-      await channel.assertExchange(
-        MarketplaceExchangeName.ORDER_CREATED,
-        "direct",
-        { durable: true },
-      );
-      await channel.bindQueue(
-        NOTIFICATION_QUEUE,
-        MarketplaceExchangeName.ORDER_CREATED,
-        MarketplaceRoutingKey.ORDER_CREATED,
-      );
-
-      await channel.assertExchange(EmergencyExchangeName.VET_CALL, "direct", {
-        durable: true,
-      });
-      await channel.bindQueue(
-        NOTIFICATION_QUEUE,
-        EmergencyExchangeName.VET_CALL,
-        EmergencyRoutingKey.VET_CALL,
-      );
+      for (const { exchange, routingKey } of bindings) {
+        await channel.assertExchange(exchange, "direct", { durable: true });
+        await channel.bindQueue(NOTIFICATION_QUEUE, exchange, routingKey);
+      }
 
       await channel.consume(NOTIFICATION_QUEUE, async (msg) => {
         if (!msg) return;
         try {
           const routingKey = msg.fields.routingKey;
-          const payload = JSON.parse(msg.content.toString());
+          const payload = JSON.parse(msg.content.toString()) as unknown;
           await this.handleMessage(routingKey, payload);
           channel.ack(msg);
         } catch (err) {
@@ -172,20 +183,80 @@ export class NotificationHandler implements OnModuleInit {
           body: `${data.clientName} agendou ${data.serviceName} para ${new Date(data.scheduledAt).toLocaleString("pt-BR")}`,
           type: "BOOKING_CREATED",
         });
+        await this.push(
+          data.establishmentId,
+          "Nova reserva recebida",
+          `${data.clientName} agendou ${data.serviceName}`,
+        );
+        if (data.userEmail) {
+          await this.mailService.sendBookingReceived(
+            data.userEmail,
+            data.serviceName,
+            data.establishmentName,
+            new Date(data.scheduledAt).toLocaleString("pt-BR"),
+          );
+        }
         break;
       }
+
       case BookingRoutingKey.STATUS_UPDATED: {
         const data = payload as BookingStatusUpdatedPayload;
-        const statusLabel =
-          data.status === "CONFIRMADO" ? "confirmada" : "recusada";
+        const isConfirmed = data.status === "CONFIRMADO";
+        const label = isConfirmed ? "confirmada" : "recusada";
+        const type = isConfirmed ? "BOOKING_CONFIRMED" : "BOOKING_REJECTED";
         await this.notificationService.create({
           userId: data.userId,
-          title: `Reserva ${statusLabel}`,
-          body: `Sua reserva em ${data.establishmentName} foi ${statusLabel}.`,
-          type: "BOOKING_STATUS_UPDATED",
+          title: `Reserva ${label}`,
+          body: `Sua reserva em ${data.establishmentName} foi ${label}.`,
+          type,
         });
+        await this.push(
+          data.userId,
+          `Reserva ${label}`,
+          `Sua reserva em ${data.establishmentName} foi ${label}.`,
+        );
+        if (data.userEmail && data.serviceName) {
+          if (isConfirmed && data.scheduledAt) {
+            await this.mailService.sendBookingConfirmed(
+              data.userEmail,
+              data.serviceName,
+              data.establishmentName,
+              new Date(data.scheduledAt).toLocaleString("pt-BR"),
+            );
+          } else if (!isConfirmed) {
+            await this.mailService.sendBookingCancelled(
+              data.userEmail,
+              data.serviceName,
+              data.establishmentName,
+            );
+          }
+        }
         break;
       }
+
+      case BookingRoutingKey.CANCELED: {
+        const data = payload as BookingCanceledPayload;
+        await this.notificationService.create({
+          userId: data.userId,
+          title: "Agendamento cancelado",
+          body: `Seu agendamento de ${data.serviceName} em ${data.establishmentName} foi cancelado.`,
+          type: "BOOKING_CANCELLED",
+        });
+        await this.push(
+          data.userId,
+          "Agendamento cancelado",
+          `${data.serviceName} em ${data.establishmentName} foi cancelado.`,
+        );
+        if (data.userEmail) {
+          await this.mailService.sendBookingCancelled(
+            data.userEmail,
+            data.serviceName,
+            data.establishmentName,
+          );
+        }
+        break;
+      }
+
       case BookingRoutingKey.COMPLETED: {
         const data = payload as BookingCompletedPayload;
         await this.notificationService.create({
@@ -194,8 +265,30 @@ export class NotificationHandler implements OnModuleInit {
           body: `Seu atendimento de ${data.serviceName} em ${data.establishmentName} foi concluído. Deixe uma avaliação!`,
           type: "BOOKING_COMPLETED",
         });
+        await this.push(
+          data.userId,
+          "Atendimento concluído",
+          `${data.serviceName} concluído. Avalie o estabelecimento!`,
+        );
         break;
       }
+
+      case BookingRoutingKey.REMINDER: {
+        const data = payload as BookingReminderPayload;
+        await this.notificationService.create({
+          userId: data.userId,
+          title: "Lembrete de agendamento",
+          body: `Seu agendamento de ${data.serviceName} em ${data.establishmentName} é amanhã.`,
+          type: "BOOKING_REMINDER",
+        });
+        await this.push(
+          data.userId,
+          "Lembrete de agendamento",
+          `${data.serviceName} em ${data.establishmentName} é amanhã!`,
+        );
+        break;
+      }
+
       case BookingRoutingKey.TODAY_REMINDER: {
         const data = payload as BookingTodayReminderPayload;
         const when = new Date(data.scheduledAt).toLocaleTimeString("pt-BR", {
@@ -218,6 +311,7 @@ export class NotificationHandler implements OnModuleInit {
         });
         break;
       }
+
       case MarketplaceRoutingKey.ORDER_CREATED: {
         const data = payload as OrderCreatedPayload;
         await this.notificationService.create({
@@ -226,8 +320,50 @@ export class NotificationHandler implements OnModuleInit {
           body: `Seu pedido de ${data.itemCount} item(s) no valor de R$ ${data.total.toFixed(2)} foi registrado.`,
           type: "ORDER_CREATED",
         });
+        await this.push(
+          data.userId,
+          "Pedido realizado",
+          `${data.itemCount} item(s) — R$ ${data.total.toFixed(2)}`,
+        );
+        if (data.userEmail) {
+          await this.mailService.sendOrderPlaced(
+            data.userEmail,
+            data.orderId,
+            data.total,
+            data.itemCount,
+          );
+        }
         break;
       }
+
+      case ReviewRoutingKey.CREATED: {
+        const data = payload as ReviewCreatedPayload;
+        await this.notificationService.create({
+          userId: data.establishmentId,
+          title: "Nova avaliação recebida",
+          body: `Você recebeu uma nova avaliação com ${data.rating} estrela(s).`,
+          type: "REVIEW_RECEIVED",
+        });
+        await this.push(
+          data.establishmentId,
+          "Nova avaliação",
+          `${data.rating} estrela(s) recebida(s).`,
+        );
+        break;
+      }
+
+      case UserAuthRoutingKey.USER_CREATED: {
+        const data = payload as UserCreatedPayload;
+        await this.notificationService.create({
+          userId: data.userId,
+          title: "Bem-vindo ao MyPet!",
+          body: `Olá, ${data.name}! Sua conta foi criada com sucesso.`,
+          type: "AUTH_WELCOME",
+        });
+        await this.mailService.sendWelcome(data.email, data.name);
+        break;
+      }
+
       case EmergencyRoutingKey.VET_CALL: {
         const data = payload as EmergencyVetCallPayload;
         const pet = data.petDescription ? ` · ${data.petDescription}` : "";
@@ -239,8 +375,24 @@ export class NotificationHandler implements OnModuleInit {
         });
         break;
       }
+
       default:
         this.logger.warn(`Unknown routing key: ${routingKey}`);
+    }
+  }
+
+  private async push(
+    userId: string,
+    title: string,
+    body: string,
+  ): Promise<void> {
+    try {
+      const token = await this.deviceTokenRepo.findTokenByUserId(userId);
+      if (token) {
+        await this.fcmService.sendPush(token, title, body);
+      }
+    } catch (err) {
+      this.logger.warn(`Push lookup failed for userId ${userId}: ${err}`);
     }
   }
 }

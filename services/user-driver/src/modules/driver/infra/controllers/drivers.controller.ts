@@ -1,4 +1,7 @@
-import { CreateDriverDto } from "@driver/driver/application/dto/create-driver.dto";
+import {
+  CreateDriverDto,
+  UpdateDriverPhotoDto,
+} from "@driver/driver/application/dto/create-driver.dto";
 import { DriverService } from "@driver/driver/application/services/driver.service";
 import {
   Body,
@@ -103,6 +106,14 @@ export class DriversController {
   @ApiOperation({ summary: "Admin rejeita motorista (→ REJEITADO)" })
   reject(@Param("id") id: string) {
     return this.driverService.reject(id);
+  }
+
+  @Patch(":id/photo")
+  @RequirePermissions(Permission.DRIVERS_WRITE)
+  @HttpCode(200)
+  @ApiOperation({ summary: "Atualizar foto de perfil do motorista" })
+  updatePhoto(@Param("id") id: string, @Body() dto: UpdateDriverPhotoDto) {
+    return this.driverService.updatePhoto(id, dto);
   }
 
   @Patch(":id/deactivate")

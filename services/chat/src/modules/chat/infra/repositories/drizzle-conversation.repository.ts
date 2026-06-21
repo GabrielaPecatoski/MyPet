@@ -1,0 +1,110 @@
+import { Injectable } from "@nestjs/common";
+import { DrizzleService } from "@shared/infra/database/drizzle.service";
+import { and, asc, eq } from "drizzle-orm";
+import { Conversation } from "../../domain/models/conversation.entity";
+import { ConversationRepository } from "../../domain/repositories/conversation-repository.interface";
+import { conversationsSchema } from "../database/schemas/conversation.schema";
+
+@Injectable()
+export class DrizzleConversationRepository implements ConversationRepository {
+  constructor(private readonly drizzle: DrizzleService) {}
+
+  private toEntity(row: typeof conversationsSchema.$inferSelect): Conversation {
+    return Conversation.restore({
+      id: row.id,
+      bookingId: row.bookingId,
+      clientId: row.clientId,
+      clientName: row.clientName,
+      establishmentId: row.establishmentId,
+      establishmentName: row.establishmentName,
+      lastMessageAt: row.lastMessageAt ?? null,
+      createdAt: row.createdAt,
+    });
+  }
+
+  async findById(id: string): Promise<Conversation | null> {
+    const [row] = await this.drizzle.db
+      .select()
+      .from(conversationsSchema)
+      .where(eq(conversationsSchema.id, id));
+    return row ? this.toEntity(row) : null;
+  }
+
+  async findByBookingId(bookingId: string): Promise<Conversation | null> {
+    const [row] = await this.drizzle.db
+      .select()
+      .from(conversationsSchema)
+      .where(eq(conversationsSchema.bookingId, bookingId));
+    return row ? this.toEntity(row) : null;
+  }
+
+  async findByClientAndEstablishment(
+    clientId: string,
+    establishmentId: string,
+  ): Promise<Conversation | null> {
+    // Consolida: uma conversa por par (cliente, estabelecimento). Se houver
+    // mais de uma (dados antigos), reusa a mais antiga.
+    const [row] = await this.drizzle.db
+      .select()
+      .from(conversationsSchema)
+      .where(
+        and(
+          eq(conversationsSchema.clientId, clientId),
+          eq(conversationsSchema.establishmentId, establishmentId),
+        ),
+      )
+      .orderBy(asc(conversationsSchema.createdAt))
+      .limit(1);
+    return row ? this.toEntity(row) : null;
+  }
+
+  async findByClientId(clientId: string): Promise<Conversation[]> {
+    const rows = await this.drizzle.db
+      .select()
+      .from(conversationsSchema)
+      .where(eq(conversationsSchema.clientId, clientId));
+    return rows.map((r) => this.toEntity(r));
+  }
+
+  async findByEstablishmentId(establishmentId: string): Promise<Conversation[]> {
+    const rows = await this.drizzle.db
+      .select()
+      .from(conversationsSchema)
+      .where(eq(conversationsSchema.establishmentId, establishmentId));
+    return rows.map((r) => this.toEntity(r));
+  }
+
+  async create(conversation: Conversation): Promise<Conversation> {
+    const [row] = await this.drizzle.db
+      .insert(conversationsSchema)
+      .values({
+        id: conversation.id,
+        bookingId: conversation.bookingId,
+        clientId: conversation.clientId,
+        clientName: conversation.clientName,
+        establishmentId: conversation.establishmentId,
+        establishmentName: conversation.establishmentName,
+        lastMessageAt: conversation.lastMessageAt,
+        createdAt: conversation.createdAt,
+      })
+      .returning();
+    return this.toEntity(row);
+  }
+
+  async touch(id: string, lastMessageAt: Date): Promise<void> {
+    await this.drizzle.db
+      .update(conversationsSchema)
+      .set({ lastMessageAt })
+      .where(eq(conversationsSchema.id, id));
+  }
+
+  async updateEstablishmentName(
+    id: string,
+    establishmentName: string,
+  ): Promise<void> {
+    await this.drizzle.db
+      .update(conversationsSchema)
+      .set({ establishmentName })
+      .where(eq(conversationsSchema.id, id));
+  }
+}

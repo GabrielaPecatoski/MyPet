@@ -14,6 +14,7 @@ import { SharedMessagingService } from "@shared/infra/messaging/shared-messaging
 import {
   CreateVeterinarianDto,
   UpdateVetAvailabilityDto,
+  UpdateVetPhotoDto,
 } from "@vet/vet/application/dto/create-veterinarian.dto";
 import { CreateEmergencyCallDto } from "@vet/vet/application/dto/emergency-call.dto";
 import { VeterinarianDto } from "@vet/vet/application/dto/veterinarian.dto";
@@ -46,6 +47,7 @@ export class VeterinarianService {
       cpf: dto.cpf,
       crmv: dto.crmv,
       especialidade: dto.especialidade,
+      photoUrl: dto.photoUrl,
       status: "PENDENTE",
       disponivel: false,
       atendeDomicilio: dto.atendeDomicilio ?? false,
@@ -129,6 +131,17 @@ export class VeterinarianService {
     return VeterinarianDto.fromVet(vet)!;
   }
 
+  async updatePhoto(
+    id: string,
+    dto: UpdateVetPhotoDto,
+  ): Promise<VeterinarianDto> {
+    const vet = await this.repo.findById(id);
+    if (!vet) throw new NotFoundException("Veterinário não encontrado");
+    vet.withPhotoUrl(dto.photoUrl);
+    await this.repo.update(vet);
+    return VeterinarianDto.fromVet(vet)!;
+  }
+
   async associate(
     id: string,
     establishmentId: string,
@@ -181,7 +194,7 @@ export class VeterinarianService {
     const call = await this.callsRepo.create({
       vetId,
       callerName: dto.callerName,
-      callerPhone: dto.callerPhone,
+      callerPhone: dto.callerPhone ?? "",
       petDescription: dto.petDescription,
     });
 
@@ -197,7 +210,7 @@ export class VeterinarianService {
           vetId,
           vetName: vet.name,
           callerName: dto.callerName,
-          callerPhone: dto.callerPhone,
+          callerPhone: dto.callerPhone ?? "",
           petDescription: dto.petDescription ?? null,
         },
       );
