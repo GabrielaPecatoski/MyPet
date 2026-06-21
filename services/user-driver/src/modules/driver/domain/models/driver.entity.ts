@@ -13,6 +13,7 @@ export class Driver {
   private _vehiclePlate!: string;
   private _photoUrl?: string;
   private _status!: DriverStatus;
+  private _online: boolean = false;
   private readonly _createdAt?: Date;
   private readonly _updatedAt?: Date;
 
@@ -55,6 +56,9 @@ export class Driver {
   get status(): DriverStatus {
     return this._status;
   }
+  get online(): boolean {
+    return this._online;
+  }
   get createdAt(): Date | undefined {
     return this._createdAt;
   }
@@ -74,6 +78,10 @@ export class Driver {
     this._photoUrl = photoUrl;
     return this;
   }
+  withOnline(online: boolean) {
+    this._online = online;
+    return this;
+  }
 
   static restore(props?: {
     id?: string;
@@ -87,6 +95,7 @@ export class Driver {
     vehiclePlate: string;
     photoUrl?: string | null;
     status?: string | null;
+    online?: boolean | null;
     createdAt?: Date;
     updatedAt?: Date;
   }): Driver | null {
@@ -102,6 +111,7 @@ export class Driver {
     d._vehiclePlate = props.vehiclePlate;
     d._photoUrl = props.photoUrl ?? undefined;
     d._status = (props.status ?? "PENDENTE") as DriverStatus;
+    d._online = props.online ?? false;
     return d;
   }
 }

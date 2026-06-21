@@ -73,6 +73,7 @@ class BookingService {
     String? driverId,
     String? driverName,
     String? driverPhotoUrl,
+    bool transportRequested = false,
     String? vetId,
     String? vetName,
   }) async {
@@ -93,6 +94,7 @@ class BookingService {
     if (driverId != null) body['driverId'] = driverId;
     if (driverName != null) body['driverName'] = driverName;
     if (driverPhotoUrl != null) body['driverPhotoUrl'] = driverPhotoUrl;
+    if (transportRequested) body['transportRequested'] = true;
     if (vetId != null) body['vetId'] = vetId;
     if (vetName != null) body['vetName'] = vetName;
     if (services != null && services.isNotEmpty) {
@@ -119,6 +121,57 @@ class BookingService {
           jsonDecode(res.body) as Map<String, dynamic>);
     }
     String msg = 'Erro ao criar agendamento';
+    try {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      final m = data['message'];
+      msg = (m is List ? m.join(', ') : m?.toString()) ?? msg;
+    } catch (_) {}
+    throw Exception(msg);
+  }
+
+  /// Corridas de transporte disponíveis para o motorista.
+  static Future<List<AppointmentModel>> fetchAvailableTransport({
+    required String token,
+    String? driverEstablishmentId,
+  }) async {
+    final uri = Uri.parse('${ApiConstants.baseUrl}/bookings/transport/available')
+        .replace(queryParameters: {
+      if (driverEstablishmentId != null && driverEstablishmentId.isNotEmpty)
+        'driverEstablishmentId': driverEstablishmentId,
+    });
+    final res =
+        await http.get(uri, headers: _headers(token)).timeout(const Duration(seconds: 8));
+    if (res.statusCode != 200) throw Exception('Erro ao buscar corridas');
+    final list = jsonDecode(res.body) as List;
+    return list
+        .map((e) => AppointmentModel.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Motorista aceita uma corrida (primeiro a aceitar trava).
+  static Future<AppointmentModel> acceptTransport({
+    required String token,
+    required String bookingId,
+    required String driverId,
+    String? driverName,
+    String? driverPhotoUrl,
+  }) async {
+    final res = await http
+        .patch(
+          Uri.parse('${ApiConstants.baseUrl}/bookings/$bookingId/accept-transport'),
+          headers: _headers(token),
+          body: jsonEncode({
+            'driverId': driverId,
+            'driverName': ?driverName,
+            'driverPhotoUrl': ?driverPhotoUrl,
+          }),
+        )
+        .timeout(const Duration(seconds: 8));
+    if (res.statusCode == 200 || res.statusCode == 201) {
+      return AppointmentModel.fromJson(
+          jsonDecode(res.body) as Map<String, dynamic>);
+    }
+    String msg = 'Não foi possível aceitar a corrida';
     try {
       final data = jsonDecode(res.body) as Map<String, dynamic>;
       final m = data['message'];

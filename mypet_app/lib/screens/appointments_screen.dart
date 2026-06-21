@@ -485,7 +485,11 @@ class _BookingCardState extends State<_BookingCard> {
         borderRadius: BorderRadius.circular(14),
         boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 2))],
       ),
-      child: Column(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: () =>
+            Navigator.pushNamed(context, '/agendamento-detalhe', arguments: ap),
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (ap.isAguardandoPagamento)
@@ -769,6 +773,7 @@ class _BookingCardState extends State<_BookingCard> {
             ),
           ),
         ],
+      ),
       ),
     );
   }

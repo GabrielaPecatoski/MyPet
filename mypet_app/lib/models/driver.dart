@@ -10,6 +10,7 @@ class DriverModel {
   final String vehiclePlate;
   final String? photoUrl;
   final String status;
+  final bool online;
 
   DriverModel({
     required this.id,
@@ -23,6 +24,7 @@ class DriverModel {
     required this.vehiclePlate,
     this.photoUrl,
     this.status = 'ATIVO',
+    this.online = false,
   });
 
   bool get isAtivo => status == 'ATIVO';
@@ -60,5 +62,6 @@ class DriverModel {
         vehiclePlate: json['vehiclePlate'] as String,
         photoUrl: json['photoUrl'] as String?,
         status: json['status'] as String? ?? 'ATIVO',
+        online: json['online'] as bool? ?? false,
       );
 }

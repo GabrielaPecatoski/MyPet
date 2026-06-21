@@ -10,6 +10,7 @@ export interface DriverRepository {
   findByEstablishment(establishmentId: string): Promise<Driver[]>;
   findUnassociated(): Promise<Driver[]>;
   findByStatus(status: string): Promise<Driver[]>;
+  findAvailable(): Promise<Driver[]>;
   update(driver: Driver): Promise<void>;
   delete(id: string): Promise<void>;
 }

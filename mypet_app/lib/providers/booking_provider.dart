@@ -75,6 +75,7 @@ class BookingProvider extends ChangeNotifier {
     String? driverId,
     String? driverName,
     String? driverPhotoUrl,
+    bool transportRequested = false,
     String? vetId,
     String? vetName,
   }) async {
@@ -100,6 +101,7 @@ class BookingProvider extends ChangeNotifier {
         driverId: driverId,
         driverName: driverName,
         driverPhotoUrl: driverPhotoUrl,
+        transportRequested: transportRequested,
         vetId: vetId,
         vetName: vetName,
       );

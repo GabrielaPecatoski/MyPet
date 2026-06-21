@@ -13,6 +13,7 @@ export class DriverDto {
   @ApiProperty() vehiclePlate: string;
   @ApiPropertyOptional() photoUrl: string | undefined;
   @ApiProperty() status: string;
+  @ApiProperty() online: boolean;
   @ApiPropertyOptional() createdAt: Date | undefined;
 
   private constructor(d: Driver) {
@@ -27,6 +28,7 @@ export class DriverDto {
     this.vehiclePlate = d.vehiclePlate;
     this.photoUrl = d.photoUrl;
     this.status = d.status;
+    this.online = d.online;
     this.createdAt = d.createdAt;
   }
 

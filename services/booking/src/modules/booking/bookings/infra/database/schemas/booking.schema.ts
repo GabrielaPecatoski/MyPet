@@ -26,6 +26,7 @@ export const bookingsSchema = pgTable("bookings", {
   driverId: uuid("driver_id"),
   driverName: text("driver_name"),
   driverPhotoUrl: text("driver_photo_url"),
+  transportStatus: text("transport_status").notNull().default("NONE"),
   vetId: uuid("vet_id"),
   vetName: text("vet_name"),
   scheduledAt: timestamp("scheduled_at", { withTimezone: true }).notNull(),

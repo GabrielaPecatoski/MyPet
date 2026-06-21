@@ -8,6 +8,8 @@ export type BookingStatus =
 
 export type PaymentStatus = "NONE" | "AUTHORIZED" | "CAPTURED" | "REFUNDED";
 
+export type TransportStatus = "NONE" | "PENDING" | "ACCEPTED";
+
 export interface BookingServiceItem {
   id: string;
   name: string;
@@ -33,6 +35,7 @@ export class Booking {
   private _driverId?: string;
   private _driverName?: string;
   private _driverPhotoUrl?: string;
+  private _transportStatus!: TransportStatus;
   private _vetId?: string;
   private _vetName?: string;
   private _scheduledAt!: Date;
@@ -118,6 +121,12 @@ export class Booking {
   get driverPhotoUrl(): string | undefined {
     return this._driverPhotoUrl;
   }
+  get transportStatus(): TransportStatus {
+    return this._transportStatus;
+  }
+  get transportRequested(): boolean {
+    return this._transportStatus !== "NONE";
+  }
   get vetId(): string | undefined {
     return this._vetId;
   }
@@ -169,6 +178,16 @@ export class Booking {
     this._attendancePhotos = JSON.stringify(photos);
     return this;
   }
+  withTransportStatus(status: TransportStatus) {
+    this._transportStatus = status;
+    return this;
+  }
+  withDriver(id: string, name?: string, photoUrl?: string) {
+    this._driverId = id;
+    this._driverName = name;
+    this._driverPhotoUrl = photoUrl;
+    return this;
+  }
 
   static restore(props?: {
     id?: string;
@@ -188,6 +207,7 @@ export class Booking {
     driverId?: string | null;
     driverName?: string | null;
     driverPhotoUrl?: string | null;
+    transportStatus?: string | null;
     vetId?: string | null;
     vetName?: string | null;
     scheduledAt: Date;
@@ -218,6 +238,7 @@ export class Booking {
     b._driverId = props.driverId ?? undefined;
     b._driverName = props.driverName ?? undefined;
     b._driverPhotoUrl = props.driverPhotoUrl ?? undefined;
+    b._transportStatus = (props.transportStatus as TransportStatus) ?? "NONE";
     b._vetId = props.vetId ?? undefined;
     b._vetName = props.vetName ?? undefined;
     b._scheduledAt = props.scheduledAt;

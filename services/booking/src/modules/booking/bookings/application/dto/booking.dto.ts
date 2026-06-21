@@ -22,6 +22,8 @@ export class BookingDto {
   @ApiPropertyOptional() driverId?: string;
   @ApiPropertyOptional() driverName?: string;
   @ApiPropertyOptional() driverPhotoUrl?: string;
+  @ApiProperty() transportStatus: string;
+  @ApiProperty() transportRequested: boolean;
   @ApiPropertyOptional() vetId?: string;
   @ApiPropertyOptional() vetName?: string;
   @ApiProperty() scheduledAt: Date;
@@ -52,6 +54,8 @@ export class BookingDto {
     this.driverId = b.driverId;
     this.driverName = b.driverName;
     this.driverPhotoUrl = b.driverPhotoUrl;
+    this.transportStatus = b.transportStatus;
+    this.transportRequested = b.transportRequested;
     this.vetId = b.vetId;
     this.vetName = b.vetName;
     this.scheduledAt = b.scheduledAt;

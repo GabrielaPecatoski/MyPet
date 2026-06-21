@@ -18,6 +18,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedChip = 0;
+  final _searchController = TextEditingController();
 
   static const _chips = ['Todos', 'Banho', 'Tosa', 'Veterinário', 'Acessórios'];
   static const _vetChipIndex = 3;
@@ -27,6 +28,12 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) =>
         context.read<HomeProvider>().load());
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   void _onChipTap(int idx) {
@@ -157,13 +164,17 @@ class _HomeScreenState extends State<HomeScreen> {
                               offset: Offset(0, 2)),
                         ],
                       ),
-                      child: const Row(
+                      child: Row(
                         children: [
-                          Icon(Icons.search, color: AppColors.grey),
-                          SizedBox(width: 8),
+                          const Icon(Icons.search, color: AppColors.grey),
+                          const SizedBox(width: 8),
                           Expanded(
                             child: TextField(
-                              decoration: InputDecoration(
+                              controller: _searchController,
+                              textInputAction: TextInputAction.search,
+                              onChanged: (value) =>
+                                  context.read<HomeProvider>().search(value),
+                              decoration: const InputDecoration(
                                 hintText: 'Buscar pet shop, clínica...',
                                 hintStyle:
                                     TextStyle(color: AppColors.grey, fontSize: 14),
@@ -172,6 +183,15 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                             ),
                           ),
+                          if (home.query.isNotEmpty)
+                            GestureDetector(
+                              onTap: () {
+                                _searchController.clear();
+                                context.read<HomeProvider>().search('');
+                              },
+                              child: const Icon(Icons.close,
+                                  color: AppColors.grey, size: 20),
+                            ),
                         ],
                       ),
                     ),

@@ -3,7 +3,7 @@ import type { DriverRepository } from "@driver/driver/domain/repositories/driver
 import { driversSchema } from "@driver/driver/infra/database/schemas/driver.schema";
 import { Injectable } from "@nestjs/common";
 import { DrizzleService } from "@shared/infra/database/drizzle.service";
-import { eq, isNull } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 
 @Injectable()
 export class DrizzleDriverRepository implements DriverRepository {
@@ -23,6 +23,7 @@ export class DrizzleDriverRepository implements DriverRepository {
         vehiclePlate: driver.vehiclePlate,
         photoUrl: driver.photoUrl ?? null,
         status: driver.status,
+        online: driver.online,
         createdAt: new Date(),
         updatedAt: new Date(),
       })
@@ -77,6 +78,16 @@ export class DrizzleDriverRepository implements DriverRepository {
     return rows.map((r) => Driver.restore(r)!);
   }
 
+  async findAvailable(): Promise<Driver[]> {
+    const rows = await this.drizzleService.db
+      .select()
+      .from(driversSchema)
+      .where(
+        and(eq(driversSchema.status, "ATIVO"), eq(driversSchema.online, true)),
+      );
+    return rows.map((r) => Driver.restore(r)!);
+  }
+
   async update(driver: Driver): Promise<void> {
     await this.drizzleService.db
       .update(driversSchema)
@@ -84,6 +95,7 @@ export class DrizzleDriverRepository implements DriverRepository {
         establishmentId: driver.establishmentId ?? null,
         photoUrl: driver.photoUrl ?? null,
         status: driver.status,
+        online: driver.online,
         updatedAt: new Date(),
       })
       .where(eq(driversSchema.id, driver.id!));

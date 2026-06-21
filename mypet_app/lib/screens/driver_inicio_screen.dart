@@ -29,9 +29,9 @@ class _DriverInicioScreenState extends State<DriverInicioScreen> {
   Future<void> _load() async {
     final auth = context.read<AuthProvider>();
     if (auth.token == null || auth.user?.cpf == null) return;
-    await context
-        .read<DriverProfileProvider>()
-        .load(token: auth.token!, cpf: auth.user!.cpf!);
+    final provider = context.read<DriverProfileProvider>();
+    await provider.load(token: auth.token!, cpf: auth.user!.cpf!);
+    if (mounted) setState(() => _online = provider.online);
   }
 
   bool get _hasPhotos {
@@ -41,7 +41,7 @@ class _DriverInicioScreenState extends State<DriverInicioScreen> {
     return profilePhoto != null && vehiclePhoto != null;
   }
 
-  void _tryGoOnline() {
+  Future<void> _tryGoOnline() async {
     final driver = context.read<DriverProfileProvider>().driver;
     if (!_online && (driver == null || !driver.isAtivo)) {
       final msg = driver == null
@@ -78,7 +78,23 @@ class _DriverInicioScreenState extends State<DriverInicioScreen> {
       );
       return;
     }
-    setState(() => _online = !_online);
+    final auth = context.read<AuthProvider>();
+    final provider = context.read<DriverProfileProvider>();
+    if (auth.token == null) return;
+    final target = !_online;
+    setState(() => _online = target);
+    final ok = await provider.setOnline(token: auth.token!, online: target);
+    if (!mounted) return;
+    if (!ok) {
+      setState(() => _online = !target);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(provider.error ?? 'Erro ao atualizar disponibilidade'),
+          backgroundColor: AppColors.danger,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   @override
