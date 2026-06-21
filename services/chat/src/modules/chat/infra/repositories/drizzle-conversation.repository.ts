@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { DrizzleService } from "@shared/infra/database/drizzle.service";
-import { eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { Conversation } from "../../domain/models/conversation.entity";
 import { ConversationRepository } from "../../domain/repositories/conversation-repository.interface";
 import { conversationsSchema } from "../database/schemas/conversation.schema";
@@ -35,6 +35,26 @@ export class DrizzleConversationRepository implements ConversationRepository {
       .select()
       .from(conversationsSchema)
       .where(eq(conversationsSchema.bookingId, bookingId));
+    return row ? this.toEntity(row) : null;
+  }
+
+  async findByClientAndEstablishment(
+    clientId: string,
+    establishmentId: string,
+  ): Promise<Conversation | null> {
+    // Consolida: uma conversa por par (cliente, estabelecimento). Se houver
+    // mais de uma (dados antigos), reusa a mais antiga.
+    const [row] = await this.drizzle.db
+      .select()
+      .from(conversationsSchema)
+      .where(
+        and(
+          eq(conversationsSchema.clientId, clientId),
+          eq(conversationsSchema.establishmentId, establishmentId),
+        ),
+      )
+      .orderBy(asc(conversationsSchema.createdAt))
+      .limit(1);
     return row ? this.toEntity(row) : null;
   }
 
@@ -75,6 +95,16 @@ export class DrizzleConversationRepository implements ConversationRepository {
     await this.drizzle.db
       .update(conversationsSchema)
       .set({ lastMessageAt })
+      .where(eq(conversationsSchema.id, id));
+  }
+
+  async updateEstablishmentName(
+    id: string,
+    establishmentName: string,
+  ): Promise<void> {
+    await this.drizzle.db
+      .update(conversationsSchema)
+      .set({ establishmentName })
       .where(eq(conversationsSchema.id, id));
   }
 }

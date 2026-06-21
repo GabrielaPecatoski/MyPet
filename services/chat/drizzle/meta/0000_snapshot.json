@@ -27,11 +27,25 @@
           "primaryKey": false,
           "notNull": true
         },
+        "client_name": {
+          "name": "client_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
         "establishment_id": {
           "name": "establishment_id",
           "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "establishment_name": {
+          "name": "establishment_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
         },
         "last_message_at": {
           "name": "last_message_at",

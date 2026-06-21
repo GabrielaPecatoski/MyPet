@@ -569,6 +569,15 @@ async function autoApproveVet(
   } catch {}
 }
 
+export async function getMyConversations(
+  api: APIRequestContext,
+  user: SeededUser,
+): Promise<any[]> {
+  return ok(
+    await api.get("/conversations/me", { headers: auth(user) }),
+    "getMyConversations",
+  );
+}
 export async function loginUser(
   api: APIRequestContext,
   email: string,

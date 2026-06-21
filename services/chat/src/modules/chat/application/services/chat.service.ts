@@ -26,18 +26,75 @@ export class ChatService {
     clientName?: string,
     establishmentName?: string,
   ): Promise<{ conversation: Conversation; created: boolean }> {
-    const existing = await this.conversationRepo.findByBookingId(bookingId);
-    if (existing) return { conversation: existing, created: false };
+    // O app envia o ID da ENTIDADE estabelecimento (booking/order), mas o
+    // VENDEDOR se autentica com o seu próprio user id (JWT sub). A conversa
+    // precisa ser indexada pelo user id do dono para que o estabelecimento
+    // consiga LISTAR (GET /conversations/me) e ENTRAR (joinRoom) nos seus chats.
+    const estab = await this.resolveEstablishment(establishmentId);
+    const establishmentUserId = estab?.ownerId ?? establishmentId;
+    const resolvedName = establishmentName?.trim()
+      ? establishmentName
+      : estab?.name;
+
+    // Uma conversa por par (cliente, estabelecimento): pedidos e agendamentos
+    // com o mesmo estabelecimento compartilham o mesmo chat, que persiste depois
+    // de o pedido terminar. O bookingId fica só como referência da 1ª origem.
+    const existing = await this.conversationRepo.findByClientAndEstablishment(
+      clientId,
+      establishmentUserId,
+    );
+    if (existing) {
+      return {
+        conversation: await this.backfillEstablishmentName(
+          existing,
+          resolvedName,
+        ),
+        created: false,
+      };
+    }
 
     const conversation = Conversation.create({
       bookingId,
       clientId,
       clientName,
-      establishmentId,
-      establishmentName,
+      establishmentId: establishmentUserId,
+      establishmentName: resolvedName,
     });
     const saved = await this.conversationRepo.create(conversation);
     return { conversation: saved, created: true };
+  }
+
+  /// Preenche o nome do estabelecimento quando vazio (conversas criadas a partir
+  /// de pedidos da loja não trazem o nome), persistindo o nome já resolvido.
+  private async backfillEstablishmentName(
+    conv: Conversation,
+    name?: string,
+  ): Promise<Conversation> {
+    if (conv.establishmentName?.trim() || !name?.trim()) return conv;
+    await this.conversationRepo.updateEstablishmentName(conv.id, name);
+    return (await this.conversationRepo.findById(conv.id)) ?? conv;
+  }
+
+  /// Resolve o ID da entidade estabelecimento no user id do dono (ownerId) e no
+  /// nome, consultando o serviço de estabelecimentos (rota pública /v1).
+  private async resolveEstablishment(
+    establishmentId: string,
+  ): Promise<{ ownerId?: string; name?: string } | undefined> {
+    const base =
+      process.env.ESTABLISHMENT_SERVICE_URL ?? "http://establishment:3003";
+    try {
+      const res = await fetch(`${base}/v1/establishments/${establishmentId}`, {
+        signal: AbortSignal.timeout(3000),
+      });
+      if (!res.ok) return undefined;
+      const data = (await res.json()) as { ownerId?: string; name?: string };
+      return {
+        ownerId: data?.ownerId?.trim() ? data.ownerId : undefined,
+        name: data?.name?.trim() ? data.name : undefined,
+      };
+    } catch {
+      return undefined;
+    }
   }
 
   async findConversationById(id: string): Promise<Conversation | null> {

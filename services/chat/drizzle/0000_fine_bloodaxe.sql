@@ -2,7 +2,9 @@ CREATE TABLE "conversations" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"booking_id" text NOT NULL,
 	"client_id" text NOT NULL,
+	"client_name" text DEFAULT '' NOT NULL,
 	"establishment_id" text NOT NULL,
+	"establishment_name" text DEFAULT '' NOT NULL,
 	"last_message_at" timestamp with time zone,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "conversations_booking_id_unique" UNIQUE("booking_id")
