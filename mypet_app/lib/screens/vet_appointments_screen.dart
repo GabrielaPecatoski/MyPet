@@ -456,6 +456,35 @@ class _VetBookingCard extends StatelessWidget {
             const SizedBox(height: 16),
             const Divider(height: 1, color: AppColors.divider),
             const SizedBox(height: 16),
+            if (ap.emAtendimento) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(10),
+                margin: const EdgeInsets.only(bottom: 14),
+                decoration: BoxDecoration(
+                  color: AppColors.success.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                      color: AppColors.success.withValues(alpha: 0.3)),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.fiber_manual_record,
+                        size: 12, color: AppColors.success),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Em atendimento agora — adicione fotos para o tutor acompanhar.',
+                        style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.success,
+                            fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             _detailRow(Icons.person_outline,
                 ap.userName.isNotEmpty ? ap.userName : 'Tutor'),
             _detailRow(Icons.calendar_today_outlined, dateLabel),

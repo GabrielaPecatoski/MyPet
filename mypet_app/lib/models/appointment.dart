@@ -130,6 +130,15 @@ class AppointmentModel {
   bool get isACaminho   => effectiveStatus == 'A_CAMINHO';
   bool get isActive     => isAguardandoPagamento || isPendente || isConfirmado || isACaminho;
 
+  /// Serviço acontecendo "no horário": confirmado/a caminho e o horário marcado
+  /// já chegou (da marcação até 4h depois — janela em que o atendimento ocorre).
+  bool get emAtendimento {
+    if (!(isConfirmado || isACaminho)) return false;
+    final now = DateTime.now();
+    return now.isAfter(date.subtract(const Duration(minutes: 5))) &&
+        now.isBefore(date.add(const Duration(hours: 4)));
+  }
+
   bool get canPay {
     if (isPago) return false;
     if (!isPendente && !isConfirmado && !isACaminho) return false;
