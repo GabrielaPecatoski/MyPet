@@ -9,6 +9,8 @@ class ApiConstants {
 
   static const loginEndpoint = '/auth/login';
   static const registerEndpoint = '/auth/register';
+  static const forgotPasswordEndpoint = '/auth/forgot-password';
+  static const resetPasswordEndpoint = '/auth/reset-password';
 
   static const productsEndpoint = '/marketplace/products';
   static const cartEndpoint = '/marketplace/cart';

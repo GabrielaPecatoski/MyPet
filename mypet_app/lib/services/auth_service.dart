@@ -77,4 +77,50 @@ class AuthService {
     final message = data['message'];
     throw Exception(message is List ? message.first : message ?? 'Erro ao criar conta');
   }
+
+  static Future<String> requestPasswordReset({required String email}) async {
+    final response = await http
+        .post(
+          Uri.parse(
+              '${ApiConstants.baseUrl}${ApiConstants.forgotPasswordEndpoint}'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'email': email}),
+        )
+        .timeout(const Duration(seconds: 10));
+
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return data['message'] as String? ??
+          'Se o e-mail estiver cadastrado, enviaremos as instruções de recuperação';
+    }
+
+    final message = data['message'];
+    throw Exception(
+        message is List ? message.first : message ?? 'Erro ao solicitar recuperação');
+  }
+
+  static Future<String> resetPassword({
+    required String token,
+    required String password,
+  }) async {
+    final response = await http
+        .post(
+          Uri.parse(
+              '${ApiConstants.baseUrl}${ApiConstants.resetPasswordEndpoint}'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'token': token, 'password': password}),
+        )
+        .timeout(const Duration(seconds: 10));
+
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return data['message'] as String? ?? 'Senha redefinida com sucesso';
+    }
+
+    final message = data['message'];
+    throw Exception(
+        message is List ? message.first : message ?? 'Erro ao redefinir senha');
+  }
 }

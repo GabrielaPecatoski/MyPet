@@ -1,5 +1,7 @@
 import { CreateUserDto } from "@auth/users/application/dto/create-user.dto";
 import { LoginDto } from "@auth/users/application/dto/login.dto";
+import { RequestPasswordResetDto } from "@auth/users/application/dto/request-password-reset.dto";
+import { ResetPasswordTokenDto } from "@auth/users/application/dto/reset-password-token.dto";
 import { UpdateUserDto } from "@auth/users/application/dto/update-user.dto";
 import { UserDto } from "@auth/users/application/dto/user.dto";
 import { AuthService } from "@auth/users/application/services/auth.service";
@@ -46,6 +48,22 @@ export class AuthController {
   @ApiUnauthorizedResponse({ description: "Credenciais inválidas" })
   async login(@Body() body: LoginDto) {
     return this.authService.login(body);
+  }
+
+  @Post("forgot-password")
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Solicitar recuperação de senha" })
+  async forgotPassword(@Body() body: RequestPasswordResetDto) {
+    return this.authService.requestPasswordReset(body);
+  }
+
+  @Post("reset-password")
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Redefinir a senha a partir de um token" })
+  async resetPassword(@Body() body: ResetPasswordTokenDto) {
+    return this.authService.resetPassword(body);
   }
 
   @Get("me")

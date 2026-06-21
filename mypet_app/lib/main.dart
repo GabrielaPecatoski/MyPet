@@ -29,6 +29,8 @@ import 'screens/splash_screen.dart';
 import 'screens/welcome_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
+import 'screens/forgot_password_screen.dart';
+import 'screens/reset_password_screen.dart';
 import 'screens/edit_profile_screen.dart';
 import 'screens/history_screen.dart';
 import 'screens/notifications_screen.dart';
@@ -123,6 +125,8 @@ class MyPetApp extends StatelessWidget {
         '/splash':        (_) => const SplashScreen(),
         '/welcome':       (_) => const WelcomeScreen(),
         '/login':         (_) => const LoginScreen(),
+        '/forgot-password': (_) => const ForgotPasswordScreen(),
+        '/reset-password':  (_) => const ResetPasswordScreen(),
         '/register': (ctx) {
           final arg = ModalRoute.of(ctx)?.settings.arguments;
           final tipo = (arg is int && arg >= 0) ? arg : 0;

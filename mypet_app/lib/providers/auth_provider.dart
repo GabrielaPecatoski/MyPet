@@ -10,11 +10,13 @@ class AuthProvider extends ChangeNotifier {
   String? _token;
   bool _loading = false;
   String? _error;
+  String? _infoMessage;
 
   UserModel? get user => _user;
   String? get token => _token;
   bool get isLoading => _loading;
   String? get error => _error;
+  String? get infoMessage => _infoMessage;
   bool get isAuthenticated => _token != null && _user != null;
 
   String get role => _user?.role ?? 'CLIENTE';
@@ -108,6 +110,48 @@ class AuthProvider extends ChangeNotifier {
       if (_token == null || _user == null) throw Exception('Resposta inválida do servidor');
       await StorageService.saveToken(_token!);
       await StorageService.saveUser(_user!);
+      _loading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _error = e.toString().replaceAll('Exception: ', '');
+      _loading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Solicita o envio do e-mail de recuperação. Retorna true em sucesso e
+  /// expõe a mensagem genérica do servidor em [infoMessage].
+  Future<bool> requestPasswordReset(String email) async {
+    _loading = true;
+    _error = null;
+    _infoMessage = null;
+    notifyListeners();
+    try {
+      _infoMessage = await AuthService.requestPasswordReset(email: email.trim());
+      _loading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _error = e.toString().replaceAll('Exception: ', '');
+      _loading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Redefine a senha a partir do token recebido por e-mail.
+  Future<bool> resetPassword(String token, String password) async {
+    _loading = true;
+    _error = null;
+    _infoMessage = null;
+    notifyListeners();
+    try {
+      _infoMessage = await AuthService.resetPassword(
+        token: token.trim(),
+        password: password,
+      );
       _loading = false;
       notifyListeners();
       return true;

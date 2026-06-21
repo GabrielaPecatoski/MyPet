@@ -50,7 +50,7 @@ export async function registerUser(
           ? "vet"
           : "cli";
   const { email, cpf } = unique(prefix);
-  const password = opts.password ?? "senha123";
+  const password = opts.password ?? "Senha@123";
   const body = await ok(
     await api.post("/auth/register", {
       data: {
@@ -559,7 +559,7 @@ export async function registerVet(
 let _adminCache: SeededUser | null = null;
 export async function getAdmin(api: APIRequestContext): Promise<SeededUser> {
   if (_adminCache) return _adminCache;
-  _adminCache = await loginUser(api, "admin@mypet.com", "admin123");
+  _adminCache = await loginUser(api, "admin@mypet.com", "Admin@123");
   return _adminCache;
 }
 
