@@ -95,6 +95,9 @@ class _AdminScreenState extends State<AdminScreen> {
   Widget build(BuildContext context) {
     final vm = context.watch<AdminProvider>();
 
+    final isWide = MediaQuery.of(context).size.width > 600;
+    const badges = <int, int>{};
+
     final pages = [
       _PainelPage(
         users: vm.users,
@@ -146,6 +149,21 @@ class _AdminScreenState extends State<AdminScreen> {
       ),
     ];
 
+    if (isWide) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        body: Row(children: [
+          _AdminSidebar(
+            selectedIndex: _selectedIndex,
+            badges: badges,
+            onTap: (i) => setState(() => _selectedIndex = i),
+            onLogout: _logout,
+          ),
+          Expanded(child: pages[_selectedIndex]),
+        ]),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: _selectedIndex == 0
@@ -161,12 +179,80 @@ class _AdminScreenState extends State<AdminScreen> {
         currentIndex: _selectedIndex < 5 ? _selectedIndex : -1,
         items: adminNavItems,
         onTap: (i) => setState(() => _selectedIndex = i),
-        badges: {
-          1: vm.pendingComplaints,
-          3: vm.pendingVerifications,
-          4: vm.pendingQuestions,
-        },
+        badges: badges,
       ),
+    );
+  }
+}
+
+class _AdminSidebar extends StatelessWidget {
+  final int selectedIndex;
+  final Map<int, int> badges;
+  final ValueChanged<int> onTap;
+  final VoidCallback onLogout;
+
+  const _AdminSidebar({
+    required this.selectedIndex,
+    required this.badges,
+    required this.onTap,
+    required this.onLogout,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 220,
+      color: Colors.white,
+      child: Column(children: [
+        Container(
+          height: 72,
+          color: Colors.white,
+          alignment: Alignment.center,
+          child: Image.asset('assets/images/logo.png', height: 42, fit: BoxFit.contain),
+        ),
+        Expanded(
+          child: NavigationRail(
+            backgroundColor: Colors.white,
+            minWidth: 220,
+            selectedIndex: selectedIndex < adminNavItems.length ? selectedIndex : null,
+            onDestinationSelected: onTap,
+            labelType: NavigationRailLabelType.all,
+            selectedIconTheme: const IconThemeData(color: AppColors.primary),
+            unselectedIconTheme: const IconThemeData(color: AppColors.grey),
+            selectedLabelTextStyle: const TextStyle(
+              color: AppColors.primary,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+            unselectedLabelTextStyle: const TextStyle(color: AppColors.grey, fontSize: 12),
+            destinations: adminNavItems.asMap().entries.map((entry) {
+              final item = entry.value;
+              final badge = badges[entry.key] ?? 0;
+
+              return NavigationRailDestination(
+                icon: _badgeIcon(item.icon, badge),
+                selectedIcon: _badgeIcon(item.activeIcon, badge),
+                label: Text(item.label),
+              );
+            }).toList(),
+          ),
+        ),
+        ListTile(
+          leading: const Icon(Icons.logout, color: AppColors.danger),
+          title: const Text('Sair', style: TextStyle(color: AppColors.danger, fontWeight: FontWeight.w600)),
+          onTap: onLogout,
+        ),
+      ]),
+    );
+  }
+
+  Widget _badgeIcon(IconData icon, int count) {
+    if (count <= 0) return Icon(icon);
+
+    return Badge.count(
+      count: count,
+      backgroundColor: AppColors.danger,
+      child: Icon(icon),
     );
   }
 }
@@ -254,12 +340,62 @@ class _PainelPage extends StatelessWidget {
     final totalReviews = (reviewStats['totalReviews'] as num?)?.toInt() ?? 0;
     final authUser = context.watch<AuthProvider>().user;
     final userName = authUser?.name.split(' ').first ?? 'Admin';
+    final wide = MediaQuery.of(context).size.width > 600;
+    final clientes = users.where((u) => u.role == 'CLIENTE').length;
+    final lojistas = users.where((u) => u.role == 'VENDEDOR').length;
+    final outrosU = users.length - clientes - lojistas;
+    final cPend = complaints.where((c) => c.status == 'PENDENTE').length;
+    final cAnal = complaints.where((c) => c.status == 'EM_ANALISE').length;
+    final cReso = complaints.where((c) => c.status == 'RESOLVIDA').length;
 
     return ListView(
       padding: EdgeInsets.zero,
       children: [
         Builder(builder: (ctx) {
           final topPad = MediaQuery.of(ctx).padding.top;
+          final subtitle =
+              'Você tem $pendingComplaints ${pendingComplaints == 1 ? 'reclamação' : 'reclamações'} e $newUsers novos cadastros aguardando.';
+          if (MediaQuery.of(ctx).size.width > 600) {
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(28, 28, 28, 4),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text('SISTEMA · MY PET ADMIN',
+                    style: TextStyle(color: AppColors.grey, fontSize: 11, letterSpacing: 1, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 6),
+                Text('Olá, $userName',
+                    style: const TextStyle(color: AppColors.dark, fontSize: 26, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 4),
+                Text(subtitle, style: const TextStyle(color: AppColors.grey, fontSize: 14)),
+                const SizedBox(height: 20),
+                Row(children: [
+                  OutlinedButton.icon(
+                    onPressed: onGoToComplaints,
+                    icon: const Icon(Icons.warning_amber_outlined, size: 18),
+                    label: const Text('Ver Reclamações'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.primary,
+                      side: const BorderSide(color: AppColors.primary),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  ElevatedButton.icon(
+                    onPressed: onGoToStats,
+                    icon: const Icon(Icons.bar_chart, size: 18),
+                    label: const Text('Estatísticas'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                    ),
+                  ),
+                ]),
+              ]),
+            );
+          }
           return Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
@@ -341,29 +477,57 @@ class _PainelPage extends StatelessWidget {
         }),
 
         Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
+          padding: const EdgeInsets.all(20),
+          child: LayoutBuilder(builder: (ctx, c) {
+            final cards = <Widget>[
               _StatCard('Usuários', '${users.length}', Icons.people_outlined, const Color(0xFF4285F4)),
-              const SizedBox(width: 12),
               _StatCard('Estabelecimentos', '${estabs.length}', Icons.store_outlined, AppColors.primary),
-            ]),
-            const SizedBox(height: 12),
-            Row(children: [
               _StatCard('Reclamações', '${complaints.length}', Icons.warning_amber_outlined, AppColors.warning),
-              const SizedBox(width: 12),
               _StatCard('Avaliação Média', avgRating > 0 ? avgRating.toStringAsFixed(1) : '—', Icons.star_outline, const Color(0xFFF59E0B)),
-            ]),
-            const SizedBox(height: 12),
-            Row(children: [
               _StatCard('Avaliações', '$totalReviews', Icons.chat_bubble_outline, AppColors.danger),
-              const SizedBox(width: 12),
-              _StatCard('Novos usuários', '+${users.where((u) { final d = u.createdAt; final now = DateTime.now(); return d != null && d.year == now.year && d.month == now.month; }).length}', Icons.trending_up_outlined, AppColors.success),
-            ]),
-
-            const SizedBox(height: 8),
-          ]),
+              _StatCard('Novos usuários', '+$newUsers', Icons.trending_up_outlined, AppColors.success),
+            ];
+            final cols = c.maxWidth >= 1100 ? 4 : (c.maxWidth >= 720 ? 3 : 2);
+            const gap = 16.0;
+            final w = ((c.maxWidth - gap * (cols - 1)) / cols).floorToDouble();
+            return Wrap(
+              spacing: gap,
+              runSpacing: gap,
+              children: [for (final card in cards) SizedBox(width: w, child: card)],
+            );
+          }),
         ),
+        if (wide)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+            child: LayoutBuilder(builder: (ctx, c) {
+              final two = c.maxWidth >= 760;
+              final reclChart = _ChartCard(
+                title: 'Reclamações por status',
+                segments: [
+                  _Seg('Pendente', cPend, AppColors.warning),
+                  _Seg('Em análise', cAnal, const Color(0xFF4285F4)),
+                  _Seg('Resolvida', cReso, AppColors.success),
+                ],
+              );
+              final userChart = _ChartCard(
+                title: 'Usuários por tipo',
+                segments: [
+                  _Seg('Clientes', clientes, AppColors.primary),
+                  _Seg('Lojistas', lojistas, const Color(0xFF4285F4)),
+                  if (outrosU > 0) _Seg('Outros', outrosU, AppColors.grey),
+                ],
+              );
+              if (!two) {
+                return Column(children: [reclChart, const SizedBox(height: 16), userChart]);
+              }
+              return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Expanded(child: reclChart),
+                const SizedBox(width: 16),
+                Expanded(child: userChart),
+              ]);
+            }),
+          ),
       ],
     );
   }
@@ -379,25 +543,121 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 6, offset: const Offset(0, 2))],
-        ),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            Text(label, style: const TextStyle(fontSize: 12, color: AppColors.grey)),
-            Icon(icon, size: 18, color: color),
-          ]),
-          const SizedBox(height: 6),
-          Text(value, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.dark)),
-        ]),
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 6, offset: const Offset(0, 2))],
       ),
+      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Expanded(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, color: AppColors.grey))),
+          const SizedBox(width: 6),
+          Icon(icon, size: 20, color: color),
+        ]),
+        const SizedBox(height: 8),
+        Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: AppColors.dark)),
+      ]),
     );
   }
+}
+
+class _Seg {
+  final String label;
+  final int value;
+  final Color color;
+  const _Seg(this.label, this.value, this.color);
+}
+
+class _ChartCard extends StatelessWidget {
+  final String title;
+  final List<_Seg> segments;
+  const _ChartCard({required this.title, required this.segments});
+
+  @override
+  Widget build(BuildContext context) {
+    final total = segments.fold<int>(0, (a, b) => a + b.value);
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 6, offset: const Offset(0, 2))],
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.dark)),
+        const SizedBox(height: 18),
+        Row(children: [
+          SizedBox(
+            width: 116,
+            height: 116,
+            child: Stack(alignment: Alignment.center, children: [
+              CustomPaint(
+                size: const Size(116, 116),
+                painter: _DonutPainter(
+                  segments.map((e) => e.value.toDouble()).toList(),
+                  segments.map((e) => e.color).toList(),
+                ),
+              ),
+              Column(mainAxisSize: MainAxisSize.min, children: [
+                Text('$total', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.dark)),
+                const Text('total', style: TextStyle(fontSize: 11, color: AppColors.grey)),
+              ]),
+            ]),
+          ),
+          const SizedBox(width: 24),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              for (final s in segments)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 5),
+                  child: Row(children: [
+                    Container(width: 11, height: 11, decoration: BoxDecoration(color: s.color, borderRadius: BorderRadius.circular(3))),
+                    const SizedBox(width: 10),
+                    Expanded(child: Text(s.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, color: AppColors.dark))),
+                    Text('${s.value}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.dark)),
+                  ]),
+                ),
+            ]),
+          ),
+        ]),
+      ]),
+    );
+  }
+}
+
+class _DonutPainter extends CustomPainter {
+  final List<double> values;
+  final List<Color> colors;
+  _DonutPainter(this.values, this.colors);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final total = values.fold<double>(0, (a, b) => a + b);
+    final stroke = size.width * 0.2;
+    final arcRect = (Offset.zero & size).deflate(stroke / 2);
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = stroke;
+    if (total <= 0) {
+      paint.color = const Color(0xFFE5E7EB);
+      canvas.drawArc(arcRect, 0, 6.2831853, false, paint);
+      return;
+    }
+    var start = -1.5707963;
+    for (var i = 0; i < values.length; i++) {
+      if (values[i] <= 0) continue;
+      final sweep = (values[i] / total) * 6.2831853;
+      paint.color = colors[i];
+      canvas.drawArc(arcRect, start, sweep - 0.03, false, paint);
+      start += sweep;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DonutPainter old) =>
+      !listEquals(old.values, values) || !listEquals(old.colors, colors);
 }
 
 class _ReclamacoesPage extends StatefulWidget {
@@ -484,7 +744,9 @@ class _ReclamacoesPageState extends State<_ReclamacoesPage> with SingleTickerPro
       Container(
         color: Colors.white,
         child: TabBar(
-          controller: _tab,
+          dividerColor: Colors.transparent,
+          labelPadding: const EdgeInsets.symmetric(horizontal: 6),
+controller: _tab,
           indicatorColor: AppColors.primary,
           labelColor: AppColors.primary,
           unselectedLabelColor: AppColors.grey,
@@ -519,32 +781,47 @@ class _ReclamacoesPageState extends State<_ReclamacoesPage> with SingleTickerPro
     ]);
   }
 
-  Widget _tabLabel(String label, int count) => Row(mainAxisSize: MainAxisSize.min, children: [
-    Text(label),
-    if (count > 0) ...[
-      const SizedBox(width: 4),
-      Container(
-        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-        decoration: const BoxDecoration(color: AppColors.danger, shape: BoxShape.circle),
-        child: Text('$count', style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
-      ),
-    ],
-  ]);
+  Widget _tabLabel(String label, int count) => Text(label);
 
   Widget _complaintList(List<ComplaintModel> list) {
     if (list.isEmpty) {
       return const Center(child: Text('Nenhuma reclamação aqui.', style: TextStyle(color: AppColors.grey)));
     }
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: list.length,
-      itemBuilder: (ctx, i) => _ComplaintCard(
-        complaint: list[i],
-        estabName: _estabName(list[i].establishmentId),
-        onTap: () => _openDetail(list[i]),
-        fmtDate: _fmtDate,
-      ),
-    );
+    return LayoutBuilder(builder: (ctx, c) {
+      final cols = c.maxWidth >= 1100 ? 3 : (c.maxWidth >= 720 ? 2 : 1);
+      if (cols == 1) {
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: list.length,
+          itemBuilder: (ctx, i) => _ComplaintCard(
+            complaint: list[i],
+            estabName: _estabName(list[i].establishmentId),
+            onTap: () => _openDetail(list[i]),
+            fmtDate: _fmtDate,
+          ),
+        );
+      }
+      const gap = 16.0;
+      final w = ((c.maxWidth - 40 - gap * (cols - 1)) / cols).floorToDouble();
+      return SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Wrap(
+          spacing: gap,
+          children: [
+            for (final item in list)
+              SizedBox(
+                width: w,
+                child: _ComplaintCard(
+                  complaint: item,
+                  estabName: _estabName(item.establishmentId),
+                  onTap: () => _openDetail(item),
+                  fmtDate: _fmtDate,
+                ),
+              ),
+          ],
+        ),
+      );
+    });
   }
 }
 
@@ -568,9 +845,9 @@ class _SummaryChip extends StatelessWidget {
         child: Row(children: [
           Icon(icon, size: 16, color: color),
           const SizedBox(width: 6),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: color)),
-            Text(label, style: const TextStyle(fontSize: 10, color: AppColors.grey)),
+          Expanded(child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: color)),
+            Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 10, color: AppColors.grey)),
           ])),
         ]),
       ),
@@ -893,7 +1170,6 @@ class _UsuariosPageState extends State<_UsuariosPage> with SingleTickerProviderS
             hintText: 'Buscar usuário ou email',
             hintStyle: const TextStyle(color: AppColors.grey, fontSize: 13),
             prefixIcon: const Icon(Icons.search, color: AppColors.grey, size: 20),
-            suffixIcon: const Icon(Icons.tune_outlined, color: AppColors.grey, size: 20),
             filled: true,
             fillColor: AppColors.background,
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
@@ -905,7 +1181,9 @@ class _UsuariosPageState extends State<_UsuariosPage> with SingleTickerProviderS
       Container(
         color: Colors.white,
         child: TabBar(
-          controller: _tab,
+          dividerColor: Colors.transparent,
+          labelPadding: const EdgeInsets.symmetric(horizontal: 6),
+controller: _tab,
           indicatorColor: AppColors.primary,
           labelColor: AppColors.primary,
           unselectedLabelColor: AppColors.grey,
@@ -962,9 +1240,9 @@ class _UserStat extends StatelessWidget {
         child: Row(children: [
           Icon(icon, size: 16, color: color),
           const SizedBox(width: 6),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: color)),
-            Text(label, style: const TextStyle(fontSize: 10, color: AppColors.grey)),
+          Expanded(child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: color)),
+            Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 10, color: AppColors.grey)),
           ])),
         ]),
       ),
@@ -992,48 +1270,58 @@ class _UserList extends StatelessWidget {
     }
   }
 
+  Widget _tile(AdminUserModel u) {
+    final initials = u.name.trim().isEmpty ? '?' : u.name.trim().split(' ').take(2).map((s) => s[0].toUpperCase()).join();
+    final color = _roleColor(u.role);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 4, offset: const Offset(0, 2))],
+      ),
+      child: Row(children: [
+        CircleAvatar(
+          radius: 22,
+          backgroundColor: color.withValues(alpha: 0.12),
+          child: Text(initials, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 14)),
+        ),
+        const SizedBox(width: 12),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(u.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: AppColors.dark)),
+          Text(u.email, style: const TextStyle(fontSize: 12, color: AppColors.grey), overflow: TextOverflow.ellipsis),
+          if (u.phone.isNotEmpty)
+            Text(u.phone, style: const TextStyle(fontSize: 11, color: AppColors.grey)),
+          if (u.petsCount > 0)
+            Text('${u.petsCount} pet${u.petsCount != 1 ? 's' : ''}', style: const TextStyle(fontSize: 11, color: AppColors.grey)),
+        ])),
+        const SizedBox(width: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)),
+          child: Text(_roleLabel(u.role), style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w600)),
+        ),
+      ]),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (users.isEmpty) return const Center(child: Text('Nenhum usuário encontrado.', style: TextStyle(color: AppColors.grey)));
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-      itemCount: users.length,
-      itemBuilder: (ctx, i) {
-        final u = users[i];
-        final initials = u.name.trim().isEmpty ? '?' : u.name.trim().split(' ').take(2).map((s) => s[0].toUpperCase()).join();
-        final color = _roleColor(u.role);
-        return Container(
-          margin: const EdgeInsets.only(bottom: 10),
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 4, offset: const Offset(0, 2))],
-          ),
-          child: Row(children: [
-            CircleAvatar(
-              radius: 22,
-              backgroundColor: color.withValues(alpha: 0.12),
-              child: Text(initials, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 14)),
-            ),
-            const SizedBox(width: 12),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(u.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: AppColors.dark)),
-              Text(u.email, style: const TextStyle(fontSize: 12, color: AppColors.grey), overflow: TextOverflow.ellipsis),
-              if (u.phone.isNotEmpty)
-                Text(u.phone, style: const TextStyle(fontSize: 11, color: AppColors.grey)),
-              if (u.petsCount > 0)
-                Text('${u.petsCount} pet${u.petsCount != 1 ? 's' : ''}', style: const TextStyle(fontSize: 11, color: AppColors.grey)),
-            ])),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)),
-              child: Text(_roleLabel(u.role), style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w600)),
-            ),
-          ]),
-        );
-      },
-    );
+    return LayoutBuilder(builder: (ctx, c) {
+      final cols = c.maxWidth >= 1100 ? 3 : (c.maxWidth >= 720 ? 2 : 1);
+      final cards = [for (final u in users) _tile(u)];
+      if (cols == 1) {
+        return ListView(padding: const EdgeInsets.fromLTRB(16, 0, 16, 16), children: cards);
+      }
+      const gap = 12.0;
+      final w = ((c.maxWidth - 40 - gap * (cols - 1)) / cols).floorToDouble();
+      return SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+        child: Wrap(spacing: gap, children: [for (final card in cards) SizedBox(width: w, child: card)]),
+      );
+    });
   }
 }
 
@@ -1210,7 +1498,9 @@ class _CadastrosPageState extends State<_CadastrosPage> with SingleTickerProvide
       Container(
         color: Colors.white,
         child: TabBar(
-          controller: _tab,
+          dividerColor: Colors.transparent,
+          labelPadding: const EdgeInsets.symmetric(horizontal: 6),
+controller: _tab,
           indicatorColor: AppColors.primary,
           labelColor: AppColors.primary,
           unselectedLabelColor: AppColors.grey,
@@ -1404,7 +1694,9 @@ class _FaqPageState extends State<_FaqPage> with SingleTickerProviderStateMixin 
       Container(
         color: Colors.white,
         child: TabBar(
-          controller: _tab,
+          dividerColor: Colors.transparent,
+          labelPadding: const EdgeInsets.symmetric(horizontal: 6),
+controller: _tab,
           indicatorColor: AppColors.primary,
           labelColor: AppColors.primary,
           unselectedLabelColor: AppColors.grey,
@@ -1438,17 +1730,7 @@ class _FaqPageState extends State<_FaqPage> with SingleTickerProviderStateMixin 
   }
 
   Widget _pendingTabLabel(String label, int pending, int total) {
-    return Row(mainAxisSize: MainAxisSize.min, children: [
-      Text('$label · $total'),
-      if (pending > 0) ...[
-        const SizedBox(width: 4),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-          decoration: const BoxDecoration(color: AppColors.danger, shape: BoxShape.circle),
-          child: Text('$pending', style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
-        ),
-      ],
-    ]);
+    return Text('$label · $total');
   }
 }
 
@@ -1535,9 +1817,13 @@ class _FaqList extends StatelessWidget {
           ]),
           const SizedBox(height: 10),
         ],
-        ...items.map((item) {
-          final f = item as Map<String, dynamic>;
-          return _FaqCard(f: f, onEdit: onEdit);
+        LayoutBuilder(builder: (ctx, c) {
+          final cols = c.maxWidth >= 1100 ? 3 : (c.maxWidth >= 720 ? 2 : 1);
+          final cards = [for (final item in items) _FaqCard(f: item as Map<String, dynamic>, onEdit: onEdit)];
+          if (cols == 1) return Column(children: cards);
+          const gap = 12.0;
+          final w = ((c.maxWidth - gap * (cols - 1)) / cols).floorToDouble();
+          return Wrap(spacing: gap, children: [for (final card in cards) SizedBox(width: w, child: card)]);
         }),
       ],
     );
@@ -1610,22 +1896,32 @@ class _UserQuestionsList extends StatelessWidget {
     if (questions.isEmpty) {
       return const Center(child: Text('Nenhuma pergunta enviada por usuários.', style: TextStyle(color: AppColors.grey)));
     }
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: questions.length,
-      itemBuilder: (ctx, i) {
-        final q = questions[i] as Map<String, dynamic>;
-        final status = q['status'] as String? ?? 'PENDENTE';
-        final Color statusColor;
-        final String statusLabel;
-        switch (status) {
-          case 'RESPONDIDA': statusColor = AppColors.success; statusLabel = 'Respondida'; break;
-          case 'FECHADA': statusColor = AppColors.grey; statusLabel = 'Fechada'; break;
-          default: statusColor = AppColors.warning; statusLabel = 'Pendente';
-        }
-        final isVendedor = q['userRole'] == 'VENDEDOR';
+    return LayoutBuilder(builder: (lctx, c) {
+      final cols = c.maxWidth >= 1100 ? 3 : (c.maxWidth >= 720 ? 2 : 1);
+      final cards = [for (final q in questions) _qTile(q as Map<String, dynamic>)];
+      if (cols == 1) {
+        return ListView(padding: const EdgeInsets.all(16), children: cards);
+      }
+      const gap = 12.0;
+      final w = ((c.maxWidth - 40 - gap * (cols - 1)) / cols).floorToDouble();
+      return SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Wrap(spacing: gap, children: [for (final card in cards) SizedBox(width: w, child: card)]),
+      );
+    });
+  }
 
-        return GestureDetector(
+  Widget _qTile(Map<String, dynamic> q) {
+    final status = q['status'] as String? ?? 'PENDENTE';
+    final Color statusColor;
+    final String statusLabel;
+    switch (status) {
+      case 'RESPONDIDA': statusColor = AppColors.success; statusLabel = 'Respondida'; break;
+      case 'FECHADA': statusColor = AppColors.grey; statusLabel = 'Fechada'; break;
+      default: statusColor = AppColors.warning; statusLabel = 'Pendente';
+    }
+    final isVendedor = q['userRole'] == 'VENDEDOR';
+    return GestureDetector(
           onTap: () => onTap(q),
           child: Container(
             margin: const EdgeInsets.only(bottom: 12),
@@ -1671,8 +1967,6 @@ class _UserQuestionsList extends StatelessWidget {
             ]),
           ),
         );
-      },
-    );
   }
 }
 
@@ -2244,6 +2538,7 @@ class _VerificacoesPageState extends State<_VerificacoesPage>
         Container(
           color: Colors.white,
           child: TabBar(
+            dividerColor: Colors.transparent,
             controller: _tab,
             labelColor: AppColors.primary,
             unselectedLabelColor: AppColors.grey,
@@ -2267,16 +2562,28 @@ class _VerificacoesPageState extends State<_VerificacoesPage>
     );
   }
 
+  Widget _cardGrid(List<Widget> cards) {
+    return LayoutBuilder(builder: (ctx, c) {
+      final cols = c.maxWidth >= 1000 ? 2 : 1;
+      if (cols == 1) {
+        return ListView(padding: const EdgeInsets.all(16), children: cards);
+      }
+      const gap = 16.0;
+      final w = ((c.maxWidth - 40 - gap * (cols - 1)) / cols).floorToDouble();
+      return SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Wrap(spacing: gap, children: [for (final card in cards) SizedBox(width: w, child: card)]),
+      );
+    });
+  }
+
   Widget _listVets() {
     if (widget.pendingVets.isEmpty) {
       return _emptyTab('veterinários', Icons.medical_services_outlined);
     }
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: widget.pendingVets.length,
-      itemBuilder: (_, i) {
-        final v = widget.pendingVets[i];
-        return _PendingCard(
+    return _cardGrid([
+      for (final v in widget.pendingVets)
+        _PendingCard(
           id: v.id,
           name: v.name,
           subtitle: 'CRMV: ${v.crmv}${v.especialidade != null ? ' • ${v.especialidade}' : ''}',
@@ -2288,21 +2595,17 @@ class _VerificacoesPageState extends State<_VerificacoesPage>
           docPhotoLabel: 'Diploma / CRMV',
           onApprove: () => _act(v.id, widget.onApproveVet),
           onReject: () => _act(v.id, widget.onRejectVet),
-        );
-      },
-    );
+        ),
+    ]);
   }
 
   Widget _listDrivers() {
     if (widget.pendingDrivers.isEmpty) {
       return _emptyTab('motoristas', Icons.airport_shuttle_outlined);
     }
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: widget.pendingDrivers.length,
-      itemBuilder: (_, i) {
-        final d = widget.pendingDrivers[i];
-        return _PendingCard(
+    return _cardGrid([
+      for (final d in widget.pendingDrivers)
+        _PendingCard(
           id: d.id,
           name: d.name,
           subtitle: '${d.vehicleTypeLabel} • ${d.vehicleModel}',
@@ -2314,9 +2617,8 @@ class _VerificacoesPageState extends State<_VerificacoesPage>
           docPhotoLabel: 'Foto da CNH',
           onApprove: () => _act(d.id, widget.onApproveDriver),
           onReject: () => _act(d.id, widget.onRejectDriver),
-        );
-      },
-    );
+        ),
+    ]);
   }
 
   Widget _emptyTab(String tipo, IconData icon) => Center(

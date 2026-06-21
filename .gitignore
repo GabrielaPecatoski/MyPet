@@ -29,9 +29,12 @@ rabbitmq_data/
 documentos/
 **/documentos/
 .claude/
+.vscode/
 
 # Flutter build
 mypet_app/build/
+# Output do flutter build web (nunca commitar artefatos compilados)
+docker/nginx/html/
 
 # Artefatos de teste Playwright
 **/test-results/
