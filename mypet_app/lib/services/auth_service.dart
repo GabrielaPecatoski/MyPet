@@ -58,6 +58,7 @@ class AuthService {
     required String cpf,
     String role = 'CLIENTE',
     String? businessName,
+    String? birthDate,
   }) async {
     final body = {
       'name': name,
@@ -67,6 +68,7 @@ class AuthService {
       'cpf': cpf,
       'role': role,
       'businessName': ?businessName,
+      'birthDate': ?birthDate,
     };
     final response = await http
         .post(

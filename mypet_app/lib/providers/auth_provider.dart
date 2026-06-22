@@ -91,6 +91,7 @@ class AuthProvider extends ChangeNotifier {
     required String cpf,
     String role = 'CLIENTE',
     String? businessName,
+    String? birthDate,
   }) async {
     _loading = true;
     _error = null;
@@ -104,6 +105,7 @@ class AuthProvider extends ChangeNotifier {
         cpf: cpf,
         role: role,
         businessName: businessName,
+        birthDate: birthDate,
       );
       _token = data['accessToken'] as String?;
       _user = data['user'] != null ? UserModel.fromJson(data['user'] as Map<String, dynamic>) : null;
@@ -226,6 +228,7 @@ class AuthProvider extends ChangeNotifier {
     required String vehicleType,
     required String vehicleModel,
     required String vehiclePlate,
+    String? cnhPhotoUrl,
   }) async {
     if (_token == null) return 'Token ausente';
     try {
@@ -234,6 +237,7 @@ class AuthProvider extends ChangeNotifier {
         name: name, phone: phone, cpf: cpf,
         cnh: cnh, vehicleType: vehicleType,
         vehicleModel: vehicleModel, vehiclePlate: vehiclePlate,
+        cnhPhotoUrl: cnhPhotoUrl,
       );
       return null;
     } catch (e) {
