@@ -8,6 +8,7 @@ import '../providers/auth_provider.dart';
 import '../providers/booking_provider.dart';
 import '../providers/notifications_provider.dart';
 import '../providers/home_provider.dart';
+import '../widgets/app_image.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -493,17 +494,22 @@ class _HighlightCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              height: 90,
-              decoration: BoxDecoration(
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+              child: Container(
+                height: 90,
+                width: double.infinity,
                 color: AppColors.primaryLight,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-              ),
-              child: Center(
-                child: Icon(
-                  e.isVeterinario ? Icons.local_hospital : Icons.pets,
-                  color: AppColors.primary,
-                  size: 40,
+                child: AppImage(
+                  url: e.imageUrl,
+                  fit: BoxFit.cover,
+                  fallback: Center(
+                    child: Icon(
+                      e.isVeterinario ? Icons.local_hospital : Icons.pets,
+                      color: AppColors.primary,
+                      size: 40,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -670,19 +676,15 @@ class _EstabCard extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                color: AppColors.primaryLight,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Center(
-                child: Icon(
-                  e.isVeterinario ? Icons.local_hospital : Icons.pets,
-                  color: AppColors.primary,
-                  size: 28,
-                ),
+            PhotoBox(
+              url: e.imageUrl,
+              size: 60,
+              radius: 10,
+              background: AppColors.primaryLight,
+              fallback: Icon(
+                e.isVeterinario ? Icons.local_hospital : Icons.pets,
+                color: AppColors.primary,
+                size: 28,
               ),
             ),
             const SizedBox(width: 12),

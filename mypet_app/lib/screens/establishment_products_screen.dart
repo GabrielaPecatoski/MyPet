@@ -558,18 +558,22 @@ class _ProductImagePickerState extends State<_ProductImagePicker> {
   }
 
   Future<void> _pick(ImageSource source) async {
-    if (kIsWeb) return;
     final picked = await ImagePicker().pickImage(
         source: source, imageQuality: 75, maxWidth: 800, maxHeight: 800);
     if (picked == null) return;
     final bytes = await picked.readAsBytes();
     final url = 'data:image/jpeg;base64,${base64Encode(bytes)}';
+    if (!mounted) return;
     setState(() => _imageData = url);
     widget.onChanged(url);
   }
 
   void _showOptions() {
-    if (kIsWeb) return;
+    // No web não há distinção câmera/galeria: abre direto o seletor de arquivo.
+    if (kIsWeb) {
+      _pick(ImageSource.gallery);
+      return;
+    }
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(

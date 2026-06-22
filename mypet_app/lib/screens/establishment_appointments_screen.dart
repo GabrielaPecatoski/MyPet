@@ -383,6 +383,7 @@ class _ApptCard extends StatelessWidget {
         ),
 
         GestureDetector(
+          behavior: HitTestBehavior.opaque,
           onTap: () => _showDetail(context),
           child: Container(
           margin: const EdgeInsets.only(bottom: 4),

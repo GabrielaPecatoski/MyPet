@@ -4,6 +4,7 @@ import '../core/colors.dart';
 import '../models/product.dart';
 import '../providers/cart_provider.dart';
 import '../providers/store_provider.dart';
+import '../widgets/app_image.dart';
 import '../widgets/mypet_app_bar.dart';
 
 class ProdutosScreen extends StatefulWidget {
@@ -206,17 +207,21 @@ class _ProductCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            height: 100,
-            width: double.infinity,
-            decoration: const BoxDecoration(
+          ClipRRect(
+            borderRadius:
+                const BorderRadius.vertical(top: Radius.circular(12)),
+            child: Container(
+              height: 100,
+              width: double.infinity,
               color: AppColors.primaryLight,
-              borderRadius:
-                  BorderRadius.vertical(top: Radius.circular(12)),
-            ),
-            child: const Center(
-              child: Icon(Icons.shopping_bag,
-                  color: AppColors.primary, size: 40),
+              child: AppImage(
+                url: product['imageUrl'] as String?,
+                fit: BoxFit.cover,
+                fallback: const Center(
+                  child: Icon(Icons.shopping_bag,
+                      color: AppColors.primary, size: 40),
+                ),
+              ),
             ),
           ),
           Padding(
