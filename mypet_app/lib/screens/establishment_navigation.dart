@@ -4,6 +4,7 @@ import '../core/colors.dart';
 import '../providers/auth_provider.dart';
 import '../providers/establishment_provider.dart';
 import '../widgets/app_bottom_nav.dart';
+import '../widgets/notification_shell_mixin.dart';
 import 'establishment_home_screen.dart';
 import 'establishment_appointments_screen.dart';
 import 'establishment_products_screen.dart';
@@ -20,7 +21,8 @@ class EstabNavigation extends StatefulWidget {
   State<EstabNavigation> createState() => _EstabNavigationState();
 }
 
-class _EstabNavigationState extends State<EstabNavigation> {
+class _EstabNavigationState extends State<EstabNavigation>
+    with NotificationShellMixin {
   late int _currentIndex;
 
   @override
@@ -28,6 +30,13 @@ class _EstabNavigationState extends State<EstabNavigation> {
     super.initState();
     _currentIndex = widget.initialIndex;
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadEstablishment());
+    startNotifications();
+  }
+
+  @override
+  void dispose() {
+    stopNotifications();
+    super.dispose();
   }
 
   Future<void> _loadEstablishment() async {

@@ -6,6 +6,7 @@ import '../core/colors.dart';
 import '../models/driver.dart';
 import '../providers/auth_provider.dart';
 import '../providers/driver_profile_provider.dart';
+import '../widgets/notification_bell.dart';
 
 class DriverInicioScreen extends StatefulWidget {
   const DriverInicioScreen({super.key});
@@ -191,6 +192,8 @@ class _DriverInicioScreenState extends State<DriverInicioScreen> {
                 ],
               ),
               const Spacer(),
+              const NotificationBell(iconSize: 24),
+              const SizedBox(width: 12),
               GestureDetector(
                 onTap: _tryGoOnline,
                 child: Container(

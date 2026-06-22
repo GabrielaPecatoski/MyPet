@@ -1,6 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 import '../core/colors.dart';
 import '../widgets/app_bottom_nav.dart';
+import '../widgets/notification_shell_mixin.dart';
 import 'driver_inicio_screen.dart';
 import 'driver_rides_screen.dart';
 import 'driver_ganhos_screen.dart';
@@ -37,8 +38,21 @@ class DriverNavigation extends StatefulWidget {
   State<DriverNavigation> createState() => _DriverNavigationState();
 }
 
-class _DriverNavigationState extends State<DriverNavigation> {
+class _DriverNavigationState extends State<DriverNavigation>
+    with NotificationShellMixin {
   int _index = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    startNotifications();
+  }
+
+  @override
+  void dispose() {
+    stopNotifications();
+    super.dispose();
+  }
 
   static final _screens = [
     const DriverInicioScreen(),

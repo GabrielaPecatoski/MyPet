@@ -9,6 +9,7 @@ import '../core/colors.dart';
 import '../models/emergency_call.dart';
 import '../providers/auth_provider.dart';
 import '../providers/vet_profile_provider.dart';
+import '../widgets/notification_bell.dart';
 
 class VetHomeScreen extends StatefulWidget {
   const VetHomeScreen({super.key});
@@ -305,6 +306,8 @@ class _VetHomeScreenState extends State<VetHomeScreen> {
               ],
             ),
             const Spacer(),
+            const NotificationBell(iconSize: 24),
+            const SizedBox(width: 12),
             GestureDetector(
               onTap: _toggleDisponivel,
               child: Container(

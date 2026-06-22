@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../core/colors.dart';
 import '../providers/auth_provider.dart';
+import 'notification_bell.dart';
 
 class MypetAppBar extends StatelessWidget implements PreferredSizeWidget {
   final bool showBack;
@@ -157,6 +158,8 @@ class EstabPurpleHeader extends StatelessWidget {
                 fit: BoxFit.contain,
               ),
               const Spacer(),
+              const NotificationBell(iconSize: 24),
+              const SizedBox(width: 14),
               const CircleAvatar(
                 radius: 18,
                 backgroundColor: Colors.white24,

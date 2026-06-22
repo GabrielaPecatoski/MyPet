@@ -88,22 +88,27 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // A barra inferior é do fluxo do cliente; outras contas (vet, estab,
+    // motorista) abrem só com o botão voltar do app bar.
+    final isCliente = context.read<AuthProvider>().isCliente;
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: const MypetAppBar(showBack: true),
-      bottomNavigationBar: AppBottomNav(
-        currentIndex: 4,
-        items: clientNavItems,
-        onTap: (i) {
-          if (i == 4) {
-            Navigator.pop(context);
-          } else {
-            Navigator.pushNamedAndRemoveUntil(
-                context, '/home', (r) => false,
-                arguments: i);
-          }
-        },
-      ),
+      bottomNavigationBar: !isCliente
+          ? null
+          : AppBottomNav(
+              currentIndex: 4,
+              items: clientNavItems,
+              onTap: (i) {
+                if (i == 4) {
+                  Navigator.pop(context);
+                } else {
+                  Navigator.pushNamedAndRemoveUntil(
+                      context, '/home', (r) => false,
+                      arguments: i);
+                }
+              },
+            ),
       body: Builder(builder: (context) {
         final provider = context.watch<NotificationsProvider>();
         final auth = context.read<AuthProvider>();

@@ -95,6 +95,9 @@ class NotificationsProvider extends ChangeNotifier {
       final data = await _repository.getByUser(userId, token: token);
       _notifications = data.map(NotificationItem.fromJson).toList();
       await _repository.markAllRead(userId, token: token);
+      // Zera o badge imediatamente — sem isso o contador só some no próximo
+      // polling (60 s) e a notificação continua "aparecendo" após lida.
+      _unreadCount = 0;
     } catch (_) {}
     _loading = false;
     notifyListeners();

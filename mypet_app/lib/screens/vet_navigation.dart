@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../core/colors.dart';
 import '../providers/vet_profile_provider.dart';
 import '../widgets/app_bottom_nav.dart';
+import '../widgets/notification_shell_mixin.dart';
 import 'vet_home_screen.dart';
 import 'vet_appointments_screen.dart';
 import 'vet_chamados_screen.dart';
@@ -39,8 +40,21 @@ class VetNavigation extends StatefulWidget {
   State<VetNavigation> createState() => _VetNavigationState();
 }
 
-class _VetNavigationState extends State<VetNavigation> {
+class _VetNavigationState extends State<VetNavigation>
+    with NotificationShellMixin {
   int _index = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    startNotifications();
+  }
+
+  @override
+  void dispose() {
+    stopNotifications();
+    super.dispose();
+  }
 
   static final _screens = [
     const VetHomeScreen(),
