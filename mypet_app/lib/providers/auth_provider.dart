@@ -172,6 +172,7 @@ class AuthProvider extends ChangeNotifier {
   Future<bool> updateProfile({
     required String name,
     required String phone,
+    List<Map<String, dynamic>>? addresses,
   }) async {
     if (_user == null || _token == null) return false;
     _loading = true;
@@ -182,6 +183,7 @@ class AuthProvider extends ChangeNotifier {
         token: _token!,
         name: name,
         phone: phone,
+        addresses: addresses,
       );
       _user = UserModel.fromJson(data);
       await StorageService.saveUser(_user!);

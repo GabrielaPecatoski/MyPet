@@ -14,6 +14,7 @@ export class User {
   private _cpf!: string;
   private _role!: UserRole;
   private _permissions!: string[];
+  private _addresses: string = "[]";
   private readonly _createdAt?: Date;
   private readonly _updatedAt?: Date;
 
@@ -46,6 +47,9 @@ export class User {
   }
   get permissions(): string[] {
     return this._permissions;
+  }
+  get addresses(): string {
+    return this._addresses;
   }
   get createdAt(): Date | undefined {
     return this._createdAt;
@@ -82,6 +86,10 @@ export class User {
     this._permissions = permissions;
     return this;
   }
+  withAddresses(addresses: string) {
+    this._addresses = addresses;
+    return this;
+  }
 
   static restore(props?: {
     id?: string;
@@ -92,6 +100,7 @@ export class User {
     cpf: string;
     role: UserRole;
     permissions: string[];
+    addresses?: string | null;
     createdAt?: Date;
     updatedAt?: Date;
   }): User | null {
@@ -104,6 +113,7 @@ export class User {
     user._cpf = props.cpf;
     user._role = props.role;
     user._permissions = props.permissions;
+    user._addresses = props.addresses ?? "[]";
     return user;
   }
 }

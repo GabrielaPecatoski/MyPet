@@ -19,6 +19,7 @@ export class DrizzleUserRepository implements UserRepository {
       cpf: user.cpf,
       role: user.role,
       permissions: user.permissions,
+      addresses: user.addresses,
       createdAt: new Date(),
       updatedAt: new Date(),
     });
@@ -34,6 +35,7 @@ export class DrizzleUserRepository implements UserRepository {
         phone: user.phone,
         role: user.role,
         permissions: user.permissions,
+        addresses: user.addresses,
         updatedAt: new Date(),
       })
       .where(eq(usersSchema.id, user.id!));
@@ -113,6 +115,7 @@ export class DrizzleUserRepository implements UserRepository {
       cpf: row.cpf,
       role: row.role as "ADMIN" | "CLIENTE" | "VENDEDOR",
       permissions: row.permissions ?? [],
+      addresses: row.addresses ?? "[]",
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     });

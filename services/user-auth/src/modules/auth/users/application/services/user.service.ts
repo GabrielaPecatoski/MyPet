@@ -58,6 +58,7 @@ export class UserService {
       const hashed = await bcrypt.hash(dto.password, 10);
       user.withPassword(hashed);
     }
+    if (dto.addresses) user.withAddresses(JSON.stringify(dto.addresses));
 
     await this.userRepository.update(user);
   }

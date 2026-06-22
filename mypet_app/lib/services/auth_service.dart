@@ -12,9 +12,17 @@ class AuthService {
     required String token,
     required String name,
     required String phone,
+    List<Map<String, dynamic>>? addresses,
   }) =>
-      ApiService.patch('/auth/me', {'name': name, 'phone': phone}, token: token)
-          .then((v) => v as Map<String, dynamic>);
+      ApiService.patch(
+        '/auth/me',
+        {
+          'name': name,
+          'phone': phone,
+          'addresses': ?addresses,
+        },
+        token: token,
+      ).then((v) => v as Map<String, dynamic>);
 
   static Future<void> deleteMe({required String token}) =>
       ApiService.delete('/auth/me', token: token);

@@ -9,6 +9,7 @@ export class UserDto {
   @ApiProperty() cpf: string;
   @ApiProperty() role: string;
   @ApiProperty() permissions: string[];
+  @ApiProperty() addresses: unknown[];
   @ApiProperty() createdAt: Date | undefined;
 
   private constructor(
@@ -19,6 +20,7 @@ export class UserDto {
     cpf: string,
     role: string,
     permissions: string[],
+    addresses: unknown[],
     createdAt: Date | undefined,
   ) {
     this.id = id;
@@ -28,11 +30,19 @@ export class UserDto {
     this.cpf = cpf;
     this.role = role;
     this.permissions = permissions;
+    this.addresses = addresses;
     this.createdAt = createdAt;
   }
 
   static fromUser(user: User | null): UserDto | null {
     if (!user) return null;
+    let addresses: unknown[] = [];
+    try {
+      const parsed = JSON.parse(user.addresses);
+      if (Array.isArray(parsed)) addresses = parsed;
+    } catch {
+      addresses = [];
+    }
     return new UserDto(
       user.id,
       user.name,
@@ -41,6 +51,7 @@ export class UserDto {
       user.cpf,
       user.role,
       user.permissions,
+      addresses,
       user.createdAt,
     );
   }

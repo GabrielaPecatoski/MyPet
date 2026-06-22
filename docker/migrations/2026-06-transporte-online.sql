@@ -9,6 +9,10 @@
 --
 -- É idempotente (ADD COLUMN IF NOT EXISTS), pode rodar mais de uma vez.
 
+\connect mypet_auth
+ALTER TABLE users
+  ADD COLUMN IF NOT EXISTS addresses text NOT NULL DEFAULT '[]';
+
 \connect mypet_driver
 ALTER TABLE drivers
   ADD COLUMN IF NOT EXISTS online boolean NOT NULL DEFAULT false;
