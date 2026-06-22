@@ -2,6 +2,7 @@ import 'dart:io' as dart_io;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/colors.dart';
+import '../core/geo.dart';
 import '../models/establishment.dart';
 import '../models/veterinarian.dart';
 import '../providers/auth_provider.dart';
@@ -27,8 +28,18 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) =>
-        context.read<HomeProvider>().load());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final home = context.read<HomeProvider>();
+      home.load();
+      // Origem para "serviços próximos": primeiro endereço do cliente com coords.
+      final addresses = context.read<AuthProvider>().user?.addresses ?? const [];
+      for (final a in addresses) {
+        if (a.lat != null && a.lng != null) {
+          home.setOrigin(a.lat, a.lng);
+          break;
+        }
+      }
+    });
   }
 
   @override
@@ -433,8 +444,10 @@ class _HomeScreenState extends State<HomeScreen> {
                             scrollDirection: Axis.horizontal,
                             itemCount: home.establishments.take(5).length,
                             separatorBuilder: (_, _) => const SizedBox(width: 12),
-                            itemBuilder: (ctx, i) =>
-                                _HighlightCard(establishment: home.establishments[i]),
+                            itemBuilder: (ctx, i) => _HighlightCard(
+                                establishment: home.establishments[i],
+                                distanceKm:
+                                    home.distanceKm(home.establishments[i])),
                           ),
                         ),
                         const SizedBox(height: 24),
@@ -459,7 +472,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   (ctx, i) => Padding(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                    child: _EstabCard(establishment: home.establishments[i]),
+                    child: _EstabCard(
+                        establishment: home.establishments[i],
+                        distanceKm: home.distanceKm(home.establishments[i])),
                   ),
                   childCount: home.establishments.length,
                 ),
@@ -475,7 +490,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
 class _HighlightCard extends StatelessWidget {
   final EstablishmentModel establishment;
-  const _HighlightCard({required this.establishment});
+  final double? distanceKm;
+  const _HighlightCard({required this.establishment, this.distanceKm});
 
   @override
   Widget build(BuildContext context) {
@@ -545,6 +561,21 @@ class _HighlightCard extends StatelessWidget {
                       ),
                     ],
                   ),
+                  if (distanceKm != null) ...[
+                    const SizedBox(height: 3),
+                    Row(
+                      children: [
+                        const Icon(Icons.near_me_outlined,
+                            size: 12, color: AppColors.primary),
+                        const SizedBox(width: 3),
+                        Text(formatKm(distanceKm!),
+                            style: const TextStyle(
+                                fontSize: 11,
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w600)),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -657,7 +688,8 @@ class _VetHomeCard extends StatelessWidget {
 
 class _EstabCard extends StatelessWidget {
   final EstablishmentModel establishment;
-  const _EstabCard({required this.establishment});
+  final double? distanceKm;
+  const _EstabCard({required this.establishment, this.distanceKm});
 
   @override
   Widget build(BuildContext context) {
@@ -711,6 +743,17 @@ class _EstabCard extends StatelessWidget {
                       Text(e.typeLabel,
                           style: const TextStyle(
                               fontSize: 12, color: AppColors.grey)),
+                      if (distanceKm != null) ...[
+                        const SizedBox(width: 8),
+                        const Icon(Icons.near_me_outlined,
+                            size: 12, color: AppColors.primary),
+                        const SizedBox(width: 2),
+                        Text(formatKm(distanceKm!),
+                            style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w600)),
+                      ],
                     ],
                   ),
                   const SizedBox(height: 4),

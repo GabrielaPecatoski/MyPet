@@ -13,6 +13,12 @@
 ALTER TABLE users
   ADD COLUMN IF NOT EXISTS addresses text NOT NULL DEFAULT '[]';
 
+\connect mypet_estab
+ALTER TABLE establishments
+  ADD COLUMN IF NOT EXISTS lat double precision;
+ALTER TABLE establishments
+  ADD COLUMN IF NOT EXISTS lng double precision;
+
 \connect mypet_driver
 ALTER TABLE drivers
   ADD COLUMN IF NOT EXISTS online boolean NOT NULL DEFAULT false;

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/geo.dart';
 import '../models/establishment.dart';
 import '../models/veterinarian.dart';
 import '../repositories/establishment_list_repository.dart';
@@ -17,6 +18,8 @@ class HomeProvider extends ChangeNotifier {
   String? _error;
   String _typeFilter = 'Todos';
   String _query = '';
+  double? _originLat;
+  double? _originLng;
 
   List<EstablishmentModel> get establishments => _filtered;
   List<VeterinarianModel> get availableVets => _availableVets;
@@ -24,6 +27,24 @@ class HomeProvider extends ChangeNotifier {
   bool get loadingVets => _loadingVets;
   String? get error => _error;
   String get query => _query;
+  bool get hasOrigin => _originLat != null && _originLng != null;
+
+  /// Define a origem (endereço do cliente) para ordenar/medir por distância.
+  void setOrigin(double? lat, double? lng) {
+    if (_originLat == lat && _originLng == lng) return;
+    _originLat = lat;
+    _originLng = lng;
+    _recompute();
+    notifyListeners();
+  }
+
+  /// Distância em km de [e] até a origem, ou null se faltar alguma coordenada.
+  double? distanceKm(EstablishmentModel e) {
+    if (_originLat == null || _originLng == null || e.lat == null || e.lng == null) {
+      return null;
+    }
+    return haversineKm(_originLat!, _originLng!, e.lat!, e.lng!);
+  }
 
   Future<void> load() async {
     _loading = true;
@@ -87,6 +108,17 @@ class HomeProvider extends ChangeNotifier {
           e.services.any((s) => s.categoriaLabel.toLowerCase().contains(_query)));
     }
 
-    _filtered = result.toList();
+    final list = result.toList();
+    if (hasOrigin) {
+      list.sort((a, b) {
+        final da = distanceKm(a);
+        final db = distanceKm(b);
+        if (da == null && db == null) return 0;
+        if (da == null) return 1;
+        if (db == null) return -1;
+        return da.compareTo(db);
+      });
+    }
+    _filtered = list;
   }
 }

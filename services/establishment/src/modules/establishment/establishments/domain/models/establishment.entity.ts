@@ -9,6 +9,8 @@ export class Establishment {
   private _type!: string;
   private _rating!: number;
   private _reviewCount!: number;
+  private _lat?: number;
+  private _lng?: number;
   private _imageUrl?: string;
   private _crmv?: string;
   private _atendeEmergencia!: boolean;
@@ -53,6 +55,12 @@ export class Establishment {
   }
   get reviewCount(): number {
     return this._reviewCount;
+  }
+  get lat(): number | undefined {
+    return this._lat;
+  }
+  get lng(): number | undefined {
+    return this._lng;
   }
   get imageUrl(): string | undefined {
     return this._imageUrl;
@@ -115,6 +123,11 @@ export class Establishment {
     this._reviewCount = reviewCount;
     return this;
   }
+  withCoords(lat?: number, lng?: number) {
+    this._lat = lat;
+    this._lng = lng;
+    return this;
+  }
   withImageUrl(imageUrl?: string) {
     this._imageUrl = imageUrl;
     return this;
@@ -151,6 +164,8 @@ export class Establishment {
     type: string;
     rating: number;
     reviewCount: number;
+    lat?: number | null;
+    lng?: number | null;
     imageUrl?: string | null;
     crmv?: string | null;
     atendeEmergencia?: boolean | null;
@@ -171,6 +186,8 @@ export class Establishment {
     e._type = props.type;
     e._rating = props.rating;
     e._reviewCount = props.reviewCount;
+    e._lat = props.lat ?? undefined;
+    e._lng = props.lng ?? undefined;
     e._imageUrl = props.imageUrl ?? undefined;
     e._crmv = props.crmv ?? undefined;
     e._atendeEmergencia = props.atendeEmergencia ?? false;

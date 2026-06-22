@@ -1,5 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { IsBoolean, IsNotEmpty, IsOptional, IsString } from "class-validator";
+import {
+  IsBoolean,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+} from "class-validator";
 
 export class CreateEstablishmentDto {
   @ApiProperty() @IsString() @IsNotEmpty() name!: string;
@@ -14,6 +20,8 @@ export class CreateEstablishmentDto {
   @IsString()
   @IsNotEmpty()
   type!: string;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() lat?: number;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() lng?: number;
   @ApiPropertyOptional() @IsOptional() @IsString() imageUrl?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() crmv?: string;
   @ApiPropertyOptional() @IsOptional() @IsBoolean() atendeEmergencia?: boolean;
