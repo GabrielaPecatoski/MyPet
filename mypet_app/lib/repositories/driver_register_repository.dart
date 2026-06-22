@@ -12,6 +12,7 @@ abstract class IDriverRegisterRepository {
     required String vehicleType,
     required String vehicleModel,
     required String vehiclePlate,
+    String? cnhPhotoUrl,
   });
 }
 
@@ -27,6 +28,7 @@ class DriverRegisterRepository implements IDriverRegisterRepository {
     required String vehicleType,
     required String vehicleModel,
     required String vehiclePlate,
+    String? cnhPhotoUrl,
   }) =>
       DriverService.register(
         token: token,
@@ -38,5 +40,6 @@ class DriverRegisterRepository implements IDriverRegisterRepository {
         vehicleType: vehicleType,
         vehicleModel: vehicleModel,
         vehiclePlate: vehiclePlate,
+        cnhPhotoUrl: cnhPhotoUrl,
       );
 }

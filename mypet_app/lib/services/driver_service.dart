@@ -20,6 +20,7 @@ class DriverService {
     required String vehicleModel,
     required String vehiclePlate,
     String? photoUrl,
+    String? cnhPhotoUrl,
   }) async {
     final body = <String, dynamic>{
       'name': name,
@@ -32,6 +33,9 @@ class DriverService {
     };
     if (establishmentId != null) body['establishmentId'] = establishmentId;
     if (photoUrl != null && photoUrl.isNotEmpty) body['photoUrl'] = photoUrl;
+    if (cnhPhotoUrl != null && cnhPhotoUrl.isNotEmpty) {
+      body['cnhPhotoUrl'] = cnhPhotoUrl;
+    }
 
     final res = await http
         .post(

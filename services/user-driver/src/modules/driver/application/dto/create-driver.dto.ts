@@ -20,6 +20,7 @@ export class CreateDriverDto {
   @ApiProperty() @IsString() @IsNotEmpty() vehicleModel!: string;
   @ApiProperty() @IsString() @IsNotEmpty() vehiclePlate!: string;
   @ApiPropertyOptional() @IsString() @IsOptional() photoUrl?: string;
+  @ApiPropertyOptional() @IsString() @IsOptional() cnhPhotoUrl?: string;
 }
 
 export class UpdateDriverPhotoDto {

@@ -10,6 +10,7 @@ import '../models/veterinarian.dart';
 import '../providers/admin_provider.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/app_bottom_nav.dart';
+import '../widgets/app_image.dart';
 import '../widgets/mypet_app_bar.dart';
 
 class AdminScreen extends StatefulWidget {
@@ -2473,7 +2474,6 @@ class _VerificacoesPageState extends State<_VerificacoesPage>
     with SingleTickerProviderStateMixin {
   late TabController _tab;
   final _processingIds = <String>{};
-  final _cnhPhotos = <String, String>{};
   final _crmvPhotos = <String, String>{};
 
   @override
@@ -2486,18 +2486,15 @@ class _VerificacoesPageState extends State<_VerificacoesPage>
   @override
   void didUpdateWidget(_VerificacoesPage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.pendingDrivers != widget.pendingDrivers ||
-        oldWidget.pendingVets != widget.pendingVets) {
+    if (oldWidget.pendingVets != widget.pendingVets) {
       _loadPhotos();
     }
   }
 
   Future<void> _loadPhotos() async {
+    // A foto da CNH do motorista vem do backend (DriverModel.cnhPhotoUrl). O
+    // CRMV do veterinário ainda usa a foto salva localmente no aparelho.
     final admin = context.read<AdminProvider>();
-    for (final d in widget.pendingDrivers) {
-      final path = await admin.cnhPhoto(d.cpf);
-      if (path != null && mounted) setState(() => _cnhPhotos[d.cpf] = path);
-    }
     for (final v in widget.pendingVets) {
       final path = await admin.crmvPhoto(v.cpf);
       if (path != null && mounted) setState(() => _crmvPhotos[v.cpf] = path);
@@ -2591,7 +2588,7 @@ class _VerificacoesPageState extends State<_VerificacoesPage>
           icon: Icons.medical_services_rounded,
           color: const Color(0xFF16A34A),
           processing: _processingIds.contains(v.id),
-          docPhotoPath: _crmvPhotos[v.cpf],
+          docPhotoFilePath: _crmvPhotos[v.cpf],
           docPhotoLabel: 'Diploma / CRMV',
           onApprove: () => _act(v.id, widget.onApproveVet),
           onReject: () => _act(v.id, widget.onRejectVet),
@@ -2613,7 +2610,7 @@ class _VerificacoesPageState extends State<_VerificacoesPage>
           icon: Icons.airport_shuttle_rounded,
           color: const Color(0xFFF97316),
           processing: _processingIds.contains(d.id),
-          docPhotoPath: _cnhPhotos[d.cpf],
+          docPhotoUrl: d.cnhPhotoUrl,
           docPhotoLabel: 'Foto da CNH',
           onApprove: () => _act(d.id, widget.onApproveDriver),
           onReject: () => _act(d.id, widget.onRejectDriver),
@@ -2642,7 +2639,10 @@ class _PendingCard extends StatelessWidget {
   final IconData icon;
   final Color color;
   final bool processing;
-  final String? docPhotoPath;
+  // Foto do documento via backend (data URL base64 ou URL de rede) — motoristas.
+  final String? docPhotoUrl;
+  // Foto do documento salva localmente no aparelho do admin — veterinários (CRMV).
+  final String? docPhotoFilePath;
   final String? docPhotoLabel;
   final VoidCallback onApprove;
   final VoidCallback onReject;
@@ -2655,11 +2655,39 @@ class _PendingCard extends StatelessWidget {
     required this.icon,
     required this.color,
     required this.processing,
-    this.docPhotoPath,
+    this.docPhotoUrl,
+    this.docPhotoFilePath,
     this.docPhotoLabel,
     required this.onApprove,
     required this.onReject,
   });
+
+  Widget _docPhotoHeader() => Row(children: [
+        const Icon(Icons.photo_outlined, size: 13, color: AppColors.grey),
+        const SizedBox(width: 5),
+        Text(
+          '${docPhotoLabel ?? 'Documento'}:',
+          style: const TextStyle(fontSize: 12, color: AppColors.grey, fontWeight: FontWeight.w600),
+        ),
+      ]);
+
+  Widget _docPhotoFallback(String message) => Container(
+        height: 120,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: AppColors.background,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.greyLight),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.image_not_supported_outlined, size: 22, color: AppColors.grey),
+            const SizedBox(height: 6),
+            Text(message, style: const TextStyle(fontSize: 11, color: AppColors.grey)),
+          ],
+        ),
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -2734,26 +2762,38 @@ class _PendingCard extends StatelessWidget {
               ],
             ),
           ],
-          if (docPhotoPath != null && !kIsWeb) ...[
+          if (docPhotoUrl != null && docPhotoUrl!.isNotEmpty) ...[
             const SizedBox(height: 10),
-            Row(children: [
-              const Icon(Icons.photo_outlined, size: 13, color: AppColors.grey),
-              const SizedBox(width: 5),
-              Text(
-                '${docPhotoLabel ?? 'Documento'}:',
-                style: const TextStyle(fontSize: 12, color: AppColors.grey, fontWeight: FontWeight.w600),
+            _docPhotoHeader(),
+            const SizedBox(height: 6),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: SizedBox(
+                height: 120,
+                width: double.infinity,
+                child: AppImage(
+                  url: docPhotoUrl,
+                  fit: BoxFit.cover,
+                  fallback: _docPhotoFallback('Não foi possível carregar a imagem'),
+                ),
               ),
-            ]),
+            ),
+          ] else if (docPhotoFilePath != null && !kIsWeb) ...[
+            const SizedBox(height: 10),
+            _docPhotoHeader(),
             const SizedBox(height: 6),
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: Image.file(
-                File(docPhotoPath!),
+                File(docPhotoFilePath!),
                 height: 120,
                 width: double.infinity,
                 fit: BoxFit.cover,
               ),
             ),
+          ] else if (docPhotoLabel != null) ...[
+            const SizedBox(height: 10),
+            _docPhotoFallback('${docPhotoLabel!} não enviada'),
           ],
           const SizedBox(height: 12),
           if (processing)

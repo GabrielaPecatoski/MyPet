@@ -12,6 +12,7 @@ export class Driver {
   private _vehicleModel!: string;
   private _vehiclePlate!: string;
   private _photoUrl?: string;
+  private _cnhPhotoUrl?: string;
   private _status!: DriverStatus;
   private _online: boolean = false;
   private readonly _createdAt?: Date;
@@ -53,6 +54,9 @@ export class Driver {
   get photoUrl(): string | undefined {
     return this._photoUrl;
   }
+  get cnhPhotoUrl(): string | undefined {
+    return this._cnhPhotoUrl;
+  }
   get status(): DriverStatus {
     return this._status;
   }
@@ -78,6 +82,10 @@ export class Driver {
     this._photoUrl = photoUrl;
     return this;
   }
+  withCnhPhotoUrl(cnhPhotoUrl: string | undefined) {
+    this._cnhPhotoUrl = cnhPhotoUrl;
+    return this;
+  }
   withOnline(online: boolean) {
     this._online = online;
     return this;
@@ -94,6 +102,7 @@ export class Driver {
     vehicleModel: string;
     vehiclePlate: string;
     photoUrl?: string | null;
+    cnhPhotoUrl?: string | null;
     status?: string | null;
     online?: boolean | null;
     createdAt?: Date;
@@ -110,6 +119,7 @@ export class Driver {
     d._vehicleModel = props.vehicleModel;
     d._vehiclePlate = props.vehiclePlate;
     d._photoUrl = props.photoUrl ?? undefined;
+    d._cnhPhotoUrl = props.cnhPhotoUrl ?? undefined;
     d._status = (props.status ?? "PENDENTE") as DriverStatus;
     d._online = props.online ?? false;
     return d;

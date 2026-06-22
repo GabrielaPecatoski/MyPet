@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/driver.dart';
 import '../repositories/driver_register_repository.dart';
-import '../services/storage_service.dart';
 
 class DriverRegisterProvider extends ChangeNotifier {
   final IDriverRegisterRepository _repository;
@@ -24,7 +23,7 @@ class DriverRegisterProvider extends ChangeNotifier {
     required String vehicleType,
     required String vehicleModel,
     required String vehiclePlate,
-    String? cnhPhotoPath,
+    String? cnhPhotoUrl,
   }) async {
     _loading = true;
     _error = null;
@@ -40,10 +39,8 @@ class DriverRegisterProvider extends ChangeNotifier {
         vehicleType: vehicleType,
         vehicleModel: vehicleModel,
         vehiclePlate: vehiclePlate,
+        cnhPhotoUrl: cnhPhotoUrl,
       );
-      if (cnhPhotoPath != null) {
-        await StorageService.saveCnhPhoto(cpf, cnhPhotoPath);
-      }
       return driver;
     } catch (e) {
       _error = e.toString().replaceAll('Exception: ', '');

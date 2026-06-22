@@ -22,6 +22,7 @@ export class DrizzleDriverRepository implements DriverRepository {
         vehicleModel: driver.vehicleModel,
         vehiclePlate: driver.vehiclePlate,
         photoUrl: driver.photoUrl ?? null,
+        cnhPhotoUrl: driver.cnhPhotoUrl ?? null,
         status: driver.status,
         online: driver.online,
         createdAt: new Date(),

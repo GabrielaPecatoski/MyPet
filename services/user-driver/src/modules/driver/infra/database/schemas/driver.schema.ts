@@ -11,6 +11,7 @@ export const driversSchema = pgTable("drivers", {
   vehicleModel: text("vehicle_model").notNull(),
   vehiclePlate: text("vehicle_plate").notNull().unique(),
   photoUrl: text("photo_url"),
+  cnhPhotoUrl: text("cnh_photo_url"),
   status: text("status").notNull().default("PENDENTE"),
   online: boolean("online").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),

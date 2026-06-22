@@ -36,6 +36,7 @@ export class DriverService {
       vehicleModel: dto.vehicleModel,
       vehiclePlate: dto.vehiclePlate,
       photoUrl: dto.photoUrl,
+      cnhPhotoUrl: dto.cnhPhotoUrl,
       status: "PENDENTE",
     })!;
 

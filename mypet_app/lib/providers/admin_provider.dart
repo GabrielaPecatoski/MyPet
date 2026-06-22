@@ -202,7 +202,5 @@ class AdminProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<String?> cnhPhoto(String cpf) => StorageService.getCnhPhoto(cpf);
-
   Future<String?> crmvPhoto(String cpf) => StorageService.getCrmvPhoto(cpf);
 }
