@@ -6,7 +6,7 @@ import '../core/colors.dart';
 import '../models/driver.dart';
 import '../providers/auth_provider.dart';
 import '../providers/driver_profile_provider.dart';
-import '../widgets/notification_bell.dart';
+import '../widgets/role_header_top.dart';
 
 class DriverInicioScreen extends StatefulWidget {
   const DriverInicioScreen({super.key});
@@ -165,69 +165,42 @@ class _DriverInicioScreenState extends State<DriverInicioScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Image.asset(
-                'assets/images/logo branca.png',
-                height: 36,
-                fit: BoxFit.contain,
-              ),
-              const SizedBox(width: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('MY PET · MOTORISTA',
-                      style: TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white70,
-                          letterSpacing: 0.8)),
-                  Text(
-                    auth.user?.name.split(' ').first ?? 'Motorista',
-                    style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white),
-                  ),
-                ],
-              ),
-              const Spacer(),
-              const NotificationBell(iconSize: 24),
-              const SizedBox(width: 12),
-              GestureDetector(
-                onTap: _tryGoOnline,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: _online
-                              ? const Color(0xFF4ADE80)
-                              : Colors.white54,
-                          shape: BoxShape.circle,
-                        ),
+          RoleHeaderTop(
+            roleLabel: 'MOTORISTA',
+            name: auth.user?.name.split(' ').first ?? 'Motorista',
+            trailing: GestureDetector(
+              onTap: _tryGoOnline,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: _online
+                            ? const Color(0xFF4ADE80)
+                            : Colors.white54,
+                        shape: BoxShape.circle,
                       ),
-                      const SizedBox(width: 5),
-                      Text(
-                        _online ? 'Online' : 'Offline',
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600),
-                      ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      _online ? 'Online' : 'Offline',
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600),
+                    ),
+                  ],
                 ),
               ),
-            ],
+            ),
           ),
           const SizedBox(height: 16),
           Row(

@@ -9,7 +9,7 @@ import '../core/colors.dart';
 import '../models/emergency_call.dart';
 import '../providers/auth_provider.dart';
 import '../providers/vet_profile_provider.dart';
-import '../widgets/notification_bell.dart';
+import '../widgets/role_header_top.dart';
 
 class VetHomeScreen extends StatefulWidget {
   const VetHomeScreen({super.key});
@@ -279,36 +279,10 @@ class _VetHomeScreenState extends State<VetHomeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(children: [
-            Container(
-              width: 36, height: 36,
-              decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(10)),
-              child: const Icon(Icons.medical_services_outlined,
-                  color: Colors.white, size: 20),
-            ),
-            const SizedBox(width: 10),
-            const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('MY PET · VETERINÁRIO',
-                    style: TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white70,
-                        letterSpacing: 0.8)),
-                Text('Início',
-                    style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white)),
-              ],
-            ),
-            const Spacer(),
-            const NotificationBell(iconSize: 24),
-            const SizedBox(width: 12),
-            GestureDetector(
+          RoleHeaderTop(
+            roleLabel: 'VETERINÁRIO',
+            name: 'Dr. $firstName',
+            trailing: GestureDetector(
               onTap: _toggleDisponivel,
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -331,7 +305,7 @@ class _VetHomeScreenState extends State<VetHomeScreen> {
                 ]),
               ),
             ),
-          ]),
+          ),
           const SizedBox(height: 16),
           Row(children: [
             CircleAvatar(

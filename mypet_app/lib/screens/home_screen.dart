@@ -7,9 +7,9 @@ import '../models/establishment.dart';
 import '../models/veterinarian.dart';
 import '../providers/auth_provider.dart';
 import '../providers/booking_provider.dart';
-import '../providers/notifications_provider.dart';
 import '../providers/home_provider.dart';
 import '../widgets/app_image.dart';
+import '../widgets/role_header_top.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -22,7 +22,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _selectedChip = 0;
   final _searchController = TextEditingController();
 
-  static const _chips = ['Todos', 'Banho', 'Tosa', 'Veterinário', 'Acessórios'];
+  static const _chips = ['Todos', 'Banho', 'Tosa', 'Veterinário'];
   static const _vetChipIndex = 3;
 
   @override
@@ -62,7 +62,6 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final home = context.watch<HomeProvider>();
     final user = context.watch<AuthProvider>().user;
-    final unreadCount = context.watch<NotificationsProvider>().unreadCount;
     final bookings = context.watch<BookingProvider>().bookings;
     final today = DateTime.now();
     final confirmedToday = bookings.where((b) =>
@@ -78,79 +77,34 @@ class _HomeScreenState extends State<HomeScreen> {
           slivers: [
             SliverToBoxAdapter(
               child: Container(
-                height: 60,
                 color: AppColors.primary,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Image.asset(
-                      'assets/images/logo branca.png',
-                      height: 36,
-                      fit: BoxFit.contain,
-                    ),
-                    Positioned(
-                      left: 16,
-                      child: GestureDetector(
-                        onTap: () => Navigator.pushNamed(context, '/notifications'),
-                        child: Stack(
-                          clipBehavior: Clip.none,
-                          children: [
-                            const Icon(Icons.notifications_outlined,
-                                color: Colors.white, size: 26),
-                            if (unreadCount > 0)
-                              Positioned(
-                                right: -4,
-                                top: -4,
-                                child: Container(
-                                  padding: const EdgeInsets.all(2),
-                                  decoration: const BoxDecoration(
-                                    color: AppColors.danger,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  constraints: const BoxConstraints(
-                                      minWidth: 16, minHeight: 16),
-                                  child: Text(
-                                    unreadCount > 99 ? '99+' : '$unreadCount',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+                child: RoleHeaderTop(
+                  roleLabel: 'CLIENTE',
+                  name: user?.name.split(' ').first ?? 'Bem-vindo',
+                  trailing: GestureDetector(
+                    onTap: () {
+                      if (user != null) {
+                        Navigator.pushNamed(context, '/home', arguments: 4);
+                      } else {
+                        Navigator.pushNamed(context, '/login');
+                      }
+                    },
+                    child: CircleAvatar(
+                      radius: 18,
+                      backgroundColor: Colors.white24,
+                      child: user?.photoPath != null
+                          ? ClipOval(
+                              child: Image.file(
+                                dart_io.File(user!.photoPath!),
+                                width: 36,
+                                height: 36,
+                                fit: BoxFit.cover,
                               ),
-                          ],
-                        ),
-                      ),
+                            )
+                          : const Icon(Icons.person, size: 20, color: Colors.white),
                     ),
-                    Positioned(
-                      right: 16,
-                      child: GestureDetector(
-                        onTap: () {
-                          if (user != null) {
-                            Navigator.pushNamed(context, '/home', arguments: 4);
-                          } else {
-                            Navigator.pushNamed(context, '/login');
-                          }
-                        },
-                        child: CircleAvatar(
-                          radius: 18,
-                          backgroundColor: Colors.white24,
-                          child: user?.photoPath != null
-                              ? ClipOval(
-                                  child: Image.file(
-                                    dart_io.File(user!.photoPath!),
-                                    width: 36,
-                                    height: 36,
-                                    fit: BoxFit.cover,
-                                  ),
-                                )
-                              : const Icon(Icons.person, size: 20, color: Colors.white),
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),
