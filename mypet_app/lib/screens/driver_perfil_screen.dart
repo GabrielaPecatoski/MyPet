@@ -346,6 +346,16 @@ class _DriverPerfilScreenState extends State<DriverPerfilScreen> {
                             subtitle: 'Notificações, privacidade',
                             onTap: () {},
                           ),
+                          _div(),
+                          _menuTile(
+                            icon: Icons.location_on_outlined,
+                            iconColor: AppColors.primary,
+                            label: 'Meus endereços',
+                            subtitle:
+                                '${auth.user?.addresses.length ?? 0} cadastrado(s)',
+                            onTap: () =>
+                                Navigator.pushNamed(context, '/enderecos'),
+                          ),
                         ],
                       ),
                     ),

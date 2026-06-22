@@ -53,6 +53,34 @@ class _VetPerfilScreenState extends State<VetPerfilScreen> {
                   _statsCard(),
                   const SizedBox(height: 16),
                   _infoSection(vet),
+                  const SizedBox(height: 16),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: const [
+                        BoxShadow(
+                            color: Colors.black12,
+                            blurRadius: 8,
+                            offset: Offset(0, 2)),
+                      ],
+                    ),
+                    child: ListTile(
+                      leading: const Icon(Icons.location_on_outlined,
+                          color: _green),
+                      title: const Text('Meus endereços',
+                          style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.dark)),
+                      subtitle: Text('${auth.user?.addresses.length ?? 0} cadastrado(s)',
+                          style: const TextStyle(
+                              fontSize: 12, color: AppColors.grey)),
+                      trailing: const Icon(Icons.chevron_right,
+                          color: AppColors.grey),
+                      onTap: () =>
+                          Navigator.pushNamed(context, '/enderecos'),
+                    ),
+                  ),
                   const SizedBox(height: 24),
                   _logoutButton(auth),
                   const SizedBox(height: 32),
