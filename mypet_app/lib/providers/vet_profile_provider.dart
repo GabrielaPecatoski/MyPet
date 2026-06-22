@@ -64,6 +64,23 @@ class VetProfileProvider extends ChangeNotifier {
     }
   }
 
+  /// Sincroniza a localização do vet (lat/lng) a partir de um endereço do
+  /// usuário, para aparecer em "serviços próximos" do cliente.
+  Future<void> syncLocation({
+    required String token,
+    required double lat,
+    required double lng,
+  }) async {
+    if (_vet == null) return;
+    if (_vet!.lat == lat && _vet!.lng == lng) return;
+    final updated = await VeterinarianService.updateLocation(
+        token: token, vetId: _vet!.id, lat: lat, lng: lng);
+    if (updated != null) {
+      _vet = updated;
+      notifyListeners();
+    }
+  }
+
   Future<bool> updateAvailability({
     required String token,
     bool? disponivel,

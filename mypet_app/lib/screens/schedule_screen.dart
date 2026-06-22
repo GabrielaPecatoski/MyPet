@@ -3,14 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/colors.dart';
 import '../models/availability.dart';
-import '../models/driver.dart';
 import '../models/establishment.dart';
 import '../models/pet.dart';
 import '../providers/auth_provider.dart';
 import '../providers/booking_provider.dart';
 import '../providers/schedule_provider.dart';
 import '../repositories/schedule_repository.dart';
-import '../widgets/app_image.dart';
 import '../widgets/mypet_app_bar.dart';
 
 class ScheduleArgs {
@@ -44,7 +42,7 @@ class _ScheduleViewState extends State<_ScheduleView> {
   final List<ServiceModel> _selectedServices = [];
   DateTime? _selectedDate;
   String? _selectedTime;
-  DriverModel? _selectedDriver;
+  bool _wantsTransport = false;
   String? _vetId;
   String? _vetName;
   bool _servicesLoaded = false;
@@ -176,6 +174,7 @@ class _ScheduleViewState extends State<_ScheduleView> {
           petName: _selectedPet!.name,
           petBreed: _selectedPet!.breed,
           petAge: _selectedPet!.age,
+          petPhotoUrl: _selectedPet!.imageUrl,
           serviceName: serviceNameDisplay,
           establishmentId: establishment?.id ?? '',
           establishmentName: establishment?.name ?? '',
@@ -184,9 +183,7 @@ class _ScheduleViewState extends State<_ScheduleView> {
           price: totalPrice,
           priceVariable: allVariable,
           services: _selectedServices,
-          driverId: _selectedDriver?.id,
-          driverName: _selectedDriver?.name,
-          driverPhotoUrl: _selectedDriver?.photoUrl,
+          transportRequested: _wantsTransport,
           vetId: _vetId,
           vetName: _vetName,
         );
@@ -486,45 +483,50 @@ class _ScheduleViewState extends State<_ScheduleView> {
 
                 const SizedBox(height: 24),
 
-                _sectionTitle('Motorista (opcional)'),
+                _sectionTitle('Transporte do pet'),
                 const SizedBox(height: 4),
                 const Text(
-                  'Escolha um motorista para o transporte do seu pet.',
+                  'Quer que um motorista leve e traga seu pet? Um motorista disponível será designado automaticamente.',
                   style: TextStyle(fontSize: 12, color: AppColors.grey),
                 ),
                 const SizedBox(height: 10),
-                if (schedule.loadingDrivers)
-                  const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(12),
-                      child: CircularProgressIndicator(color: AppColors.primary),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: _wantsTransport
+                          ? AppColors.primary
+                          : AppColors.greyLight,
+                      width: _wantsTransport ? 2 : 1,
                     ),
-                  )
-                else if (schedule.drivers.isEmpty)
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.greyLight),
-                    ),
-                    child: const Text(
-                      'Nenhum motorista disponível para este estabelecimento.',
-                      style: TextStyle(color: AppColors.grey, fontSize: 13),
-                    ),
-                  )
-                else ...[
-                  _DriverSelectCard(
-                    driver: null,
-                    selected: _selectedDriver == null,
-                    onTap: () => setState(() => _selectedDriver = null),
                   ),
-                  ...schedule.drivers.map((d) => _DriverSelectCard(
-                        driver: d,
-                        selected: _selectedDriver?.id == d.id,
-                        onTap: () => setState(() => _selectedDriver = d),
-                      )),
-                ],
+                  child: Row(
+                    children: [
+                      Icon(Icons.local_shipping_outlined,
+                          color: _wantsTransport
+                              ? AppColors.primary
+                              : AppColors.grey,
+                          size: 22),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Text(
+                          'Quero transporte para o pet',
+                          style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.dark),
+                        ),
+                      ),
+                      Switch(
+                        value: _wantsTransport,
+                        activeThumbColor: AppColors.primary,
+                        onChanged: (v) => setState(() => _wantsTransport = v),
+                      ),
+                    ],
+                  ),
+                ),
 
                 const SizedBox(height: 24),
 
@@ -934,84 +936,6 @@ class _PetSelectCard extends StatelessWidget {
             if (selected)
               const Icon(Icons.check_circle,
                   color: AppColors.primary, size: 22),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _DriverSelectCard extends StatelessWidget {
-  final DriverModel? driver;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _DriverSelectCard(
-      {required this.driver, required this.selected, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final isNone = driver == null;
-    final vehicleIcon = switch (driver?.vehicleType) {
-      'MOTO' => Icons.two_wheeler,
-      'VAN' => Icons.airport_shuttle,
-      _ => Icons.directions_car,
-    };
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: selected ? AppColors.primary : AppColors.greyLight,
-            width: selected ? 2 : 1,
-          ),
-          boxShadow: const [
-            BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 1)),
-          ],
-        ),
-        child: Row(
-          children: [
-            PhotoBox(
-              url: driver?.photoUrl,
-              size: 40,
-              radius: 10,
-              background: selected
-                  ? AppColors.primaryLight
-                  : AppColors.greyLight.withValues(alpha: 0.5),
-              fallback: Icon(
-                isNone ? Icons.do_not_disturb_alt_outlined : vehicleIcon,
-                color: selected ? AppColors.primary : AppColors.grey,
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    isNone ? 'Sem motorista' : driver!.name,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                      color: selected ? AppColors.primary : AppColors.dark,
-                    ),
-                  ),
-                  Text(
-                    isNone
-                        ? 'O estabelecimento definirá o transporte'
-                        : '${driver!.vehicleTypeLabel} • ${driver!.vehicleModel} • ${driver!.vehiclePlate}',
-                    style: const TextStyle(fontSize: 12, color: AppColors.grey),
-                  ),
-                ],
-              ),
-            ),
-            if (selected)
-              const Icon(Icons.check_circle, color: AppColors.primary, size: 20),
           ],
         ),
       ),

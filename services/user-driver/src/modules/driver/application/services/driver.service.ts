@@ -36,6 +36,7 @@ export class DriverService {
       vehicleModel: dto.vehicleModel,
       vehiclePlate: dto.vehiclePlate,
       photoUrl: dto.photoUrl,
+      cnhPhotoUrl: dto.cnhPhotoUrl,
       status: "PENDENTE",
     })!;
 
@@ -77,6 +78,24 @@ export class DriverService {
   async findUnassociated(): Promise<DriverDto[]> {
     const rows = await this.repo.findUnassociated();
     return rows.map((d) => DriverDto.fromDriver(d)!);
+  }
+
+  async findAvailable(): Promise<DriverDto[]> {
+    const rows = await this.repo.findAvailable();
+    return rows.map((d) => DriverDto.fromDriver(d)!);
+  }
+
+  async setOnline(id: string, online: boolean): Promise<DriverDto> {
+    const driver = await this.repo.findById(id);
+    if (!driver) throw new NotFoundException("Motorista não encontrado");
+    if (online && driver.status !== "ATIVO") {
+      throw new ConflictException(
+        "Apenas motoristas ativos podem ficar online",
+      );
+    }
+    driver.withOnline(online);
+    await this.repo.update(driver);
+    return DriverDto.fromDriver(driver)!;
   }
 
   async findByCpf(cpf: string): Promise<DriverDto | null> {

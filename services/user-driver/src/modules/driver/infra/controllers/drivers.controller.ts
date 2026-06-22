@@ -1,5 +1,6 @@
 import {
   CreateDriverDto,
+  SetDriverOnlineDto,
   UpdateDriverPhotoDto,
 } from "@driver/driver/application/dto/create-driver.dto";
 import { DriverService } from "@driver/driver/application/services/driver.service";
@@ -45,6 +46,13 @@ export class DriversController {
   @ApiOperation({ summary: "Motoristas sem estabelecimento associado" })
   findUnassociated() {
     return this.driverService.findUnassociated();
+  }
+
+  @Get("available")
+  @RequirePermissions(Permission.DRIVERS_READ)
+  @ApiOperation({ summary: "Motoristas ativos e online" })
+  findAvailable() {
+    return this.driverService.findAvailable();
   }
 
   @Get("admin/pending")
@@ -114,6 +122,14 @@ export class DriversController {
   @ApiOperation({ summary: "Atualizar foto de perfil do motorista" })
   updatePhoto(@Param("id") id: string, @Body() dto: UpdateDriverPhotoDto) {
     return this.driverService.updatePhoto(id, dto);
+  }
+
+  @Patch(":id/online")
+  @RequirePermissions(Permission.DRIVERS_WRITE)
+  @HttpCode(200)
+  @ApiOperation({ summary: "Definir disponibilidade (online/offline) do motorista" })
+  setOnline(@Param("id") id: string, @Body() dto: SetDriverOnlineDto) {
+    return this.driverService.setOnline(id, dto.online);
   }
 
   @Patch(":id/deactivate")

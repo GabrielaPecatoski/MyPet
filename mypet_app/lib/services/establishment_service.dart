@@ -72,6 +72,8 @@ class EstablishmentService {
     required String city,
     required String phone,
     required String type,
+    double? lat,
+    double? lng,
     String? imageUrl,
     String? crmv,
     bool? atendeEmergencia,
@@ -87,6 +89,8 @@ class EstablishmentService {
       'phone': phone,
       'type': type,
     };
+    if (lat != null) body['lat'] = lat;
+    if (lng != null) body['lng'] = lng;
     if (imageUrl != null) body['imageUrl'] = imageUrl;
     if (crmv != null) body['crmv'] = crmv;
     if (atendeEmergencia != null) body['atendeEmergencia'] = atendeEmergencia;

@@ -77,6 +77,18 @@ export class BookingsController {
     return this.bookingService.findByVet(vetId);
   }
 
+  @Get("transport/available")
+  @RequirePermissions(Permission.BOOKINGS_READ)
+  @ApiOperation({
+    summary:
+      "Corridas de transporte disponíveis para o motorista (vinculados primeiro; abre a todos 5h antes)",
+  })
+  async findAvailableTransport(
+    @Query("driverEstablishmentId") driverEstablishmentId?: string,
+  ): Promise<BookingDto[]> {
+    return this.bookingService.findAvailableTransport(driverEstablishmentId);
+  }
+
   @Get(":id")
   @RequirePermissions(Permission.BOOKINGS_READ)
   @ApiOperation({ summary: "Buscar agendamento por ID" })
@@ -126,6 +138,22 @@ export class BookingsController {
   @ApiOperation({ summary: "Cancelar agendamento" })
   async cancel(@Param("id") id: string): Promise<BookingDto> {
     return this.bookingService.cancel(id);
+  }
+
+  @Patch(":id/accept-transport")
+  @RequirePermissions(Permission.DRIVERS_WRITE)
+  @ApiOperation({ summary: "Motorista aceita a corrida de transporte" })
+  async acceptTransport(
+    @Param("id") id: string,
+    @Body()
+    body: { driverId: string; driverName?: string; driverPhotoUrl?: string },
+  ): Promise<BookingDto> {
+    return this.bookingService.acceptTransport(
+      id,
+      body.driverId,
+      body.driverName,
+      body.driverPhotoUrl,
+    );
   }
 
   @Patch(":id/complete")

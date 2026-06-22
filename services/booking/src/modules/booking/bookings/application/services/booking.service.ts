@@ -72,6 +72,7 @@ export class BookingService {
       petName: dto.petName,
       petBreed: dto.petBreed,
       petAge: dto.petAge,
+      petPhotoUrl: dto.petPhotoUrl,
       serviceName: displayName,
       servicesJson: services ? JSON.stringify(services) : undefined,
       establishmentId: dto.establishmentId,
@@ -80,6 +81,11 @@ export class BookingService {
       driverId: dto.driverId,
       driverName: dto.driverName,
       driverPhotoUrl: dto.driverPhotoUrl,
+      transportStatus: dto.driverId
+        ? "ACCEPTED"
+        : dto.transportRequested
+          ? "PENDING"
+          : "NONE",
       vetId: dto.vetId,
       vetName: dto.vetName,
       scheduledAt,
@@ -97,6 +103,41 @@ export class BookingService {
     return rows
       .filter((b) => b.status !== "AGUARDANDO_PAGAMENTO")
       .map((b) => BookingDto.fromBooking(b)!);
+  }
+
+  /** Corridas de transporte disponíveis para um motorista (regra dos 5h). */
+  async findAvailableTransport(
+    driverEstablishmentId?: string,
+  ): Promise<BookingDto[]> {
+    const openToAllFrom = new Date(Date.now() + 5 * 60 * 60 * 1000);
+    const rows = await this.repo.findAvailableTransport(
+      driverEstablishmentId ?? null,
+      openToAllFrom,
+    );
+    return rows
+      .sort((a, b) => a.scheduledAt.getTime() - b.scheduledAt.getTime())
+      .map((b) => BookingDto.fromBooking(b)!);
+  }
+
+  /** Motorista aceita a corrida; primeiro a aceitar trava (atômico). */
+  async acceptTransport(
+    bookingId: string,
+    driverId: string,
+    driverName?: string,
+    driverPhotoUrl?: string,
+  ): Promise<BookingDto> {
+    const updated = await this.repo.acceptTransport(
+      bookingId,
+      driverId,
+      driverName,
+      driverPhotoUrl,
+    );
+    if (!updated) {
+      throw new ConflictException(
+        "Esta corrida já foi aceita por outro motorista",
+      );
+    }
+    return BookingDto.fromBooking(updated)!;
   }
 
   async findByUser(userId: string): Promise<BookingDto[]> {
@@ -346,8 +387,27 @@ export class BookingService {
   ): Promise<BookingDto> {
     const booking = await this.repo.findById(id);
     if (!booking) throw new NotFoundException("Agendamento não encontrado");
+    const previousCount = booking.attendancePhotos.length;
     booking.withAttendancePhotos(photos);
     await this.repo.update(booking);
+
+    // Avisa o cliente quando fotos novas do atendimento são adicionadas (não
+    // dispara em remoções). Sem isso as fotos ficam salvas mas o tutor não é
+    // notificado de que chegaram.
+    if (photos.length > previousCount) {
+      await this.safePublish(
+        BookingExchangeName.PHOTOS_ADDED,
+        BookingRoutingKey.PHOTOS_ADDED,
+        {
+          bookingId: booking.id!,
+          userId: booking.userId,
+          establishmentName: booking.establishmentName,
+          serviceName: booking.serviceName,
+          photoCount: photos.length,
+        },
+      );
+    }
+
     return BookingDto.fromBooking(booking)!;
   }
 

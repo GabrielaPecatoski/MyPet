@@ -6,6 +6,7 @@ import '../providers/auth_provider.dart';
 import '../providers/booking_provider.dart';
 import '../providers/chat_provider.dart';
 import '../providers/establishment_provider.dart';
+import '../widgets/app_image.dart';
 import '../widgets/attendance_photos.dart';
 import '../widgets/mypet_app_bar.dart';
 
@@ -381,7 +382,10 @@ class _ApptCard extends StatelessWidget {
           ]),
         ),
 
-        Container(
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => _showDetail(context),
+          child: Container(
           margin: const EdgeInsets.only(bottom: 4),
           decoration: BoxDecoration(
             color: Colors.white,
@@ -411,8 +415,12 @@ class _ApptCard extends StatelessWidget {
                               CircleAvatar(
                                 radius: 24,
                                 backgroundColor: AppColors.primaryLight,
-                                child: const Icon(Icons.pets,
-                                    color: AppColors.estab, size: 24),
+                                backgroundImage: appImageProvider(ap.petPhotoUrl),
+                                child: (ap.petPhotoUrl == null ||
+                                        ap.petPhotoUrl!.isEmpty)
+                                    ? const Icon(Icons.pets,
+                                        color: AppColors.estab, size: 24)
+                                    : null,
                               ),
                               const SizedBox(width: 12),
                               Expanded(
@@ -655,6 +663,7 @@ class _ApptCard extends StatelessWidget {
             ),
           ),
         ),
+        ),
       ],
     );
   }
@@ -666,6 +675,205 @@ class _ApptCard extends StatelessWidget {
             child: Text(text,
                 style: const TextStyle(fontSize: 12, color: AppColors.grey))),
       ]);
+
+  void _showDetail(BuildContext context) {
+    final ap = appointment;
+    const months = [
+      'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
+      'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'
+    ];
+    final dateLabel =
+        '${ap.date.day} de ${months[ap.date.month - 1]} de ${ap.date.year} • ${ap.time}';
+    final canPhotos = ap.isConfirmado ||
+        ap.isACaminho ||
+        ap.effectiveStatus == 'CONCLUIDO';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (sheetCtx) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.greyLight,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 24,
+                  backgroundColor: AppColors.primaryLight,
+                  backgroundImage: appImageProvider(ap.petPhotoUrl),
+                  child: (ap.petPhotoUrl == null || ap.petPhotoUrl!.isEmpty)
+                      ? const Icon(Icons.pets, color: AppColors.estab, size: 22)
+                      : null,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(ap.petName,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                              color: AppColors.dark)),
+                      if (ap.petBreed.isNotEmpty)
+                        Text(
+                          '${ap.petBreed}${ap.petAge > 0 ? ' • ${ap.petAge} anos' : ''}',
+                          style: const TextStyle(
+                              fontSize: 13, color: AppColors.grey),
+                        ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: _statusColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(ap.statusLabel,
+                      style: TextStyle(
+                          color: _statusColor,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            const Divider(height: 1, color: AppColors.greyLight),
+            const SizedBox(height: 16),
+            if (ap.emAtendimento) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(10),
+                margin: const EdgeInsets.only(bottom: 14),
+                decoration: BoxDecoration(
+                  color: AppColors.success.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                      color: AppColors.success.withValues(alpha: 0.3)),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.fiber_manual_record,
+                        size: 12, color: AppColors.success),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Em atendimento agora — adicione fotos para o tutor acompanhar.',
+                        style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.success,
+                            fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            if (ap.userName.isNotEmpty)
+              _detailRow(Icons.person_outline, 'Tutor: ${ap.userName}'),
+            _detailRow(Icons.content_cut_outlined, ap.serviceName),
+            _detailRow(Icons.calendar_today_outlined, dateLabel),
+            if (ap.price > 0)
+              _detailRow(Icons.attach_money, 'R\$ ${ap.price.toStringAsFixed(2)}'),
+            if (ap.isRetido)
+              _detailRow(Icons.verified_outlined, 'Pagamento confirmado (retido)'),
+            if (ap.driverName != null && ap.driverName!.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Row(
+                  children: [
+                    PhotoBox(
+                      url: ap.driverPhotoUrl,
+                      size: 34,
+                      radius: 17,
+                      background: AppColors.primaryLight,
+                      fallback: const Icon(Icons.local_shipping_outlined,
+                          color: AppColors.estab, size: 18),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text('Motorista: ${ap.driverName}',
+                          style: const TextStyle(
+                              fontSize: 14, color: AppColors.dark)),
+                    ),
+                  ],
+                ),
+              ),
+            if (ap.attendancePhotos.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text('Fotos do atendimento (${ap.attendancePhotos.length})',
+                  style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.dark)),
+              const SizedBox(height: 8),
+              AttendancePhotosGrid(photos: ap.attendancePhotos),
+            ],
+            if (canPhotos) ...[
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(sheetCtx);
+                    onManagePhotos(ap);
+                  },
+                  icon: const Icon(Icons.photo_camera_outlined,
+                      size: 16, color: Colors.white),
+                  label: Text(
+                      ap.attendancePhotos.isEmpty
+                          ? 'Adicionar fotos do atendimento'
+                          : 'Gerenciar fotos (${ap.attendancePhotos.length})',
+                      style: const TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.w600)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.estab,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _detailRow(IconData icon, String text) => Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, size: 16, color: AppColors.grey),
+            const SizedBox(width: 8),
+            Expanded(
+                child: Text(text,
+                    style:
+                        const TextStyle(fontSize: 14, color: AppColors.dark))),
+          ],
+        ),
+      );
 
   Future<void> _showAvaliarClienteDialog(BuildContext context, AppointmentModel ap) async {
     int selectedRating = 0;

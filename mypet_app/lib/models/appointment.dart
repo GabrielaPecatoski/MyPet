@@ -6,6 +6,7 @@ class AppointmentModel {
   final String petName;
   final String petBreed;
   final int petAge;
+  final String? petPhotoUrl;
   final String serviceName;
   final String establishmentId;
   final String establishmentName;
@@ -21,6 +22,7 @@ class AppointmentModel {
   final String? driverId;
   final String? driverName;
   final String? driverPhotoUrl;
+  final String transportStatus;
   final List<String> attendancePhotos;
 
   AppointmentModel({
@@ -31,6 +33,7 @@ class AppointmentModel {
     required this.petName,
     this.petBreed = '',
     this.petAge = 0,
+    this.petPhotoUrl,
     required this.serviceName,
     this.establishmentId = '',
     required this.establishmentName,
@@ -46,8 +49,11 @@ class AppointmentModel {
     this.driverId,
     this.driverName,
     this.driverPhotoUrl,
+    this.transportStatus = 'NONE',
     this.attendancePhotos = const [],
   });
+
+  bool get transportRequested => transportStatus != 'NONE';
 
   factory AppointmentModel.fromJson(Map<String, dynamic> json) {
     final scheduled = DateTime.tryParse(json['scheduledAt'] ?? '') ?? DateTime.now();
@@ -61,6 +67,7 @@ class AppointmentModel {
       petName: json['petName'] ?? '',
       petBreed: json['petBreed'] ?? '',
       petAge: json['petAge'] ?? 0,
+      petPhotoUrl: json['petPhotoUrl'] as String?,
       serviceName: json['serviceName'] ?? '',
       establishmentId: json['establishmentId'] ?? '',
       establishmentName: json['establishmentName'] ?? '',
@@ -78,6 +85,7 @@ class AppointmentModel {
       driverId: json['driverId'] as String?,
       driverName: json['driverName'] as String?,
       driverPhotoUrl: json['driverPhotoUrl'] as String?,
+      transportStatus: json['transportStatus'] as String? ?? 'NONE',
       attendancePhotos: (json['attendancePhotos'] as List?)
               ?.map((e) => e.toString())
               .toList() ??
@@ -129,6 +137,15 @@ class AppointmentModel {
   bool get isConfirmado => effectiveStatus == 'CONFIRMADO';
   bool get isACaminho   => effectiveStatus == 'A_CAMINHO';
   bool get isActive     => isAguardandoPagamento || isPendente || isConfirmado || isACaminho;
+
+  /// Serviço acontecendo "no horário": confirmado/a caminho e o horário marcado
+  /// já chegou (da marcação até 4h depois — janela em que o atendimento ocorre).
+  bool get emAtendimento {
+    if (!(isConfirmado || isACaminho)) return false;
+    final now = DateTime.now();
+    return now.isAfter(date.subtract(const Duration(minutes: 5))) &&
+        now.isBefore(date.add(const Duration(hours: 4)));
+  }
 
   bool get canPay {
     if (isPago) return false;

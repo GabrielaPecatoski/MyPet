@@ -7,7 +7,7 @@ import type { BookingRepository } from "@booking/bookings/domain/repositories/bo
 import { bookingsSchema } from "@booking/bookings/infra/database/schemas/booking.schema";
 import { Injectable } from "@nestjs/common";
 import { DrizzleService } from "@shared/infra/database/drizzle.service";
-import { and, eq, gte, isNull, lt } from "drizzle-orm";
+import { and, eq, gte, isNull, lt, lte, notInArray, or } from "drizzle-orm";
 
 @Injectable()
 export class DrizzleBookingRepository implements BookingRepository {
@@ -24,6 +24,7 @@ export class DrizzleBookingRepository implements BookingRepository {
         petName: b.petName,
         petBreed: b.petBreed || null,
         petAge: b.petAge || null,
+        petPhotoUrl: b.petPhotoUrl ?? null,
         serviceName: b.serviceName,
         servicesJson: b.servicesJson ?? null,
         attendancePhotos: b.attendancePhotosJson ?? null,
@@ -33,6 +34,7 @@ export class DrizzleBookingRepository implements BookingRepository {
         driverId: b.driverId ?? null,
         driverName: b.driverName ?? null,
         driverPhotoUrl: b.driverPhotoUrl ?? null,
+        transportStatus: b.transportStatus,
         vetId: b.vetId ?? null,
         vetName: b.vetName ?? null,
         scheduledAt: b.scheduledAt,
@@ -130,6 +132,67 @@ export class DrizzleBookingRepository implements BookingRepository {
         ),
       );
     return rows.map((r) => this.toEntity(r)!);
+  }
+
+  async findAvailableTransport(
+    driverEstablishmentId: string | null,
+    openToAllFrom: Date,
+  ): Promise<Booking[]> {
+    // "vinculados primeiro": o motorista vê as corridas do seu estabelecimento
+    // sempre; e qualquer corrida cujo atendimento esteja a até 5h (openToAllFrom
+    // = agora + 5h) fica aberta a todos.
+    const openToAll = lte(bookingsSchema.scheduledAt, openToAllFrom);
+    const visibility = driverEstablishmentId
+      ? or(
+          eq(bookingsSchema.establishmentId, driverEstablishmentId),
+          openToAll,
+        )
+      : openToAll;
+
+    const rows = await this.drizzleService.db
+      .select()
+      .from(bookingsSchema)
+      .where(
+        and(
+          eq(bookingsSchema.transportStatus, "PENDING"),
+          isNull(bookingsSchema.driverId),
+          notInArray(bookingsSchema.status, [
+            "CANCELADO",
+            "RECUSADO",
+            "CONCLUIDO",
+          ]),
+          visibility,
+        ),
+      );
+    return rows.map((r) => this.toEntity(r)!);
+  }
+
+  async acceptTransport(
+    bookingId: string,
+    driverId: string,
+    driverName?: string,
+    driverPhotoUrl?: string,
+  ): Promise<Booking | null> {
+    // Atribuição atômica: só atualiza se a corrida ainda estiver PENDING e sem
+    // motorista. O segundo motorista a tentar não atualiza nenhuma linha.
+    const [row] = await this.drizzleService.db
+      .update(bookingsSchema)
+      .set({
+        driverId,
+        driverName: driverName ?? null,
+        driverPhotoUrl: driverPhotoUrl ?? null,
+        transportStatus: "ACCEPTED",
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(bookingsSchema.id, bookingId),
+          isNull(bookingsSchema.driverId),
+          eq(bookingsSchema.transportStatus, "PENDING"),
+        ),
+      )
+      .returning();
+    return this.toEntity(row);
   }
 
   private toEntity(

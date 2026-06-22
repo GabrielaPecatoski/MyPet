@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../core/colors.dart';
 import '../providers/auth_provider.dart';
+import '../providers/establishment_provider.dart';
+import 'role_header_top.dart';
 
 class MypetAppBar extends StatelessWidget implements PreferredSizeWidget {
   final bool showBack;
@@ -142,25 +144,28 @@ class EstabPurpleHeader extends StatelessWidget {
         children: [
           Row(
             children: [
-              if (showBack)
+              if (showBack) ...[
                 GestureDetector(
                   onTap: () => Navigator.pop(context),
                   child: const Icon(Icons.chevron_left,
                       color: Colors.white, size: 28),
-                )
-              else
-                const SizedBox(width: 28),
-              const Spacer(),
-              Image.asset(
-                'assets/images/logo branca.png',
-                height: 36,
-                fit: BoxFit.contain,
-              ),
-              const Spacer(),
-              const CircleAvatar(
-                radius: 18,
-                backgroundColor: Colors.white24,
-                child: Icon(Icons.person, size: 20, color: Colors.white),
+                ),
+                const SizedBox(width: 8),
+              ],
+              Expanded(
+                child: RoleHeaderTop(
+                  roleLabel: 'ESTABELECIMENTO',
+                  name: context
+                          .watch<EstablishmentProvider>()
+                          .establishment
+                          ?.name ??
+                      'Estabelecimento',
+                  trailing: const CircleAvatar(
+                    radius: 18,
+                    backgroundColor: Colors.white24,
+                    child: Icon(Icons.person, size: 20, color: Colors.white),
+                  ),
+                ),
               ),
             ],
           ),

@@ -64,6 +64,7 @@ class BookingProvider extends ChangeNotifier {
     required String petName,
     String petBreed = '',
     int petAge = 0,
+    String? petPhotoUrl,
     required String serviceName,
     required String establishmentId,
     required String establishmentName,
@@ -75,6 +76,7 @@ class BookingProvider extends ChangeNotifier {
     String? driverId,
     String? driverName,
     String? driverPhotoUrl,
+    bool transportRequested = false,
     String? vetId,
     String? vetName,
   }) async {
@@ -89,6 +91,7 @@ class BookingProvider extends ChangeNotifier {
         petName: petName,
         petBreed: petBreed,
         petAge: petAge,
+        petPhotoUrl: petPhotoUrl,
         serviceName: serviceName,
         establishmentId: establishmentId,
         establishmentName: establishmentName,
@@ -100,6 +103,7 @@ class BookingProvider extends ChangeNotifier {
         driverId: driverId,
         driverName: driverName,
         driverPhotoUrl: driverPhotoUrl,
+        transportRequested: transportRequested,
         vetId: vetId,
         vetName: vetName,
       );

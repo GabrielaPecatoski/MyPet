@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../core/colors.dart';
 import '../providers/auth_provider.dart';
+import '../widgets/app_image.dart';
 class RegisterScreen extends StatefulWidget {
   final int initialTipo;
   const RegisterScreen({super.key, this.initialTipo = 0});
@@ -31,6 +32,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   String _vehicleType = 'CARRO';
   String? _photoPath;
   String? _crmvPhotoPath;
+  DateTime? _birthDate;
+  Uint8List? _cnhPhotoBytes;
   static const _vehicleTypes = [
     ('CARRO', 'Carro', Icons.directions_car),
     ('MOTO', 'Moto', Icons.two_wheeler),
@@ -101,8 +104,53 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final picked = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 80);
     if (picked != null && mounted) setState(() => _crmvPhotoPath = picked.path);
   }
+
+  Future<void> _pickCnhPhoto() async {
+    final picked = await ImagePicker()
+        .pickImage(source: ImageSource.gallery, imageQuality: 80);
+    if (picked == null) return;
+    final bytes = await picked.readAsBytes();
+    if (mounted) setState(() => _cnhPhotoBytes = bytes);
+  }
+
+  /// Idade completa em anos. Usada pra exigir 18+ no cadastro.
+  int _ageFrom(DateTime birth) {
+    final now = DateTime.now();
+    var age = now.year - birth.year;
+    if (now.month < birth.month ||
+        (now.month == birth.month && now.day < birth.day)) {
+      age--;
+    }
+    return age;
+  }
+
+  Future<void> _pickBirthDate() async {
+    final now = DateTime.now();
+    final maxAdult = DateTime(now.year - 18, now.month, now.day);
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _birthDate ?? maxAdult,
+      firstDate: DateTime(1900),
+      lastDate: now,
+      helpText: 'Data de nascimento',
+    );
+    if (picked != null && mounted) setState(() => _birthDate = picked);
+  }
+
   Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_birthDate == null) {
+      _snack('Informe sua data de nascimento');
+      return;
+    }
+    if (_ageFrom(_birthDate!) < 18) {
+      _snack('É necessário ter 18 anos ou mais para se cadastrar');
+      return;
+    }
+    if (_tipoUsuario == 2 && _cnhPhotoBytes == null) {
+      _snack('Anexe a foto da CNH para continuar');
+      return;
+    }
     final auth = context.read<AuthProvider>();
     final role = switch (_tipoUsuario) {
       1 => 'VENDEDOR',
@@ -119,6 +167,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       role: role,
       businessName:
           _tipoUsuario == 1 ? _nomeEstabCtrl.text.trim() : null,
+      birthDate: _birthDate!.toIso8601String().split('T').first,
     );
     if (!mounted) return;
     if (!ok) {
@@ -153,6 +202,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
       vehicleType: _vehicleType,
       vehicleModel: _vehicleModelCtrl.text.trim(),
       vehiclePlate: _vehiclePlateCtrl.text.trim().toUpperCase(),
+      cnhPhotoUrl:
+          _cnhPhotoBytes != null ? dataUrlFromBytes(_cnhPhotoBytes!) : null,
     );
     if (err != null && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -204,6 +255,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _vehiclePlateCtrl.clear();
       _crmvCtrl.clear();
       _especialidadeVetCtrl.clear();
+      _cnhPhotoBytes = null;
     });
   }
   @override
@@ -304,6 +356,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 v == null || !v.contains('@')
                                     ? 'E-mail inválido'
                                     : null),
+                        const SizedBox(height: 14),
+                        _label('Data de nascimento'),
+                        _birthDateField(meta.accent),
                         const SizedBox(height: 20),
                         _SectionHeader(
                           icon: Icons.lock_outline,
@@ -445,6 +500,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               return null;
                             },
                           ),
+                          const SizedBox(height: 14),
+                          _label('Foto da CNH'),
+                          _cnhPhotoField(meta.accent),
                         ],
                         const SizedBox(height: 28),
                         Container(
@@ -523,6 +581,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ),
     );
   }
+  void _snack(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(msg),
+      backgroundColor: AppColors.danger,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+    ));
+  }
+
   Widget _label(String text) => Padding(
         padding: const EdgeInsets.only(bottom: 8),
         child: Text(text,
@@ -584,6 +651,92 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
         validator: validator,
       );
+  Widget _birthDateField(Color accent) {
+    final has = _birthDate != null;
+    final label = has
+        ? '${_birthDate!.day.toString().padLeft(2, '0')}/'
+            '${_birthDate!.month.toString().padLeft(2, '0')}/${_birthDate!.year}'
+        : 'Selecione a data';
+    return GestureDetector(
+      onTap: _pickBirthDate,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: AppColors.greyLight),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.cake_outlined, size: 20, color: accent),
+            const SizedBox(width: 12),
+            Text(label,
+                style: TextStyle(
+                    fontSize: 14,
+                    color: has ? AppColors.dark : AppColors.grey)),
+            const Spacer(),
+            const Icon(Icons.calendar_today_outlined,
+                size: 18, color: AppColors.grey),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _cnhPhotoField(Color accent) {
+    final has = _cnhPhotoBytes != null;
+    return GestureDetector(
+      onTap: _pickCnhPhoto,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: has ? accent : AppColors.greyLight),
+        ),
+        child: Row(children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: accent.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: has
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: Image.memory(_cnhPhotoBytes!, fit: BoxFit.cover),
+                  )
+                : Icon(Icons.badge_outlined, color: accent, size: 24),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(has ? 'CNH anexada' : 'Foto da CNH',
+                      style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                          color: has ? accent : AppColors.dark)),
+                  const SizedBox(height: 2),
+                  Text(
+                      has
+                          ? 'Toque para trocar'
+                          : 'Enviar foto da CNH (só o admin verá)',
+                      style: const TextStyle(
+                          fontSize: 12, color: AppColors.grey)),
+                ]),
+          ),
+          Icon(has ? Icons.check_circle : Icons.add_a_photo_outlined,
+              color: accent, size: 20),
+        ]),
+      ),
+    );
+  }
+
   InputDecoration _decoration(String hint) => InputDecoration(
         hintText: hint,
         hintStyle: const TextStyle(color: AppColors.grey, fontSize: 14),

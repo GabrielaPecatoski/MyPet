@@ -19,6 +19,8 @@ export const establishmentsSchema = pgTable("establishments", {
   type: text("type").notNull().default("PET_SHOP"),
   rating: doublePrecision("rating").notNull().default(0),
   reviewCount: integer("review_count").notNull().default(0),
+  lat: doublePrecision("lat"),
+  lng: doublePrecision("lng"),
   imageUrl: text("image_url"),
   crmv: text("crmv"),
   atendeEmergencia: boolean("atende_emergencia").notNull().default(false),

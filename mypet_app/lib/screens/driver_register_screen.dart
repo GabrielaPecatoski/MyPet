@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -8,6 +7,7 @@ import '../models/driver.dart';
 import '../providers/auth_provider.dart';
 import '../providers/driver_register_provider.dart';
 import '../repositories/driver_register_repository.dart';
+import '../widgets/app_image.dart';
 import '../widgets/mypet_app_bar.dart';
 
 class MotoristaRegisterScreen extends StatelessWidget {
@@ -40,7 +40,7 @@ class _MotoristaRegisterViewState extends State<_MotoristaRegisterView> {
   final _vehiclePlateCtrl = TextEditingController();
 
   String _vehicleType = 'CARRO';
-  String? _cnhPhotoPath;
+  Uint8List? _cnhPhotoBytes;
 
   String? _establishmentId;
 
@@ -69,15 +69,25 @@ class _MotoristaRegisterViewState extends State<_MotoristaRegisterView> {
   }
 
   Future<void> _pickCnhPhoto() async {
-    if (kIsWeb) return;
     final picked = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 80);
-    if (picked != null && mounted) {
-      setState(() => _cnhPhotoPath = picked.path);
-    }
+    if (picked == null) return;
+    final bytes = await picked.readAsBytes();
+    if (mounted) setState(() => _cnhPhotoBytes = bytes);
   }
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+
+    if (_cnhPhotoBytes == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Anexe a foto da CNH para continuar'),
+          backgroundColor: AppColors.danger,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
 
     final auth = context.read<AuthProvider>();
     if (auth.token == null) return;
@@ -94,7 +104,7 @@ class _MotoristaRegisterViewState extends State<_MotoristaRegisterView> {
       vehicleType: _vehicleType,
       vehicleModel: _vehicleModelCtrl.text.trim(),
       vehiclePlate: _vehiclePlateCtrl.text.trim().toUpperCase(),
-      cnhPhotoPath: _cnhPhotoPath,
+      cnhPhotoUrl: dataUrlFromBytes(_cnhPhotoBytes!),
     );
     if (!mounted) return;
     if (driver != null) {
@@ -211,7 +221,7 @@ class _MotoristaRegisterViewState extends State<_MotoristaRegisterView> {
               _field(_cnhCtrl, 'CNH (número)', Icons.credit_card, required: true),
               const SizedBox(height: 12),
               _CnhPhotoField(
-                photoPath: _cnhPhotoPath,
+                photoBytes: _cnhPhotoBytes,
                 onPick: _pickCnhPhoto,
               ),
 
@@ -348,13 +358,13 @@ class _MotoristaRegisterViewState extends State<_MotoristaRegisterView> {
 }
 
 class _CnhPhotoField extends StatelessWidget {
-  final String? photoPath;
+  final Uint8List? photoBytes;
   final VoidCallback onPick;
-  const _CnhPhotoField({required this.photoPath, required this.onPick});
+  const _CnhPhotoField({required this.photoBytes, required this.onPick});
 
   @override
   Widget build(BuildContext context) {
-    if (kIsWeb) return const SizedBox.shrink();
+    final hasPhoto = photoBytes != null;
 
     return GestureDetector(
       onTap: onPick,
@@ -365,7 +375,7 @@ class _CnhPhotoField extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: photoPath != null ? AppColors.success : AppColors.greyLight,
+            color: hasPhoto ? AppColors.success : AppColors.greyLight,
           ),
         ),
         child: Row(children: [
@@ -373,13 +383,13 @@ class _CnhPhotoField extends StatelessWidget {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: (photoPath != null ? AppColors.success : AppColors.primary).withValues(alpha: 0.08),
+              color: (hasPhoto ? AppColors.success : AppColors.primary).withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: photoPath != null
+            child: hasPhoto
                 ? ClipRRect(
                     borderRadius: BorderRadius.circular(10),
-                    child: Image.file(File(photoPath!), fit: BoxFit.cover),
+                    child: Image.memory(photoBytes!, fit: BoxFit.cover),
                   )
                 : Icon(Icons.credit_card, color: AppColors.primary, size: 24),
           ),
@@ -387,23 +397,23 @@ class _CnhPhotoField extends StatelessWidget {
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(
-                photoPath != null ? 'Foto da CNH anexada' : 'Foto da CNH (uso interno)',
+                hasPhoto ? 'Foto da CNH anexada' : 'Foto da CNH *',
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
                   fontSize: 14,
-                  color: photoPath != null ? AppColors.success : AppColors.dark,
+                  color: hasPhoto ? AppColors.success : AppColors.dark,
                 ),
               ),
               const SizedBox(height: 2),
               Text(
-                photoPath != null ? 'Toque para trocar' : 'Enviar foto do documento (só o admin verá)',
+                hasPhoto ? 'Toque para trocar' : 'Obrigatória — o admin usa para aprovar o cadastro',
                 style: const TextStyle(fontSize: 12, color: AppColors.grey),
               ),
             ]),
           ),
           Icon(
-            photoPath != null ? Icons.check_circle : Icons.add_a_photo_outlined,
-            color: photoPath != null ? AppColors.success : AppColors.primary,
+            hasPhoto ? Icons.check_circle : Icons.add_a_photo_outlined,
+            color: hasPhoto ? AppColors.success : AppColors.primary,
             size: 20,
           ),
         ]),

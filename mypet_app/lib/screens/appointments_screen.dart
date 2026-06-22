@@ -485,7 +485,11 @@ class _BookingCardState extends State<_BookingCard> {
         borderRadius: BorderRadius.circular(14),
         boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 2))],
       ),
-      child: Column(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: () =>
+            Navigator.pushNamed(context, '/agendamento-detalhe', arguments: ap),
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (ap.isAguardandoPagamento)
@@ -523,7 +527,10 @@ class _BookingCardState extends State<_BookingCard> {
                     CircleAvatar(
                       radius: 28,
                       backgroundColor: AppColors.primaryLight,
-                      child: const Icon(Icons.pets, color: AppColors.primary, size: 28),
+                      backgroundImage: appImageProvider(ap.petPhotoUrl),
+                      child: (ap.petPhotoUrl == null || ap.petPhotoUrl!.isEmpty)
+                          ? const Icon(Icons.pets, color: AppColors.primary, size: 28)
+                          : null,
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -769,6 +776,7 @@ class _BookingCardState extends State<_BookingCard> {
             ),
           ),
         ],
+      ),
       ),
     );
   }

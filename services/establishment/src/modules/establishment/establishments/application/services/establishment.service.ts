@@ -31,6 +31,8 @@ export class EstablishmentService {
       type: dto.type,
       rating: 0,
       reviewCount: 0,
+      lat: dto.lat,
+      lng: dto.lng,
       imageUrl: dto.imageUrl,
       crmv: dto.crmv,
       atendeEmergencia: dto.atendeEmergencia ?? false,
@@ -88,6 +90,9 @@ export class EstablishmentService {
     if (dto.city) e.withCity(dto.city);
     if (dto.phone) e.withPhone(dto.phone);
     if (dto.type) e.withType(dto.type);
+    if (dto.lat !== undefined || dto.lng !== undefined) {
+      e.withCoords(dto.lat ?? e.lat, dto.lng ?? e.lng);
+    }
     if (dto.imageUrl !== undefined) e.withImageUrl(dto.imageUrl);
     if (dto.crmv !== undefined) e.withCrmv(dto.crmv);
     if (dto.atendeEmergencia !== undefined)

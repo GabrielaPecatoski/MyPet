@@ -2,6 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import {
   IsBoolean,
   IsNotEmpty,
+  IsNumber,
   IsOptional,
   IsString,
   IsUUID,
@@ -27,4 +28,9 @@ export class UpdateVetAvailabilityDto {
   @ApiPropertyOptional() @IsBoolean() @IsOptional() disponivel?: boolean;
   @ApiPropertyOptional() @IsBoolean() @IsOptional() atendeDomicilio?: boolean;
   @ApiPropertyOptional() @IsBoolean() @IsOptional() atende24h?: boolean;
+}
+
+export class UpdateVetLocationDto {
+  @ApiPropertyOptional() @IsNumber() @IsOptional() lat?: number;
+  @ApiPropertyOptional() @IsNumber() @IsOptional() lng?: number;
 }

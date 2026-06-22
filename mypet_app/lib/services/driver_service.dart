@@ -20,6 +20,7 @@ class DriverService {
     required String vehicleModel,
     required String vehiclePlate,
     String? photoUrl,
+    String? cnhPhotoUrl,
   }) async {
     final body = <String, dynamic>{
       'name': name,
@@ -32,6 +33,9 @@ class DriverService {
     };
     if (establishmentId != null) body['establishmentId'] = establishmentId;
     if (photoUrl != null && photoUrl.isNotEmpty) body['photoUrl'] = photoUrl;
+    if (cnhPhotoUrl != null && cnhPhotoUrl.isNotEmpty) {
+      body['cnhPhotoUrl'] = cnhPhotoUrl;
+    }
 
     final res = await http
         .post(
@@ -168,6 +172,30 @@ class DriverService {
       return DriverModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
     }
     throw Exception('Erro ao atualizar foto do motorista');
+  }
+
+  static Future<DriverModel> setOnline({
+    required String token,
+    required String driverId,
+    required bool online,
+  }) async {
+    final res = await http
+        .patch(
+          Uri.parse('${ApiConstants.baseUrl}${ApiConstants.driversEndpoint}/$driverId/online'),
+          headers: _headers(token),
+          body: jsonEncode({'online': online}),
+        )
+        .timeout(const Duration(seconds: 8));
+    if (res.statusCode == 200 || res.statusCode == 201) {
+      return DriverModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+    }
+    String msg = 'Erro ao atualizar disponibilidade';
+    try {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      final m = data['message'];
+      msg = (m is List ? m.join(', ') : m?.toString()) ?? msg;
+    } catch (_) {}
+    throw Exception(msg);
   }
 
   static Future<void> deactivate({

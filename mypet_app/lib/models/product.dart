@@ -42,6 +42,7 @@ class ProductModel {
         'category': category,
         'unit': unit,
         'description': description,
+        if (imageUrl != null) 'imageUrl': imageUrl,
         'price': price,
         'stock': stock,
         'active': active,

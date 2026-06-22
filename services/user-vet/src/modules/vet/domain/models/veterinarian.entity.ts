@@ -9,6 +9,8 @@ export class Veterinarian {
   private _crmv!: string;
   private _especialidade?: string;
   private _photoUrl?: string;
+  private _lat?: number;
+  private _lng?: number;
   private _status!: VeterinarianStatus;
   private _disponivel = false;
   private _atendeDomicilio = false;
@@ -45,6 +47,12 @@ export class Veterinarian {
   }
   get photoUrl(): string | undefined {
     return this._photoUrl;
+  }
+  get lat(): number | undefined {
+    return this._lat;
+  }
+  get lng(): number | undefined {
+    return this._lng;
   }
   get status(): VeterinarianStatus {
     return this._status;
@@ -92,6 +100,11 @@ export class Veterinarian {
     this._photoUrl = photoUrl;
     return this;
   }
+  withCoords(lat?: number, lng?: number) {
+    this._lat = lat;
+    this._lng = lng;
+    return this;
+  }
 
   static restore(props?: {
     id?: string;
@@ -102,6 +115,8 @@ export class Veterinarian {
     crmv: string;
     especialidade?: string | null;
     photoUrl?: string | null;
+    lat?: number | null;
+    lng?: number | null;
     status?: string | null;
     disponivel?: boolean | null;
     atendeDomicilio?: boolean | null;
@@ -118,6 +133,8 @@ export class Veterinarian {
     v._crmv = props.crmv;
     v._especialidade = props.especialidade ?? undefined;
     v._photoUrl = props.photoUrl ?? undefined;
+    v._lat = props.lat ?? undefined;
+    v._lng = props.lng ?? undefined;
     v._status = (props.status ?? "PENDENTE") as VeterinarianStatus;
     v._disponivel = props.disponivel ?? false;
     v._atendeDomicilio = props.atendeDomicilio ?? false;

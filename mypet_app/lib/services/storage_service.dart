@@ -78,6 +78,46 @@ class StorageService {
     return prefs.getString(_cnhPhotoKey(cpf));
   }
 
+  // ----- Conta bancária / PIX do motorista (persistência local) -----
+  static String _pixKeyKey(String cpf) => 'driver_pix_key_$cpf';
+  static String _pixTypeKey(String cpf) => 'driver_pix_type_$cpf';
+
+  static Future<void> savePix(
+      String cpf, {required String? key, required String type}) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (key == null || key.isEmpty) {
+      await prefs.remove(_pixKeyKey(cpf));
+    } else {
+      await prefs.setString(_pixKeyKey(cpf), key);
+    }
+    await prefs.setString(_pixTypeKey(cpf), type);
+  }
+
+  static Future<Map<String, String?>> getPix(String cpf) async {
+    final prefs = await SharedPreferences.getInstance();
+    return {
+      'key': prefs.getString(_pixKeyKey(cpf)),
+      'type': prefs.getString(_pixTypeKey(cpf)) ?? 'CPF',
+    };
+  }
+
+  // ----- Configurações do motorista (notificações/privacidade) -----
+  static String _driverSettingsKey(String cpf) => 'driver_settings_$cpf';
+
+  static Future<void> saveDriverSettings(
+      String cpf, Map<String, bool> settings) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_driverSettingsKey(cpf), jsonEncode(settings));
+  }
+
+  static Future<Map<String, bool>> getDriverSettings(String cpf) async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_driverSettingsKey(cpf));
+    if (raw == null) return {};
+    final decoded = jsonDecode(raw) as Map<String, dynamic>;
+    return decoded.map((k, v) => MapEntry(k, v == true));
+  }
+
   static Future<void> clear() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_tokenKey);

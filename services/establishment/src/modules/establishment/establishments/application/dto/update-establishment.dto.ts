@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from "@nestjs/swagger";
-import { IsBoolean, IsOptional, IsString } from "class-validator";
+import { IsBoolean, IsNumber, IsOptional, IsString } from "class-validator";
 
 export class UpdateEstablishmentDto {
   @ApiPropertyOptional() @IsOptional() @IsString() name?: string;
@@ -11,6 +11,8 @@ export class UpdateEstablishmentDto {
   @IsOptional()
   @IsString()
   type?: string;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() lat?: number;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() lng?: number;
   @ApiPropertyOptional() @IsOptional() @IsString() imageUrl?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() crmv?: string;
   @ApiPropertyOptional() @IsOptional() @IsBoolean() atendeEmergencia?: boolean;

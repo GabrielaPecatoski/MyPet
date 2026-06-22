@@ -131,6 +131,18 @@ export class VeterinarianService {
     return VeterinarianDto.fromVet(vet)!;
   }
 
+  async updateLocation(
+    id: string,
+    lat?: number,
+    lng?: number,
+  ): Promise<VeterinarianDto> {
+    const vet = await this.repo.findById(id);
+    if (!vet) throw new NotFoundException("Veterinário não encontrado");
+    vet.withCoords(lat, lng);
+    await this.repo.update(vet);
+    return VeterinarianDto.fromVet(vet)!;
+  }
+
   async updatePhoto(
     id: string,
     dto: UpdateVetPhotoDto,

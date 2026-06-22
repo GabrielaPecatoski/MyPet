@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import {
+  IsBoolean,
   IsEnum,
   IsNotEmpty,
   IsOptional,
@@ -19,8 +20,13 @@ export class CreateDriverDto {
   @ApiProperty() @IsString() @IsNotEmpty() vehicleModel!: string;
   @ApiProperty() @IsString() @IsNotEmpty() vehiclePlate!: string;
   @ApiPropertyOptional() @IsString() @IsOptional() photoUrl?: string;
+  @ApiPropertyOptional() @IsString() @IsOptional() cnhPhotoUrl?: string;
 }
 
 export class UpdateDriverPhotoDto {
   @ApiPropertyOptional() @IsString() @IsOptional() photoUrl?: string;
+}
+
+export class SetDriverOnlineDto {
+  @ApiProperty() @IsBoolean() online!: boolean;
 }

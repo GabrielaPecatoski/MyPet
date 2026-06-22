@@ -108,6 +108,28 @@ class VeterinarianService {
     throw Exception(msg);
   }
 
+  static Future<VeterinarianModel?> updateLocation({
+    required String token,
+    required String vetId,
+    required double lat,
+    required double lng,
+  }) async {
+    try {
+      final res = await http
+          .patch(
+            Uri.parse('${ApiConstants.baseUrl}${ApiConstants.veterinariansEndpoint}/$vetId/location'),
+            headers: _headers(token),
+            body: jsonEncode({'lat': lat, 'lng': lng}),
+          )
+          .timeout(const Duration(seconds: 8));
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        return VeterinarianModel.fromJson(
+            jsonDecode(res.body) as Map<String, dynamic>);
+      }
+    } catch (_) {}
+    return null;
+  }
+
   static Future<VeterinarianModel> updatePhoto({
     required String token,
     required String vetId,

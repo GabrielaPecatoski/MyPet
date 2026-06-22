@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../core/colors.dart';
 import '../providers/auth_provider.dart';
 import '../providers/establishment_provider.dart';
+import '../services/geocoding_service.dart';
 import '../widgets/mypet_app_bar.dart';
 
 class EstabEditScreen extends StatefulWidget {
@@ -150,14 +151,22 @@ class _EstabEditScreenState extends State<EstabEditScreen> {
       imageUrl = _existingImageUrl;
     }
 
+    // Geocodifica o endereço para obter coordenadas (serviços próximos / rota).
+    final endereco = _enderecoCtrl.text.trim();
+    final cidade = _cidadeCtrl.text.trim();
+    final coords = await GeocodingService.geocode(
+        [endereco, cidade].where((s) => s.isNotEmpty).join(', '));
+
     final ok = await provider.updateEstablishment(
       token: auth.token ?? '',
       name: _nomeCtrl.text.trim(),
       description: _descCtrl.text.trim(),
-      address: _enderecoCtrl.text.trim(),
-      city: _cidadeCtrl.text.trim(),
+      address: endereco,
+      city: cidade,
       phone: _telefoneCtrl.text.trim(),
       type: _tipo,
+      lat: coords?.lat,
+      lng: coords?.lng,
       imageUrl: imageUrl,
       crmv: _crmvCtrl.text.trim().isEmpty ? null : _crmvCtrl.text.trim(),
       atendeEmergencia: _atendeEmergencia,

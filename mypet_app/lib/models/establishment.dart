@@ -77,6 +77,8 @@ class EstablishmentModel {
   final double rating;
   final int reviewCount;
   final int serviceCount;
+  final double? lat;
+  final double? lng;
   final String? imageUrl;
   final List<ServiceModel> services;
   final String? crmv;
@@ -98,6 +100,8 @@ class EstablishmentModel {
     required this.rating,
     required this.reviewCount,
     this.serviceCount = 0,
+    this.lat,
+    this.lng,
     this.imageUrl,
     this.services = const [],
     this.crmv,
@@ -145,6 +149,8 @@ class EstablishmentModel {
       rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
       reviewCount: (json['reviewCount'] as num?)?.toInt() ?? 0,
       serviceCount: (json['serviceCount'] as num?)?.toInt() ?? servicesList.length,
+      lat: (json['lat'] as num?)?.toDouble(),
+      lng: (json['lng'] as num?)?.toDouble(),
       imageUrl: json['imageUrl'] as String?,
       services: servicesList,
       crmv: json['crmv'] as String?,
@@ -188,6 +194,8 @@ class EstablishmentModel {
       phone: phone ?? this.phone,
       rating: rating,
       reviewCount: reviewCount,
+      lat: lat,
+      lng: lng,
       imageUrl: clearImage ? null : (imageUrl ?? this.imageUrl),
       services: services ?? this.services,
       crmv: crmv ?? this.crmv,

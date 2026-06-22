@@ -12,8 +12,10 @@ export class User {
   private _password!: string;
   private _phone!: string;
   private _cpf!: string;
+  private _birthDate?: string;
   private _role!: UserRole;
   private _permissions!: string[];
+  private _addresses: string = "[]";
   private readonly _createdAt?: Date;
   private readonly _updatedAt?: Date;
 
@@ -41,11 +43,17 @@ export class User {
   get cpf(): string {
     return this._cpf;
   }
+  get birthDate(): string | undefined {
+    return this._birthDate;
+  }
   get role(): UserRole {
     return this._role;
   }
   get permissions(): string[] {
     return this._permissions;
+  }
+  get addresses(): string {
+    return this._addresses;
   }
   get createdAt(): Date | undefined {
     return this._createdAt;
@@ -74,12 +82,20 @@ export class User {
     this._cpf = cpf;
     return this;
   }
+  withBirthDate(birthDate?: string) {
+    this._birthDate = birthDate;
+    return this;
+  }
   withRole(role: UserRole) {
     this._role = role;
     return this;
   }
   withPermissions(permissions: string[]) {
     this._permissions = permissions;
+    return this;
+  }
+  withAddresses(addresses: string) {
+    this._addresses = addresses;
     return this;
   }
 
@@ -90,8 +106,10 @@ export class User {
     password: string;
     phone: string;
     cpf: string;
+    birthDate?: string | null;
     role: UserRole;
     permissions: string[];
+    addresses?: string | null;
     createdAt?: Date;
     updatedAt?: Date;
   }): User | null {
@@ -102,8 +120,10 @@ export class User {
     user._password = props.password;
     user._phone = props.phone;
     user._cpf = props.cpf;
+    user._birthDate = props.birthDate ?? undefined;
     user._role = props.role;
     user._permissions = props.permissions;
+    user._addresses = props.addresses ?? "[]";
     return user;
   }
 }

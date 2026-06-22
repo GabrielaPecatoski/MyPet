@@ -10,6 +10,8 @@ export class VeterinarianDto {
   @ApiProperty() crmv: string;
   @ApiPropertyOptional() especialidade: string | undefined;
   @ApiPropertyOptional() photoUrl: string | undefined;
+  @ApiPropertyOptional() lat: number | undefined;
+  @ApiPropertyOptional() lng: number | undefined;
   @ApiProperty() status: string;
   @ApiProperty() disponivel: boolean;
   @ApiProperty() atendeDomicilio: boolean;
@@ -25,6 +27,8 @@ export class VeterinarianDto {
     this.crmv = v.crmv;
     this.especialidade = v.especialidade;
     this.photoUrl = v.photoUrl;
+    this.lat = v.lat;
+    this.lng = v.lng;
     this.status = v.status;
     this.disponivel = v.disponivel;
     this.atendeDomicilio = v.atendeDomicilio;

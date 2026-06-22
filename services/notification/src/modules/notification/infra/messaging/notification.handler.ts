@@ -79,6 +79,14 @@ interface BookingTodayReminderPayload {
   scheduledAt: string;
 }
 
+interface BookingPhotosAddedPayload {
+  bookingId: string;
+  userId: string;
+  establishmentName: string;
+  serviceName: string;
+  photoCount: number;
+}
+
 interface OrderCreatedPayload {
   orderId: string;
   userId: string;
@@ -135,6 +143,7 @@ export class NotificationHandler implements OnModuleInit {
         { exchange: BookingExchangeName.CANCELED, routingKey: BookingRoutingKey.CANCELED },
         { exchange: BookingExchangeName.REMINDER, routingKey: BookingRoutingKey.REMINDER },
         { exchange: BookingExchangeName.TODAY_REMINDER, routingKey: BookingRoutingKey.TODAY_REMINDER },
+        { exchange: BookingExchangeName.PHOTOS_ADDED, routingKey: BookingRoutingKey.PHOTOS_ADDED },
         { exchange: MarketplaceExchangeName.ORDER_CREATED, routingKey: MarketplaceRoutingKey.ORDER_CREATED },
         { exchange: ReviewExchangeName.CREATED, routingKey: ReviewRoutingKey.CREATED },
         { exchange: UserAuthExchangeName.USER_CREATED, routingKey: UserAuthRoutingKey.USER_CREATED },
@@ -309,6 +318,22 @@ export class NotificationHandler implements OnModuleInit {
           body: `Você tem ${data.serviceName} em ${data.establishmentName} hoje às ${when}.`,
           type: "BOOKING_TODAY_REMINDER",
         });
+        break;
+      }
+
+      case BookingRoutingKey.PHOTOS_ADDED: {
+        const data = payload as BookingPhotosAddedPayload;
+        await this.notificationService.create({
+          userId: data.userId,
+          title: "Fotos do atendimento",
+          body: `Você recebeu novas fotos do seu atendimento de ${data.serviceName} em ${data.establishmentName}.`,
+          type: "BOOKING_PHOTOS_ADDED",
+        });
+        await this.push(
+          data.userId,
+          "Fotos do atendimento",
+          `Novas fotos de ${data.serviceName} em ${data.establishmentName}.`,
+        );
         break;
       }
 

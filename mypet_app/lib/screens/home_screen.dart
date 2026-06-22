@@ -2,12 +2,14 @@ import 'dart:io' as dart_io;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/colors.dart';
+import '../core/geo.dart';
 import '../models/establishment.dart';
 import '../models/veterinarian.dart';
 import '../providers/auth_provider.dart';
 import '../providers/booking_provider.dart';
-import '../providers/notifications_provider.dart';
 import '../providers/home_provider.dart';
+import '../widgets/app_image.dart';
+import '../widgets/role_header_top.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -18,15 +20,32 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedChip = 0;
+  final _searchController = TextEditingController();
 
-  static const _chips = ['Todos', 'Banho', 'Tosa', 'Veterinário', 'Acessórios'];
+  static const _chips = ['Todos', 'Banho', 'Tosa', 'Veterinário'];
   static const _vetChipIndex = 3;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) =>
-        context.read<HomeProvider>().load());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final home = context.read<HomeProvider>();
+      home.load();
+      // Origem para "serviços próximos": primeiro endereço do cliente com coords.
+      final addresses = context.read<AuthProvider>().user?.addresses ?? const [];
+      for (final a in addresses) {
+        if (a.lat != null && a.lng != null) {
+          home.setOrigin(a.lat, a.lng);
+          break;
+        }
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   void _onChipTap(int idx) {
@@ -43,7 +62,6 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final home = context.watch<HomeProvider>();
     final user = context.watch<AuthProvider>().user;
-    final unreadCount = context.watch<NotificationsProvider>().unreadCount;
     final bookings = context.watch<BookingProvider>().bookings;
     final today = DateTime.now();
     final confirmedToday = bookings.where((b) =>
@@ -59,79 +77,34 @@ class _HomeScreenState extends State<HomeScreen> {
           slivers: [
             SliverToBoxAdapter(
               child: Container(
-                height: 60,
                 color: AppColors.primary,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Image.asset(
-                      'assets/images/logo branca.png',
-                      height: 36,
-                      fit: BoxFit.contain,
-                    ),
-                    Positioned(
-                      left: 16,
-                      child: GestureDetector(
-                        onTap: () => Navigator.pushNamed(context, '/notifications'),
-                        child: Stack(
-                          clipBehavior: Clip.none,
-                          children: [
-                            const Icon(Icons.notifications_outlined,
-                                color: Colors.white, size: 26),
-                            if (unreadCount > 0)
-                              Positioned(
-                                right: -4,
-                                top: -4,
-                                child: Container(
-                                  padding: const EdgeInsets.all(2),
-                                  decoration: const BoxDecoration(
-                                    color: AppColors.danger,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  constraints: const BoxConstraints(
-                                      minWidth: 16, minHeight: 16),
-                                  child: Text(
-                                    unreadCount > 99 ? '99+' : '$unreadCount',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+                child: RoleHeaderTop(
+                  roleLabel: 'CLIENTE',
+                  name: user?.name.split(' ').first ?? 'Bem-vindo',
+                  trailing: GestureDetector(
+                    onTap: () {
+                      if (user != null) {
+                        Navigator.pushNamed(context, '/home', arguments: 4);
+                      } else {
+                        Navigator.pushNamed(context, '/login');
+                      }
+                    },
+                    child: CircleAvatar(
+                      radius: 18,
+                      backgroundColor: Colors.white24,
+                      child: user?.photoPath != null
+                          ? ClipOval(
+                              child: Image.file(
+                                dart_io.File(user!.photoPath!),
+                                width: 36,
+                                height: 36,
+                                fit: BoxFit.cover,
                               ),
-                          ],
-                        ),
-                      ),
+                            )
+                          : const Icon(Icons.person, size: 20, color: Colors.white),
                     ),
-                    Positioned(
-                      right: 16,
-                      child: GestureDetector(
-                        onTap: () {
-                          if (user != null) {
-                            Navigator.pushNamed(context, '/home', arguments: 4);
-                          } else {
-                            Navigator.pushNamed(context, '/login');
-                          }
-                        },
-                        child: CircleAvatar(
-                          radius: 18,
-                          backgroundColor: Colors.white24,
-                          child: user?.photoPath != null
-                              ? ClipOval(
-                                  child: Image.file(
-                                    dart_io.File(user!.photoPath!),
-                                    width: 36,
-                                    height: 36,
-                                    fit: BoxFit.cover,
-                                  ),
-                                )
-                              : const Icon(Icons.person, size: 20, color: Colors.white),
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -157,13 +130,17 @@ class _HomeScreenState extends State<HomeScreen> {
                               offset: Offset(0, 2)),
                         ],
                       ),
-                      child: const Row(
+                      child: Row(
                         children: [
-                          Icon(Icons.search, color: AppColors.grey),
-                          SizedBox(width: 8),
+                          const Icon(Icons.search, color: AppColors.grey),
+                          const SizedBox(width: 8),
                           Expanded(
                             child: TextField(
-                              decoration: InputDecoration(
+                              controller: _searchController,
+                              textInputAction: TextInputAction.search,
+                              onChanged: (value) =>
+                                  context.read<HomeProvider>().search(value),
+                              decoration: const InputDecoration(
                                 hintText: 'Buscar pet shop, clínica...',
                                 hintStyle:
                                     TextStyle(color: AppColors.grey, fontSize: 14),
@@ -172,6 +149,15 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                             ),
                           ),
+                          if (home.query.isNotEmpty)
+                            GestureDetector(
+                              onTap: () {
+                                _searchController.clear();
+                                context.read<HomeProvider>().search('');
+                              },
+                              child: const Icon(Icons.close,
+                                  color: AppColors.grey, size: 20),
+                            ),
                         ],
                       ),
                     ),
@@ -386,7 +372,8 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           )
                         else
-                          for (final v in home.availableVets) _VetHomeCard(vet: v),
+                          for (final v in home.availableVets)
+                            _VetHomeCard(vet: v, distanceKm: home.vetDistanceKm(v)),
                         const SizedBox(height: 8),
                         const Text(
                           'Clínicas e Pet shops',
@@ -412,8 +399,10 @@ class _HomeScreenState extends State<HomeScreen> {
                             scrollDirection: Axis.horizontal,
                             itemCount: home.establishments.take(5).length,
                             separatorBuilder: (_, _) => const SizedBox(width: 12),
-                            itemBuilder: (ctx, i) =>
-                                _HighlightCard(establishment: home.establishments[i]),
+                            itemBuilder: (ctx, i) => _HighlightCard(
+                                establishment: home.establishments[i],
+                                distanceKm:
+                                    home.distanceKm(home.establishments[i])),
                           ),
                         ),
                         const SizedBox(height: 24),
@@ -438,7 +427,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   (ctx, i) => Padding(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                    child: _EstabCard(establishment: home.establishments[i]),
+                    child: _EstabCard(
+                        establishment: home.establishments[i],
+                        distanceKm: home.distanceKm(home.establishments[i])),
                   ),
                   childCount: home.establishments.length,
                 ),
@@ -454,7 +445,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
 class _HighlightCard extends StatelessWidget {
   final EstablishmentModel establishment;
-  const _HighlightCard({required this.establishment});
+  final double? distanceKm;
+  const _HighlightCard({required this.establishment, this.distanceKm});
 
   @override
   Widget build(BuildContext context) {
@@ -473,17 +465,22 @@ class _HighlightCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              height: 90,
-              decoration: BoxDecoration(
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+              child: Container(
+                height: 90,
+                width: double.infinity,
                 color: AppColors.primaryLight,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-              ),
-              child: Center(
-                child: Icon(
-                  e.isVeterinario ? Icons.local_hospital : Icons.pets,
-                  color: AppColors.primary,
-                  size: 40,
+                child: AppImage(
+                  url: e.imageUrl,
+                  fit: BoxFit.cover,
+                  fallback: Center(
+                    child: Icon(
+                      e.isVeterinario ? Icons.local_hospital : Icons.pets,
+                      color: AppColors.primary,
+                      size: 40,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -519,6 +516,21 @@ class _HighlightCard extends StatelessWidget {
                       ),
                     ],
                   ),
+                  if (distanceKm != null) ...[
+                    const SizedBox(height: 3),
+                    Row(
+                      children: [
+                        const Icon(Icons.near_me_outlined,
+                            size: 12, color: AppColors.primary),
+                        const SizedBox(width: 3),
+                        Text(formatKm(distanceKm!),
+                            style: const TextStyle(
+                                fontSize: 11,
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w600)),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -531,7 +543,8 @@ class _HighlightCard extends StatelessWidget {
 
 class _VetHomeCard extends StatelessWidget {
   final VeterinarianModel vet;
-  const _VetHomeCard({required this.vet});
+  final double? distanceKm;
+  const _VetHomeCard({required this.vet, this.distanceKm});
 
   static const _green = Color(0xFF16A34A);
   static const _orange = Color(0xFFF97316);
@@ -576,6 +589,21 @@ class _VetHomeCard extends StatelessWidget {
                   Text(vet.especialidade ?? 'Clínico geral',
                       style: const TextStyle(
                           fontSize: 12, color: AppColors.grey)),
+                  if (distanceKm != null) ...[
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        const Icon(Icons.near_me_outlined,
+                            size: 12, color: _green),
+                        const SizedBox(width: 3),
+                        Text(formatKm(distanceKm!),
+                            style: const TextStyle(
+                                fontSize: 11,
+                                color: _green,
+                                fontWeight: FontWeight.w600)),
+                      ],
+                    ),
+                  ],
                   const SizedBox(height: 4),
                   Row(
                     children: [
@@ -631,7 +659,8 @@ class _VetHomeCard extends StatelessWidget {
 
 class _EstabCard extends StatelessWidget {
   final EstablishmentModel establishment;
-  const _EstabCard({required this.establishment});
+  final double? distanceKm;
+  const _EstabCard({required this.establishment, this.distanceKm});
 
   @override
   Widget build(BuildContext context) {
@@ -650,19 +679,15 @@ class _EstabCard extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                color: AppColors.primaryLight,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Center(
-                child: Icon(
-                  e.isVeterinario ? Icons.local_hospital : Icons.pets,
-                  color: AppColors.primary,
-                  size: 28,
-                ),
+            PhotoBox(
+              url: e.imageUrl,
+              size: 60,
+              radius: 10,
+              background: AppColors.primaryLight,
+              fallback: Icon(
+                e.isVeterinario ? Icons.local_hospital : Icons.pets,
+                color: AppColors.primary,
+                size: 28,
               ),
             ),
             const SizedBox(width: 12),
@@ -689,6 +714,17 @@ class _EstabCard extends StatelessWidget {
                       Text(e.typeLabel,
                           style: const TextStyle(
                               fontSize: 12, color: AppColors.grey)),
+                      if (distanceKm != null) ...[
+                        const SizedBox(width: 8),
+                        const Icon(Icons.near_me_outlined,
+                            size: 12, color: AppColors.primary),
+                        const SizedBox(width: 2),
+                        Text(formatKm(distanceKm!),
+                            style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w600)),
+                      ],
                     ],
                   ),
                   const SizedBox(height: 4),

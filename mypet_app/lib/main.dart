@@ -39,6 +39,8 @@ import 'screens/schedule_screen.dart';
 import 'screens/add_pet_screen.dart';
 import 'screens/pets_screen.dart';
 import 'screens/tracking_screen.dart';
+import 'screens/booking_detail_screen.dart';
+import 'screens/addresses_screen.dart';
 import 'screens/help_screen.dart';
 import 'screens/establishment_help_screen.dart';
 import 'screens/cart_screen.dart';
@@ -147,6 +149,8 @@ class MyPetApp extends StatelessWidget {
         '/add-pet':       (_) => const AddPetScreen(),
         '/pets':          (_) => const PetsScreen(),
         '/tracking':      (_) => const TrackingScreen(),
+        '/agendamento-detalhe': (_) => const BookingDetailScreen(),
+        '/enderecos':     (_) => const AddressesScreen(),
         '/help':          (_) => const HelpScreen(),
         '/estab-help':    (_) => const EstabHelpScreen(),
         '/cart':                    (_) => const CarrinhoScreen(),

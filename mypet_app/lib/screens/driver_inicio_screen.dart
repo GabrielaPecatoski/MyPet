@@ -6,6 +6,7 @@ import '../core/colors.dart';
 import '../models/driver.dart';
 import '../providers/auth_provider.dart';
 import '../providers/driver_profile_provider.dart';
+import '../widgets/role_header_top.dart';
 
 class DriverInicioScreen extends StatefulWidget {
   const DriverInicioScreen({super.key});
@@ -29,9 +30,9 @@ class _DriverInicioScreenState extends State<DriverInicioScreen> {
   Future<void> _load() async {
     final auth = context.read<AuthProvider>();
     if (auth.token == null || auth.user?.cpf == null) return;
-    await context
-        .read<DriverProfileProvider>()
-        .load(token: auth.token!, cpf: auth.user!.cpf!);
+    final provider = context.read<DriverProfileProvider>();
+    await provider.load(token: auth.token!, cpf: auth.user!.cpf!);
+    if (mounted) setState(() => _online = provider.online);
   }
 
   bool get _hasPhotos {
@@ -41,7 +42,7 @@ class _DriverInicioScreenState extends State<DriverInicioScreen> {
     return profilePhoto != null && vehiclePhoto != null;
   }
 
-  void _tryGoOnline() {
+  Future<void> _tryGoOnline() async {
     final driver = context.read<DriverProfileProvider>().driver;
     if (!_online && (driver == null || !driver.isAtivo)) {
       final msg = driver == null
@@ -78,7 +79,23 @@ class _DriverInicioScreenState extends State<DriverInicioScreen> {
       );
       return;
     }
-    setState(() => _online = !_online);
+    final auth = context.read<AuthProvider>();
+    final provider = context.read<DriverProfileProvider>();
+    if (auth.token == null) return;
+    final target = !_online;
+    setState(() => _online = target);
+    final ok = await provider.setOnline(token: auth.token!, online: target);
+    if (!mounted) return;
+    if (!ok) {
+      setState(() => _online = !target);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(provider.error ?? 'Erro ao atualizar disponibilidade'),
+          backgroundColor: AppColors.danger,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   @override
@@ -148,67 +165,42 @@ class _DriverInicioScreenState extends State<DriverInicioScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Image.asset(
-                'assets/images/logo branca.png',
-                height: 36,
-                fit: BoxFit.contain,
-              ),
-              const SizedBox(width: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('MY PET · MOTORISTA',
-                      style: TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white70,
-                          letterSpacing: 0.8)),
-                  Text(
-                    auth.user?.name.split(' ').first ?? 'Motorista',
-                    style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white),
-                  ),
-                ],
-              ),
-              const Spacer(),
-              GestureDetector(
-                onTap: _tryGoOnline,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: _online
-                              ? const Color(0xFF4ADE80)
-                              : Colors.white54,
-                          shape: BoxShape.circle,
-                        ),
+          RoleHeaderTop(
+            roleLabel: 'MOTORISTA',
+            name: auth.user?.name.split(' ').first ?? 'Motorista',
+            trailing: GestureDetector(
+              onTap: _tryGoOnline,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: _online
+                            ? const Color(0xFF4ADE80)
+                            : Colors.white54,
+                        shape: BoxShape.circle,
                       ),
-                      const SizedBox(width: 5),
-                      Text(
-                        _online ? 'Online' : 'Offline',
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600),
-                      ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      _online ? 'Online' : 'Offline',
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600),
+                    ),
+                  ],
                 ),
               ),
-            ],
+            ),
           ),
           const SizedBox(height: 16),
           Row(

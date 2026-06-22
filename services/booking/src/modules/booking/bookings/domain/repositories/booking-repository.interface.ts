@@ -15,4 +15,14 @@ export interface BookingRepository {
     scheduledTo: Date,
   ): Promise<Booking[]>;
   findExpiredAwaitingPayment(createdBefore: Date): Promise<Booking[]>;
+  findAvailableTransport(
+    driverEstablishmentId: string | null,
+    openToAllFrom: Date,
+  ): Promise<Booking[]>;
+  acceptTransport(
+    bookingId: string,
+    driverId: string,
+    driverName?: string,
+    driverPhotoUrl?: string,
+  ): Promise<Booking | null>;
 }

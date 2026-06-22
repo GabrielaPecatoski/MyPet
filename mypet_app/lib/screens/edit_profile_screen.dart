@@ -176,6 +176,31 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 ),
               ),
             ),
+            const SizedBox(height: 12),
+
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: const [
+                  BoxShadow(
+                      color: Colors.black12, blurRadius: 8, offset: Offset(0, 2)),
+                ],
+              ),
+              child: ListTile(
+                leading: const Icon(Icons.location_on_outlined,
+                    color: AppColors.primary),
+                title: const Text('Meus endereços',
+                    style: TextStyle(
+                        fontWeight: FontWeight.w600, color: AppColors.dark)),
+                subtitle: Text(
+                  '${user?.addresses.length ?? 0} cadastrado(s)',
+                  style: const TextStyle(fontSize: 12, color: AppColors.grey),
+                ),
+                trailing: const Icon(Icons.chevron_right, color: AppColors.grey),
+                onTap: () => Navigator.pushNamed(context, '/enderecos'),
+              ),
+            ),
             const SizedBox(height: 24),
 
             SizedBox(

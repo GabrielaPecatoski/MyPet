@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import {
+  IsDateString,
   IsEmail,
   IsIn,
   IsNotEmpty,
@@ -38,6 +39,11 @@ export class CreateUserDto {
   @IsString()
   @IsNotEmpty()
   cpf!: string;
+
+  @ApiPropertyOptional({ example: "1990-05-20", description: "Data de nascimento (ISO). É obrigatório ter 18+ anos." })
+  @IsOptional()
+  @IsDateString()
+  birthDate?: string;
 
   @ApiPropertyOptional({
     enum: ["ADMIN", "CLIENTE", "VENDEDOR", "MOTORISTA", "VETERINARIO"],

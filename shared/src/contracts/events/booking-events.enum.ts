@@ -5,6 +5,7 @@ export enum BookingExchangeName {
   CANCELED = "booking.canceled.exchange",
   REMINDER = "booking.reminder.exchange",
   TODAY_REMINDER = "booking.today-reminder.exchange",
+  PHOTOS_ADDED = "booking.photos-added.exchange",
 }
 
 export enum BookingRoutingKey {
@@ -14,4 +15,5 @@ export enum BookingRoutingKey {
   CANCELED = "booking.canceled",
   REMINDER = "booking.reminder",
   TODAY_REMINDER = "booking.today-reminder",
+  PHOTOS_ADDED = "booking.photos-added",
 }
