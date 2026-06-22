@@ -387,8 +387,27 @@ export class BookingService {
   ): Promise<BookingDto> {
     const booking = await this.repo.findById(id);
     if (!booking) throw new NotFoundException("Agendamento não encontrado");
+    const previousCount = booking.attendancePhotos.length;
     booking.withAttendancePhotos(photos);
     await this.repo.update(booking);
+
+    // Avisa o cliente quando fotos novas do atendimento são adicionadas (não
+    // dispara em remoções). Sem isso as fotos ficam salvas mas o tutor não é
+    // notificado de que chegaram.
+    if (photos.length > previousCount) {
+      await this.safePublish(
+        BookingExchangeName.PHOTOS_ADDED,
+        BookingRoutingKey.PHOTOS_ADDED,
+        {
+          bookingId: booking.id!,
+          userId: booking.userId,
+          establishmentName: booking.establishmentName,
+          serviceName: booking.serviceName,
+          photoCount: photos.length,
+        },
+      );
+    }
+
     return BookingDto.fromBooking(booking)!;
   }
 
