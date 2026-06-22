@@ -1,5 +1,5 @@
 import type { User } from "@auth/users/domain/models/user.entity";
-import { ApiProperty } from "@nestjs/swagger";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 
 export class UserDto {
   @ApiProperty() id: string | undefined;
@@ -7,6 +7,7 @@ export class UserDto {
   @ApiProperty() email: string;
   @ApiProperty() phone: string;
   @ApiProperty() cpf: string;
+  @ApiPropertyOptional() birthDate?: string;
   @ApiProperty() role: string;
   @ApiProperty() permissions: string[];
   @ApiProperty() addresses: unknown[];
@@ -18,6 +19,7 @@ export class UserDto {
     email: string,
     phone: string,
     cpf: string,
+    birthDate: string | undefined,
     role: string,
     permissions: string[],
     addresses: unknown[],
@@ -28,6 +30,7 @@ export class UserDto {
     this.email = email;
     this.phone = phone;
     this.cpf = cpf;
+    this.birthDate = birthDate;
     this.role = role;
     this.permissions = permissions;
     this.addresses = addresses;
@@ -49,6 +52,7 @@ export class UserDto {
       user.email,
       user.phone,
       user.cpf,
+      user.birthDate,
       user.role,
       user.permissions,
       addresses,

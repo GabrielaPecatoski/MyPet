@@ -27,22 +27,31 @@ class NotificationBell extends StatelessWidget {
           Icon(Icons.notifications_outlined, color: iconColor, size: iconSize),
           if (unread > 0)
             Positioned(
-              right: -4,
-              top: -4,
+              right: -6,
+              top: -6,
               child: Container(
-                padding: const EdgeInsets.all(2),
-                decoration: const BoxDecoration(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                decoration: BoxDecoration(
                   color: AppColors.danger,
-                  shape: BoxShape.circle,
+                  borderRadius: BorderRadius.circular(11),
+                  border: Border.all(color: Colors.white, width: 1.5),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Colors.black26,
+                      blurRadius: 3,
+                      offset: Offset(0, 1),
+                    ),
+                  ],
                 ),
                 constraints:
-                    const BoxConstraints(minWidth: 16, minHeight: 16),
+                    const BoxConstraints(minWidth: 18, minHeight: 18),
                 child: Text(
                   unread > 99 ? '99+' : '$unread',
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 9,
+                    fontSize: 10,
                     fontWeight: FontWeight.bold,
+                    height: 1.15,
                   ),
                   textAlign: TextAlign.center,
                 ),

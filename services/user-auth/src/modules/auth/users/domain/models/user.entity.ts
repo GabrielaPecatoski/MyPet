@@ -12,6 +12,7 @@ export class User {
   private _password!: string;
   private _phone!: string;
   private _cpf!: string;
+  private _birthDate?: string;
   private _role!: UserRole;
   private _permissions!: string[];
   private _addresses: string = "[]";
@@ -41,6 +42,9 @@ export class User {
   }
   get cpf(): string {
     return this._cpf;
+  }
+  get birthDate(): string | undefined {
+    return this._birthDate;
   }
   get role(): UserRole {
     return this._role;
@@ -78,6 +82,10 @@ export class User {
     this._cpf = cpf;
     return this;
   }
+  withBirthDate(birthDate?: string) {
+    this._birthDate = birthDate;
+    return this;
+  }
   withRole(role: UserRole) {
     this._role = role;
     return this;
@@ -98,6 +106,7 @@ export class User {
     password: string;
     phone: string;
     cpf: string;
+    birthDate?: string | null;
     role: UserRole;
     permissions: string[];
     addresses?: string | null;
@@ -111,6 +120,7 @@ export class User {
     user._password = props.password;
     user._phone = props.phone;
     user._cpf = props.cpf;
+    user._birthDate = props.birthDate ?? undefined;
     user._role = props.role;
     user._permissions = props.permissions;
     user._addresses = props.addresses ?? "[]";

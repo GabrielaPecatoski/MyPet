@@ -64,6 +64,12 @@ export class AuthService {
     if (existingEmail) throw new ConflictException("Email já cadastrado");
     if (existingCpf) throw new ConflictException("CPF já cadastrado");
 
+    if (dto.birthDate && this.ageInYears(dto.birthDate) < 18) {
+      throw new BadRequestException(
+        "É necessário ter 18 anos ou mais para se cadastrar",
+      );
+    }
+
     const role = dto.role ?? "CLIENTE";
     const permissions = ROLE_PERMISSIONS[role] ?? [];
     const hashedPassword = await bcrypt.hash(dto.password, 10);
@@ -74,6 +80,7 @@ export class AuthService {
       password: hashedPassword,
       phone: dto.phone,
       cpf: dto.cpf,
+      birthDate: dto.birthDate ?? null,
       role,
       permissions,
     })!;
@@ -170,6 +177,18 @@ export class AuthService {
 
     this.logger.log(`Senha redefinida para o usuário ${user.id}`);
     return { message: "Senha redefinida com sucesso" };
+  }
+
+  /** Idade completa em anos a partir de uma data de nascimento (ISO). */
+  private ageInYears(birthDate: string): number {
+    const birth = new Date(birthDate);
+    const now = new Date();
+    let age = now.getFullYear() - birth.getFullYear();
+    const monthDiff = now.getMonth() - birth.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < birth.getDate())) {
+      age--;
+    }
+    return age;
   }
 
   private generateToken(user: User): string {
