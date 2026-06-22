@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 import '../core/colors.dart';
 import '../models/appointment.dart';
@@ -7,6 +8,7 @@ import '../providers/auth_provider.dart';
 import '../providers/chat_provider.dart';
 import '../services/api_service.dart';
 import '../widgets/mypet_app_bar.dart';
+import '../widgets/route_map.dart';
 
 class TrackingScreen extends StatefulWidget {
   const TrackingScreen({super.key});
@@ -26,6 +28,8 @@ class _TrackingScreenState extends State<TrackingScreen> {
 
   AppointmentModel? _ap;
   String? _token;
+  LatLng? _origin;
+  LatLng? _destination;
 
   int _currentStep = 0;
   int _elapsedMin = 0;
@@ -53,6 +57,40 @@ class _TrackingScreenState extends State<TrackingScreen> {
       _applyStatus(ap.status, ap.date);
     });
     if (!shouldStop) _startPolling();
+    _resolveRoute(ap);
+  }
+
+  /// Resolve coordenadas para o mapa: origem = estabelecimento, destino =
+  /// endereço do cliente (primeiro com coordenadas).
+  Future<void> _resolveRoute(AppointmentModel ap) async {
+    final user = context.read<AuthProvider>().user;
+    LatLng? dest;
+    for (final a in user?.addresses ?? const []) {
+      if (a.lat != null && a.lng != null) {
+        dest = LatLng(a.lat!, a.lng!);
+        break;
+      }
+    }
+
+    LatLng? origin;
+    if (ap.establishmentId.isNotEmpty) {
+      try {
+        final data = await ApiService.get(
+          '/establishments/${ap.establishmentId}',
+          token: _token,
+        );
+        final map = data as Map<String, dynamic>;
+        final lat = (map['lat'] as num?)?.toDouble();
+        final lng = (map['lng'] as num?)?.toDouble();
+        if (lat != null && lng != null) origin = LatLng(lat, lng);
+      } catch (_) {}
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _origin = origin;
+      _destination = dest;
+    });
   }
 
   void _applyStatus(String status, DateTime date) {
@@ -188,6 +226,10 @@ class _TrackingScreenState extends State<TrackingScreen> {
               _buildDetailsCard(ap, dateStr),
               const SizedBox(height: 8),
               _buildEstablishmentCard(ap),
+              if (_origin != null && _destination != null) ...[
+                const SizedBox(height: 8),
+                _buildRouteCard(ap),
+              ],
             ],
 
             const SizedBox(height: 24),
@@ -494,6 +536,46 @@ class _TrackingScreenState extends State<TrackingScreen> {
               ],
             ),
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRouteCard(AppointmentModel ap) {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                ap.transportRequested
+                    ? Icons.local_shipping_outlined
+                    : Icons.map_outlined,
+                size: 18,
+                color: AppColors.primary,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                ap.transportRequested
+                    ? 'Trajeto do transporte'
+                    : 'Como chegar',
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                    color: AppColors.dark),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          RouteMap(
+            origin: _origin!,
+            destination: _destination!,
+            originLabel: ap.establishmentName,
+            destinationLabel: 'Seu endereço',
+          ),
         ],
       ),
     );

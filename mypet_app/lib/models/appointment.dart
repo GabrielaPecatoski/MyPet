@@ -22,6 +22,7 @@ class AppointmentModel {
   final String? driverId;
   final String? driverName;
   final String? driverPhotoUrl;
+  final String transportStatus;
   final List<String> attendancePhotos;
 
   AppointmentModel({
@@ -48,8 +49,11 @@ class AppointmentModel {
     this.driverId,
     this.driverName,
     this.driverPhotoUrl,
+    this.transportStatus = 'NONE',
     this.attendancePhotos = const [],
   });
+
+  bool get transportRequested => transportStatus != 'NONE';
 
   factory AppointmentModel.fromJson(Map<String, dynamic> json) {
     final scheduled = DateTime.tryParse(json['scheduledAt'] ?? '') ?? DateTime.now();
@@ -81,6 +85,7 @@ class AppointmentModel {
       driverId: json['driverId'] as String?,
       driverName: json['driverName'] as String?,
       driverPhotoUrl: json['driverPhotoUrl'] as String?,
+      transportStatus: json['transportStatus'] as String? ?? 'NONE',
       attendancePhotos: (json['attendancePhotos'] as List?)
               ?.map((e) => e.toString())
               .toList() ??
