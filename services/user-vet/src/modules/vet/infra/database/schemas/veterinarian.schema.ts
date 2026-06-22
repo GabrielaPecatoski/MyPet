@@ -1,4 +1,11 @@
-import { boolean, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  doublePrecision,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+} from "drizzle-orm/pg-core";
 
 export const veterinariansSchema = pgTable("veterinarians", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -9,6 +16,8 @@ export const veterinariansSchema = pgTable("veterinarians", {
   crmv: text("crmv").notNull(),
   especialidade: text("especialidade"),
   photoUrl: text("photo_url"),
+  lat: doublePrecision("lat"),
+  lng: doublePrecision("lng"),
   status: text("status").notNull().default("PENDENTE"),
   disponivel: boolean("disponivel").notNull().default(false),
   atendeDomicilio: boolean("atende_domicilio").notNull().default(false),

@@ -35,6 +35,7 @@ class HomeProvider extends ChangeNotifier {
     _originLat = lat;
     _originLng = lng;
     _recompute();
+    _sortVetsByDistance();
     notifyListeners();
   }
 
@@ -44,6 +45,26 @@ class HomeProvider extends ChangeNotifier {
       return null;
     }
     return haversineKm(_originLat!, _originLng!, e.lat!, e.lng!);
+  }
+
+  /// Distância em km de um veterinário até a origem, ou null.
+  double? vetDistanceKm(VeterinarianModel v) {
+    if (_originLat == null || _originLng == null || v.lat == null || v.lng == null) {
+      return null;
+    }
+    return haversineKm(_originLat!, _originLng!, v.lat!, v.lng!);
+  }
+
+  void _sortVetsByDistance() {
+    if (!hasOrigin) return;
+    _availableVets.sort((a, b) {
+      final da = vetDistanceKm(a);
+      final db = vetDistanceKm(b);
+      if (da == null && db == null) return 0;
+      if (da == null) return 1;
+      if (db == null) return -1;
+      return da.compareTo(db);
+    });
   }
 
   Future<void> load() async {
@@ -66,6 +87,7 @@ class HomeProvider extends ChangeNotifier {
     notifyListeners();
     try {
       _availableVets = await VeterinarianService.fetchAvailable(token: token);
+      _sortVetsByDistance();
     } catch (_) {
       _availableVets = [];
     } finally {

@@ -418,7 +418,8 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           )
                         else
-                          for (final v in home.availableVets) _VetHomeCard(vet: v),
+                          for (final v in home.availableVets)
+                            _VetHomeCard(vet: v, distanceKm: home.vetDistanceKm(v)),
                         const SizedBox(height: 8),
                         const Text(
                           'Clínicas e Pet shops',
@@ -588,7 +589,8 @@ class _HighlightCard extends StatelessWidget {
 
 class _VetHomeCard extends StatelessWidget {
   final VeterinarianModel vet;
-  const _VetHomeCard({required this.vet});
+  final double? distanceKm;
+  const _VetHomeCard({required this.vet, this.distanceKm});
 
   static const _green = Color(0xFF16A34A);
   static const _orange = Color(0xFFF97316);
@@ -633,6 +635,21 @@ class _VetHomeCard extends StatelessWidget {
                   Text(vet.especialidade ?? 'Clínico geral',
                       style: const TextStyle(
                           fontSize: 12, color: AppColors.grey)),
+                  if (distanceKm != null) ...[
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        const Icon(Icons.near_me_outlined,
+                            size: 12, color: _green),
+                        const SizedBox(width: 3),
+                        Text(formatKm(distanceKm!),
+                            style: const TextStyle(
+                                fontSize: 11,
+                                color: _green,
+                                fontWeight: FontWeight.w600)),
+                      ],
+                    ),
+                  ],
                   const SizedBox(height: 4),
                   Row(
                     children: [

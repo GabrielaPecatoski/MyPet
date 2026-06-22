@@ -19,6 +19,12 @@ ALTER TABLE establishments
 ALTER TABLE establishments
   ADD COLUMN IF NOT EXISTS lng double precision;
 
+\connect mypet_vet
+ALTER TABLE veterinarians
+  ADD COLUMN IF NOT EXISTS lat double precision;
+ALTER TABLE veterinarians
+  ADD COLUMN IF NOT EXISTS lng double precision;
+
 \connect mypet_driver
 ALTER TABLE drivers
   ADD COLUMN IF NOT EXISTS online boolean NOT NULL DEFAULT false;

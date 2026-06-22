@@ -25,9 +25,16 @@ class _VetPerfilScreenState extends State<VetPerfilScreen> {
   Future<void> _load() async {
     final auth = context.read<AuthProvider>();
     if (auth.token == null || auth.user?.cpf == null) return;
-    await context
-        .read<VetProfileProvider>()
-        .load(token: auth.token!, cpf: auth.user!.cpf!);
+    final vetProvider = context.read<VetProfileProvider>();
+    await vetProvider.load(token: auth.token!, cpf: auth.user!.cpf!);
+    // Sincroniza a localização do vet a partir do 1º endereço com coordenadas.
+    for (final a in auth.user?.addresses ?? const []) {
+      if (a.lat != null && a.lng != null) {
+        await vetProvider.syncLocation(
+            token: auth.token!, lat: a.lat!, lng: a.lng!);
+        break;
+      }
+    }
   }
 
   @override
