@@ -95,6 +95,7 @@ export class DrizzleDriverRepository implements DriverRepository {
       .set({
         establishmentId: driver.establishmentId ?? null,
         photoUrl: driver.photoUrl ?? null,
+        cnhPhotoUrl: driver.cnhPhotoUrl ?? null,
         status: driver.status,
         online: driver.online,
         updatedAt: new Date(),

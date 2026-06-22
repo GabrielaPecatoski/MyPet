@@ -41,13 +41,23 @@ class _DriverPerfilScreenState extends State<DriverPerfilScreen> {
       maxHeight: 800,
     );
     if (picked == null || !mounted) return;
+    final driverProfile = context.read<DriverProfileProvider>();
+    if (driverProfile.driver == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text(
+            'Complete seu cadastro de motorista antes de adicionar fotos.'),
+        backgroundColor: AppColors.warning,
+        behavior: SnackBarBehavior.floating,
+      ));
+      return;
+    }
     final bytes = await picked.readAsBytes();
     if (!mounted) return;
     final auth = context.read<AuthProvider>();
-    final ok = await context.read<DriverProfileProvider>().updateProfilePhoto(
-          token: auth.token ?? '',
-          photoUrl: dataUrlFromBytes(bytes),
-        );
+    final ok = await driverProfile.updateProfilePhoto(
+      token: auth.token ?? '',
+      photoUrl: dataUrlFromBytes(bytes),
+    );
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content:

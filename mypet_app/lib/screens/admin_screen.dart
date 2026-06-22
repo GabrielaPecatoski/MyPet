@@ -2588,6 +2588,7 @@ class _VerificacoesPageState extends State<_VerificacoesPage>
           icon: Icons.medical_services_rounded,
           color: const Color(0xFF16A34A),
           processing: _processingIds.contains(v.id),
+          avatarUrl: v.photoUrl,
           docPhotoFilePath: _crmvPhotos[v.cpf],
           docPhotoLabel: 'Diploma / CRMV',
           onApprove: () => _act(v.id, widget.onApproveVet),
@@ -2610,6 +2611,7 @@ class _VerificacoesPageState extends State<_VerificacoesPage>
           icon: Icons.airport_shuttle_rounded,
           color: const Color(0xFFF97316),
           processing: _processingIds.contains(d.id),
+          avatarUrl: d.photoUrl,
           docPhotoUrl: d.cnhPhotoUrl,
           docPhotoLabel: 'Foto da CNH',
           onApprove: () => _act(d.id, widget.onApproveDriver),
@@ -2639,6 +2641,8 @@ class _PendingCard extends StatelessWidget {
   final IconData icon;
   final Color color;
   final bool processing;
+  // Foto de perfil do solicitante (data URL base64 ou URL de rede), exibida no avatar.
+  final String? avatarUrl;
   // Foto do documento via backend (data URL base64 ou URL de rede) — motoristas.
   final String? docPhotoUrl;
   // Foto do documento salva localmente no aparelho do admin — veterinários (CRMV).
@@ -2655,6 +2659,7 @@ class _PendingCard extends StatelessWidget {
     required this.icon,
     required this.color,
     required this.processing,
+    this.avatarUrl,
     this.docPhotoUrl,
     this.docPhotoFilePath,
     this.docPhotoLabel,
@@ -2691,6 +2696,7 @@ class _PendingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final avatarProvider = appImageProvider(avatarUrl);
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
@@ -2713,8 +2719,13 @@ class _PendingCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
+                  image: avatarProvider != null
+                      ? DecorationImage(image: avatarProvider, fit: BoxFit.cover)
+                      : null,
                 ),
-                child: Icon(icon, color: color, size: 22),
+                child: avatarProvider != null
+                    ? null
+                    : Icon(icon, color: color, size: 22),
               ),
               const SizedBox(width: 12),
               Expanded(
