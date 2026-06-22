@@ -125,6 +125,22 @@ export class DrizzleEstablishmentRepository implements EstablishmentRepository {
         createdAt: establishmentsSchema.createdAt,
         updatedAt: establishmentsSchema.updatedAt,
         serviceCount: sql<number>`count(${estabServicesSchema.id})::int`,
+        services: sql<unknown[]>`coalesce(
+          json_agg(
+            json_build_object(
+              'id', ${estabServicesSchema.id},
+              'name', ${estabServicesSchema.name},
+              'price', ${estabServicesSchema.price},
+              'priceVariable', ${estabServicesSchema.priceVariable},
+              'durationMinutes', ${estabServicesSchema.durationMinutes},
+              'description', ${estabServicesSchema.description},
+              'categoria', ${estabServicesSchema.categoria},
+              'imagemUrl', ${estabServicesSchema.imagemUrl},
+              'ativo', ${estabServicesSchema.ativo}
+            )
+          ) filter (where ${estabServicesSchema.id} is not null and ${estabServicesSchema.ativo} = true),
+          '[]'
+        )`,
       })
       .from(establishmentsSchema)
       .leftJoin(
@@ -136,7 +152,7 @@ export class DrizzleEstablishmentRepository implements EstablishmentRepository {
 
   async findAll(
     search?: string,
-  ): Promise<(Establishment & { serviceCount: number })[]> {
+  ): Promise<(Establishment & { serviceCount: number; services: unknown[] })[]> {
     const baseQuery = this._baseSelectWithCount();
 
     const rows = search
@@ -151,12 +167,13 @@ export class DrizzleEstablishmentRepository implements EstablishmentRepository {
     return rows.map((r) =>
       Object.assign(Establishment.restore(r)!, {
         serviceCount: r.serviceCount,
+        services: r.services,
       }),
     );
   }
 
   async findByEmergency(): Promise<
-    (Establishment & { serviceCount: number })[]
+    (Establishment & { serviceCount: number; services: unknown[] })[]
   > {
     const rows = await this._baseSelectWithCount().where(
       eq(establishmentsSchema.atendeEmergencia, true),
@@ -164,6 +181,7 @@ export class DrizzleEstablishmentRepository implements EstablishmentRepository {
     return rows.map((r) =>
       Object.assign(Establishment.restore(r)!, {
         serviceCount: r.serviceCount,
+        services: r.services,
       }),
     );
   }

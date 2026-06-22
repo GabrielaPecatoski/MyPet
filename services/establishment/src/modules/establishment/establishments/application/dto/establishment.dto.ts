@@ -13,6 +13,7 @@ export class EstablishmentDto {
   @ApiProperty() rating: number;
   @ApiProperty() reviewCount: number;
   @ApiProperty() serviceCount: number;
+  @ApiPropertyOptional() services?: unknown[];
   @ApiPropertyOptional() lat?: number;
   @ApiPropertyOptional() lng?: number;
   @ApiPropertyOptional() imageUrl?: string;
@@ -65,10 +66,10 @@ export class EstablishmentDto {
   }
 
   static fromEstablishment(
-    e: (Establishment & { serviceCount?: number }) | null,
+    e: (Establishment & { serviceCount?: number; services?: unknown[] }) | null,
   ): EstablishmentDto | null {
     if (!e) return null;
-    return new EstablishmentDto(
+    const dto = new EstablishmentDto(
       e.id,
       e.ownerId,
       e.name,
@@ -89,5 +90,7 @@ export class EstablishmentDto {
       e.receberAlertaSonoro,
       e.receberPushEmergencia,
     );
+    if (e.services) dto.services = e.services;
+    return dto;
   }
 }
