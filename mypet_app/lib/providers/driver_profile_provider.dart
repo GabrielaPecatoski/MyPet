@@ -14,6 +14,13 @@ class DriverProfileProvider extends ChangeNotifier {
   bool _settingOnline = false;
   List<AppointmentModel> _availableRides = [];
   bool _loadingRides = false;
+  String? _pixKey;
+  String _pixType = 'CPF';
+  final Map<String, bool> _settings = {
+    'notifRides': true,
+    'sounds': true,
+    'showPhone': true,
+  };
 
   DriverModel? get driver => _driver;
   bool get loading => _loading;
@@ -25,6 +32,10 @@ class DriverProfileProvider extends ChangeNotifier {
   bool get settingOnline => _settingOnline;
   List<AppointmentModel> get availableRides => _availableRides;
   bool get loadingRides => _loadingRides;
+  String? get pixKey => _pixKey;
+  String get pixType => _pixType;
+  bool get hasPix => _pixKey != null && _pixKey!.isNotEmpty;
+  bool settingEnabled(String key) => _settings[key] ?? true;
 
   /// Liga/desliga a disponibilidade do motorista no backend.
   Future<bool> setOnline({required String token, required bool online}) async {
@@ -101,6 +112,11 @@ class DriverProfileProvider extends ChangeNotifier {
       _driver = results[0] as DriverModel?;
       _vehiclePhotoPath = results[1] as String?;
       _cnhPhotoPath = results[2] as String?;
+      final pix = await StorageService.getPix(cpf);
+      _pixKey = pix['key'];
+      _pixType = pix['type'] ?? 'CPF';
+      final saved = await StorageService.getDriverSettings(cpf);
+      _settings.addAll(saved);
     } catch (_) {
       _error = 'Erro ao carregar perfil do motorista';
     } finally {
@@ -141,6 +157,23 @@ class DriverProfileProvider extends ChangeNotifier {
     await StorageService.saveCnhPhoto(cpf, path);
     _cnhPhotoPath = path;
     notifyListeners();
+  }
+
+  /// Salva a chave PIX do motorista (persistência local por CPF).
+  Future<void> savePix({required String? key, required String type}) async {
+    if (_driver == null) return;
+    await StorageService.savePix(_driver!.cpf, key: key, type: type);
+    _pixKey = (key == null || key.isEmpty) ? null : key;
+    _pixType = type;
+    notifyListeners();
+  }
+
+  /// Alterna uma configuração (notificações/privacidade) e persiste.
+  Future<void> setSetting(String key, bool value) async {
+    if (_driver == null) return;
+    _settings[key] = value;
+    notifyListeners();
+    await StorageService.saveDriverSettings(_driver!.cpf, _settings);
   }
 
   Future<bool> dissociate({required String token}) async {
