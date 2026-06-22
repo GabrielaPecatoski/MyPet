@@ -4,6 +4,7 @@ import '../core/colors.dart';
 import '../models/appointment.dart';
 import '../providers/auth_provider.dart';
 import '../providers/driver_profile_provider.dart';
+import '../widgets/app_image.dart';
 
 class DriverCorridasScreen extends StatefulWidget {
   const DriverCorridasScreen({super.key});
@@ -230,10 +231,13 @@ class _RideCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const CircleAvatar(
+              CircleAvatar(
                 radius: 20,
                 backgroundColor: AppColors.primaryLight,
-                child: Icon(Icons.pets, color: AppColors.driver, size: 20),
+                backgroundImage: appImageProvider(ride.petPhotoUrl),
+                child: (ride.petPhotoUrl == null || ride.petPhotoUrl!.isEmpty)
+                    ? const Icon(Icons.pets, color: AppColors.driver, size: 20)
+                    : null,
               ),
               const SizedBox(width: 10),
               Expanded(

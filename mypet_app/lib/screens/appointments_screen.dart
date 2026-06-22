@@ -527,7 +527,10 @@ class _BookingCardState extends State<_BookingCard> {
                     CircleAvatar(
                       radius: 28,
                       backgroundColor: AppColors.primaryLight,
-                      child: const Icon(Icons.pets, color: AppColors.primary, size: 28),
+                      backgroundImage: appImageProvider(ap.petPhotoUrl),
+                      child: (ap.petPhotoUrl == null || ap.petPhotoUrl!.isEmpty)
+                          ? const Icon(Icons.pets, color: AppColors.primary, size: 28)
+                          : null,
                     ),
                     const SizedBox(width: 12),
                     Expanded(

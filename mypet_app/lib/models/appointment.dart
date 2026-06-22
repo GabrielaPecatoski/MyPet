@@ -6,6 +6,7 @@ class AppointmentModel {
   final String petName;
   final String petBreed;
   final int petAge;
+  final String? petPhotoUrl;
   final String serviceName;
   final String establishmentId;
   final String establishmentName;
@@ -31,6 +32,7 @@ class AppointmentModel {
     required this.petName,
     this.petBreed = '',
     this.petAge = 0,
+    this.petPhotoUrl,
     required this.serviceName,
     this.establishmentId = '',
     required this.establishmentName,
@@ -61,6 +63,7 @@ class AppointmentModel {
       petName: json['petName'] ?? '',
       petBreed: json['petBreed'] ?? '',
       petAge: json['petAge'] ?? 0,
+      petPhotoUrl: json['petPhotoUrl'] as String?,
       serviceName: json['serviceName'] ?? '',
       establishmentId: json['establishmentId'] ?? '',
       establishmentName: json['establishmentName'] ?? '',

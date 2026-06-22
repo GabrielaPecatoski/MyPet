@@ -317,10 +317,13 @@ class _VetBookingCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(children: [
-            const CircleAvatar(
+            CircleAvatar(
               radius: 20,
-              backgroundColor: Color(0x1416A34A),
-              child: Icon(Icons.pets, color: _green, size: 20),
+              backgroundColor: const Color(0x1416A34A),
+              backgroundImage: appImageProvider(ap.petPhotoUrl),
+              child: (ap.petPhotoUrl == null || ap.petPhotoUrl!.isEmpty)
+                  ? const Icon(Icons.pets, color: _green, size: 20)
+                  : null,
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -418,10 +421,13 @@ class _VetBookingCard extends StatelessWidget {
             const SizedBox(height: 16),
             Row(
               children: [
-                const CircleAvatar(
+                CircleAvatar(
                   radius: 24,
-                  backgroundColor: Color(0x1416A34A),
-                  child: Icon(Icons.pets, color: _green, size: 22),
+                  backgroundColor: const Color(0x1416A34A),
+                  backgroundImage: appImageProvider(ap.petPhotoUrl),
+                  child: (ap.petPhotoUrl == null || ap.petPhotoUrl!.isEmpty)
+                      ? const Icon(Icons.pets, color: _green, size: 22)
+                      : null,
                 ),
                 const SizedBox(width: 12),
                 Expanded(

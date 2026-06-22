@@ -16,3 +16,5 @@ ALTER TABLE drivers
 \connect mypet_booking
 ALTER TABLE bookings
   ADD COLUMN IF NOT EXISTS transport_status text NOT NULL DEFAULT 'NONE';
+ALTER TABLE bookings
+  ADD COLUMN IF NOT EXISTS pet_photo_url text;

@@ -24,6 +24,7 @@ export class DrizzleBookingRepository implements BookingRepository {
         petName: b.petName,
         petBreed: b.petBreed || null,
         petAge: b.petAge || null,
+        petPhotoUrl: b.petPhotoUrl ?? null,
         serviceName: b.serviceName,
         servicesJson: b.servicesJson ?? null,
         attendancePhotos: b.attendancePhotosJson ?? null,

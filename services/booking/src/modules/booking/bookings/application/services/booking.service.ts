@@ -72,6 +72,7 @@ export class BookingService {
       petName: dto.petName,
       petBreed: dto.petBreed,
       petAge: dto.petAge,
+      petPhotoUrl: dto.petPhotoUrl,
       serviceName: displayName,
       servicesJson: services ? JSON.stringify(services) : undefined,
       establishmentId: dto.establishmentId,

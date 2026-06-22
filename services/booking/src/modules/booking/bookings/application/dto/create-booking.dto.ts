@@ -24,6 +24,7 @@ export class CreateBookingDto {
   @ApiProperty() @IsString() @IsNotEmpty() petName!: string;
   @ApiPropertyOptional() @IsOptional() @IsString() petBreed?: string;
   @ApiPropertyOptional() @IsOptional() @IsNumber() @Min(0) petAge?: number;
+  @ApiPropertyOptional() @IsOptional() @IsString() petPhotoUrl?: string;
   @ApiProperty() @IsString() @IsNotEmpty() serviceName!: string;
   @ApiPropertyOptional() @IsOptional() @IsString() establishmentId?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() establishmentName?: string;

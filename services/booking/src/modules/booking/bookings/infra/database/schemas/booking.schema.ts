@@ -17,6 +17,7 @@ export const bookingsSchema = pgTable("bookings", {
   petName: text("pet_name").notNull(),
   petBreed: text("pet_breed").default(""),
   petAge: integer("pet_age").default(0),
+  petPhotoUrl: text("pet_photo_url"),
   serviceName: text("service_name").notNull(),
   servicesJson: text("services_json"),
   attendancePhotos: text("attendance_photos"),

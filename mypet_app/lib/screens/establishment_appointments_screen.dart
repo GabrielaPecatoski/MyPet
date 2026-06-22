@@ -415,8 +415,12 @@ class _ApptCard extends StatelessWidget {
                               CircleAvatar(
                                 radius: 24,
                                 backgroundColor: AppColors.primaryLight,
-                                child: const Icon(Icons.pets,
-                                    color: AppColors.estab, size: 24),
+                                backgroundImage: appImageProvider(ap.petPhotoUrl),
+                                child: (ap.petPhotoUrl == null ||
+                                        ap.petPhotoUrl!.isEmpty)
+                                    ? const Icon(Icons.pets,
+                                        color: AppColors.estab, size: 24)
+                                    : null,
                               ),
                               const SizedBox(width: 12),
                               Expanded(
@@ -712,7 +716,10 @@ class _ApptCard extends StatelessWidget {
                 CircleAvatar(
                   radius: 24,
                   backgroundColor: AppColors.primaryLight,
-                  child: const Icon(Icons.pets, color: AppColors.estab, size: 22),
+                  backgroundImage: appImageProvider(ap.petPhotoUrl),
+                  child: (ap.petPhotoUrl == null || ap.petPhotoUrl!.isEmpty)
+                      ? const Icon(Icons.pets, color: AppColors.estab, size: 22)
+                      : null,
                 ),
                 const SizedBox(width: 12),
                 Expanded(

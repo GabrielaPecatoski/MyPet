@@ -26,6 +26,7 @@ export class Booking {
   private _petName!: string;
   private _petBreed?: string;
   private _petAge?: number;
+  private _petPhotoUrl?: string;
   private _serviceName!: string;
   private _servicesJson?: string;
   private _attendancePhotos?: string;
@@ -77,6 +78,9 @@ export class Booking {
   }
   get petAge(): number {
     return this._petAge ?? 0;
+  }
+  get petPhotoUrl(): string | undefined {
+    return this._petPhotoUrl;
   }
   get serviceName(): string {
     return this._serviceName;
@@ -198,6 +202,7 @@ export class Booking {
     petName: string;
     petBreed?: string | null;
     petAge?: number | null;
+    petPhotoUrl?: string | null;
     serviceName: string;
     servicesJson?: string | null;
     attendancePhotos?: string | null;
@@ -229,6 +234,7 @@ export class Booking {
     b._petName = props.petName;
     b._petBreed = props.petBreed ?? undefined;
     b._petAge = props.petAge ?? undefined;
+    b._petPhotoUrl = props.petPhotoUrl ?? undefined;
     b._serviceName = props.serviceName;
     b._servicesJson = props.servicesJson ?? undefined;
     b._attendancePhotos = props.attendancePhotos ?? undefined;

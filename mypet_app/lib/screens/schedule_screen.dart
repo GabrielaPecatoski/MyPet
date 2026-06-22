@@ -174,6 +174,7 @@ class _ScheduleViewState extends State<_ScheduleView> {
           petName: _selectedPet!.name,
           petBreed: _selectedPet!.breed,
           petAge: _selectedPet!.age,
+          petPhotoUrl: _selectedPet!.imageUrl,
           serviceName: serviceNameDisplay,
           establishmentId: establishment?.id ?? '',
           establishmentName: establishment?.name ?? '',
